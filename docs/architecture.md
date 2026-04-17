@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: Phase 0 delivers a runnable scaffold, containerized local stack, environment validation, a health endpoint, a placeholder worker, and baseline browser-test support.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold plus the first Phase 1 persistence slice for authentication and auditability.
 
 ## Current System Shape
 
-OneSource is currently a modular-monolith scaffold built with Next.js 16 and TypeScript. The app exposes a single public homepage plus a health-check route and runs alongside PostgreSQL and a placeholder worker in `docker compose`.
+OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, and Prisma ORM. The app exposes a single public homepage plus a health-check route and runs alongside PostgreSQL and a placeholder worker in `docker compose`.
 
 Current runtime components:
 
@@ -21,7 +21,8 @@ The compose images are intentionally built from a repo-contained offline npm cac
 
 - `src/app`: App Router routes, layout, global styles, and route handlers
 - `src/components`: shared UI components and component tests
-- `src/lib`: runtime helpers such as environment parsing and database health checks
+- `src/lib`: runtime helpers such as environment parsing, Prisma client construction, and database health checks
+- `prisma`: schema, generated migrations, and seed scripts
 - `scripts`: operational helper scripts including the placeholder worker
 - `tests`: Playwright smoke coverage
 - `docs`: durable architecture, runbook, testing, and research notes
@@ -59,12 +60,26 @@ This keeps early Phase 0 behavior out of page files while leaving room for the p
 
 ## Data And Persistence
 
-There is no application schema or ORM yet. PostgreSQL exists today only as a verified dependency for:
+Prisma now owns the initial database schema and migration history. The Phase 1 baseline includes these persistence areas:
 
-- the health endpoint database check
-- the placeholder worker heartbeat
+- `organizations`: tenant root for users, roles, and audit scope
+- `users`: canonical app users with organization membership and lifecycle status
+- `roles` and `user_roles`: database-backed role catalog plus user-role assignments
+- `accounts`, `sessions`, and `verification_tokens`: Auth.js-compatible auth tables for future sign-in flows
+- `audit_logs`: append-oriented audit storage for actor, target, action, and metadata
 
-No application tables, migrations, or seed data exist yet. Those begin in Phase 1.
+Current schema assumptions:
+
+- Each user belongs to exactly one organization in the initial release slice.
+- Roles are organization-scoped database rows rather than enums so later admin tooling can inspect and evolve assignments without schema rewrites.
+- Audit actions and target types are stored as strings to avoid a migration for every new auditable workflow while the product surface is still expanding.
+
+Current seed defaults:
+
+- one organization with slug `default-org`
+- the seven core PRD roles
+- one local development admin user at `admin@onesource.local`
+- one bootstrap audit-log event recording the seed action
 
 ## Container And Environment Strategy
 
@@ -85,7 +100,9 @@ Docker dependency installation is performed offline from `vendor/npm-offline-cac
 Current automated coverage consists of:
 
 - Vitest unit tests for the homepage shell and env parsing
+- Vitest unit coverage for the canonical system role catalog
 - Playwright Chromium smoke coverage for the homepage
+- Prisma schema validation, migration, and seed verification against PostgreSQL
 - compose-backed lint, build, unit-test, and browser-test workflows documented in `docs/testing.md`
 
 ## Connector Strategy
@@ -94,10 +111,10 @@ No live connector exists yet. The product architecture still targets source-agno
 
 ## Known Gaps
 
-- No authentication, authorization, or audit pipeline yet
-- No Prisma schema or migrations yet
+- No Auth.js runtime, protected routes, or authorization checks yet
+- No audit event emitters on business workflows yet beyond the seed bootstrap record
 - No `src/modules` domain structure yet
-- No persistent application data model beyond PostgreSQL availability checks
+- No opportunity, connector, or workflow persistence beyond the auth and audit baseline
 - No production job runner beyond the placeholder worker heartbeat
 
 These gaps are expected at the current phase and should be resolved through the sequenced PRD checklist rather than ad hoc refactors.

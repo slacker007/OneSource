@@ -2,12 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of Phase 0. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 1 baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI and runtime helpers
 - Browser tests: Playwright Chromium smoke coverage in `tests/`
+- Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
 Integration tests do not exist yet. When database-backed integration tests are added, the compose `test` service is the canonical place to run them because it joins the same network as PostgreSQL and receives the compose-managed `DATABASE_URL`.
@@ -30,10 +31,19 @@ npm run cache:npm:refresh
 These are useful during local development when the host environment is intentionally bootstrapped:
 
 ```bash
+npm run prisma:validate
 npm run lint
 npm test
 npm run build
 npm run e2e
+```
+
+When the changed area includes Prisma schema or seed logic, also run:
+
+```bash
+docker compose up -d db
+npm run prisma:migrate:dev -- --name your_migration_name
+npm run db:seed
 ```
 
 To point Playwright at an already-running host or compose stack:
@@ -49,19 +59,19 @@ The compose-managed Playwright workflow does not require a host browser install 
 Lint:
 
 ```bash
-docker compose --profile test run --rm test run lint
+docker compose --profile test run --rm --build test run lint
 ```
 
 Unit tests with coverage:
 
 ```bash
-docker compose --profile test run --rm test
+docker compose --profile test run --rm --build test
 ```
 
 Production build validation:
 
 ```bash
-docker compose --profile test run --rm test run build
+docker compose --profile test run --rm --build test run build
 ```
 
 Chromium Playwright against the live compose app:

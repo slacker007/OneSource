@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "cache:npm:refresh": "node scripts/refresh-offline-npm-cache.mjs",
+    "db:seed": "prisma db seed",
     "dev": "next dev --hostname 127.0.0.1 --port 3000",
     "dev:compose": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",
@@ -11,6 +12,9 @@
     "start:compose": "next start --hostname 0.0.0.0 --port 3000",
     "worker": "node scripts/worker.mjs",
     "lint": "eslint .",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:validate": "prisma validate",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "e2e:install": "playwright install chromium",
@@ -19,8 +23,11 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "dotenv": "^17.4.2",
     "next": "16.2.4",
     "pg": "^8.20.0",
+    "prisma": "^6.19.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "^4.3.6"

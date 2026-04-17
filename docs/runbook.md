@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This runbook captures the real operational procedures for the current Phase 0 stack. It should be updated as the app gains migrations, auth, scheduled jobs, and external connectors.
+This runbook captures the real operational procedures for the current repo baseline. It now covers the full Phase 0 stack plus the first Prisma-backed auth and audit schema slice, and it should be updated as the app gains live auth flows, scheduled jobs, and external connectors.
 
 ## Current Services
 
@@ -77,6 +77,28 @@ Expected healthy response shape:
 
 If PostgreSQL is unavailable, the route returns HTTP `503` with `status: "degraded"` and the database error message.
 
+## Prisma Workflows
+
+Validate the schema:
+
+```bash
+npm run prisma:validate
+```
+
+Create and apply a development migration against the running PostgreSQL instance:
+
+```bash
+npm run prisma:migrate:dev -- --name your_migration_name
+```
+
+Apply the current seed defaults:
+
+```bash
+npm run db:seed
+```
+
+The current seed is idempotent enough for local development. It upserts the default organization, system roles, and local admin user, then appends one bootstrap audit-log record.
+
 ## Logs
 
 Follow the web and worker logs:
@@ -98,19 +120,19 @@ Worker logs are structured JSON with:
 Lint:
 
 ```bash
-docker compose --profile test run --rm test run lint
+docker compose --profile test run --rm --build test run lint
 ```
 
 Unit tests:
 
 ```bash
-docker compose --profile test run --rm test
+docker compose --profile test run --rm --build test
 ```
 
 Production build validation:
 
 ```bash
-docker compose --profile test run --rm test run build
+docker compose --profile test run --rm --build test run build
 ```
 
 Chromium Playwright against the compose-managed app:
@@ -181,6 +203,27 @@ Recovery:
 2. Confirm `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` match the composed `DATABASE_URL`.
 3. If the local data directory is intentionally disposable and corrupted, remove `./.docker/postgres-data` and rebuild the stack.
 
+### Prisma Migration Fails
+
+Symptoms:
+
+- `npm run prisma:migrate:dev` exits non-zero
+- Prisma reports drift or an unapplied schema change
+
+Recovery:
+
+1. Ensure PostgreSQL is running with `docker compose up -d db`.
+2. Re-run `npm run prisma:validate` to separate schema errors from database errors.
+3. Inspect the latest migration under `prisma/migrations/`.
+4. If the local database can be discarded, reset it deliberately and rerun migrations plus seed:
+
+```bash
+npx prisma migrate reset --force
+npm run db:seed
+```
+
+Only use reset for disposable local development data.
+
 ### Compose Tests Fail Before App Logic Runs
 
 Symptoms:
@@ -211,8 +254,6 @@ Recovery:
 
 This Phase 0 runbook does not yet cover:
 
-- migrations
-- seed resets
 - auth or session recovery
 - queue drains or retriable jobs
 - connector outage handling

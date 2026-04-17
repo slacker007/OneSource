@@ -572,7 +572,7 @@ This section is mandatory for every future coding iteration because conversation
 
 ### Phase 1: Data Model And Core Infrastructure
 
-- [ ] P1-01 Create the initial Prisma schema for users, roles, sessions, organizations, and audit logs.
+- [x] P1-01 Create the initial Prisma schema for users, roles, sessions, organizations, and audit logs.
       Done when: auth and audit tables exist with migrations and seed-safe defaults.
       Verify with: Prisma validate, migration generation, and seed run.
 
@@ -789,8 +789,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, and `P0-04` are complete. This loop replaced the host-`node_modules` Docker dependency with a repo-contained offline npm cache archive at `vendor/npm-offline-cache.tar.gz`, added a refresh script at `scripts/refresh-offline-npm-cache.mjs`, and verified compose-managed lint, build, unit-test, and Chromium Playwright workflows without a manually bootstrapped host dependency tree.
-- Next recommended item: `P1-01 Create the initial Prisma schema for users, roles, sessions, organizations, and audit logs.`
-- Blockers: None for `P0-02a`. Docker containers still cannot reach `registry.npmjs.org` directly in this environment, but the committed offline cache archive now removes that as a workflow blocker for the current dependency set.
-- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `package.json`, `.dockerignore`, `.gitignore`, `Dockerfile`, `docs/architecture.md`, `docs/runbook.md`, `docs/testing.md`, `scripts/refresh-offline-npm-cache.mjs`, and `vendor/npm-offline-cache.tar.gz`.
-- Tests run in latest loop: `npm run cache:npm:refresh`; `npm run lint`; `npm test`; `npm run build`; `npm run e2e`; `docker compose --profile test run --rm test run lint`; `docker compose --profile test run --rm test`; `docker compose --profile test run --rm test run build`; `docker compose --profile test up --build --abort-on-container-exit --exit-code-from playwright playwright`; `git diff --check`. Verification used `docker compose` and Playwright.
+- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, and `P1-01` are complete. This loop added Prisma 6, `prisma.config.ts`, the initial auth and audit schema, migration `20260417220638_init_auth_audit`, a seed path that creates the default organization plus system roles and a local admin user, a reusable Prisma client helper, and durable architecture, testing, security, and research documentation for the new baseline.
+- Next recommended item: `P1-02 Add the core opportunity schema including agencies, vehicles, opportunities, source records, source sync entities, saved source searches, raw source payload storage, and competitors.`
+- Blockers: None for `P1-01`. Raw Node HTTP fetches to the npm registry still fail in this environment, but `npm install` and the refreshed offline cache archive continue to support reproducible dependency and compose workflows.
+- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/runbook.md`, `docs/testing.md`, `docs/security.md`, `docs/research/2026-04-17-prisma-auth-baseline.md`, `package.json`, `package-lock.json`, `prisma.config.ts`, `prisma/schema.prisma`, `prisma/seed.mjs`, `prisma/system-roles.mjs`, `prisma/migrations/`, `src/lib/prisma.ts`, `src/lib/auth/system-roles.ts`, `src/lib/auth/system-roles.test.ts`, and `vendor/npm-offline-cache.tar.gz`.
+- Tests run in latest loop: `npm run cache:npm:refresh`; `npx prisma format`; `npm run prisma:validate`; `npm run prisma:migrate:dev -- --name init_auth_audit`; `npm run db:seed`; `npm run lint`; `npm test`; `npm run build`; `npm run e2e`; `docker compose --profile test run --rm --build test run lint`; `docker compose --profile test run --rm --build test`; `docker compose --profile test run --rm --build test run build`; `docker compose --profile test up --build --abort-on-container-exit --exit-code-from playwright playwright`; `docker compose down --remove-orphans`; `git diff --check`. Verification used `docker compose` and Playwright.
