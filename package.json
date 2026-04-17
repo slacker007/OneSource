@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "cache:npm:refresh": "node scripts/refresh-offline-npm-cache.mjs",
     "dev": "next dev --hostname 127.0.0.1 --port 3000",
     "dev:compose": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",

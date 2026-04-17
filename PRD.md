@@ -558,7 +558,7 @@ This section is mandatory for every future coding iteration because conversation
       Done when: the web app, PostgreSQL, and required worker processes start through one compose workflow, required env vars are documented, and the app validates env at boot.
       Verify with: `docker compose up` on the stack, app boot against validated env, and one browser smoke test against the compose-managed app.
 
-- [ ] P0-02a Add compose profiles or equivalent workflows for test execution, including Playwright against Chromium.
+- [x] P0-02a Add compose profiles or equivalent workflows for test execution, including Playwright against Chromium.
       Done when: the repo supports containerized test runs for unit, integration, and browser-based end-to-end verification without requiring a manually bootstrapped host environment.
       Verify with: documented compose-based test commands and at least one successful Playwright Chromium run through the containerized workflow.
 
@@ -789,8 +789,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: `P0-01`, `P0-02`, `P0-03`, and `P0-04` are complete. This loop created baseline durable docs in `docs/architecture.md` and `docs/runbook.md`, and updated `README.md` so the repo now has truthful setup, stack, layout, compose, and verification documentation for the current Phase 0 system. `P0-02a` remains incomplete because the compose workflows are real and verified but still depend on a prior host `npm install`: both host and container HTTP fetches to `registry.npmjs.org` fail in this environment, and a fresh Docker build stalls at `npm ci`, so the repo cannot yet meet the no-manual-host-bootstrap acceptance criteria.
-- Next recommended item: `P0-02a Add compose profiles or equivalent workflows for test execution, including Playwright against Chromium.`
-- Blockers: Docker/container access to `registry.npmjs.org` is still failing in this environment. Revalidation in this loop showed host and container fetches to `https://registry.npmjs.org/` failing, container DNS resolution still working, and a fresh `docker build` hanging at `npm ci`. Until that network path is fixed or the requirement is changed, `P0-02a` cannot be marked complete.
-- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, and `docs/runbook.md`.
-- Tests run in latest loop: `[ -f docs/architecture.md ] && [ -f docs/runbook.md ] && echo ok`; `docker compose config >/tmp/onesource-compose-config.out && echo ok`; `git diff --check`; targeted `rg` and `sed` reads of `README.md`, `docs/architecture.md`, and `docs/runbook.md` to confirm the docs match the actual repo files and commands. Verification did not use Playwright because this loop only added documentation and did not change user-facing code.
+- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, and `P0-04` are complete. This loop replaced the host-`node_modules` Docker dependency with a repo-contained offline npm cache archive at `vendor/npm-offline-cache.tar.gz`, added a refresh script at `scripts/refresh-offline-npm-cache.mjs`, and verified compose-managed lint, build, unit-test, and Chromium Playwright workflows without a manually bootstrapped host dependency tree.
+- Next recommended item: `P1-01 Create the initial Prisma schema for users, roles, sessions, organizations, and audit logs.`
+- Blockers: None for `P0-02a`. Docker containers still cannot reach `registry.npmjs.org` directly in this environment, but the committed offline cache archive now removes that as a workflow blocker for the current dependency set.
+- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `package.json`, `.dockerignore`, `.gitignore`, `Dockerfile`, `docs/architecture.md`, `docs/runbook.md`, `docs/testing.md`, `scripts/refresh-offline-npm-cache.mjs`, and `vendor/npm-offline-cache.tar.gz`.
+- Tests run in latest loop: `npm run cache:npm:refresh`; `npm run lint`; `npm test`; `npm run build`; `npm run e2e`; `docker compose --profile test run --rm test run lint`; `docker compose --profile test run --rm test`; `docker compose --profile test run --rm test run build`; `docker compose --profile test up --build --abort-on-container-exit --exit-code-from playwright playwright`; `git diff --check`. Verification used `docker compose` and Playwright.

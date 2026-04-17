@@ -46,3 +46,4 @@ next-env.d.ts
 # local scaffolding scratch space
 /tmp-app
 /.docker/postgres-data
+/.tmp*

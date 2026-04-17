@@ -1,3 +1,6 @@
+x-app-environment: &app-environment
+  DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+
 services:
   db:
     image: postgres:16-bookworm
@@ -24,12 +27,13 @@ services:
   web:
     build:
       context: .
+      target: runner
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      <<: *app-environment
       NODE_ENV: production
     ports:
       - "3000:3000"
@@ -50,12 +54,45 @@ services:
   worker:
     build:
       context: .
+      target: runner
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      <<: *app-environment
       NODE_ENV: production
       WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS}
     command: npm run worker
+
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      target: runner
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *app-environment
+      NODE_ENV: test
+    entrypoint: ["npm"]
+    command: ["test"]
+
+  playwright:
+    profiles: ["test"]
+    build:
+      context: .
+      target: playwright
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      PLAYWRIGHT_BASE_URL: http://web:3000
+      CI: "1"
+    init: true
+    ipc: host
+    command: npm run e2e
+    volumes:
+      - ./playwright-report:/app/playwright-report
+      - ./test-results:/app/test-results

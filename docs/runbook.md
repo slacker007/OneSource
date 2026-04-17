@@ -20,13 +20,20 @@ This runbook captures the real operational procedures for the current Phase 0 st
 cp .env.example .env
 ```
 
-2. Install repo dependencies on the host:
+2. Host dependency installation is only required for host-run workflows such as `npm run lint`, `npm test`, or `npm run e2e`:
 
 ```bash
 npm install
 ```
 
-This host install is currently required before compose workflows because Docker containers in this environment cannot fetch packages from `registry.npmjs.org`.
+Compose workflows do not depend on host `node_modules`; Docker images install from the committed offline archive at `vendor/npm-offline-cache.tar.gz`.
+
+3. When dependency versions change, refresh the offline cache archive before rebuilding images:
+
+```bash
+npm install
+npm run cache:npm:refresh
+```
 
 ## Boot The Default Stack
 
@@ -179,13 +186,13 @@ Recovery:
 Symptoms:
 
 - image builds or test containers fail before Next.js or Vitest starts
-- npm install steps hang or fail with registry/network errors
+- `npm ci --offline` reports a missing cached tarball
 
 Recovery:
 
-1. Confirm the host dependency tree exists with `npm install`.
-2. Re-run the compose test command.
-3. If the failure still references `registry.npmjs.org`, treat it as the known `P0-02a` blocker rather than an application regression.
+1. Confirm `vendor/npm-offline-cache.tar.gz` exists in the repo.
+2. Refresh it with `npm install && npm run cache:npm:refresh` if `package-lock.json` changed.
+3. Re-run the compose test command.
 
 ### Browser Tests Fail
 

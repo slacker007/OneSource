@@ -15,6 +15,8 @@ Current runtime components:
 - `worker`: placeholder Node.js process that validates env, connects to PostgreSQL, and emits structured heartbeat logs
 - `playwright`: profile-gated Chromium test container used only for compose-backed browser verification
 
+The compose images are intentionally built from a repo-contained offline npm cache archive rather than a copied host `node_modules` tree. This keeps the stack deterministic even though Docker containers in this environment cannot reach `registry.npmjs.org` directly.
+
 ## Repository Layout
 
 - `src/app`: App Router routes, layout, global styles, and route handlers
@@ -76,6 +78,8 @@ Environment configuration is injected through `.env` / compose variables and val
 - `POSTGRES_PASSWORD`
 - `WORKER_POLL_INTERVAL_MS`
 
+Docker dependency installation is performed offline from `vendor/npm-offline-cache.tar.gz`. That archive is generated from the lockfile plus the host npm cache by `npm run cache:npm:refresh` and is part of the repo’s durable build inputs.
+
 ## Testing Architecture
 
 Current automated coverage consists of:
@@ -83,10 +87,6 @@ Current automated coverage consists of:
 - Vitest unit tests for the homepage shell and env parsing
 - Playwright Chromium smoke coverage for the homepage
 - compose-backed lint, build, unit-test, and browser-test workflows documented in `docs/testing.md`
-
-Important limitation:
-
-- `P0-02a` is not complete because Docker containers in this environment cannot fetch packages from `registry.npmjs.org`. The current images therefore copy the repo-local `node_modules` tree instead of performing a container-native install.
 
 ## Connector Strategy
 

@@ -1,6 +1,6 @@
 # OneSource
 
-OneSource is a capture intelligence platform for government contracting teams. The repo now has the Phase 0 scaffold plus a compose-managed runtime stack: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, boot-time environment validation, and a placeholder worker process for future background jobs.
+OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold plus compose-managed runtime and test workflows: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, boot-time environment validation, a placeholder worker process, and an offline npm cache archive that makes Docker builds self-sufficient in this environment.
 
 ## Current Status
 
@@ -8,8 +8,8 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - Implementation scope, checklist sequencing, and current handoff state live in `PRD.md`.
 - Engineering and verification rules live in `AGENTS.md`.
 - Active loop notes and crash-recovery context live in `NOTES.md`.
-- `P0-01`, `P0-02`, `P0-03`, and `P0-04` are complete.
-- `P0-02a` remains open. Compose-based lint, build, unit-test, and Chromium Playwright workflows now exist, but the item is still blocked because the current Docker build must reuse the repo-local `node_modules` tree until container access to `registry.npmjs.org` is resolved.
+- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, and `P0-04` are complete.
+- The next recommended item is `P1-01`, which introduces Prisma plus the initial auth and audit schema.
 
 ## Stack In Repo Today
 
@@ -48,13 +48,13 @@ OneSource is a capture intelligence platform for government contracting teams. T
 cp .env.example .env
 ```
 
-2. Install dependencies:
+2. For host-only development workflows, install dependencies:
 
 ```bash
 npm install
 ```
 
-The current compose images intentionally reuse the repo-local dependency tree from `node_modules`, so run `npm install` before `docker compose up --build` or any compose-based test command. This is a temporary blocker tracked in `PRD.md`.
+Host dependency installation is not required for the compose-managed runtime or test workflows because Docker builds now use the committed offline npm cache archive at `vendor/npm-offline-cache.tar.gz`.
 
 3. Install the Chromium browser used by host-side Playwright runs:
 
@@ -83,6 +83,19 @@ npm run dev
 ```
 
 The app serves at `http://127.0.0.1:3000`, PostgreSQL is exposed on `127.0.0.1:5432`, and the readiness endpoint is `http://127.0.0.1:3000/api/health`.
+
+## Offline Docker Dependency Cache
+
+This repo includes `vendor/npm-offline-cache.tar.gz`, a curated archive of the npm tarballs needed by the current lockfile on the Linux development target. Docker images install dependencies with `npm ci --offline`, so compose workflows do not depend on a repo-local `node_modules` tree or live npm registry access from containers.
+
+When dependency versions change:
+
+```bash
+npm install
+npm run cache:npm:refresh
+```
+
+Run those commands on the host before rebuilding images so the committed archive stays aligned with `package-lock.json`.
 
 ## Required Environment Variables
 
@@ -113,7 +126,7 @@ The committed `.env.example` contains the canonical development defaults.
 
 `npm run e2e` starts the app automatically through the Playwright `webServer` configuration and injects a default local `DATABASE_URL` when one is not already set. When `PLAYWRIGHT_BASE_URL` is provided, Playwright skips the internal web server and targets the existing app instance instead.
 
-See `docs/testing.md` for the durable verification workflow and the current compose limitation.
+See `docs/testing.md` for the durable verification workflow.
 See `docs/architecture.md` and `docs/runbook.md` for the current system design and operator procedures.
 
 ## Current Workflow
@@ -131,8 +144,6 @@ The canonical Phase 0 loop is now:
 
 ## Known Gaps
 
-- Compose test workflows still depend on a local `node_modules` tree because Docker containers in this environment cannot currently reach `registry.npmjs.org`
 - No Prisma schema, auth layer, or real job runner yet
-- `P0-02a` is still blocked on container access to `registry.npmjs.org`, so the compose verification path still depends on a prior host `npm install`
 
 Those gaps are intentional scope still tracked in `PRD.md`; this README only documents what exists today.
