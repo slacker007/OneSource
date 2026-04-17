@@ -14,6 +14,7 @@ async function upsertSearchExecution({
   organizationId,
   savedSearchId,
   requestedByUserId,
+  sourceConnectorConfigId,
   execution,
 }) {
   const requestedAt = new Date(execution.requestedAt);
@@ -30,6 +31,7 @@ async function upsertSearchExecution({
     organizationId,
     savedSearchId,
     requestedByUserId,
+    sourceConnectorConfigId,
     requestedByActorType: execution.requestedByActorType,
     sourceSystem: execution.sourceSystem,
     status: execution.status,
@@ -62,6 +64,7 @@ async function upsertSyncRun({
   savedSearchId,
   searchExecutionId,
   requestedByUserId,
+  sourceConnectorConfigId,
   syncRun,
   sourceSystem,
 }) {
@@ -80,6 +83,7 @@ async function upsertSyncRun({
     savedSearchId,
     searchExecutionId,
     requestedByUserId,
+    sourceConnectorConfigId,
     requestedByActorType: syncRun.requestedByActorType,
     sourceSystem,
     triggerType: syncRun.triggerType,
@@ -103,6 +107,143 @@ async function upsertSyncRun({
   }
 
   return prisma.sourceSyncRun.create({ data });
+}
+
+async function syncSourceRecordChildren({
+  sourceRecordId,
+  attachments,
+  contacts,
+  award,
+}) {
+  await prisma.sourceRecordAttachment.deleteMany({
+    where: { sourceRecordId },
+  });
+
+  if (attachments.length > 0) {
+    await prisma.sourceRecordAttachment.createMany({
+      data: attachments.map((attachment) => ({
+        sourceRecordId,
+        externalId: attachment.externalId ?? null,
+        url: attachment.url,
+        linkType: attachment.linkType,
+        displayLabel: attachment.displayLabel ?? null,
+        mimeType: attachment.mimeType ?? null,
+        sourceFileName: attachment.sourceFileName ?? null,
+        fileSizeBytes: attachment.fileSizeBytes ?? null,
+        sortOrder: attachment.sortOrder ?? 0,
+        metadata: attachment.metadata ?? null,
+      })),
+    });
+  }
+
+  await prisma.sourceRecordContact.deleteMany({
+    where: { sourceRecordId },
+  });
+
+  if (contacts.length > 0) {
+    await prisma.sourceRecordContact.createMany({
+      data: contacts.map((contact) => ({
+        sourceRecordId,
+        contactType: contact.contactType ?? null,
+        fullName: contact.fullName ?? null,
+        title: contact.title ?? null,
+        email: contact.email ?? null,
+        phone: contact.phone ?? null,
+        fax: contact.fax ?? null,
+        additionalInfoText: contact.additionalInfoText ?? null,
+        sortOrder: contact.sortOrder ?? 0,
+      })),
+    });
+  }
+
+  if (award) {
+    await prisma.sourceRecordAward.upsert({
+      where: { sourceRecordId },
+      update: {
+        awardNumber: award.awardNumber ?? null,
+        awardAmount: award.awardAmount ?? null,
+        awardDate: award.awardDate ? new Date(award.awardDate) : null,
+        awardeeName: award.awardeeName ?? null,
+        awardeeUEI: award.awardeeUEI ?? null,
+        awardeeStreet1: award.awardeeStreet1 ?? null,
+        awardeeStreet2: award.awardeeStreet2 ?? null,
+        awardeeCityCode: award.awardeeCityCode ?? null,
+        awardeeCityName: award.awardeeCityName ?? null,
+        awardeeStateCode: award.awardeeStateCode ?? null,
+        awardeeStateName: award.awardeeStateName ?? null,
+        awardeePostalCode: award.awardeePostalCode ?? null,
+        awardeeCountryCode: award.awardeeCountryCode ?? null,
+        awardeeCountryName: award.awardeeCountryName ?? null,
+      },
+      create: {
+        sourceRecordId,
+        awardNumber: award.awardNumber ?? null,
+        awardAmount: award.awardAmount ?? null,
+        awardDate: award.awardDate ? new Date(award.awardDate) : null,
+        awardeeName: award.awardeeName ?? null,
+        awardeeUEI: award.awardeeUEI ?? null,
+        awardeeStreet1: award.awardeeStreet1 ?? null,
+        awardeeStreet2: award.awardeeStreet2 ?? null,
+        awardeeCityCode: award.awardeeCityCode ?? null,
+        awardeeCityName: award.awardeeCityName ?? null,
+        awardeeStateCode: award.awardeeStateCode ?? null,
+        awardeeStateName: award.awardeeStateName ?? null,
+        awardeePostalCode: award.awardeePostalCode ?? null,
+        awardeeCountryCode: award.awardeeCountryCode ?? null,
+        awardeeCountryName: award.awardeeCountryName ?? null,
+      },
+    });
+  } else {
+    await prisma.sourceRecordAward.deleteMany({
+      where: { sourceRecordId },
+    });
+  }
+}
+
+async function upsertImportDecision({
+  organizationId,
+  sourceConnectorConfigId,
+  sourceRecordId,
+  targetOpportunityId,
+  requestedByUserId,
+  decidedByUserId,
+  decision,
+}) {
+  const requestedAt = new Date(decision.requestedAt);
+  const existingDecision = await prisma.sourceImportDecision.findFirst({
+    where: {
+      organizationId,
+      sourceRecordId,
+      mode: decision.mode,
+      requestedAt,
+    },
+  });
+
+  const data = {
+    organizationId,
+    sourceConnectorConfigId,
+    sourceRecordId,
+    targetOpportunityId,
+    requestedByUserId,
+    decidedByUserId,
+    requestedByActorType: decision.requestedByActorType,
+    mode: decision.mode,
+    status: decision.status,
+    rationale: decision.rationale ?? null,
+    decisionMetadata: decision.decisionMetadata ?? null,
+    importPreviewPayload: decision.importPreviewPayload ?? null,
+    requestedAt,
+    decidedAt: decision.decidedAt ? new Date(decision.decidedAt) : null,
+  };
+
+  if (existingDecision) {
+    return prisma.sourceImportDecision.update({
+      where: { id: existingDecision.id },
+      data,
+    });
+  }
+
+  return prisma.sourceImportDecision.create({ data });
 }
 
 async function main() {
@@ -277,6 +418,88 @@ async function main() {
     competitorsByKey.set(competitor.key, persistedCompetitor);
   }
 
+  const connectorConfigsByKey = new Map();
+
+  for (const connectorConfig of scenario.connectorConfigs) {
+    const persistedConnectorConfig = await prisma.sourceConnectorConfig.upsert({
+      where: {
+        organizationId_sourceSystemKey: {
+          organizationId: organization.id,
+          sourceSystemKey: connectorConfig.sourceSystemKey,
+        },
+      },
+      update: {
+        sourceDisplayName: connectorConfig.sourceDisplayName,
+        sourceCategory: connectorConfig.sourceCategory,
+        authType: connectorConfig.authType,
+        isEnabled: connectorConfig.isEnabled,
+        supportsSearch: connectorConfig.supportsSearch,
+        supportsScheduledSync: connectorConfig.supportsScheduledSync,
+        supportsDetailFetch: connectorConfig.supportsDetailFetch,
+        supportsDocumentFetch: connectorConfig.supportsDocumentFetch,
+        supportsResultPreview: connectorConfig.supportsResultPreview,
+        supportsSavedSearches: connectorConfig.supportsSavedSearches,
+        supportsIncrementalSync: connectorConfig.supportsIncrementalSync,
+        supportsWebhooks: connectorConfig.supportsWebhooks,
+        supportsAttachments: connectorConfig.supportsAttachments,
+        supportsAwardData: connectorConfig.supportsAwardData,
+        defaultPageSize: connectorConfig.defaultPageSize,
+        maxPageSize: connectorConfig.maxPageSize,
+        rateLimitProfile: connectorConfig.rateLimitProfile,
+        credentialReference: connectorConfig.credentialReference,
+        configData: connectorConfig.configData,
+        connectorVersion: connectorConfig.connectorVersion,
+        validationStatus: connectorConfig.validationStatus,
+        lastValidatedAt: connectorConfig.lastValidatedAt
+          ? new Date(connectorConfig.lastValidatedAt)
+          : null,
+        lastValidationMessage: connectorConfig.lastValidationMessage ?? null,
+      },
+      create: {
+        organizationId: organization.id,
+        sourceSystemKey: connectorConfig.sourceSystemKey,
+        sourceDisplayName: connectorConfig.sourceDisplayName,
+        sourceCategory: connectorConfig.sourceCategory,
+        authType: connectorConfig.authType,
+        isEnabled: connectorConfig.isEnabled,
+        supportsSearch: connectorConfig.supportsSearch,
+        supportsScheduledSync: connectorConfig.supportsScheduledSync,
+        supportsDetailFetch: connectorConfig.supportsDetailFetch,
+        supportsDocumentFetch: connectorConfig.supportsDocumentFetch,
+        supportsResultPreview: connectorConfig.supportsResultPreview,
+        supportsSavedSearches: connectorConfig.supportsSavedSearches,
+        supportsIncrementalSync: connectorConfig.supportsIncrementalSync,
+        supportsWebhooks: connectorConfig.supportsWebhooks,
+        supportsAttachments: connectorConfig.supportsAttachments,
+        supportsAwardData: connectorConfig.supportsAwardData,
+        defaultPageSize: connectorConfig.defaultPageSize,
+        maxPageSize: connectorConfig.maxPageSize,
+        rateLimitProfile: connectorConfig.rateLimitProfile,
+        credentialReference: connectorConfig.credentialReference,
+        configData: connectorConfig.configData,
+        connectorVersion: connectorConfig.connectorVersion,
+        validationStatus: connectorConfig.validationStatus,
+        lastValidatedAt: connectorConfig.lastValidatedAt
+          ? new Date(connectorConfig.lastValidatedAt)
+          : null,
+        lastValidationMessage: connectorConfig.lastValidationMessage ?? null,
+      },
+    });
+
+    connectorConfigsByKey.set(
+      connectorConfig.sourceSystemKey,
+      persistedConnectorConfig,
+    );
+  }
+
+  const samGovConnectorConfig = connectorConfigsByKey.get(
+    scenario.sourceSavedSearch.connectorKey,
+  );
+
+  if (!samGovConnectorConfig) {
+    throw new Error("Missing seeded connector config for sam_gov");
+  }
+
   const savedSearch = await prisma.sourceSavedSearch.upsert({
     where: {
       organizationId_sourceSystem_name: {
@@ -287,6 +510,7 @@ async function main() {
     },
     update: {
       createdByUserId: adminUser.id,
+      sourceConnectorConfigId: samGovConnectorConfig.id,
       description: scenario.sourceSavedSearch.description,
       canonicalFilters: scenario.sourceSavedSearch.canonicalFilters,
       sourceSpecificFilters: scenario.sourceSavedSearch.sourceSpecificFilters,
@@ -296,6 +520,7 @@ async function main() {
     create: {
       organizationId: organization.id,
       createdByUserId: adminUser.id,
+      sourceConnectorConfigId: samGovConnectorConfig.id,
       sourceSystem: scenario.sourceSavedSearch.sourceSystem,
       name: scenario.sourceSavedSearch.name,
       description: scenario.sourceSavedSearch.description,
@@ -310,6 +535,7 @@ async function main() {
     organizationId: organization.id,
     savedSearchId: savedSearch.id,
     requestedByUserId: adminUser.id,
+    sourceConnectorConfigId: samGovConnectorConfig.id,
     execution: {
       ...scenario.sourceSearchExecution,
       sourceSystem: scenario.sourceSavedSearch.sourceSystem,
@@ -321,6 +547,7 @@ async function main() {
     savedSearchId: savedSearch.id,
     searchExecutionId: searchExecution.id,
     requestedByUserId: adminUser.id,
+    sourceConnectorConfigId: samGovConnectorConfig.id,
     syncRun: scenario.sourceSyncRun,
     sourceSystem: scenario.sourceSavedSearch.sourceSystem,
   });
@@ -338,6 +565,7 @@ async function main() {
     update: {
       agencyId: sourceAgency?.id ?? null,
       sourceImportActorUserId: adminUser.id,
+      sourceConnectorConfigId: samGovConnectorConfig.id,
       sourceApiEndpoint: scenario.sourceRecord.sourceApiEndpoint,
       sourceUiUrl: scenario.sourceRecord.sourceUiUrl,
       sourceDetailUrl: scenario.sourceRecord.sourceDetailUrl,
@@ -370,6 +598,7 @@ async function main() {
       organizationId: organization.id,
       agencyId: sourceAgency?.id ?? null,
       sourceImportActorUserId: adminUser.id,
+      sourceConnectorConfigId: samGovConnectorConfig.id,
       sourceSystem: scenario.sourceRecord.sourceSystem,
       sourceRecordId: scenario.sourceRecord.sourceRecordId,
       sourceApiEndpoint: scenario.sourceRecord.sourceApiEndpoint,
@@ -402,6 +631,13 @@ async function main() {
     },
   });
 
+  await syncSourceRecordChildren({
+    sourceRecordId: sourceRecord.id,
+    attachments: scenario.sourceRecord.attachments,
+    contacts: scenario.sourceRecord.contacts,
+    award: null,
+  });
+
   const importedOpportunity = await prisma.opportunity.upsert({
     where: {
       importedFromSourceRecordId: sourceRecord.id,
@@ -422,8 +658,7 @@ async function main() {
         scenario.importedOpportunity.responseDeadlineAt,
       ),
       responseDeadlineRaw: scenario.importedOpportunity.responseDeadlineRaw,
-      procurementTypeLabel:
-        scenario.importedOpportunity.procurementTypeLabel,
+      procurementTypeLabel: scenario.importedOpportunity.procurementTypeLabel,
       procurementBaseTypeLabel:
         scenario.importedOpportunity.procurementBaseTypeLabel,
       archiveType: scenario.importedOpportunity.archiveType,
@@ -481,8 +716,7 @@ async function main() {
         scenario.importedOpportunity.responseDeadlineAt,
       ),
       responseDeadlineRaw: scenario.importedOpportunity.responseDeadlineRaw,
-      procurementTypeLabel:
-        scenario.importedOpportunity.procurementTypeLabel,
+      procurementTypeLabel: scenario.importedOpportunity.procurementTypeLabel,
       procurementBaseTypeLabel:
         scenario.importedOpportunity.procurementBaseTypeLabel,
       archiveType: scenario.importedOpportunity.archiveType,
@@ -568,6 +802,16 @@ async function main() {
     },
   });
 
+  await upsertImportDecision({
+    organizationId: organization.id,
+    sourceConnectorConfigId: samGovConnectorConfig.id,
+    sourceRecordId: sourceRecord.id,
+    targetOpportunityId: importedOpportunity.id,
+    requestedByUserId: adminUser.id,
+    decidedByUserId: adminUser.id,
+    decision: scenario.sourceImportDecision,
+  });
+
   for (const vehicleKey of scenario.importedOpportunity.vehicleKeys) {
     const vehicle = vehiclesByKey.get(vehicleKey);
 
@@ -630,6 +874,215 @@ async function main() {
     });
   }
 
+  const secondaryScenario = scenario.secondarySourceScenario;
+  const usaspendingConnectorConfig = connectorConfigsByKey.get(
+    secondaryScenario.sourceSavedSearch.connectorKey,
+  );
+
+  if (!usaspendingConnectorConfig) {
+    throw new Error("Missing seeded connector config for usaspending_api");
+  }
+
+  const secondarySavedSearch = await prisma.sourceSavedSearch.upsert({
+    where: {
+      organizationId_sourceSystem_name: {
+        organizationId: organization.id,
+        sourceSystem: secondaryScenario.sourceSavedSearch.sourceSystem,
+        name: secondaryScenario.sourceSavedSearch.name,
+      },
+    },
+    update: {
+      createdByUserId: adminUser.id,
+      sourceConnectorConfigId: usaspendingConnectorConfig.id,
+      description: secondaryScenario.sourceSavedSearch.description,
+      canonicalFilters: secondaryScenario.sourceSavedSearch.canonicalFilters,
+      sourceSpecificFilters:
+        secondaryScenario.sourceSavedSearch.sourceSpecificFilters,
+      lastExecutedAt: new Date(
+        secondaryScenario.sourceSearchExecution.completedAt,
+      ),
+      lastSyncedAt: new Date(secondaryScenario.sourceSyncRun.completedAt),
+    },
+    create: {
+      organizationId: organization.id,
+      createdByUserId: adminUser.id,
+      sourceConnectorConfigId: usaspendingConnectorConfig.id,
+      sourceSystem: secondaryScenario.sourceSavedSearch.sourceSystem,
+      name: secondaryScenario.sourceSavedSearch.name,
+      description: secondaryScenario.sourceSavedSearch.description,
+      canonicalFilters: secondaryScenario.sourceSavedSearch.canonicalFilters,
+      sourceSpecificFilters:
+        secondaryScenario.sourceSavedSearch.sourceSpecificFilters,
+      lastExecutedAt: new Date(
+        secondaryScenario.sourceSearchExecution.completedAt,
+      ),
+      lastSyncedAt: new Date(secondaryScenario.sourceSyncRun.completedAt),
+    },
+  });
+
+  const secondarySearchExecution = await upsertSearchExecution({
+    organizationId: organization.id,
+    savedSearchId: secondarySavedSearch.id,
+    requestedByUserId: adminUser.id,
+    sourceConnectorConfigId: usaspendingConnectorConfig.id,
+    execution: {
+      ...secondaryScenario.sourceSearchExecution,
+      sourceSystem: secondaryScenario.sourceSavedSearch.sourceSystem,
+    },
+  });
+
+  const secondarySyncRun = await upsertSyncRun({
+    organizationId: organization.id,
+    savedSearchId: secondarySavedSearch.id,
+    searchExecutionId: secondarySearchExecution.id,
+    requestedByUserId: adminUser.id,
+    sourceConnectorConfigId: usaspendingConnectorConfig.id,
+    syncRun: secondaryScenario.sourceSyncRun,
+    sourceSystem: secondaryScenario.sourceSavedSearch.sourceSystem,
+  });
+
+  const secondaryAgency = agenciesByKey.get(
+    secondaryScenario.sourceRecord.agencyKey,
+  );
+
+  const secondarySourceRecord = await prisma.sourceRecord.upsert({
+    where: {
+      organizationId_sourceSystem_sourceRecordId: {
+        organizationId: organization.id,
+        sourceSystem: secondaryScenario.sourceRecord.sourceSystem,
+        sourceRecordId: secondaryScenario.sourceRecord.sourceRecordId,
+      },
+    },
+    update: {
+      opportunityId: importedOpportunity.id,
+      agencyId: secondaryAgency?.id ?? null,
+      sourceImportActorUserId: adminUser.id,
+      sourceConnectorConfigId: usaspendingConnectorConfig.id,
+      sourceApiEndpoint: secondaryScenario.sourceRecord.sourceApiEndpoint,
+      sourceUiUrl: secondaryScenario.sourceRecord.sourceUiUrl,
+      sourceDetailUrl: secondaryScenario.sourceRecord.sourceDetailUrl,
+      sourceDescriptionUrl: secondaryScenario.sourceRecord.sourceDescriptionUrl,
+      sourceFetchedAt: new Date(secondaryScenario.sourceRecord.sourceFetchedAt),
+      sourceSearchExecutedAt: new Date(
+        secondaryScenario.sourceRecord.sourceSearchExecutedAt,
+      ),
+      sourceSearchQuery: secondaryScenario.sourceRecord.sourceSearchQuery,
+      sourceRawPayload: secondaryScenario.sourceRecord.sourceRawPayload,
+      sourceNormalizedPayload:
+        secondaryScenario.sourceRecord.sourceNormalizedPayload,
+      sourceImportPreviewPayload:
+        secondaryScenario.sourceRecord.sourceImportPreviewPayload,
+      sourceNormalizationVersion:
+        secondaryScenario.sourceRecord.sourceNormalizationVersion,
+      sourceNormalizationAppliedAt: new Date(
+        secondaryScenario.sourceRecord.sourceNormalizationAppliedAt,
+      ),
+      sourceRawPostedDate: secondaryScenario.sourceRecord.sourceRawPostedDate,
+      sourceRawResponseDeadline:
+        secondaryScenario.sourceRecord.sourceRawResponseDeadline,
+      sourceRawArchiveDate: secondaryScenario.sourceRecord.sourceRawArchiveDate,
+      sourceStatusRaw: secondaryScenario.sourceRecord.sourceStatusRaw,
+      sourceImportMethod: secondaryScenario.sourceRecord.sourceImportMethod,
+      sourceImportActorType:
+        secondaryScenario.sourceRecord.sourceImportActorType,
+      sourceImportActorIdentifier: adminUser.email,
+      sourceHashFingerprint:
+        secondaryScenario.sourceRecord.sourceHashFingerprint,
+    },
+    create: {
+      organizationId: organization.id,
+      opportunityId: importedOpportunity.id,
+      agencyId: secondaryAgency?.id ?? null,
+      sourceImportActorUserId: adminUser.id,
+      sourceConnectorConfigId: usaspendingConnectorConfig.id,
+      sourceSystem: secondaryScenario.sourceRecord.sourceSystem,
+      sourceRecordId: secondaryScenario.sourceRecord.sourceRecordId,
+      sourceApiEndpoint: secondaryScenario.sourceRecord.sourceApiEndpoint,
+      sourceUiUrl: secondaryScenario.sourceRecord.sourceUiUrl,
+      sourceDetailUrl: secondaryScenario.sourceRecord.sourceDetailUrl,
+      sourceDescriptionUrl: secondaryScenario.sourceRecord.sourceDescriptionUrl,
+      sourceFetchedAt: new Date(secondaryScenario.sourceRecord.sourceFetchedAt),
+      sourceSearchExecutedAt: new Date(
+        secondaryScenario.sourceRecord.sourceSearchExecutedAt,
+      ),
+      sourceSearchQuery: secondaryScenario.sourceRecord.sourceSearchQuery,
+      sourceRawPayload: secondaryScenario.sourceRecord.sourceRawPayload,
+      sourceNormalizedPayload:
+        secondaryScenario.sourceRecord.sourceNormalizedPayload,
+      sourceImportPreviewPayload:
+        secondaryScenario.sourceRecord.sourceImportPreviewPayload,
+      sourceNormalizationVersion:
+        secondaryScenario.sourceRecord.sourceNormalizationVersion,
+      sourceNormalizationAppliedAt: new Date(
+        secondaryScenario.sourceRecord.sourceNormalizationAppliedAt,
+      ),
+      sourceRawPostedDate: secondaryScenario.sourceRecord.sourceRawPostedDate,
+      sourceRawResponseDeadline:
+        secondaryScenario.sourceRecord.sourceRawResponseDeadline,
+      sourceRawArchiveDate: secondaryScenario.sourceRecord.sourceRawArchiveDate,
+      sourceStatusRaw: secondaryScenario.sourceRecord.sourceStatusRaw,
+      sourceImportMethod: secondaryScenario.sourceRecord.sourceImportMethod,
+      sourceImportActorType:
+        secondaryScenario.sourceRecord.sourceImportActorType,
+      sourceImportActorIdentifier: adminUser.email,
+      sourceHashFingerprint:
+        secondaryScenario.sourceRecord.sourceHashFingerprint,
+    },
+  });
+
+  await syncSourceRecordChildren({
+    sourceRecordId: secondarySourceRecord.id,
+    attachments: secondaryScenario.sourceRecord.attachments,
+    contacts: secondaryScenario.sourceRecord.contacts,
+    award: secondaryScenario.sourceRecord.award,
+  });
+
+  await prisma.sourceSearchResult.upsert({
+    where: {
+      searchExecutionId_sourceRecordId: {
+        searchExecutionId: secondarySearchExecution.id,
+        sourceRecordId: secondarySourceRecord.id,
+      },
+    },
+    update: {
+      resultRank: secondaryScenario.sourceRecord.searchResult.resultRank,
+    },
+    create: {
+      searchExecutionId: secondarySearchExecution.id,
+      sourceRecordId: secondarySourceRecord.id,
+      resultRank: secondaryScenario.sourceRecord.searchResult.resultRank,
+    },
+  });
+
+  await prisma.sourceSyncRunRecord.upsert({
+    where: {
+      syncRunId_sourceRecordId: {
+        syncRunId: secondarySyncRun.id,
+        sourceRecordId: secondarySourceRecord.id,
+      },
+    },
+    update: {
+      syncAction: secondaryScenario.sourceRecord.syncRecord.syncAction,
+      errorMessage: null,
+    },
+    create: {
+      syncRunId: secondarySyncRun.id,
+      sourceRecordId: secondarySourceRecord.id,
+      syncAction: secondaryScenario.sourceRecord.syncRecord.syncAction,
+      errorMessage: null,
+    },
+  });
+
+  await upsertImportDecision({
+    organizationId: organization.id,
+    sourceConnectorConfigId: usaspendingConnectorConfig.id,
+    sourceRecordId: secondarySourceRecord.id,
+    targetOpportunityId: importedOpportunity.id,
+    requestedByUserId: adminUser.id,
+    decidedByUserId: adminUser.id,
+    decision: secondaryScenario.sourceImportDecision,
+  });
+
   await prisma.auditLog.create({
     data: {
       organizationId: organization.id,
@@ -641,11 +1094,16 @@ async function main() {
       targetId: organization.id,
       targetDisplay: organization.name,
       summary:
-        "Initialized baseline organization, roles, admin, and imported opportunity seed data.",
+        "Initialized baseline organization, connector metadata, and multi-source opportunity seed data.",
       metadata: {
         roleKeys: SYSTEM_ROLE_DEFINITIONS.map((role) => role.key),
         seededOpportunityTitle: importedOpportunity.title,
-        seededSourceSystem: scenario.sourceRecord.sourceSystem,
+        seededConnectorKeys: scenario.connectorConfigs.map(
+          (connector) => connector.sourceSystemKey,
+        ),
+        seededPrimarySourceSystem: scenario.sourceRecord.sourceSystem,
+        seededSecondarySourceSystem:
+          secondaryScenario.sourceRecord.sourceSystem,
       },
     },
   });

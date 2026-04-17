@@ -1,6 +1,6 @@
 # OneSource
 
-OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold plus the first two Phase 1 data-model slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, auth and audit tables, the first opportunity and source-lineage schema, boot-time environment validation, a placeholder worker process, and an offline npm cache archive that makes Docker builds self-sufficient in this environment.
+OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold plus the first three Phase 1 data-model slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, boot-time environment validation, a placeholder worker process, and an offline npm cache archive that makes Docker builds self-sufficient in this environment.
 
 ## Current Status
 
@@ -8,8 +8,8 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - Implementation scope, checklist sequencing, and current handoff state live in `PRD.md`.
 - Engineering and verification rules live in `AGENTS.md`.
 - Active loop notes and crash-recovery context live in `NOTES.md`.
-- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, and `P1-02` are complete.
-- The next recommended item is `P1-02a`, which adds connector metadata and second-source-ready persistence without schema rewrites.
+- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, and `P1-02a` are complete.
+- The next recommended item is `P1-03`, which adds the execution-side persistence for tasks, milestones, notes, documents, scorecards, stage transitions, and bid decisions.
 
 ## Stack In Repo Today
 
@@ -107,7 +107,7 @@ Seed the baseline auth, opportunity, and lineage data:
 npm run db:seed
 ```
 
-The current seed creates a default organization, the canonical system role set, a local development admin user at `admin@onesource.local`, one Air Force agency, two contract vehicles, two competitors, one saved `sam.gov` search, one search execution, one sync run, one imported opportunity, one retained source record with raw and normalized payloads, and one bootstrap audit-log entry.
+The current seed creates a default organization, the canonical system role set, a local development admin user at `admin@onesource.local`, one Air Force agency, two contract vehicles, two competitors, connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`, one imported `sam.gov` opportunity with retained raw and normalized payloads plus attachment and contact child records, one applied import decision that created the canonical opportunity, one `usaspending_api` enrichment search and retained award-centric source record with an applied link-to-existing import decision, and one bootstrap audit-log entry.
 
 ## Offline Docker Dependency Cache
 
@@ -173,7 +173,6 @@ The canonical loop is now:
 ## Known Gaps
 
 - No Auth.js runtime, protected routes, or server-side authorization enforcement yet
-- No connector capability/config metadata or second-source proof slice yet
 - No opportunity workspace execution schema for tasks, milestones, notes, documents, or decisions yet
 - No production job runner beyond the placeholder worker heartbeat
 

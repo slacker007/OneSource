@@ -50,12 +50,47 @@ enum SourceImportMethod {
   BACKFILL
 }
 
+enum SourceConnectorCategory {
+  FEDERAL
+  STATE_LOCAL
+  FORECAST
+  INTERNAL
+  PARTNER
+  OTHER
+}
+
+enum SourceConnectorAuthType {
+  API_KEY
+  OAUTH
+  SESSION
+  NONE
+  FILE_IMPORT
+}
+
+enum SourceConnectorValidationStatus {
+  UNKNOWN
+  VALID
+  INVALID
+}
+
 enum SourceSyncRecordAction {
   DISCOVERED
   UPDATED
   IMPORTED
   SKIPPED
   FAILED
+}
+
+enum SourceImportDecisionMode {
+  CREATE_OPPORTUNITY
+  LINK_TO_EXISTING
+  SKIP_IMPORT
+}
+
+enum SourceImportDecisionStatus {
+  PENDING
+  APPLIED
+  REJECTED
 }
 
 enum OpportunityCompetitorRole {
@@ -77,34 +112,38 @@ model Organization {
   agencies               Agency[]
   contractVehicles       ContractVehicle[]
   opportunities          Opportunity[]
+  sourceConnectorConfigs SourceConnectorConfig[]
   sourceSavedSearches    SourceSavedSearch[]
   sourceSearchExecutions SourceSearchExecution[]
   sourceSyncRuns         SourceSyncRun[]
   sourceRecords          SourceRecord[]
+  sourceImportDecisions  SourceImportDecision[]
   competitors            Competitor[]
 
   @@map("organizations")
 }
 
 model User {
-  id                         String                  @id @default(cuid()) @map("id")
-  organizationId             String                  @map("organization_id")
-  email                      String                  @unique @map("email")
-  emailVerified              DateTime?               @map("email_verified")
-  name                       String?                 @map("name")
-  image                      String?                 @map("image")
-  status                     UserStatus              @default(INVITED) @map("status")
-  createdAt                  DateTime                @default(now()) @map("created_at")
-  updatedAt                  DateTime                @updatedAt @map("updated_at")
-  organization               Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  accounts                   Account[]
-  sessions                   Session[]
-  roles                      UserRole[]
-  auditLogs                  AuditLog[]              @relation("AuditActor")
-  createdSourceSavedSearches SourceSavedSearch[]     @relation("SavedSearchCreator")
-  requestedSourceSearches    SourceSearchExecution[] @relation("SourceSearchExecutionRequester")
-  requestedSourceSyncRuns    SourceSyncRun[]         @relation("SourceSyncRunRequester")
-  importedSourceRecords      SourceRecord[]          @relation("SourceRecordImportActor")
+  id                             String                  @id @default(cuid()) @map("id")
+  organizationId                 String                  @map("organization_id")
+  email                          String                  @unique @map("email")
+  emailVerified                  DateTime?               @map("email_verified")
+  name                           String?                 @map("name")
+  image                          String?                 @map("image")
+  status                         UserStatus              @default(INVITED) @map("status")
+  createdAt                      DateTime                @default(now()) @map("created_at")
+  updatedAt                      DateTime                @updatedAt @map("updated_at")
+  organization                   Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  accounts                       Account[]
+  sessions                       Session[]
+  roles                          UserRole[]
+  auditLogs                      AuditLog[]              @relation("AuditActor")
+  createdSourceSavedSearches     SourceSavedSearch[]     @relation("SavedSearchCreator")
+  requestedSourceSearches        SourceSearchExecution[] @relation("SourceSearchExecutionRequester")
+  requestedSourceSyncRuns        SourceSyncRun[]         @relation("SourceSyncRunRequester")
+  importedSourceRecords          SourceRecord[]          @relation("SourceRecordImportActor")
+  requestedSourceImportDecisions SourceImportDecision[]  @relation("SourceImportDecisionRequester")
+  decidedSourceImportDecisions   SourceImportDecision[]  @relation("SourceImportDecisionDecider")
 
   @@index([organizationId], map: "users_organization_id_idx")
   @@map("users")
@@ -298,6 +337,7 @@ model Opportunity {
   leadAgency                    Agency?                 @relation(fields: [leadAgencyId], references: [id], onDelete: SetNull)
   importedFromSourceRecord      SourceRecord?           @relation("OpportunityImportedFromSourceRecord", fields: [importedFromSourceRecordId], references: [id], onDelete: SetNull)
   sourceRecords                 SourceRecord[]          @relation("OpportunitySourceRecords")
+  sourceImportDecisionsAsTarget SourceImportDecision[]  @relation("SourceImportDecisionTargetOpportunity")
   vehicles                      OpportunityVehicle[]
   competitors                   OpportunityCompetitor[]
 
@@ -353,90 +393,140 @@ model OpportunityCompetitor {
   @@map("opportunity_competitors")
 }
 
+model SourceConnectorConfig {
+  id                      String                          @id @default(cuid()) @map("id")
+  organizationId          String                          @map("organization_id")
+  sourceSystemKey         String                          @map("source_system_key")
+  sourceDisplayName       String                          @map("source_display_name")
+  sourceCategory          SourceConnectorCategory         @map("source_category")
+  authType                SourceConnectorAuthType         @map("auth_type")
+  isEnabled               Boolean                         @default(true) @map("is_enabled")
+  supportsSearch          Boolean                         @default(false) @map("supports_search")
+  supportsScheduledSync   Boolean                         @default(false) @map("supports_scheduled_sync")
+  supportsDetailFetch     Boolean                         @default(false) @map("supports_detail_fetch")
+  supportsDocumentFetch   Boolean                         @default(false) @map("supports_document_fetch")
+  supportsResultPreview   Boolean                         @default(false) @map("supports_result_preview")
+  supportsSavedSearches   Boolean                         @default(false) @map("supports_saved_searches")
+  supportsIncrementalSync Boolean                         @default(false) @map("supports_incremental_sync")
+  supportsWebhooks        Boolean                         @default(false) @map("supports_webhooks")
+  supportsAttachments     Boolean                         @default(false) @map("supports_attachments")
+  supportsAwardData       Boolean                         @default(false) @map("supports_award_data")
+  defaultPageSize         Int?                            @map("default_page_size")
+  maxPageSize             Int?                            @map("max_page_size")
+  rateLimitProfile        Json?                           @map("rate_limit_profile")
+  credentialReference     String?                         @map("credential_reference")
+  configData              Json?                           @map("config_data")
+  connectorVersion        String?                         @map("connector_version")
+  validationStatus        SourceConnectorValidationStatus @default(UNKNOWN) @map("validation_status")
+  lastValidatedAt         DateTime?                       @map("last_validated_at")
+  lastValidationMessage   String?                         @map("last_validation_message")
+  createdAt               DateTime                        @default(now()) @map("created_at")
+  updatedAt               DateTime                        @updatedAt @map("updated_at")
+  organization            Organization                    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  savedSearches           SourceSavedSearch[]
+  searchExecutions        SourceSearchExecution[]
+  syncRuns                SourceSyncRun[]
+  sourceRecords           SourceRecord[]
+  importDecisions         SourceImportDecision[]
+
+  @@unique([organizationId, sourceSystemKey], map: "source_connector_configs_organization_id_source_system_key_key")
+  @@index([organizationId, sourceCategory], map: "source_connector_configs_organization_id_source_category_idx")
+  @@map("source_connector_configs")
+}
+
 model SourceSavedSearch {
-  id                    String                  @id @default(cuid()) @map("id")
-  organizationId        String                  @map("organization_id")
-  createdByUserId       String?                 @map("created_by_user_id")
-  sourceSystem          String                  @map("source_system")
-  name                  String                  @map("name")
-  description           String?                 @map("description")
-  canonicalFilters      Json                    @map("canonical_filters")
-  sourceSpecificFilters Json?                   @map("source_specific_filters")
-  lastExecutedAt        DateTime?               @map("last_executed_at")
-  lastSyncedAt          DateTime?               @map("last_synced_at")
-  createdAt             DateTime                @default(now()) @map("created_at")
-  updatedAt             DateTime                @updatedAt @map("updated_at")
-  organization          Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  createdByUser         User?                   @relation("SavedSearchCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  searchExecutions      SourceSearchExecution[]
-  syncRuns              SourceSyncRun[]
+  id                      String                  @id @default(cuid()) @map("id")
+  organizationId          String                  @map("organization_id")
+  createdByUserId         String?                 @map("created_by_user_id")
+  sourceConnectorConfigId String?                 @map("source_connector_config_id")
+  sourceSystem            String                  @map("source_system")
+  name                    String                  @map("name")
+  description             String?                 @map("description")
+  canonicalFilters        Json                    @map("canonical_filters")
+  sourceSpecificFilters   Json?                   @map("source_specific_filters")
+  lastExecutedAt          DateTime?               @map("last_executed_at")
+  lastSyncedAt            DateTime?               @map("last_synced_at")
+  createdAt               DateTime                @default(now()) @map("created_at")
+  updatedAt               DateTime                @updatedAt @map("updated_at")
+  organization            Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdByUser           User?                   @relation("SavedSearchCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  connectorConfig         SourceConnectorConfig?  @relation(fields: [sourceConnectorConfigId], references: [id], onDelete: SetNull)
+  searchExecutions        SourceSearchExecution[]
+  syncRuns                SourceSyncRun[]
 
   @@unique([organizationId, sourceSystem, name], map: "source_saved_searches_organization_id_source_system_name_key")
   @@index([organizationId, sourceSystem], map: "source_saved_searches_organization_id_source_system_idx")
+  @@index([sourceConnectorConfigId], map: "source_saved_searches_source_connector_config_id_idx")
   @@map("source_saved_searches")
 }
 
 model SourceSearchExecution {
-  id                    String                   @id @default(cuid()) @map("id")
-  organizationId        String                   @map("organization_id")
-  savedSearchId         String?                  @map("saved_search_id")
-  requestedByUserId     String?                  @map("requested_by_user_id")
-  requestedByActorType  SourceExecutionActorType @default(USER) @map("requested_by_actor_type")
-  sourceSystem          String                   @map("source_system")
-  status                ConnectorRunStatus       @default(SUCCEEDED) @map("status")
-  canonicalFilters      Json                     @map("canonical_filters")
-  sourceSpecificFilters Json?                    @map("source_specific_filters")
-  outboundRequest       Json?                    @map("outbound_request")
-  httpStatus            Int?                     @map("http_status")
-  responseLatencyMs     Int?                     @map("response_latency_ms")
-  resultCount           Int?                     @map("result_count")
-  totalRecords          Int?                     @map("total_records")
-  connectorVersion      String?                  @map("connector_version")
-  errorCode             String?                  @map("error_code")
-  errorMessage          String?                  @map("error_message")
-  requestedAt           DateTime                 @default(now()) @map("requested_at")
-  completedAt           DateTime?                @map("completed_at")
-  organization          Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  savedSearch           SourceSavedSearch?       @relation(fields: [savedSearchId], references: [id], onDelete: SetNull)
-  requestedByUser       User?                    @relation("SourceSearchExecutionRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
-  results               SourceSearchResult[]
-  syncRuns              SourceSyncRun[]
+  id                      String                   @id @default(cuid()) @map("id")
+  organizationId          String                   @map("organization_id")
+  savedSearchId           String?                  @map("saved_search_id")
+  requestedByUserId       String?                  @map("requested_by_user_id")
+  sourceConnectorConfigId String?                  @map("source_connector_config_id")
+  requestedByActorType    SourceExecutionActorType @default(USER) @map("requested_by_actor_type")
+  sourceSystem            String                   @map("source_system")
+  status                  ConnectorRunStatus       @default(SUCCEEDED) @map("status")
+  canonicalFilters        Json                     @map("canonical_filters")
+  sourceSpecificFilters   Json?                    @map("source_specific_filters")
+  outboundRequest         Json?                    @map("outbound_request")
+  httpStatus              Int?                     @map("http_status")
+  responseLatencyMs       Int?                     @map("response_latency_ms")
+  resultCount             Int?                     @map("result_count")
+  totalRecords            Int?                     @map("total_records")
+  connectorVersion        String?                  @map("connector_version")
+  errorCode               String?                  @map("error_code")
+  errorMessage            String?                  @map("error_message")
+  requestedAt             DateTime                 @default(now()) @map("requested_at")
+  completedAt             DateTime?                @map("completed_at")
+  organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  savedSearch             SourceSavedSearch?       @relation(fields: [savedSearchId], references: [id], onDelete: SetNull)
+  requestedByUser         User?                    @relation("SourceSearchExecutionRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  connectorConfig         SourceConnectorConfig?   @relation(fields: [sourceConnectorConfigId], references: [id], onDelete: SetNull)
+  results                 SourceSearchResult[]
+  syncRuns                SourceSyncRun[]
 
   @@index([organizationId, sourceSystem, requestedAt], map: "source_search_executions_org_source_requested_at_idx")
   @@index([savedSearchId], map: "source_search_executions_saved_search_id_idx")
   @@index([requestedByUserId], map: "source_search_executions_requested_by_user_id_idx")
+  @@index([sourceConnectorConfigId], map: "source_search_executions_source_connector_config_id_idx")
   @@map("source_search_executions")
 }
 
 model SourceSyncRun {
-  id                   String                   @id @default(cuid()) @map("id")
-  organizationId       String                   @map("organization_id")
-  savedSearchId        String?                  @map("saved_search_id")
-  searchExecutionId    String?                  @map("search_execution_id")
-  requestedByUserId    String?                  @map("requested_by_user_id")
-  requestedByActorType SourceExecutionActorType @default(USER) @map("requested_by_actor_type")
-  sourceSystem         String                   @map("source_system")
-  triggerType          SourceSyncTriggerType    @default(MANUAL) @map("trigger_type")
-  status               ConnectorRunStatus       @default(QUEUED) @map("status")
-  recordsFetched       Int                      @default(0) @map("records_fetched")
-  recordsImported      Int                      @default(0) @map("records_imported")
-  recordsFailed        Int                      @default(0) @map("records_failed")
-  connectorVersion     String?                  @map("connector_version")
-  errorCode            String?                  @map("error_code")
-  errorMessage         String?                  @map("error_message")
-  requestedAt          DateTime                 @default(now()) @map("requested_at")
-  startedAt            DateTime?                @map("started_at")
-  completedAt          DateTime?                @map("completed_at")
-  organization         Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  savedSearch          SourceSavedSearch?       @relation(fields: [savedSearchId], references: [id], onDelete: SetNull)
-  searchExecution      SourceSearchExecution?   @relation(fields: [searchExecutionId], references: [id], onDelete: SetNull)
-  requestedByUser      User?                    @relation("SourceSyncRunRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
-  records              SourceSyncRunRecord[]
+  id                      String                   @id @default(cuid()) @map("id")
+  organizationId          String                   @map("organization_id")
+  savedSearchId           String?                  @map("saved_search_id")
+  searchExecutionId       String?                  @map("search_execution_id")
+  requestedByUserId       String?                  @map("requested_by_user_id")
+  sourceConnectorConfigId String?                  @map("source_connector_config_id")
+  requestedByActorType    SourceExecutionActorType @default(USER) @map("requested_by_actor_type")
+  sourceSystem            String                   @map("source_system")
+  triggerType             SourceSyncTriggerType    @default(MANUAL) @map("trigger_type")
+  status                  ConnectorRunStatus       @default(QUEUED) @map("status")
+  recordsFetched          Int                      @default(0) @map("records_fetched")
+  recordsImported         Int                      @default(0) @map("records_imported")
+  recordsFailed           Int                      @default(0) @map("records_failed")
+  connectorVersion        String?                  @map("connector_version")
+  errorCode               String?                  @map("error_code")
+  errorMessage            String?                  @map("error_message")
+  requestedAt             DateTime                 @default(now()) @map("requested_at")
+  startedAt               DateTime?                @map("started_at")
+  completedAt             DateTime?                @map("completed_at")
+  organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  savedSearch             SourceSavedSearch?       @relation(fields: [savedSearchId], references: [id], onDelete: SetNull)
+  searchExecution         SourceSearchExecution?   @relation(fields: [searchExecutionId], references: [id], onDelete: SetNull)
+  requestedByUser         User?                    @relation("SourceSyncRunRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  connectorConfig         SourceConnectorConfig?   @relation(fields: [sourceConnectorConfigId], references: [id], onDelete: SetNull)
+  records                 SourceSyncRunRecord[]
 
   @@index([organizationId, sourceSystem, requestedAt], map: "source_sync_runs_organization_id_source_system_requested_at_idx")
   @@index([savedSearchId], map: "source_sync_runs_saved_search_id_idx")
   @@index([searchExecutionId], map: "source_sync_runs_search_execution_id_idx")
   @@index([requestedByUserId], map: "source_sync_runs_requested_by_user_id_idx")
+  @@index([sourceConnectorConfigId], map: "source_sync_runs_source_connector_config_id_idx")
   @@map("source_sync_runs")
 }
 
@@ -446,6 +536,7 @@ model SourceRecord {
   opportunityId                String?                  @map("opportunity_id")
   agencyId                     String?                  @map("agency_id")
   sourceImportActorUserId      String?                  @map("source_import_actor_user_id")
+  sourceConnectorConfigId      String?                  @map("source_connector_config_id")
   sourceSystem                 String                   @map("source_system")
   sourceRecordId               String                   @map("source_record_id")
   sourceApiEndpoint            String?                  @map("source_api_endpoint")
@@ -474,7 +565,12 @@ model SourceRecord {
   opportunity                  Opportunity?             @relation("OpportunitySourceRecords", fields: [opportunityId], references: [id], onDelete: SetNull)
   agency                       Agency?                  @relation(fields: [agencyId], references: [id], onDelete: SetNull)
   sourceImportActorUser        User?                    @relation("SourceRecordImportActor", fields: [sourceImportActorUserId], references: [id], onDelete: SetNull)
+  connectorConfig              SourceConnectorConfig?   @relation(fields: [sourceConnectorConfigId], references: [id], onDelete: SetNull)
   importedAsPrimaryFor         Opportunity[]            @relation("OpportunityImportedFromSourceRecord")
+  attachments                  SourceRecordAttachment[]
+  contacts                     SourceRecordContact[]
+  award                        SourceRecordAward?
+  importDecisions              SourceImportDecision[]
   searchResults                SourceSearchResult[]
   syncRunRecords               SourceSyncRunRecord[]
 
@@ -483,7 +579,106 @@ model SourceRecord {
   @@index([opportunityId], map: "source_records_opportunity_id_idx")
   @@index([agencyId], map: "source_records_agency_id_idx")
   @@index([sourceHashFingerprint], map: "source_records_source_hash_fingerprint_idx")
+  @@index([sourceConnectorConfigId], map: "source_records_source_connector_config_id_idx")
   @@map("source_records")
+}
+
+model SourceRecordAttachment {
+  id             String       @id @default(cuid()) @map("id")
+  sourceRecordId String       @map("source_record_id")
+  externalId     String?      @map("external_id")
+  url            String       @map("url")
+  linkType       String       @map("link_type")
+  displayLabel   String?      @map("display_label")
+  mimeType       String?      @map("mime_type")
+  sourceFileName String?      @map("source_file_name")
+  fileSizeBytes  Int?         @map("file_size_bytes")
+  sortOrder      Int          @default(0) @map("sort_order")
+  metadata       Json?        @map("metadata")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  sourceRecord   SourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceRecordId, url], map: "source_record_attachments_source_record_id_url_key")
+  @@index([sourceRecordId, sortOrder], map: "source_record_attachments_source_record_id_sort_order_idx")
+  @@map("source_record_attachments")
+}
+
+model SourceRecordContact {
+  id                 String       @id @default(cuid()) @map("id")
+  sourceRecordId     String       @map("source_record_id")
+  contactType        String?      @map("contact_type")
+  fullName           String?      @map("full_name")
+  title              String?      @map("title")
+  email              String?      @map("email")
+  phone              String?      @map("phone")
+  fax                String?      @map("fax")
+  additionalInfoText String?      @map("additional_info_text")
+  sortOrder          Int          @default(0) @map("sort_order")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  sourceRecord       SourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+
+  @@index([sourceRecordId, sortOrder], map: "source_record_contacts_source_record_id_sort_order_idx")
+  @@map("source_record_contacts")
+}
+
+model SourceRecordAward {
+  id                 String       @id @default(cuid()) @map("id")
+  sourceRecordId     String       @unique(map: "source_record_awards_source_record_id_key") @map("source_record_id")
+  awardNumber        String?      @map("award_number")
+  awardAmount        Decimal?     @map("award_amount") @db.Decimal(18, 2)
+  awardDate          DateTime?    @map("award_date")
+  awardeeName        String?      @map("awardee_name")
+  awardeeUEI         String?      @map("awardee_uei")
+  awardeeStreet1     String?      @map("awardee_street_1")
+  awardeeStreet2     String?      @map("awardee_street_2")
+  awardeeCityCode    String?      @map("awardee_city_code")
+  awardeeCityName    String?      @map("awardee_city_name")
+  awardeeStateCode   String?      @map("awardee_state_code")
+  awardeeStateName   String?      @map("awardee_state_name")
+  awardeePostalCode  String?      @map("awardee_postal_code")
+  awardeeCountryCode String?      @map("awardee_country_code")
+  awardeeCountryName String?      @map("awardee_country_name")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  sourceRecord       SourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+
+  @@map("source_record_awards")
+}
+
+model SourceImportDecision {
+  id                      String                     @id @default(cuid()) @map("id")
+  organizationId          String                     @map("organization_id")
+  sourceConnectorConfigId String?                    @map("source_connector_config_id")
+  sourceRecordId          String                     @map("source_record_id")
+  targetOpportunityId     String?                    @map("target_opportunity_id")
+  requestedByUserId       String?                    @map("requested_by_user_id")
+  decidedByUserId         String?                    @map("decided_by_user_id")
+  requestedByActorType    SourceExecutionActorType   @default(USER) @map("requested_by_actor_type")
+  mode                    SourceImportDecisionMode   @map("mode")
+  status                  SourceImportDecisionStatus @default(PENDING) @map("status")
+  rationale               String?                    @map("rationale")
+  decisionMetadata        Json?                      @map("decision_metadata")
+  importPreviewPayload    Json?                      @map("import_preview_payload")
+  requestedAt             DateTime                   @default(now()) @map("requested_at")
+  decidedAt               DateTime?                  @map("decided_at")
+  createdAt               DateTime                   @default(now()) @map("created_at")
+  updatedAt               DateTime                   @updatedAt @map("updated_at")
+  organization            Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  connectorConfig         SourceConnectorConfig?     @relation(fields: [sourceConnectorConfigId], references: [id], onDelete: SetNull)
+  sourceRecord            SourceRecord               @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  targetOpportunity       Opportunity?               @relation("SourceImportDecisionTargetOpportunity", fields: [targetOpportunityId], references: [id], onDelete: SetNull)
+  requestedByUser         User?                      @relation("SourceImportDecisionRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  decidedByUser           User?                      @relation("SourceImportDecisionDecider", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, requestedAt], map: "source_import_decisions_organization_id_requested_at_idx")
+  @@index([sourceConnectorConfigId], map: "source_import_decisions_source_connector_config_id_idx")
+  @@index([sourceRecordId], map: "source_import_decisions_source_record_id_idx")
+  @@index([targetOpportunityId], map: "source_import_decisions_target_opportunity_id_idx")
+  @@index([requestedByUserId], map: "source_import_decisions_requested_by_user_id_idx")
+  @@index([decidedByUserId], map: "source_import_decisions_decided_by_user_id_idx")
+  @@map("source_import_decisions")
 }
 
 model SourceSearchResult {

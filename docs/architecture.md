@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold plus the first two Phase 1 persistence slices for authentication, auditability, and opportunity/source lineage.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold plus the first three Phase 1 persistence slices for authentication, auditability, opportunity/source lineage, and connector-ready multi-source persistence.
 
 ## Current System Shape
 
-OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, and Prisma ORM. The app exposes a single public homepage plus a health-check route and runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists both the auth baseline and the first opportunity/source-lineage aggregate needed for later capture workflows.
+OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, and Prisma ORM. The app exposes a single public homepage plus a health-check route and runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, and the connector metadata plus promotion-decision entities needed for later capture workflows.
 
 Current runtime components:
 
@@ -71,10 +71,13 @@ Prisma now owns the initial database schema and migration history. The Phase 1 b
 - `contract_vehicles` plus `opportunity_vehicles`: reusable vehicle catalog and opportunity-to-vehicle links
 - `opportunities`: canonical pursuit record with normalized source-derived metadata
 - `competitors` plus `opportunity_competitors`: competitor catalog and opportunity-to-competitor links
+- `source_connector_configs`: source-agnostic connector capability, auth, and validation metadata keyed by organization plus source system
 - `source_saved_searches`: persisted canonical and source-specific search filters
 - `source_search_executions`: executed search envelopes, outbound request metadata, and result counts
 - `source_sync_runs`: sync execution history and status counters
 - `source_records`: raw payload retention, normalized payload retention, import-preview payloads, and canonical opportunity linkage
+- `source_record_attachments`, `source_record_contacts`, and `source_record_awards`: normalized child entities for source-specific linked artifacts, contacts, and award enrichment
+- `source_import_decisions`: auditable promotion decisions that either create a new opportunity or link a source record to an existing opportunity
 - `source_search_results` and `source_sync_run_records`: lineage joins that record which search execution and sync run observed a retained source record
 
 Current schema assumptions:
@@ -84,6 +87,8 @@ Current schema assumptions:
 - Audit actions and target types are stored as strings to avoid a migration for every new auditable workflow while the product surface is still expanding.
 - Source systems are stored as string keys such as `sam_gov` rather than a database enum so later connectors can be added without a schema migration purely for identifier expansion.
 - Search and sync history use explicit join tables to preserve lineage to retained `source_records` without overwriting a prior execution every time the same external record is seen again.
+- Connector configs are organization-scoped rows rather than enums so capability flags, auth types, and validation state can evolve without schema rewrites.
+- Import decisions are modeled separately from retained source records so one source can create a canonical opportunity while another only enriches that same opportunity.
 
 Current seed defaults:
 
@@ -92,9 +97,11 @@ Current seed defaults:
 - one local development admin user at `admin@onesource.local`
 - one Air Force agency record
 - two contract vehicles and two competitor records
+- connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`
 - one saved `sam.gov` search, one successful search execution, and one successful sync run
-- one imported opportunity linked to its agency, vehicles, competitors, and canonical source record
-- one retained source record containing raw payload, normalized payload, and import-preview payload snapshots
+- one imported opportunity linked to its agency, vehicles, competitors, and canonical `sam.gov` source record
+- one retained `sam.gov` source record containing raw payload, normalized payload, import-preview payload, attachments, contacts, and a create-opportunity import decision
+- one retained `usaspending_api` source record linked to the same opportunity, with award enrichment data and a link-to-existing import decision
 - one bootstrap audit-log event recording the seed action
 
 ## Container And Environment Strategy
@@ -123,15 +130,15 @@ Current automated coverage consists of:
 
 ## Connector Strategy
 
-No live connector exists yet. The product architecture still targets source-agnostic connector boundaries from `PRD.md`, with `sam.gov` as the first real implementation. Until Phase 7 begins, connector work is limited to documented contracts and architecture intent rather than executable code.
+No live connector exists yet. The product architecture now persists source-agnostic connector metadata and multi-source lineage examples for `sam.gov`, `usaspending_api`, and session-backed `gsa_ebuy`, but executable connector services remain future work for Phase 7.
 
 ## Known Gaps
 
 - No Auth.js runtime, protected routes, or authorization checks yet
 - No audit event emitters on business workflows yet beyond the seed bootstrap record
 - No `src/modules` domain structure yet
-- No connector capability/config metadata or second-source scenario proof yet
 - No workspace execution persistence for tasks, milestones, notes, documents, stage transitions, scorecards, or bid decisions yet
+- No executable connector service layer yet despite the new connector metadata baseline
 - No production job runner beyond the placeholder worker heartbeat
 
 These gaps are expected at the current phase and should be resolved through the sequenced PRD checklist rather than ad hoc refactors.

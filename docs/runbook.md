@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This runbook captures the real operational procedures for the current repo baseline. It now covers the full Phase 0 stack plus the first Prisma-backed auth, audit, opportunity, and source-lineage schema slices, and it should be updated as the app gains live auth flows, scheduled jobs, and external connectors.
+This runbook captures the real operational procedures for the current repo baseline. It now covers the full Phase 0 stack plus the first Prisma-backed auth, audit, opportunity, source-lineage, and connector-metadata schema slices, and it should be updated as the app gains live auth flows, scheduled jobs, and external connectors.
 
 ## Current Services
 
@@ -97,12 +97,12 @@ Apply the current seed defaults:
 npm run db:seed
 ```
 
-The current seed is idempotent enough for local development. It upserts the default organization, system roles, and local admin user; persists one agency, two contract vehicles, two competitors, one saved source search, one search execution, one sync run, one imported opportunity, and one retained source record with raw and normalized payloads; then appends one bootstrap audit-log record.
+The current seed is idempotent enough for local development. It upserts the default organization, system roles, and local admin user; persists one agency, two contract vehicles, two competitors; creates connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; then appends one bootstrap audit-log record.
 
-To inspect the seeded relational example directly:
+To inspect the seeded connector and import-decision example directly:
 
 ```bash
-node --input-type=module -e "import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); const opportunity = await prisma.opportunity.findFirst({ where: { title: 'Enterprise Knowledge Management Support Services' }, include: { leadAgency: true, vehicles: { include: { vehicle: true } }, competitors: { include: { competitor: true } }, importedFromSourceRecord: { include: { searchResults: { include: { searchExecution: true } }, syncRunRecords: { include: { syncRun: true } } } } } }); console.log(JSON.stringify(opportunity, null, 2)); await prisma.\$disconnect();"
+node --input-type=module -e 'import { PrismaClient } from "@prisma/client"; const prisma = new PrismaClient(); const summary = await prisma.organization.findFirst({ where: { slug: "default-org" }, select: { sourceConnectorConfigs: { orderBy: { sourceSystemKey: "asc" }, select: { sourceSystemKey: true, authType: true } }, sourceImportDecisions: { orderBy: { requestedAt: "asc" }, select: { mode: true, status: true, sourceRecord: { select: { sourceSystem: true, sourceRecordId: true } } } }, sourceRecords: { orderBy: [{ sourceSystem: "asc" }, { sourceRecordId: "asc" }], select: { sourceSystem: true, sourceRecordId: true, attachments: { select: { displayLabel: true } }, contacts: { select: { fullName: true } }, award: { select: { awardNumber: true, awardAmount: true } } } } } }); console.log(JSON.stringify(summary, null, 2)); await prisma.$disconnect();'
 ```
 
 ## Logs

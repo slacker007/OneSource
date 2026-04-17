@@ -7,7 +7,7 @@ This document records the canonical verification workflows for the repo as of th
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI and runtime helpers
-- Seed-fixture tests: deterministic opportunity-lineage fixture coverage under `src/lib/opportunities/`
+- Seed-fixture tests: deterministic multi-source fixture coverage under `src/lib/opportunities/`
 - Browser tests: Playwright Chromium smoke coverage in `tests/`
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
@@ -48,6 +48,13 @@ npm run db:seed
 ```
 
 When a schema item depends on seeded relationships, verify the persisted graph directly with a narrow Prisma query before closing the loop.
+
+For the current connector-metadata slice, the narrow direct verification query should confirm:
+
+- three connector configs with distinct auth models (`API_KEY`, `NONE`, `SESSION`)
+- a `CREATE_OPPORTUNITY` import decision for the `sam_gov` source record
+- a `LINK_TO_EXISTING` import decision for the `usaspending_api` source record
+- `sam_gov` attachment and contact child rows plus a `usaspending_api` award child row
 
 To point Playwright at an already-running host or compose stack:
 
