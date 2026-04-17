@@ -8,8 +8,8 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - Implementation scope, checklist sequencing, and current handoff state live in `PRD.md`.
 - Engineering and verification rules live in `AGENTS.md`.
 - Active loop notes and crash-recovery context live in `NOTES.md`.
-- `P0-01`, `P0-02`, and `P0-04` are complete.
-- `P0-02a` and `P0-03` remain open. There are still no compose profiles for containerized test execution, and `docs/architecture.md` plus `docs/runbook.md` are still missing.
+- `P0-01`, `P0-02`, `P0-03`, and `P0-04` are complete.
+- `P0-02a` remains open. Compose-based lint, build, unit-test, and Chromium Playwright workflows now exist, but the item is still blocked because the current Docker build must reuse the repo-local `node_modules` tree until container access to `registry.npmjs.org` is resolved.
 
 ## Stack In Repo Today
 
@@ -31,6 +31,9 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - `src/lib`: shared runtime helpers such as env parsing and health checks
 - `scripts`: runtime helper scripts including the placeholder worker
 - `tests`: Playwright browser tests
+- `docs/testing.md`: canonical host and compose verification workflows
+- `docs/architecture.md`: current system topology, module boundaries, and Phase 0 constraints
+- `docs/runbook.md`: operational commands, health checks, and failure recovery notes
 - `docs/research`: dated external research notes
 - `SPEC.md`: product context and market framing
 - `PRD.md`: checklist state, contracts, and handoff
@@ -51,13 +54,15 @@ cp .env.example .env
 npm install
 ```
 
-The current compose image intentionally reuses the pinned local dependency tree from `node_modules`, so run `npm install` before `docker compose up --build`.
+The current compose images intentionally reuse the repo-local dependency tree from `node_modules`, so run `npm install` before `docker compose up --build` or any compose-based test command. This is a temporary blocker tracked in `PRD.md`.
 
-3. Install the Chromium browser used by Playwright:
+3. Install the Chromium browser used by host-side Playwright runs:
 
 ```bash
 npm run e2e:install
 ```
+
+The compose-managed Playwright workflow uses the official Playwright image and does not need a host browser install.
 
 4. Start the local PostgreSQL, web app, and worker stack:
 
@@ -96,6 +101,10 @@ The committed `.env.example` contains the canonical development defaults.
 - Production build: `npm run build`
 - Chromium smoke test with a Playwright-managed local server: `npm run e2e`
 - Chromium smoke test against an already-running compose stack: `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e`
+- Compose lint: `docker compose --profile test run --rm test run lint`
+- Compose unit tests with coverage: `docker compose --profile test run --rm test`
+- Compose build validation: `docker compose --profile test run --rm test run build`
+- Compose Chromium smoke test: `docker compose --profile test up --build --abort-on-container-exit --exit-code-from playwright playwright`
 - Format check: `npm run format:check`
 - Apply formatting: `npm run format`
 - Compose stack status: `docker compose ps`
@@ -103,6 +112,9 @@ The committed `.env.example` contains the canonical development defaults.
 - Compose teardown: `docker compose down`
 
 `npm run e2e` starts the app automatically through the Playwright `webServer` configuration and injects a default local `DATABASE_URL` when one is not already set. When `PLAYWRIGHT_BASE_URL` is provided, Playwright skips the internal web server and targets the existing app instance instead.
+
+See `docs/testing.md` for the durable verification workflow and the current compose limitation.
+See `docs/architecture.md` and `docs/runbook.md` for the current system design and operator procedures.
 
 ## Current Workflow
 
@@ -119,8 +131,8 @@ The canonical Phase 0 loop is now:
 
 ## Known Gaps
 
-- No compose profiles or equivalent workflows yet for running the automated test suite fully inside containers
+- Compose test workflows still depend on a local `node_modules` tree because Docker containers in this environment cannot currently reach `registry.npmjs.org`
 - No Prisma schema, auth layer, or real job runner yet
-- `docs/architecture.md` and `docs/runbook.md` are still missing, so `P0-03` remains incomplete
+- `P0-02a` is still blocked on container access to `registry.npmjs.org`, so the compose verification path still depends on a prior host `npm install`
 
 Those gaps are intentional scope still tracked in `PRD.md`; this README only documents what exists today.

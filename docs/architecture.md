@@ -1,0 +1,103 @@
+# OneSource Architecture
+
+## Purpose
+
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: Phase 0 delivers a runnable scaffold, containerized local stack, environment validation, a health endpoint, a placeholder worker, and baseline browser-test support.
+
+## Current System Shape
+
+OneSource is currently a modular-monolith scaffold built with Next.js 16 and TypeScript. The app exposes a single public homepage plus a health-check route and runs alongside PostgreSQL and a placeholder worker in `docker compose`.
+
+Current runtime components:
+
+- `web`: Next.js application container serving the App Router UI and API routes
+- `db`: PostgreSQL 16 container used by the health check and worker heartbeat
+- `worker`: placeholder Node.js process that validates env, connects to PostgreSQL, and emits structured heartbeat logs
+- `playwright`: profile-gated Chromium test container used only for compose-backed browser verification
+
+## Repository Layout
+
+- `src/app`: App Router routes, layout, global styles, and route handlers
+- `src/components`: shared UI components and component tests
+- `src/lib`: runtime helpers such as environment parsing and database health checks
+- `scripts`: operational helper scripts including the placeholder worker
+- `tests`: Playwright smoke coverage
+- `docs`: durable architecture, runbook, testing, and research notes
+
+## Request And Runtime Flow
+
+### Web App
+
+1. Next.js boots and executes [instrumentation.ts](/Users/maverick/Documents/RalphLoops/OneSource/instrumentation.ts:1).
+2. `register()` calls `getServerEnv()` from [src/lib/env.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/env.ts:1), which validates required environment variables with Zod and fails fast on invalid config.
+3. The homepage route renders [AppShellPreview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/home/app-shell-preview.tsx:1), which is currently a static product shell used to verify layout, styling, and browser automation.
+4. The health route at [src/app/api/health/route.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/app/api/health/route.ts:1) calls [checkDatabaseConnection](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/database-health.ts:1) and returns either `200 ok` or `503 degraded`.
+
+### Worker
+
+1. `docker compose` starts `scripts/worker.mjs`.
+2. The worker validates `DATABASE_URL` plus `WORKER_POLL_INTERVAL_MS`.
+3. On each polling interval it opens a PostgreSQL connection, executes `select 1 as heartbeat`, and logs a structured JSON heartbeat.
+4. `SIGINT` and `SIGTERM` trigger a clean shutdown loop exit.
+
+## Module Boundaries
+
+Current boundaries are intentionally simple:
+
+- Route rendering stays in `src/app`.
+- Shared presentation logic lives in `src/components`.
+- Cross-route runtime helpers live in `src/lib`.
+- Background-process behavior lives in `scripts`.
+
+This keeps early Phase 0 behavior out of page files while leaving room for the planned domain-module structure in `PRD.md`:
+
+- future business domains under `src/modules`
+- source integrations isolated from opportunity domain logic
+- typed DTO boundaries between connectors, normalization, and application services
+
+## Data And Persistence
+
+There is no application schema or ORM yet. PostgreSQL exists today only as a verified dependency for:
+
+- the health endpoint database check
+- the placeholder worker heartbeat
+
+No application tables, migrations, or seed data exist yet. Those begin in Phase 1.
+
+## Container And Environment Strategy
+
+Canonical local orchestration is `docker compose`. The current compose file defines the default runtime stack plus a `test` profile for lint, build, unit-test, and Playwright execution.
+
+Environment configuration is injected through `.env` / compose variables and validated at boot. The current required variables are:
+
+- `DATABASE_URL`
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `WORKER_POLL_INTERVAL_MS`
+
+## Testing Architecture
+
+Current automated coverage consists of:
+
+- Vitest unit tests for the homepage shell and env parsing
+- Playwright Chromium smoke coverage for the homepage
+- compose-backed lint, build, unit-test, and browser-test workflows documented in `docs/testing.md`
+
+Important limitation:
+
+- `P0-02a` is not complete because Docker containers in this environment cannot fetch packages from `registry.npmjs.org`. The current images therefore copy the repo-local `node_modules` tree instead of performing a container-native install.
+
+## Connector Strategy
+
+No live connector exists yet. The product architecture still targets source-agnostic connector boundaries from `PRD.md`, with `sam.gov` as the first real implementation. Until Phase 7 begins, connector work is limited to documented contracts and architecture intent rather than executable code.
+
+## Known Gaps
+
+- No authentication, authorization, or audit pipeline yet
+- No Prisma schema or migrations yet
+- No `src/modules` domain structure yet
+- No persistent application data model beyond PostgreSQL availability checks
+- No production job runner beyond the placeholder worker heartbeat
+
+These gaps are expected at the current phase and should be resolved through the sequenced PRD checklist rather than ad hoc refactors.
