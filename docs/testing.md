@@ -53,12 +53,12 @@ When a schema item depends on seeded relationships, verify the persisted graph d
 
 When the changed area adds typed repository or DTO mapping logic, keep those tests deterministic by injecting a fake database client into the repository module rather than depending on a generated Prisma client in unit-test environments.
 
-For the current workspace-persistence slice, the narrow direct verification query should confirm:
+For the current seed-data slice, the narrow direct verification query should confirm:
 
-- the seeded canonical opportunity has `currentStageKey: capture_active`
-- three tasks, three milestones, two notes, two documents, and three stage transitions
-- one scorecard with six factor rows
-- one bid decision and at least one activity event tied to a related entity
+- five canonical opportunities exist across `qualified`, `capture_active`, `proposal_in_development`, `submitted`, and `no_bid`
+- the current score or decision outcomes include `GO`, `DEFER`, and `NO_GO`
+- the imported `sam.gov` opportunity still retains three tasks, three milestones, two notes, two documents, and three stage transitions
+- at least one seeded opportunity has a blocked critical task for dashboard attention states
 
 To point Playwright at an already-running host or compose stack:
 

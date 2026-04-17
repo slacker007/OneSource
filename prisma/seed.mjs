@@ -246,6 +246,129 @@ async function upsertImportDecision({
   return prisma.sourceImportDecision.create({ data });
 }
 
+function buildOpportunityWriteData({
+  organizationId,
+  leadAgencyId,
+  importedFromSourceRecordId = null,
+  opportunity,
+}) {
+  return {
+    organizationId,
+    leadAgencyId,
+    importedFromSourceRecordId,
+    originSourceSystem: opportunity.originSourceSystem ?? null,
+    title: opportunity.title,
+    description: opportunity.description ?? null,
+    externalNoticeId: opportunity.externalNoticeId ?? null,
+    solicitationNumber: opportunity.solicitationNumber ?? null,
+    sourceSummaryText: opportunity.sourceSummaryText ?? null,
+    sourceSummaryUrl: opportunity.sourceSummaryUrl ?? null,
+    postedAt: opportunity.postedAt ? new Date(opportunity.postedAt) : null,
+    postedDateRaw: opportunity.postedDateRaw ?? null,
+    responseDeadlineAt: opportunity.responseDeadlineAt
+      ? new Date(opportunity.responseDeadlineAt)
+      : null,
+    responseDeadlineRaw: opportunity.responseDeadlineRaw ?? null,
+    procurementTypeLabel: opportunity.procurementTypeLabel ?? null,
+    procurementBaseTypeLabel: opportunity.procurementBaseTypeLabel ?? null,
+    archiveType: opportunity.archiveType ?? null,
+    archivedAt: opportunity.archivedAt ? new Date(opportunity.archivedAt) : null,
+    archiveDateRaw: opportunity.archiveDateRaw ?? null,
+    sourceStatus: opportunity.sourceStatus ?? null,
+    isActiveSourceRecord: opportunity.isActiveSourceRecord ?? true,
+    isArchivedSourceRecord: opportunity.isArchivedSourceRecord ?? false,
+    setAsideCode: opportunity.setAsideCode ?? null,
+    setAsideDescription: opportunity.setAsideDescription ?? null,
+    naicsCode: opportunity.naicsCode ?? null,
+    classificationCode: opportunity.classificationCode ?? null,
+    organizationType: opportunity.organizationType ?? null,
+    officeCity: opportunity.officeCity ?? null,
+    officeState: opportunity.officeState ?? null,
+    officePostalCode: opportunity.officePostalCode ?? null,
+    officeCountryCode: opportunity.officeCountryCode ?? null,
+    placeOfPerformanceStreet1: opportunity.placeOfPerformanceStreet1 ?? null,
+    placeOfPerformanceStreet2: opportunity.placeOfPerformanceStreet2 ?? null,
+    placeOfPerformanceCityCode: opportunity.placeOfPerformanceCityCode ?? null,
+    placeOfPerformanceCityName: opportunity.placeOfPerformanceCityName ?? null,
+    placeOfPerformanceStateCode:
+      opportunity.placeOfPerformanceStateCode ?? null,
+    placeOfPerformanceStateName:
+      opportunity.placeOfPerformanceStateName ?? null,
+    placeOfPerformancePostalCode:
+      opportunity.placeOfPerformancePostalCode ?? null,
+    placeOfPerformanceCountryCode:
+      opportunity.placeOfPerformanceCountryCode ?? null,
+    additionalInfoUrl: opportunity.additionalInfoUrl ?? null,
+    uiLink: opportunity.uiLink ?? null,
+    apiSelfLink: opportunity.apiSelfLink ?? null,
+    currentStageKey: opportunity.currentStageKey ?? null,
+    currentStageLabel: opportunity.currentStageLabel ?? null,
+    currentStageChangedAt: opportunity.currentStageChangedAt
+      ? new Date(opportunity.currentStageChangedAt)
+      : null,
+  };
+}
+
+async function syncOpportunityVehicles({
+  opportunityId,
+  opportunityTitle,
+  vehicleKeys,
+  vehiclesByKey,
+}) {
+  await prisma.opportunityVehicle.deleteMany({
+    where: { opportunityId },
+  });
+
+  for (const [index, vehicleKey] of vehicleKeys.entries()) {
+    const vehicle = vehiclesByKey.get(vehicleKey);
+
+    if (!vehicle) {
+      throw new Error(`Missing seeded vehicle for key ${vehicleKey}`);
+    }
+
+    await prisma.opportunityVehicle.create({
+      data: {
+        opportunityId,
+        vehicleId: vehicle.id,
+        isPrimary: index === 0,
+        notes:
+          index === 0
+            ? `Primary pursuit vehicle for ${opportunityTitle}.`
+            : `Secondary vehicle coverage retained for ${opportunityTitle}.`,
+      },
+    });
+  }
+}
+
+async function syncOpportunityCompetitors({
+  opportunityId,
+  competitorLinks,
+  competitorsByKey,
+}) {
+  await prisma.opportunityCompetitor.deleteMany({
+    where: { opportunityId },
+  });
+
+  for (const competitorLink of competitorLinks) {
+    const competitor = competitorsByKey.get(competitorLink.competitorKey);
+
+    if (!competitor) {
+      throw new Error(
+        `Missing seeded competitor for key ${competitorLink.competitorKey}`,
+      );
+    }
+
+    await prisma.opportunityCompetitor.create({
+      data: {
+        opportunityId,
+        competitorId: competitor.id,
+        role: competitorLink.role,
+        notes: competitorLink.notes,
+      },
+    });
+  }
+}
+
 async function syncOpportunityWorkspace({
   organizationId,
   opportunityId,
@@ -253,6 +376,7 @@ async function syncOpportunityWorkspace({
   primaryImportDecisionId,
   userId,
   userEmail,
+  usersByKey,
   workspace,
 }) {
   await prisma.opportunityActivityEvent.deleteMany({
@@ -286,12 +410,16 @@ async function syncOpportunityWorkspace({
   ]);
 
   for (const task of workspace.tasks) {
+    const assigneeUser = task.assigneeUserKey
+      ? usersByKey.get(task.assigneeUserKey) ?? null
+      : null;
+
     const createdTask = await prisma.opportunityTask.create({
       data: {
         organizationId,
         opportunityId,
         createdByUserId: userId,
-        assigneeUserId: userId,
+        assigneeUserId: assigneeUser?.id ?? userId,
         title: task.title,
         description: task.description,
         status: task.status,
@@ -507,8 +635,10 @@ async function main() {
     },
   });
 
+  const rolesByKey = new Map();
+
   for (const role of SYSTEM_ROLE_DEFINITIONS) {
-    await prisma.role.upsert({
+    const persistedRole = await prisma.role.upsert({
       where: {
         organizationId_key: {
           organizationId: organization.id,
@@ -528,45 +658,58 @@ async function main() {
         isSystem: true,
       },
     });
+
+    rolesByKey.set(role.key, persistedRole);
   }
 
-  const adminUser = await prisma.user.upsert({
-    where: { email: "admin@onesource.local" },
-    update: {
-      organizationId: organization.id,
-      name: "OneSource Admin",
-      status: UserStatus.ACTIVE,
-    },
-    create: {
-      organizationId: organization.id,
-      email: "admin@onesource.local",
-      name: "OneSource Admin",
-      status: UserStatus.ACTIVE,
-    },
-  });
+  const usersByKey = new Map();
 
-  const adminRole = await prisma.role.findUniqueOrThrow({
-    where: {
-      organizationId_key: {
+  for (const teamMember of scenario.teamMembers) {
+    const persistedUser = await prisma.user.upsert({
+      where: { email: teamMember.email },
+      update: {
         organizationId: organization.id,
-        key: "admin",
+        name: teamMember.name,
+        status: UserStatus.ACTIVE,
       },
-    },
-  });
+      create: {
+        organizationId: organization.id,
+        email: teamMember.email,
+        name: teamMember.name,
+        status: UserStatus.ACTIVE,
+      },
+    });
 
-  await prisma.userRole.upsert({
-    where: {
-      userId_roleId: {
-        userId: adminUser.id,
-        roleId: adminRole.id,
-      },
-    },
-    update: {},
-    create: {
-      userId: adminUser.id,
-      roleId: adminRole.id,
-    },
-  });
+    usersByKey.set(teamMember.key, persistedUser);
+
+    for (const roleKey of teamMember.roleKeys) {
+      const role = rolesByKey.get(roleKey);
+
+      if (!role) {
+        throw new Error(`Missing seeded role for key ${roleKey}`);
+      }
+
+      await prisma.userRole.upsert({
+        where: {
+          userId_roleId: {
+            userId: persistedUser.id,
+            roleId: role.id,
+          },
+        },
+        update: {},
+        create: {
+          userId: persistedUser.id,
+          roleId: role.id,
+        },
+      });
+    }
+  }
+
+  const adminUser = usersByKey.get("alex-morgan");
+
+  if (!adminUser) {
+    throw new Error("Missing seeded admin user alex-morgan");
+  }
 
   const agenciesByKey = new Map();
 
@@ -883,135 +1026,19 @@ async function main() {
     award: null,
   });
 
+  const importedOpportunityData = buildOpportunityWriteData({
+    organizationId: organization.id,
+    leadAgencyId: sourceAgency?.id ?? null,
+    importedFromSourceRecordId: sourceRecord.id,
+    opportunity: scenario.importedOpportunity,
+  });
+
   const importedOpportunity = await prisma.opportunity.upsert({
     where: {
       importedFromSourceRecordId: sourceRecord.id,
     },
-    update: {
-      organizationId: organization.id,
-      leadAgencyId: sourceAgency?.id ?? null,
-      originSourceSystem: scenario.importedOpportunity.originSourceSystem,
-      title: scenario.importedOpportunity.title,
-      description: scenario.importedOpportunity.description,
-      externalNoticeId: scenario.importedOpportunity.externalNoticeId,
-      solicitationNumber: scenario.importedOpportunity.solicitationNumber,
-      sourceSummaryText: scenario.importedOpportunity.sourceSummaryText,
-      sourceSummaryUrl: scenario.importedOpportunity.sourceSummaryUrl,
-      postedAt: new Date(scenario.importedOpportunity.postedAt),
-      postedDateRaw: scenario.importedOpportunity.postedDateRaw,
-      responseDeadlineAt: new Date(
-        scenario.importedOpportunity.responseDeadlineAt,
-      ),
-      responseDeadlineRaw: scenario.importedOpportunity.responseDeadlineRaw,
-      procurementTypeLabel: scenario.importedOpportunity.procurementTypeLabel,
-      procurementBaseTypeLabel:
-        scenario.importedOpportunity.procurementBaseTypeLabel,
-      archiveType: scenario.importedOpportunity.archiveType,
-      archivedAt: scenario.importedOpportunity.archivedAt
-        ? new Date(scenario.importedOpportunity.archivedAt)
-        : null,
-      archiveDateRaw: scenario.importedOpportunity.archiveDateRaw,
-      sourceStatus: scenario.importedOpportunity.sourceStatus,
-      isActiveSourceRecord: scenario.importedOpportunity.isActiveSourceRecord,
-      isArchivedSourceRecord:
-        scenario.importedOpportunity.isArchivedSourceRecord,
-      setAsideCode: scenario.importedOpportunity.setAsideCode,
-      setAsideDescription: scenario.importedOpportunity.setAsideDescription,
-      naicsCode: scenario.importedOpportunity.naicsCode,
-      classificationCode: scenario.importedOpportunity.classificationCode,
-      organizationType: scenario.importedOpportunity.organizationType,
-      officeCity: scenario.importedOpportunity.officeCity,
-      officeState: scenario.importedOpportunity.officeState,
-      officePostalCode: scenario.importedOpportunity.officePostalCode,
-      officeCountryCode: scenario.importedOpportunity.officeCountryCode,
-      placeOfPerformanceStreet1:
-        scenario.importedOpportunity.placeOfPerformanceStreet1,
-      placeOfPerformanceStreet2:
-        scenario.importedOpportunity.placeOfPerformanceStreet2,
-      placeOfPerformanceCityCode:
-        scenario.importedOpportunity.placeOfPerformanceCityCode,
-      placeOfPerformanceCityName:
-        scenario.importedOpportunity.placeOfPerformanceCityName,
-      placeOfPerformanceStateCode:
-        scenario.importedOpportunity.placeOfPerformanceStateCode,
-      placeOfPerformanceStateName:
-        scenario.importedOpportunity.placeOfPerformanceStateName,
-      placeOfPerformancePostalCode:
-        scenario.importedOpportunity.placeOfPerformancePostalCode,
-      placeOfPerformanceCountryCode:
-        scenario.importedOpportunity.placeOfPerformanceCountryCode,
-      additionalInfoUrl: scenario.importedOpportunity.additionalInfoUrl,
-      uiLink: scenario.importedOpportunity.uiLink,
-      apiSelfLink: scenario.importedOpportunity.apiSelfLink,
-      currentStageKey: scenario.importedOpportunity.currentStageKey,
-      currentStageLabel: scenario.importedOpportunity.currentStageLabel,
-      currentStageChangedAt: scenario.importedOpportunity.currentStageChangedAt
-        ? new Date(scenario.importedOpportunity.currentStageChangedAt)
-        : null,
-    },
-    create: {
-      organizationId: organization.id,
-      leadAgencyId: sourceAgency?.id ?? null,
-      importedFromSourceRecordId: sourceRecord.id,
-      originSourceSystem: scenario.importedOpportunity.originSourceSystem,
-      title: scenario.importedOpportunity.title,
-      description: scenario.importedOpportunity.description,
-      externalNoticeId: scenario.importedOpportunity.externalNoticeId,
-      solicitationNumber: scenario.importedOpportunity.solicitationNumber,
-      sourceSummaryText: scenario.importedOpportunity.sourceSummaryText,
-      sourceSummaryUrl: scenario.importedOpportunity.sourceSummaryUrl,
-      postedAt: new Date(scenario.importedOpportunity.postedAt),
-      postedDateRaw: scenario.importedOpportunity.postedDateRaw,
-      responseDeadlineAt: new Date(
-        scenario.importedOpportunity.responseDeadlineAt,
-      ),
-      responseDeadlineRaw: scenario.importedOpportunity.responseDeadlineRaw,
-      procurementTypeLabel: scenario.importedOpportunity.procurementTypeLabel,
-      procurementBaseTypeLabel:
-        scenario.importedOpportunity.procurementBaseTypeLabel,
-      archiveType: scenario.importedOpportunity.archiveType,
-      archivedAt: scenario.importedOpportunity.archivedAt
-        ? new Date(scenario.importedOpportunity.archivedAt)
-        : null,
-      archiveDateRaw: scenario.importedOpportunity.archiveDateRaw,
-      sourceStatus: scenario.importedOpportunity.sourceStatus,
-      isActiveSourceRecord: scenario.importedOpportunity.isActiveSourceRecord,
-      isArchivedSourceRecord:
-        scenario.importedOpportunity.isArchivedSourceRecord,
-      setAsideCode: scenario.importedOpportunity.setAsideCode,
-      setAsideDescription: scenario.importedOpportunity.setAsideDescription,
-      naicsCode: scenario.importedOpportunity.naicsCode,
-      classificationCode: scenario.importedOpportunity.classificationCode,
-      organizationType: scenario.importedOpportunity.organizationType,
-      officeCity: scenario.importedOpportunity.officeCity,
-      officeState: scenario.importedOpportunity.officeState,
-      officePostalCode: scenario.importedOpportunity.officePostalCode,
-      officeCountryCode: scenario.importedOpportunity.officeCountryCode,
-      placeOfPerformanceStreet1:
-        scenario.importedOpportunity.placeOfPerformanceStreet1,
-      placeOfPerformanceStreet2:
-        scenario.importedOpportunity.placeOfPerformanceStreet2,
-      placeOfPerformanceCityCode:
-        scenario.importedOpportunity.placeOfPerformanceCityCode,
-      placeOfPerformanceCityName:
-        scenario.importedOpportunity.placeOfPerformanceCityName,
-      placeOfPerformanceStateCode:
-        scenario.importedOpportunity.placeOfPerformanceStateCode,
-      placeOfPerformanceStateName:
-        scenario.importedOpportunity.placeOfPerformanceStateName,
-      placeOfPerformancePostalCode:
-        scenario.importedOpportunity.placeOfPerformancePostalCode,
-      placeOfPerformanceCountryCode:
-        scenario.importedOpportunity.placeOfPerformanceCountryCode,
-      additionalInfoUrl: scenario.importedOpportunity.additionalInfoUrl,
-      uiLink: scenario.importedOpportunity.uiLink,
-      apiSelfLink: scenario.importedOpportunity.apiSelfLink,
-      currentStageKey: scenario.importedOpportunity.currentStageKey,
-      currentStageLabel: scenario.importedOpportunity.currentStageLabel,
-      currentStageChangedAt: scenario.importedOpportunity.currentStageChangedAt
-        ? new Date(scenario.importedOpportunity.currentStageChangedAt)
-        : null,
-    },
+    update: importedOpportunityData,
+    create: importedOpportunityData,
   });
 
   await prisma.sourceRecord.update({
@@ -1067,67 +1094,18 @@ async function main() {
     decision: scenario.sourceImportDecision,
   });
 
-  for (const vehicleKey of scenario.importedOpportunity.vehicleKeys) {
-    const vehicle = vehiclesByKey.get(vehicleKey);
+  await syncOpportunityVehicles({
+    opportunityId: importedOpportunity.id,
+    opportunityTitle: importedOpportunity.title,
+    vehicleKeys: scenario.importedOpportunity.vehicleKeys,
+    vehiclesByKey,
+  });
 
-    if (!vehicle) {
-      throw new Error(`Missing seeded vehicle for key ${vehicleKey}`);
-    }
-
-    await prisma.opportunityVehicle.upsert({
-      where: {
-        opportunityId_vehicleId: {
-          opportunityId: importedOpportunity.id,
-          vehicleId: vehicle.id,
-        },
-      },
-      update: {
-        isPrimary: vehicle.code === "OASIS-PLUS-UNR",
-        notes:
-          vehicle.code === "OASIS-PLUS-UNR"
-            ? "Primary pursuit vehicle for the seeded imported opportunity."
-            : "Secondary viable path if ordering guidance shifts.",
-      },
-      create: {
-        opportunityId: importedOpportunity.id,
-        vehicleId: vehicle.id,
-        isPrimary: vehicle.code === "OASIS-PLUS-UNR",
-        notes:
-          vehicle.code === "OASIS-PLUS-UNR"
-            ? "Primary pursuit vehicle for the seeded imported opportunity."
-            : "Secondary viable path if ordering guidance shifts.",
-      },
-    });
-  }
-
-  for (const competitorLink of scenario.importedOpportunity.competitorLinks) {
-    const competitor = competitorsByKey.get(competitorLink.competitorKey);
-
-    if (!competitor) {
-      throw new Error(
-        `Missing seeded competitor for key ${competitorLink.competitorKey}`,
-      );
-    }
-
-    await prisma.opportunityCompetitor.upsert({
-      where: {
-        opportunityId_competitorId: {
-          opportunityId: importedOpportunity.id,
-          competitorId: competitor.id,
-        },
-      },
-      update: {
-        role: competitorLink.role,
-        notes: competitorLink.notes,
-      },
-      create: {
-        opportunityId: importedOpportunity.id,
-        competitorId: competitor.id,
-        role: competitorLink.role,
-        notes: competitorLink.notes,
-      },
-    });
-  }
+  await syncOpportunityCompetitors({
+    opportunityId: importedOpportunity.id,
+    competitorLinks: scenario.importedOpportunity.competitorLinks,
+    competitorsByKey,
+  });
 
   const secondaryScenario = scenario.secondarySourceScenario;
   const usaspendingConnectorConfig = connectorConfigsByKey.get(
@@ -1345,8 +1323,58 @@ async function main() {
     primaryImportDecisionId: primaryImportDecision.id,
     userId: adminUser.id,
     userEmail: adminUser.email,
+    usersByKey,
     workspace: scenario.workspace,
   });
+
+  for (const manualScenario of scenario.manualOpportunities) {
+    const manualAgency = agenciesByKey.get(manualScenario.opportunity.agencyKey);
+    const existingManualOpportunity = await prisma.opportunity.findFirst({
+      where: {
+        organizationId: organization.id,
+        title: manualScenario.opportunity.title,
+      },
+    });
+
+    const manualOpportunityData = buildOpportunityWriteData({
+      organizationId: organization.id,
+      leadAgencyId: manualAgency?.id ?? null,
+      opportunity: manualScenario.opportunity,
+    });
+
+    const manualOpportunity = existingManualOpportunity
+      ? await prisma.opportunity.update({
+          where: { id: existingManualOpportunity.id },
+          data: manualOpportunityData,
+        })
+      : await prisma.opportunity.create({
+          data: manualOpportunityData,
+        });
+
+    await syncOpportunityVehicles({
+      opportunityId: manualOpportunity.id,
+      opportunityTitle: manualOpportunity.title,
+      vehicleKeys: manualScenario.opportunity.vehicleKeys,
+      vehiclesByKey,
+    });
+
+    await syncOpportunityCompetitors({
+      opportunityId: manualOpportunity.id,
+      competitorLinks: manualScenario.opportunity.competitorLinks,
+      competitorsByKey,
+    });
+
+    await syncOpportunityWorkspace({
+      organizationId: organization.id,
+      opportunityId: manualOpportunity.id,
+      primarySourceRecordId: null,
+      primaryImportDecisionId: null,
+      userId: adminUser.id,
+      userEmail: adminUser.email,
+      usersByKey,
+      workspace: manualScenario.workspace,
+    });
+  }
 
   await prisma.auditLog.create({
     data: {
@@ -1361,6 +1389,15 @@ async function main() {
       summary:
         "Initialized baseline organization, connector metadata, and multi-source opportunity seed data.",
       metadata: {
+        seededTeamMemberEmails: scenario.teamMembers.map((member) => member.email),
+        seededAgencyCount: scenario.agencies.length,
+        seededOpportunityCount: 1 + scenario.manualOpportunities.length,
+        seededOpportunityTitles: [
+          importedOpportunity.title,
+          ...scenario.manualOpportunities.map(
+            (manualScenario) => manualScenario.opportunity.title,
+          ),
+        ],
         roleKeys: SYSTEM_ROLE_DEFINITIONS.map((role) => role.key),
         seededOpportunityTitle: importedOpportunity.title,
         seededConnectorKeys: scenario.connectorConfigs.map(

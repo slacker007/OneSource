@@ -592,7 +592,7 @@ This section is mandatory for every future coding iteration because conversation
       Done when: app code stops reaching directly into raw Prisma models in route handlers without module wrappers.
       Verify with: at least one domain module exposes typed query/service functions.
 
-- [ ] P1-05 Create realistic seed data representing multiple agencies, opportunities, stages, tasks, and score outcomes.
+- [x] P1-05 Create realistic seed data representing multiple agencies, opportunities, stages, tasks, and score outcomes.
       Done when: seeded data is sufficient to exercise dashboards, filtering, and scoring in development.
       Verify with: seed command populates visible demo data.
 
@@ -789,8 +789,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, and `P1-04` are complete. This loop added `src/modules/opportunities/` with shared DTOs plus typed repository functions for dashboard and opportunity-summary read models, updated the homepage shell copy and browser assertions, and hardened the Docker dependency stage so offline compose builds still generate the Prisma client by copying the Prisma config and schema into the `npm ci` stage.
-- Next recommended item: `P1-05 Create realistic seed data representing multiple agencies, opportunities, stages, tasks, and score outcomes.`
-- Blockers: None for `P1-04`. Raw Node HTTP fetches to the npm registry still fail in this environment, but `npm install` and the committed offline cache archive continue to support reproducible dependency and compose workflows.
-- Files touched in latest loop: `Dockerfile`, `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/testing.md`, `src/app/page.tsx`, `src/components/home/app-shell-preview.tsx`, `src/components/home/app-shell-preview.test.tsx`, `src/modules/opportunities/opportunity.repository.ts`, `src/modules/opportunities/opportunity.repository.test.ts`, `src/modules/opportunities/opportunity.types.ts`, and `tests/smoke.spec.ts`.
-- Tests run in latest loop: `docker compose up -d db`; `npm run db:seed`; `npm run prisma:validate`; `npm run lint`; `npm test`; `npm run build`; `npm run e2e`; `docker compose --profile test run --rm --build test run lint`; `docker compose --profile test run --rm --build test`; `docker compose --profile test run --rm --build test run build`; `docker compose --profile test up --build --abort-on-container-exit --exit-code-from playwright playwright`; `docker compose down --remove-orphans`; and `git diff --check`. Verification used `docker compose` and Playwright.
+- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, and `P1-05` are complete. This loop expanded the deterministic seed into a broader development portfolio with six local users, five agencies, five vehicles, five competitors, one multi-source imported opportunity, and four manual opportunities spanning `qualified`, `capture_active`, `proposal_in_development`, `submitted`, and `no_bid` states with `GO`, `DEFER`, and `NO_GO` outcomes.
+- Next recommended item: `P2-01 Implement Auth.js sign-in, sign-out, session handling, and protected routes.`
+- Blockers: None for `P1-05`. Raw Node HTTP fetches to the npm registry still fail in this environment, but `npm install` and the committed offline cache archive continue to support reproducible dependency and compose workflows.
+- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/runbook.md`, `docs/security.md`, `docs/testing.md`, `prisma/opportunity-seed-scenarios.mjs`, `prisma/seed.mjs`, and `src/lib/opportunities/opportunity-seed-scenarios.test.ts`.
+- Tests run in latest loop: `docker compose up -d db`; `npm test -- src/lib/opportunities/opportunity-seed-scenarios.test.ts`; `npm run db:seed`; `npm run lint`; `node --input-type=module -e 'import { PrismaClient } from "@prisma/client"; ...'`; `npm run prisma:validate`; `npm test`; `npm run build`; `npm run e2e`; `docker compose --profile test run --rm --build test run lint`; `docker compose --profile test run --rm --build test`; `docker compose --profile test run --rm --build test run build`; `docker compose --profile test up --build --abort-on-container-exit --exit-code-from playwright playwright`; `docker compose down --remove-orphans`; and `git diff --check`. Verification used `docker compose` and Playwright.

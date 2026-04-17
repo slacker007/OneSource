@@ -7,6 +7,7 @@ describe("buildOpportunitySeedScenario", () => {
     const scenario = buildOpportunitySeedScenario();
 
     expect(scenario.connectorConfigs).toHaveLength(3);
+    expect(scenario.teamMembers).toHaveLength(6);
 
     expect(scenario.connectorConfigs).toEqual(
       expect.arrayContaining([
@@ -33,7 +34,7 @@ describe("buildOpportunitySeedScenario", () => {
   it("provides one imported opportunity with agency, vehicle, competitor, search, sync, and promotion lineage", () => {
     const scenario = buildOpportunitySeedScenario();
 
-    expect(scenario.agencies).toHaveLength(1);
+    expect(scenario.agencies).toHaveLength(5);
     expect(scenario.vehicles.length).toBeGreaterThan(0);
     expect(scenario.competitors.length).toBeGreaterThan(0);
 
@@ -178,6 +179,65 @@ describe("buildOpportunitySeedScenario", () => {
         expect.objectContaining({
           key: "capture-plan",
           sourceType: "MANUAL_UPLOAD",
+        }),
+      ]),
+    );
+
+    expect(scenario.workspace.tasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "incumbent-analysis",
+          assigneeUserKey: "taylor-reed",
+        }),
+        expect.objectContaining({
+          key: "customer-questions",
+          assigneeUserKey: "morgan-patel",
+        }),
+      ]),
+    );
+  });
+
+  it("provides a broader manual portfolio with multiple agencies, stages, and decision outcomes", () => {
+    const scenario = buildOpportunitySeedScenario();
+    const manualOpportunities = scenario.manualOpportunities;
+
+    expect(manualOpportunities).toHaveLength(4);
+    expect(manualOpportunities.map((item) => item.opportunity.agencyKey)).toEqual(
+      expect.arrayContaining([
+        "army-peo-eis",
+        "va-technology-acquisition-center",
+        "dhs-cisa-ocpo",
+        "navwar-pacific",
+      ]),
+    );
+    expect(manualOpportunities.map((item) => item.opportunity.currentStageKey)).toEqual(
+      expect.arrayContaining([
+        "qualified",
+        "proposal_in_development",
+        "submitted",
+        "no_bid",
+      ]),
+    );
+    expect(manualOpportunities.map((item) => item.workspace.scorecard.recommendationOutcome)).toEqual(
+      expect.arrayContaining(["DEFER", "GO", "NO_GO"]),
+    );
+    expect(manualOpportunities.flatMap((item) => item.workspace.tasks)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "army-staffing-gap",
+          status: "BLOCKED",
+          priority: "CRITICAL",
+          assigneeUserKey: "taylor-reed",
+        }),
+        expect.objectContaining({
+          key: "va-win-themes",
+          status: "IN_PROGRESS",
+          assigneeUserKey: "morgan-patel",
+        }),
+        expect.objectContaining({
+          key: "dhs-orals-prep",
+          status: "IN_PROGRESS",
+          assigneeUserKey: "casey-brooks",
         }),
       ]),
     );

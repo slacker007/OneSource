@@ -1,6 +1,6 @@
 # OneSource
 
-OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold plus the first five Phase 1 foundation slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, a typed opportunity-domain repository layer with shared DTOs, boot-time environment validation, a placeholder worker process, and an offline npm cache archive that makes Docker builds self-sufficient in this environment.
+OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold plus the first six Phase 1 foundation slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, a typed opportunity-domain repository layer with shared DTOs, expanded realistic demo seed data, boot-time environment validation, a placeholder worker process, and an offline npm cache archive that makes Docker builds self-sufficient in this environment.
 
 ## Current Status
 
@@ -8,8 +8,8 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - Implementation scope, checklist sequencing, and current handoff state live in `PRD.md`.
 - Engineering and verification rules live in `AGENTS.md`.
 - Active loop notes and crash-recovery context live in `NOTES.md`.
-- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, and `P1-04` are complete.
-- The next recommended item is `P1-05`, which expands the seed data into a broader realistic demo dataset for dashboards and filtering flows.
+- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, and `P1-05` are complete.
+- The next recommended item is `P2-01`, which introduces Auth.js sign-in, sign-out, session handling, and protected routes.
 
 ## Stack In Repo Today
 
@@ -108,7 +108,7 @@ Seed the baseline auth, opportunity, and lineage data:
 npm run db:seed
 ```
 
-The current seed creates a default organization, the canonical system role set, a local development admin user at `admin@onesource.local`, one Air Force agency, two contract vehicles, two competitors, connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`, one imported `sam.gov` opportunity with retained raw and normalized payloads plus attachment and contact child records, one applied import decision that created the canonical opportunity, one `usaspending_api` enrichment search and retained award-centric source record with an applied link-to-existing import decision, and one realistic workspace on the canonical opportunity with tasks, milestones, notes, documents, stage transitions, a scorecard with factor rows, a bid decision, and activity events.
+The current seed creates a default organization, the canonical system role set, six realistic local users spanning admin, executive, BD, capture, proposal, and contributor roles, five agencies, five contract vehicles, five competitors, connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`, one imported `sam.gov` opportunity with retained raw and normalized payloads plus attachment and contact child records, one applied import decision that created the canonical opportunity, one `usaspending_api` enrichment search and retained award-centric source record with an applied link-to-existing import decision, and four additional manual opportunities spanning `qualified`, `capture_active`, `proposal_in_development`, `submitted`, and `no_bid` stages with `GO`, `DEFER`, and `NO_GO` score or decision outcomes.
 
 The typed opportunity repository under `src/modules/opportunities/` exposes shared DTOs plus typed query functions for dashboard-style summaries and opportunity cards. The homepage remains a static shell for now so compose builds do not depend on a runtime Prisma client yet, but future persisted read models should use these module boundaries instead of raw model payloads.
 

@@ -21,7 +21,7 @@ The current repo includes the first persistence slice for auth and audit work pl
 The local seed command creates development-only bootstrap records:
 
 - organization slug: `default-org`
-- admin user: `admin@onesource.local`
+- local users: `admin@onesource.local`, `jamie.chen@onesource.local`, `taylor.reed@onesource.local`, `morgan.patel@onesource.local`, `sam.rivera@onesource.local`, and `casey.brooks@onesource.local`
 - system roles: admin, executive, business development, capture manager, proposal manager, contributor, viewer
 
 These values are intended for local development only. They are not production credentials and must not be used as real identity defaults in deployed environments.
@@ -29,7 +29,7 @@ These values are intended for local development only. They are not production cr
 ## Source Data Provenance
 
 - External source payloads are treated as untrusted input and are stored in `source_records` as raw JSON plus normalized JSON for traceability.
-- The seed path demonstrates raw payload retention, normalized payload retention, import-preview payload retention, attachment/contact retention for `sam.gov`, and award-enrichment retention for `usaspending_api`.
+- The seed path demonstrates raw payload retention, normalized payload retention, import-preview payload retention, attachment/contact retention for `sam.gov`, award-enrichment retention for `usaspending_api`, and multiple manual opportunities with varied stage and decision outcomes for development-only dashboard work.
 - Search lineage and sync lineage are persisted separately through `source_search_results` and `source_sync_run_records` so later workflows can explain how a source record entered the system.
 - Promotion decisions are stored separately in `source_import_decisions`, which preserves whether a source record created a new canonical opportunity or only linked enrichment data to an existing one.
 - Workspace documents now support extracted text retention. Treat those rows as potentially sensitive because the extracted content can contain customer requirements, solution details, or partner information.

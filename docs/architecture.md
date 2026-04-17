@@ -106,15 +106,16 @@ Current seed defaults:
 
 - one organization with slug `default-org`
 - the seven core PRD roles
-- one local development admin user at `admin@onesource.local`
-- one Air Force agency record
-- two contract vehicles and two competitor records
+- six local development users spanning admin, executive, business development, capture, proposal, and contributor roles
+- five agency records across Air Force, Army, VA, DHS, and Navy accounts
+- five contract vehicles and five competitor records
 - connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`
 - one saved `sam.gov` search, one successful search execution, and one successful sync run
 - one imported opportunity linked to its agency, vehicles, competitors, and canonical `sam.gov` source record
 - one retained `sam.gov` source record containing raw payload, normalized payload, import-preview payload, attachments, contacts, and a create-opportunity import decision
 - one retained `usaspending_api` source record linked to the same opportunity, with award enrichment data and a link-to-existing import decision
-- one seeded workspace on the canonical opportunity with three tasks, three milestones, two notes, two documents, three stage transitions, one scorecard with six factor rows, one bid decision, and seven activity-feed events
+- four additional manual opportunities distributed across `qualified`, `proposal_in_development`, `submitted`, and `no_bid` pipeline states
+- seeded workspaces that now cover blocked, in-progress, completed, and cancelled-style execution patterns plus `GO`, `DEFER`, and `NO_GO` scoring or bid-decision outcomes
 - one bootstrap audit-log event recording the seed action
 
 ## Container And Environment Strategy

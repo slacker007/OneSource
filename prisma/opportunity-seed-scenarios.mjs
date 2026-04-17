@@ -14,6 +14,109 @@ const AIR_FORCE_AGENCY = {
   officeCountryCode: "USA",
 };
 
+const ARMY_AGENCY = {
+  key: "army-peo-eis",
+  name: "PEO Enterprise Information Systems",
+  organizationCode: "W91QUZ",
+  pathName:
+    "Department of the Army / PEO Enterprise Information Systems / Army Contracting Command",
+  pathCode: "2100:W91QUZ",
+  departmentName: "Department of the Army",
+  subtierName: "PEO Enterprise Information Systems",
+  officeName: "Army Contracting Command",
+  officeCity: "Fort Belvoir",
+  officeState: "VA",
+  officePostalCode: "22060",
+  officeCountryCode: "USA",
+};
+
+const VETERANS_AFFAIRS_AGENCY = {
+  key: "va-technology-acquisition-center",
+  name: "Technology Acquisition Center",
+  organizationCode: "36C10B",
+  pathName:
+    "Department of Veterans Affairs / Office of Information and Technology / Technology Acquisition Center",
+  pathCode: "3600:36C10B",
+  departmentName: "Department of Veterans Affairs",
+  subtierName: "Office of Information and Technology",
+  officeName: "Technology Acquisition Center",
+  officeCity: "Eatontown",
+  officeState: "NJ",
+  officePostalCode: "07724",
+  officeCountryCode: "USA",
+};
+
+const DHS_AGENCY = {
+  key: "dhs-cisa-ocpo",
+  name: "CISA OCPO",
+  organizationCode: "70RCSJ",
+  pathName:
+    "Department of Homeland Security / Cybersecurity and Infrastructure Security Agency / Office of the Chief Procurement Officer",
+  pathCode: "7000:70RCSJ",
+  departmentName: "Department of Homeland Security",
+  subtierName: "Cybersecurity and Infrastructure Security Agency",
+  officeName: "Office of the Chief Procurement Officer",
+  officeCity: "Arlington",
+  officeState: "VA",
+  officePostalCode: "22209",
+  officeCountryCode: "USA",
+};
+
+const NAVY_AGENCY = {
+  key: "navwar-pacific",
+  name: "NAVWAR Pacific",
+  organizationCode: "N66001",
+  pathName:
+    "Department of the Navy / Naval Information Warfare Systems Command / NAVWAR Pacific",
+  pathCode: "1700:N66001",
+  departmentName: "Department of the Navy",
+  subtierName: "Naval Information Warfare Systems Command",
+  officeName: "NAVWAR Pacific",
+  officeCity: "San Diego",
+  officeState: "CA",
+  officePostalCode: "92152",
+  officeCountryCode: "USA",
+};
+
+const TEAM_MEMBERS = [
+  {
+    key: "alex-morgan",
+    email: "admin@onesource.local",
+    name: "Alex Morgan",
+    roleKeys: ["admin"],
+  },
+  {
+    key: "jamie-chen",
+    email: "jamie.chen@onesource.local",
+    name: "Jamie Chen",
+    roleKeys: ["business_development"],
+  },
+  {
+    key: "taylor-reed",
+    email: "taylor.reed@onesource.local",
+    name: "Taylor Reed",
+    roleKeys: ["capture_manager"],
+  },
+  {
+    key: "morgan-patel",
+    email: "morgan.patel@onesource.local",
+    name: "Morgan Patel",
+    roleKeys: ["proposal_manager"],
+  },
+  {
+    key: "sam-rivera",
+    email: "sam.rivera@onesource.local",
+    name: "Sam Rivera",
+    roleKeys: ["executive"],
+  },
+  {
+    key: "casey-brooks",
+    email: "casey.brooks@onesource.local",
+    name: "Casey Brooks",
+    roleKeys: ["contributor"],
+  },
+];
+
 const CONTRACT_VEHICLES = [
   {
     key: "oasis-plus-unrestricted",
@@ -32,6 +135,31 @@ const CONTRACT_VEHICLES = [
     awardingAgency: "General Services Administration",
     notes: "Schedule baseline for IT and professional support work.",
   },
+  {
+    key: "stars-iii",
+    code: "STARS-III",
+    name: "8(a) STARS III",
+    vehicleType: "GWAC",
+    awardingAgency: "General Services Administration",
+    notes: "Small-business GWAC for agile IT and cloud work.",
+  },
+  {
+    key: "cio-sp3-small-business",
+    code: "CIO-SP3-SB",
+    name: "CIO-SP3 Small Business",
+    vehicleType: "GWAC",
+    awardingAgency: "National Institutes of Health",
+    notes:
+      "Vehicle often used for health IT and digital modernization pursuits.",
+  },
+  {
+    key: "seaport-nxg",
+    code: "SEAPORT-NXG",
+    name: "SeaPort NxG",
+    vehicleType: "IDIQ",
+    awardingAgency: "Department of the Navy",
+    notes: "Primary Navy professional-services contract vehicle.",
+  },
 ];
 
 const COMPETITORS = [
@@ -47,6 +175,25 @@ const COMPETITORS = [
     name: "Apex Defense Systems",
     websiteUrl: "https://apex-defense.example",
     notes: "Frequent competitor on enterprise knowledge management pursuits.",
+  },
+  {
+    key: "northstar-digital",
+    name: "Northstar Digital Group",
+    websiteUrl: "https://northstar-digital.example",
+    notes:
+      "Known for Army cloud operations and platform engineering bids.",
+  },
+  {
+    key: "sentinel-cyber",
+    name: "Sentinel Cyber Operations",
+    websiteUrl: "https://sentinel-cyber.example",
+    notes: "Shows up regularly on DHS cyber operations opportunities.",
+  },
+  {
+    key: "harbor-mission-tech",
+    name: "Harbor Mission Technologies",
+    websiteUrl: "https://harbor-mission-tech.example",
+    notes: "Incumbent-adjacent competitor on Navy digital engineering work.",
   },
 ];
 
@@ -488,7 +635,7 @@ const SAM_GOV_SOURCE_NORMALIZED_PAYLOAD = {
       title: IMPORTED_OPPORTUNITY.title,
       solicitationNumber: IMPORTED_OPPORTUNITY.solicitationNumber,
       leadAgency: AIR_FORCE_AGENCY.name,
-      vehicleCodes: CONTRACT_VEHICLES.map((vehicle) => vehicle.code),
+      vehicleCodes: ["OASIS-PLUS-UNR", "MAS-IT-70"],
     },
   },
   warnings: [],
@@ -729,6 +876,7 @@ const OPPORTUNITY_WORKSPACE = {
       startedAt: "2026-04-16T14:00:00.000Z",
       completedAt: null,
       sortOrder: 0,
+      assigneeUserKey: "taylor-reed",
       metadata: {
         ownerDiscipline: "capture",
         linkedCompetitorKeys: ["vector-analytics", "apex-defense"],
@@ -745,6 +893,7 @@ const OPPORTUNITY_WORKSPACE = {
       startedAt: null,
       completedAt: null,
       sortOrder: 1,
+      assigneeUserKey: "morgan-patel",
       metadata: {
         ownerDiscipline: "proposal",
         dependsOnMilestoneKey: "questions-window",
@@ -761,6 +910,7 @@ const OPPORTUNITY_WORKSPACE = {
       startedAt: "2026-04-14T15:00:00.000Z",
       completedAt: "2026-04-14T19:30:00.000Z",
       sortOrder: 2,
+      assigneeUserKey: "casey-brooks",
       metadata: {
         ownerDiscipline: "delivery",
         vehicleCode: "OASIS-PLUS-UNR",
@@ -1168,10 +1318,1052 @@ const OPPORTUNITY_WORKSPACE = {
   ],
 };
 
+const MANUAL_PORTFOLIO_OPPORTUNITIES = [
+  {
+    key: "army-cloud-ops",
+    opportunity: {
+      title: "Army Cloud Operations Recompete",
+      description:
+        "Manual pipeline entry for an Army cloud-operations recompete with strong technical fit but unresolved staffing and relationship risk.",
+      originSourceSystem: "manual_entry",
+      externalNoticeId: null,
+      solicitationNumber: "W91QUZ-26-R-0042",
+      sourceSummaryText:
+        "Hybrid cloud operations, DevSecOps sustainment, and platform reliability support for Army enterprise systems.",
+      sourceSummaryUrl: null,
+      postedAt: "2026-04-04T00:00:00.000Z",
+      postedDateRaw: "04/04/2026",
+      responseDeadlineAt: "2026-05-08T21:00:00.000Z",
+      responseDeadlineRaw: "05/08/2026 05:00 PM EDT",
+      procurementTypeLabel: "Solicitation",
+      procurementBaseTypeLabel: "Solicitation",
+      archiveType: null,
+      archivedAt: null,
+      archiveDateRaw: null,
+      sourceStatus: "qualified_manual",
+      isActiveSourceRecord: true,
+      isArchivedSourceRecord: false,
+      setAsideCode: null,
+      setAsideDescription: null,
+      naicsCode: "541512",
+      classificationCode: "D310",
+      organizationType: "OFFICE",
+      officeCity: ARMY_AGENCY.officeCity,
+      officeState: ARMY_AGENCY.officeState,
+      officePostalCode: ARMY_AGENCY.officePostalCode,
+      officeCountryCode: ARMY_AGENCY.officeCountryCode,
+      placeOfPerformanceStreet1: "9800 Savage Road",
+      placeOfPerformanceStreet2: null,
+      placeOfPerformanceCityCode: null,
+      placeOfPerformanceCityName: "Fort Belvoir",
+      placeOfPerformanceStateCode: "VA",
+      placeOfPerformanceStateName: "Virginia",
+      placeOfPerformancePostalCode: "22060",
+      placeOfPerformanceCountryCode: "USA",
+      additionalInfoUrl: null,
+      uiLink: null,
+      apiSelfLink: null,
+      currentStageKey: "qualified",
+      currentStageLabel: "Qualified",
+      currentStageChangedAt: "2026-04-14T18:00:00.000Z",
+      agencyKey: ARMY_AGENCY.key,
+      vehicleKeys: ["oasis-plus-unrestricted", "stars-iii"],
+      competitorLinks: [
+        {
+          competitorKey: "northstar-digital",
+          role: "INCUMBENT",
+          notes:
+            "Current platform-operations incumbent with deep Army cloud footprint.",
+        },
+        {
+          competitorKey: "apex-defense",
+          role: "KNOWN_COMPETITOR",
+          notes: "Frequently competes on Army enterprise cloud recompetes.",
+        },
+      ],
+    },
+    workspace: {
+      tasks: [
+        {
+          key: "army-staffing-gap",
+          title: "Close cleared SRE staffing gap",
+          description:
+            "Confirm whether the current bench or partners can cover the required cleared SRE roles.",
+          status: "BLOCKED",
+          priority: "CRITICAL",
+          dueAt: "2026-04-22T17:00:00.000Z",
+          startedAt: "2026-04-17T13:00:00.000Z",
+          completedAt: null,
+          sortOrder: 0,
+          assigneeUserKey: "taylor-reed",
+          metadata: {
+            blocker: "cleared_talent_shortage",
+          },
+        },
+        {
+          key: "army-customer-map",
+          title: "Build Army stakeholder map",
+          description:
+            "Document program, contracting, and technical stakeholders before the pursuit recommendation changes.",
+          status: "IN_PROGRESS",
+          priority: "HIGH",
+          dueAt: "2026-04-24T16:00:00.000Z",
+          startedAt: "2026-04-16T15:00:00.000Z",
+          completedAt: null,
+          sortOrder: 1,
+          assigneeUserKey: "jamie-chen",
+          metadata: {
+            customerCoverage: "partial",
+          },
+        },
+      ],
+      milestones: [
+        {
+          key: "army-gate-review",
+          title: "Gate review refresh",
+          description:
+            "Revisit defer-versus-pursue after staffing and customer access updates land.",
+          milestoneTypeKey: "decision_checkpoint",
+          status: "AT_RISK",
+          targetDate: "2026-04-25T19:00:00.000Z",
+          completedAt: null,
+          sortOrder: 0,
+          metadata: {
+            reviewForum: "executive_gate",
+          },
+        },
+        {
+          key: "army-solution-outline",
+          title: "Solution outline due",
+          description:
+            "Draft the cloud-operations approach only if staffing coverage is confirmed.",
+          milestoneTypeKey: "solution_outline",
+          status: "PLANNED",
+          targetDate: "2026-04-29T21:00:00.000Z",
+          completedAt: null,
+          sortOrder: 1,
+          metadata: null,
+        },
+      ],
+      notes: [
+        {
+          key: "army-risk-note",
+          title: "Qualification watch items",
+          body: [
+            "- Technical fit is strong.",
+            "- Staffing and customer intimacy are below the default pursuit bar.",
+            "- Keep the opportunity warm but do not commit proposal resources yet.",
+          ].join("\n"),
+          contentFormat: "markdown",
+          isPinned: true,
+        },
+      ],
+      documents: [
+        {
+          key: "army-qual-brief",
+          title: "Army Qualification Brief",
+          documentType: "qualification_brief",
+          sourceType: "MANUAL_UPLOAD",
+          sourceRecordRef: null,
+          sourceUrl: null,
+          originalFileName: "army-cloud-qualification-brief.docx",
+          storageProvider: "local_disk",
+          storagePath:
+            "documents/opportunities/army-cloud-ops/qualification-brief.docx",
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          fileSizeBytes: 65536,
+          checksumSha256:
+            "11e8021f22a2ff3b88a7c5376168d24a68e9910f1d95a092f73a0d346ec35d51",
+          extractedText:
+            "Qualification brief highlights staffing gaps, customer access gaps, and the current defer recommendation.",
+          extractionStatus: "SUCCEEDED",
+          extractedAt: "2026-04-17T17:45:00.000Z",
+          metadata: {
+            audience: "executive_gate",
+          },
+        },
+      ],
+      stageTransitions: [
+        {
+          key: "army-identified-to-qualified",
+          triggerType: "MANUAL",
+          fromStageKey: "identified",
+          fromStageLabel: "Identified",
+          toStageKey: "qualified",
+          toStageLabel: "Qualified",
+          rationale:
+            "Qualified after initial intake because NAICS fit and vehicle coverage were credible.",
+          requiredFieldsSnapshot: {
+            leadAgency: true,
+            responseDeadline: true,
+          },
+          metadata: {
+            source: "manual_capture_review",
+          },
+          transitionedAt: "2026-04-14T18:00:00.000Z",
+        },
+      ],
+      scorecard: {
+        scoringModelKey: "default_capture_v1",
+        scoringModelVersion: "2026-04-01",
+        totalScore: "66.00",
+        maximumScore: "100.00",
+        scorePercent: "66.00",
+        recommendationOutcome: "DEFER",
+        recommendationSummary:
+          "Technical alignment is good, but staffing and relationship coverage do not yet justify full pursuit.",
+        summary:
+          "The Army recompete stays in the queue pending staffing and customer-intel closure.",
+        inputSnapshot: {
+          vehicleCoverage: ["OASIS-PLUS-UNR", "STARS-III"],
+          incumbent: "Northstar Digital Group",
+        },
+        calculatedAt: "2026-04-17T18:15:00.000Z",
+        factors: [
+          {
+            key: "capability_fit",
+            label: "Capability Fit",
+            weight: "30.00",
+            score: "23.00",
+            maximumScore: "30.00",
+            explanation: "Cloud-ops capabilities match the scope well.",
+            factorMetadata: null,
+            sortOrder: 0,
+          },
+          {
+            key: "vehicle_access",
+            label: "Vehicle Access",
+            weight: "15.00",
+            score: "13.00",
+            maximumScore: "15.00",
+            explanation: "Vehicle coverage is credible but not yet customer-preferred.",
+            factorMetadata: null,
+            sortOrder: 1,
+          },
+          {
+            key: "relationship_strength",
+            label: "Relationship Strength",
+            weight: "25.00",
+            score: "11.00",
+            maximumScore: "25.00",
+            explanation: "Stakeholder coverage is shallow.",
+            factorMetadata: {
+              gap: "customer_access",
+            },
+            sortOrder: 2,
+          },
+          {
+            key: "delivery_readiness",
+            label: "Delivery Readiness",
+            weight: "30.00",
+            score: "19.00",
+            maximumScore: "30.00",
+            explanation: "Staffing risk keeps the opportunity below the go threshold.",
+            factorMetadata: {
+              staffingGap: true,
+            },
+            sortOrder: 3,
+          },
+        ],
+      },
+      bidDecision: {
+        decisionTypeKey: "qualification_review",
+        recommendationOutcome: "DEFER",
+        recommendationSummary:
+          "Defer full pursuit until the cleared staffing model and stakeholder map are stronger.",
+        recommendationMetadata: {
+          threshold: 70,
+          scorePercent: 66,
+        },
+        recommendedByActorType: "SYSTEM",
+        recommendedByIdentifier: "rule_engine:default_capture_v1",
+        recommendedAt: "2026-04-17T18:16:00.000Z",
+        finalOutcome: "DEFER",
+        finalRationale:
+          "Leadership kept the opportunity in qualification rather than funding full capture immediately.",
+        decisionMetadata: {
+          nextReviewAt: "2026-04-25T19:00:00.000Z",
+        },
+        decidedAt: "2026-04-17T18:30:00.000Z",
+      },
+      activityEvents: [
+        {
+          eventType: "scorecard_calculated",
+          title: "Qualification scorecard recorded a DEFER recommendation",
+          description:
+            "The opportunity remains viable, but the current evidence does not support immediate pursuit.",
+          actorType: "USER",
+          actorIdentifier: "sam.rivera@onesource.local",
+          relatedEntityType: "scorecard",
+          relatedEntityRef: "primary-scorecard",
+          occurredAt: "2026-04-17T18:15:00.000Z",
+          metadata: {
+            outcome: "DEFER",
+          },
+        },
+        {
+          eventType: "bid_decision_recorded",
+          title: "Leadership deferred the pursuit decision",
+          description:
+            "The Army recompete will be revisited after staffing and customer-intel follow-up.",
+          actorType: "USER",
+          actorIdentifier: "sam.rivera@onesource.local",
+          relatedEntityType: "bid_decision",
+          relatedEntityRef: "initial-pursuit-decision",
+          occurredAt: "2026-04-17T18:30:00.000Z",
+          metadata: {
+            finalOutcome: "DEFER",
+          },
+        },
+      ],
+    },
+  },
+  {
+    key: "va-claims-automation",
+    opportunity: {
+      title: "VA Claims Intake Automation BPA",
+      description:
+        "Manual pursuit for a Veterans Affairs intake-automation BPA already in proposal development.",
+      originSourceSystem: "manual_entry",
+      externalNoticeId: null,
+      solicitationNumber: "36C10B-26-Q-0117",
+      sourceSummaryText:
+        "Claims-intake automation, workflow orchestration, and human-centered modernization support.",
+      sourceSummaryUrl: null,
+      postedAt: "2026-03-28T00:00:00.000Z",
+      postedDateRaw: "03/28/2026",
+      responseDeadlineAt: "2026-04-30T20:00:00.000Z",
+      responseDeadlineRaw: "04/30/2026 04:00 PM EDT",
+      procurementTypeLabel: "Combined Synopsis/Solicitation",
+      procurementBaseTypeLabel: "Solicitation",
+      archiveType: null,
+      archivedAt: null,
+      archiveDateRaw: null,
+      sourceStatus: "proposal_active",
+      isActiveSourceRecord: true,
+      isArchivedSourceRecord: false,
+      setAsideCode: "SDVOSB",
+      setAsideDescription: "Service-Disabled Veteran-Owned Small Business",
+      naicsCode: "541511",
+      classificationCode: "R499",
+      organizationType: "OFFICE",
+      officeCity: VETERANS_AFFAIRS_AGENCY.officeCity,
+      officeState: VETERANS_AFFAIRS_AGENCY.officeState,
+      officePostalCode: VETERANS_AFFAIRS_AGENCY.officePostalCode,
+      officeCountryCode: VETERANS_AFFAIRS_AGENCY.officeCountryCode,
+      placeOfPerformanceStreet1: "23 Christopher Way",
+      placeOfPerformanceStreet2: null,
+      placeOfPerformanceCityCode: null,
+      placeOfPerformanceCityName: "Eatontown",
+      placeOfPerformanceStateCode: "NJ",
+      placeOfPerformanceStateName: "New Jersey",
+      placeOfPerformancePostalCode: "07724",
+      placeOfPerformanceCountryCode: "USA",
+      additionalInfoUrl: null,
+      uiLink: null,
+      apiSelfLink: null,
+      currentStageKey: "proposal_in_development",
+      currentStageLabel: "Proposal In Development",
+      currentStageChangedAt: "2026-04-11T14:30:00.000Z",
+      agencyKey: VETERANS_AFFAIRS_AGENCY.key,
+      vehicleKeys: ["gsa-mas-it", "cio-sp3-small-business"],
+      competitorLinks: [
+        {
+          competitorKey: "vector-analytics",
+          role: "KNOWN_COMPETITOR",
+          notes: "Known competitor on benefits and workflow modernization work.",
+        },
+      ],
+    },
+    workspace: {
+      tasks: [
+        {
+          key: "va-win-themes",
+          title: "Refine win themes for intake modernization",
+          description:
+            "Lock final differentiators around workflow design, CX, and claims throughput improvement.",
+          status: "IN_PROGRESS",
+          priority: "HIGH",
+          dueAt: "2026-04-21T19:00:00.000Z",
+          startedAt: "2026-04-16T14:00:00.000Z",
+          completedAt: null,
+          sortOrder: 0,
+          assigneeUserKey: "morgan-patel",
+          metadata: {
+            sectionOwner: "proposal",
+          },
+        },
+        {
+          key: "va-pricing-inputs",
+          title: "Finalize pricing assumptions",
+          description:
+            "Validate labor mix and BPA call-volume assumptions before the red team.",
+          status: "NOT_STARTED",
+          priority: "MEDIUM",
+          dueAt: "2026-04-23T20:00:00.000Z",
+          startedAt: null,
+          completedAt: null,
+          sortOrder: 1,
+          assigneeUserKey: "casey-brooks",
+          metadata: {
+            dependency: "solution_narrative",
+          },
+        },
+      ],
+      milestones: [
+        {
+          key: "va-red-team",
+          title: "Red team review",
+          description: "Run the proposal red team and disposition findings.",
+          milestoneTypeKey: "review",
+          status: "PLANNED",
+          targetDate: "2026-04-24T19:00:00.000Z",
+          completedAt: null,
+          sortOrder: 0,
+          metadata: null,
+        },
+        {
+          key: "va-submission",
+          title: "Submission deadline",
+          description: "Submit the BPA quotation package.",
+          milestoneTypeKey: "proposal_due",
+          status: "PLANNED",
+          targetDate: "2026-04-30T20:00:00.000Z",
+          completedAt: null,
+          sortOrder: 1,
+          metadata: null,
+        },
+      ],
+      notes: [
+        {
+          key: "va-theme-note",
+          title: "Proposal focus",
+          body:
+            "Emphasize intake speed, veteran experience, and measurable backlog reduction.",
+          contentFormat: "markdown",
+          isPinned: true,
+        },
+      ],
+      documents: [
+        {
+          key: "va-storyboard",
+          title: "Storyboard v2",
+          documentType: "proposal_storyboard",
+          sourceType: "MANUAL_UPLOAD",
+          sourceRecordRef: null,
+          sourceUrl: null,
+          originalFileName: "va-storyboard-v2.pptx",
+          storageProvider: "local_disk",
+          storagePath:
+            "documents/opportunities/va-claims-automation/storyboard-v2.pptx",
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          fileSizeBytes: 131072,
+          checksumSha256:
+            "e8a62a6f6ad1125282f8ec5dbe18010e2cc4e652073cf0c4a8645dbfc985ae6c",
+          extractedText:
+            "Storyboard emphasizes claims-intake automation, human-centered design, and measurable throughput gains.",
+          extractionStatus: "SUCCEEDED",
+          extractedAt: "2026-04-16T10:00:00.000Z",
+          metadata: {
+            reviewStatus: "in_progress",
+          },
+        },
+      ],
+      stageTransitions: [
+        {
+          key: "va-qualified-to-approved",
+          triggerType: "MANUAL",
+          fromStageKey: "qualified",
+          fromStageLabel: "Qualified",
+          toStageKey: "pursuit_approved",
+          toStageLabel: "Pursuit Approved",
+          rationale:
+            "Approved because the work is strategic and a strong vehicle path is available.",
+          requiredFieldsSnapshot: {
+            scorecardComplete: true,
+            pricingLeadAssigned: true,
+          },
+          metadata: null,
+          transitionedAt: "2026-04-08T15:00:00.000Z",
+        },
+        {
+          key: "va-approved-to-proposal",
+          triggerType: "MANUAL",
+          fromStageKey: "pursuit_approved",
+          fromStageLabel: "Pursuit Approved",
+          toStageKey: "proposal_in_development",
+          toStageLabel: "Proposal In Development",
+          rationale:
+            "Proposal team stood up after leadership approved pursuit and early solution themes.",
+          requiredFieldsSnapshot: {
+            proposalLeadAssigned: true,
+            kickoffScheduled: true,
+          },
+          metadata: null,
+          transitionedAt: "2026-04-11T14:30:00.000Z",
+        },
+      ],
+      scorecard: {
+        scoringModelKey: "default_capture_v1",
+        scoringModelVersion: "2026-04-01",
+        totalScore: "88.00",
+        maximumScore: "100.00",
+        scorePercent: "88.00",
+        recommendationOutcome: "GO",
+        recommendationSummary:
+          "The VA BPA is a strong pursuit with good customer fit, clear differentiators, and manageable delivery risk.",
+        summary:
+          "Proposal development is active because the opportunity is aligned, winnable, and resourced.",
+        inputSnapshot: {
+          strategicAccount: "va-oit",
+          vehicleCoverage: ["MAS-IT-70", "CIO-SP3-SB"],
+        },
+        calculatedAt: "2026-04-10T17:30:00.000Z",
+        factors: [
+          {
+            key: "capability_fit",
+            label: "Capability Fit",
+            weight: "30.00",
+            score: "27.00",
+            maximumScore: "30.00",
+            explanation: "Automation and workflow experience match directly.",
+            factorMetadata: null,
+            sortOrder: 0,
+          },
+          {
+            key: "vehicle_access",
+            label: "Vehicle Access",
+            weight: "20.00",
+            score: "18.00",
+            maximumScore: "20.00",
+            explanation: "The team has two viable contract paths.",
+            factorMetadata: null,
+            sortOrder: 1,
+          },
+          {
+            key: "customer_alignment",
+            label: "Customer Alignment",
+            weight: "25.00",
+            score: "21.00",
+            maximumScore: "25.00",
+            explanation: "The customer mission aligns with existing VA past performance.",
+            factorMetadata: null,
+            sortOrder: 2,
+          },
+          {
+            key: "delivery_readiness",
+            label: "Delivery Readiness",
+            weight: "25.00",
+            score: "22.00",
+            maximumScore: "25.00",
+            explanation: "Proposal, pricing, and solution resources are already committed.",
+            factorMetadata: null,
+            sortOrder: 3,
+          },
+        ],
+      },
+      bidDecision: {
+        decisionTypeKey: "proposal_authorization",
+        recommendationOutcome: "GO",
+        recommendationSummary:
+          "Continue proposal development and preserve current resource allocation.",
+        recommendationMetadata: {
+          threshold: 70,
+          scorePercent: 88,
+        },
+        recommendedByActorType: "SYSTEM",
+        recommendedByIdentifier: "rule_engine:default_capture_v1",
+        recommendedAt: "2026-04-10T17:31:00.000Z",
+        finalOutcome: "GO",
+        finalRationale:
+          "The team is already positioned well enough to invest full proposal effort.",
+        decisionMetadata: {
+          approvedBy: "capture_board",
+        },
+        decidedAt: "2026-04-10T18:00:00.000Z",
+      },
+      activityEvents: [
+        {
+          eventType: "stage_transition",
+          title: "Opportunity moved into proposal development",
+          description:
+            "Proposal leadership took ownership after pursuit approval.",
+          actorType: "USER",
+          actorIdentifier: "morgan.patel@onesource.local",
+          relatedEntityType: "stage_transition",
+          relatedEntityRef: "va-approved-to-proposal",
+          occurredAt: "2026-04-11T14:30:00.000Z",
+          metadata: {
+            toStageKey: "proposal_in_development",
+          },
+        },
+      ],
+    },
+  },
+  {
+    key: "dhs-zero-trust",
+    opportunity: {
+      title: "DHS Zero Trust Assessment Support",
+      description:
+        "Late-stage DHS pursuit already submitted with strong cyber and mission alignment.",
+      originSourceSystem: "manual_entry",
+      externalNoticeId: null,
+      solicitationNumber: "70RCSJ-26-R-0021",
+      sourceSummaryText:
+        "Zero-trust readiness assessments, remediation planning, and executive reporting support.",
+      sourceSummaryUrl: null,
+      postedAt: "2026-03-20T00:00:00.000Z",
+      postedDateRaw: "03/20/2026",
+      responseDeadlineAt: "2026-04-18T21:00:00.000Z",
+      responseDeadlineRaw: "04/18/2026 05:00 PM EDT",
+      procurementTypeLabel: "Solicitation",
+      procurementBaseTypeLabel: "Solicitation",
+      archiveType: null,
+      archivedAt: null,
+      archiveDateRaw: null,
+      sourceStatus: "submitted",
+      isActiveSourceRecord: true,
+      isArchivedSourceRecord: false,
+      setAsideCode: null,
+      setAsideDescription: null,
+      naicsCode: "541519",
+      classificationCode: "D399",
+      organizationType: "OFFICE",
+      officeCity: DHS_AGENCY.officeCity,
+      officeState: DHS_AGENCY.officeState,
+      officePostalCode: DHS_AGENCY.officePostalCode,
+      officeCountryCode: DHS_AGENCY.officeCountryCode,
+      placeOfPerformanceStreet1: "245 Murray Lane SW",
+      placeOfPerformanceStreet2: null,
+      placeOfPerformanceCityCode: null,
+      placeOfPerformanceCityName: "Washington",
+      placeOfPerformanceStateCode: "DC",
+      placeOfPerformanceStateName: "District of Columbia",
+      placeOfPerformancePostalCode: "20528",
+      placeOfPerformanceCountryCode: "USA",
+      additionalInfoUrl: null,
+      uiLink: null,
+      apiSelfLink: null,
+      currentStageKey: "submitted",
+      currentStageLabel: "Submitted",
+      currentStageChangedAt: "2026-04-18T20:15:00.000Z",
+      agencyKey: DHS_AGENCY.key,
+      vehicleKeys: ["oasis-plus-unrestricted"],
+      competitorLinks: [
+        {
+          competitorKey: "sentinel-cyber",
+          role: "KNOWN_COMPETITOR",
+          notes: "Cyber incumbent-adjacent competitor with strong DHS presence.",
+        },
+      ],
+    },
+    workspace: {
+      tasks: [
+        {
+          key: "dhs-orals-prep",
+          title: "Prepare oral presentation backup deck",
+          description:
+            "Have oral-response material ready in case the customer requests discussions.",
+          status: "IN_PROGRESS",
+          priority: "HIGH",
+          dueAt: "2026-04-22T18:00:00.000Z",
+          startedAt: "2026-04-18T21:00:00.000Z",
+          completedAt: null,
+          sortOrder: 0,
+          assigneeUserKey: "casey-brooks",
+          metadata: {
+            contingent: true,
+          },
+        },
+      ],
+      milestones: [
+        {
+          key: "dhs-submitted",
+          title: "Proposal submitted",
+          description: "Proposal package delivered through the official portal.",
+          milestoneTypeKey: "submission",
+          status: "COMPLETED",
+          targetDate: "2026-04-18T21:00:00.000Z",
+          completedAt: "2026-04-18T20:15:00.000Z",
+          sortOrder: 0,
+          metadata: null,
+        },
+      ],
+      notes: [
+        {
+          key: "dhs-post-submit",
+          title: "Post-submit watch list",
+          body:
+            "Monitor for discussions, OCI follow-up, and clarification requests during evaluation.",
+          contentFormat: "markdown",
+          isPinned: false,
+        },
+      ],
+      documents: [
+        {
+          key: "dhs-final-proposal",
+          title: "Final Proposal Package",
+          documentType: "proposal_submission",
+          sourceType: "MANUAL_UPLOAD",
+          sourceRecordRef: null,
+          sourceUrl: null,
+          originalFileName: "dhs-zero-trust-final.zip",
+          storageProvider: "local_disk",
+          storagePath:
+            "documents/opportunities/dhs-zero-trust/final-proposal.zip",
+          mimeType: "application/zip",
+          fileSizeBytes: 5242880,
+          checksumSha256:
+            "3225e8d54f7610a19d32216a56fd77c0ea4f4816cab0fbeadf8573b4fce5ec87",
+          extractedText: null,
+          extractionStatus: "NOT_REQUESTED",
+          extractedAt: null,
+          metadata: {
+            submissionMethod: "portal",
+          },
+        },
+      ],
+      stageTransitions: [
+        {
+          key: "dhs-capture-to-proposal",
+          triggerType: "MANUAL",
+          fromStageKey: "capture_active",
+          fromStageLabel: "Capture Active",
+          toStageKey: "proposal_in_development",
+          toStageLabel: "Proposal In Development",
+          rationale:
+            "Proposal work started once the customer released the final solicitation package.",
+          requiredFieldsSnapshot: {
+            proposalLeadAssigned: true,
+          },
+          metadata: null,
+          transitionedAt: "2026-04-02T14:00:00.000Z",
+        },
+        {
+          key: "dhs-proposal-to-submitted",
+          triggerType: "MANUAL",
+          fromStageKey: "proposal_in_development",
+          fromStageLabel: "Proposal In Development",
+          toStageKey: "submitted",
+          toStageLabel: "Submitted",
+          rationale:
+            "The team submitted a compliant package before the deadline.",
+          requiredFieldsSnapshot: {
+            complianceChecklistComplete: true,
+            pricingFinalized: true,
+          },
+          metadata: null,
+          transitionedAt: "2026-04-18T20:15:00.000Z",
+        },
+      ],
+      scorecard: {
+        scoringModelKey: "default_capture_v1",
+        scoringModelVersion: "2026-04-01",
+        totalScore: "91.00",
+        maximumScore: "100.00",
+        scorePercent: "91.00",
+        recommendationOutcome: "GO",
+        recommendationSummary:
+          "The cyber fit and capture posture justify an aggressive submit posture.",
+        summary:
+          "This DHS opportunity is one of the strongest active pursuits in the seeded portfolio.",
+        inputSnapshot: {
+          mission: "zero_trust",
+        },
+        calculatedAt: "2026-04-05T15:00:00.000Z",
+        factors: [
+          {
+            key: "capability_fit",
+            label: "Capability Fit",
+            weight: "35.00",
+            score: "32.00",
+            maximumScore: "35.00",
+            explanation: "Strong cyber and assessment fit.",
+            factorMetadata: null,
+            sortOrder: 0,
+          },
+          {
+            key: "customer_alignment",
+            label: "Customer Alignment",
+            weight: "25.00",
+            score: "22.00",
+            maximumScore: "25.00",
+            explanation: "The team has relevant DHS delivery history.",
+            factorMetadata: null,
+            sortOrder: 1,
+          },
+          {
+            key: "delivery_readiness",
+            label: "Delivery Readiness",
+            weight: "20.00",
+            score: "19.00",
+            maximumScore: "20.00",
+            explanation: "Proposal and staffing were ready on time.",
+            factorMetadata: null,
+            sortOrder: 2,
+          },
+          {
+            key: "competitive_position",
+            label: "Competitive Position",
+            weight: "20.00",
+            score: "18.00",
+            maximumScore: "20.00",
+            explanation: "The team entered with a clear discriminator set.",
+            factorMetadata: null,
+            sortOrder: 3,
+          },
+        ],
+      },
+      bidDecision: {
+        decisionTypeKey: "submit_authorization",
+        recommendationOutcome: "GO",
+        recommendationSummary:
+          "Proceed to submission and prepare for potential discussions.",
+        recommendationMetadata: {
+          scorePercent: 91,
+        },
+        recommendedByActorType: "SYSTEM",
+        recommendedByIdentifier: "rule_engine:default_capture_v1",
+        recommendedAt: "2026-04-05T15:01:00.000Z",
+        finalOutcome: "GO",
+        finalRationale:
+          "The opportunity remained a top pursuit through final proposal submission.",
+        decisionMetadata: {
+          submitted: true,
+        },
+        decidedAt: "2026-04-18T20:15:00.000Z",
+      },
+      activityEvents: [
+        {
+          eventType: "stage_transition",
+          title: "Opportunity moved to Submitted",
+          description:
+            "The proposal package was submitted successfully.",
+          actorType: "USER",
+          actorIdentifier: "morgan.patel@onesource.local",
+          relatedEntityType: "stage_transition",
+          relatedEntityRef: "dhs-proposal-to-submitted",
+          occurredAt: "2026-04-18T20:15:00.000Z",
+          metadata: {
+            toStageKey: "submitted",
+          },
+        },
+      ],
+    },
+  },
+  {
+    key: "navy-range-modernization",
+    opportunity: {
+      title: "Navy Training Range Modernization Support",
+      description:
+        "Early-stage Navy pursuit ultimately moved to no-bid after vehicle and relationship analysis.",
+      originSourceSystem: "manual_entry",
+      externalNoticeId: null,
+      solicitationNumber: "N66001-26-R-9033",
+      sourceSummaryText:
+        "Training range modernization, data-engineering, and mission-rehearsal systems support.",
+      sourceSummaryUrl: null,
+      postedAt: "2026-04-01T00:00:00.000Z",
+      postedDateRaw: "04/01/2026",
+      responseDeadlineAt: "2026-05-20T23:00:00.000Z",
+      responseDeadlineRaw: "05/20/2026 04:00 PM PDT",
+      procurementTypeLabel: "Sources Sought",
+      procurementBaseTypeLabel: "Sources Sought",
+      archiveType: null,
+      archivedAt: null,
+      archiveDateRaw: null,
+      sourceStatus: "no_bid",
+      isActiveSourceRecord: true,
+      isArchivedSourceRecord: false,
+      setAsideCode: null,
+      setAsideDescription: null,
+      naicsCode: "541330",
+      classificationCode: "AC13",
+      organizationType: "OFFICE",
+      officeCity: NAVY_AGENCY.officeCity,
+      officeState: NAVY_AGENCY.officeState,
+      officePostalCode: NAVY_AGENCY.officePostalCode,
+      officeCountryCode: NAVY_AGENCY.officeCountryCode,
+      placeOfPerformanceStreet1: "53560 Hull Street",
+      placeOfPerformanceStreet2: null,
+      placeOfPerformanceCityCode: null,
+      placeOfPerformanceCityName: "San Diego",
+      placeOfPerformanceStateCode: "CA",
+      placeOfPerformanceStateName: "California",
+      placeOfPerformancePostalCode: "92152",
+      placeOfPerformanceCountryCode: "USA",
+      additionalInfoUrl: null,
+      uiLink: null,
+      apiSelfLink: null,
+      currentStageKey: "no_bid",
+      currentStageLabel: "No Bid",
+      currentStageChangedAt: "2026-04-12T18:20:00.000Z",
+      agencyKey: NAVY_AGENCY.key,
+      vehicleKeys: ["seaport-nxg"],
+      competitorLinks: [
+        {
+          competitorKey: "harbor-mission-tech",
+          role: "INCUMBENT",
+          notes: "Strong incumbent position and local mission relationships.",
+        },
+      ],
+    },
+    workspace: {
+      tasks: [
+        {
+          key: "navy-no-bid-memo",
+          title: "Document no-bid rationale",
+          description:
+            "Capture the vehicle and relationship gaps so the team can revisit if conditions change.",
+          status: "COMPLETED",
+          priority: "MEDIUM",
+          dueAt: "2026-04-13T18:00:00.000Z",
+          startedAt: "2026-04-12T17:00:00.000Z",
+          completedAt: "2026-04-12T18:30:00.000Z",
+          sortOrder: 0,
+          assigneeUserKey: "sam-rivera",
+          metadata: null,
+        },
+      ],
+      milestones: [
+        {
+          key: "navy-bid-review",
+          title: "Bid review",
+          description: "Executive review of whether to keep the pursuit alive.",
+          milestoneTypeKey: "bid_decision",
+          status: "COMPLETED",
+          targetDate: "2026-04-12T18:00:00.000Z",
+          completedAt: "2026-04-12T18:20:00.000Z",
+          sortOrder: 0,
+          metadata: null,
+        },
+      ],
+      notes: [
+        {
+          key: "navy-no-bid-note",
+          title: "Why we passed",
+          body:
+            "The team lacked the required relationship depth and did not have a compelling non-incumbent wedge.",
+          contentFormat: "markdown",
+          isPinned: true,
+        },
+      ],
+      documents: [],
+      stageTransitions: [
+        {
+          key: "navy-identified-to-no-bid",
+          triggerType: "MANUAL",
+          fromStageKey: "identified",
+          fromStageLabel: "Identified",
+          toStageKey: "no_bid",
+          toStageLabel: "No Bid",
+          rationale:
+            "The opportunity was closed after the review found weak customer positioning and low win probability.",
+          requiredFieldsSnapshot: {
+            executiveReviewComplete: true,
+          },
+          metadata: null,
+          transitionedAt: "2026-04-12T18:20:00.000Z",
+        },
+      ],
+      scorecard: {
+        scoringModelKey: "default_capture_v1",
+        scoringModelVersion: "2026-04-01",
+        totalScore: "48.00",
+        maximumScore: "100.00",
+        scorePercent: "48.00",
+        recommendationOutcome: "NO_GO",
+        recommendationSummary:
+          "The opportunity does not justify pursuit because competitive position and customer access are weak.",
+        summary:
+          "This seeded no-bid record provides a negative scoring case for future analytics and dashboards.",
+        inputSnapshot: {
+          incumbent: "Harbor Mission Technologies",
+        },
+        calculatedAt: "2026-04-12T17:45:00.000Z",
+        factors: [
+          {
+            key: "capability_fit",
+            label: "Capability Fit",
+            weight: "30.00",
+            score: "18.00",
+            maximumScore: "30.00",
+            explanation: "The work is adjacent but not core.",
+            factorMetadata: null,
+            sortOrder: 0,
+          },
+          {
+            key: "relationship_strength",
+            label: "Relationship Strength",
+            weight: "35.00",
+            score: "9.00",
+            maximumScore: "35.00",
+            explanation: "The team has little current Navy relationship depth here.",
+            factorMetadata: null,
+            sortOrder: 1,
+          },
+          {
+            key: "competitive_position",
+            label: "Competitive Position",
+            weight: "35.00",
+            score: "21.00",
+            maximumScore: "35.00",
+            explanation: "Incumbent advantage is significant.",
+            factorMetadata: null,
+            sortOrder: 2,
+          },
+        ],
+      },
+      bidDecision: {
+        decisionTypeKey: "initial_pursuit",
+        recommendationOutcome: "NO_GO",
+        recommendationSummary:
+          "Pass on this pursuit and preserve resources for stronger targets.",
+        recommendationMetadata: {
+          scorePercent: 48,
+        },
+        recommendedByActorType: "SYSTEM",
+        recommendedByIdentifier: "rule_engine:default_capture_v1",
+        recommendedAt: "2026-04-12T17:46:00.000Z",
+        finalOutcome: "NO_GO",
+        finalRationale:
+          "Leadership declined pursuit because customer access and win probability were too low.",
+        decisionMetadata: null,
+        decidedAt: "2026-04-12T18:20:00.000Z",
+      },
+      activityEvents: [
+        {
+          eventType: "bid_decision_recorded",
+          title: "Opportunity closed as No Bid",
+          description:
+            "The team explicitly documented why it did not pursue the Navy opportunity.",
+          actorType: "USER",
+          actorIdentifier: "sam.rivera@onesource.local",
+          relatedEntityType: "bid_decision",
+          relatedEntityRef: "initial-pursuit-decision",
+          occurredAt: "2026-04-12T18:20:00.000Z",
+          metadata: {
+            finalOutcome: "NO_GO",
+          },
+        },
+      ],
+    },
+  },
+];
+
 export function buildOpportunitySeedScenario() {
   return {
+    teamMembers: TEAM_MEMBERS,
     connectorConfigs: SOURCE_CONNECTOR_CONFIGS,
-    agencies: [AIR_FORCE_AGENCY],
+    agencies: [
+      AIR_FORCE_AGENCY,
+      ARMY_AGENCY,
+      VETERANS_AFFAIRS_AGENCY,
+      DHS_AGENCY,
+      NAVY_AGENCY,
+    ],
     vehicles: CONTRACT_VEHICLES,
     competitors: COMPETITORS,
     sourceSavedSearch: SAM_GOV_SOURCE_SEARCH,
@@ -1184,7 +2376,7 @@ export function buildOpportunitySeedScenario() {
     importedOpportunity: {
       ...IMPORTED_OPPORTUNITY,
       agencyKey: AIR_FORCE_AGENCY.key,
-      vehicleKeys: CONTRACT_VEHICLES.map((vehicle) => vehicle.key),
+      vehicleKeys: ["oasis-plus-unrestricted", "gsa-mas-it"],
       competitorLinks: OPPORTUNITY_COMPETITORS,
     },
     sourceRecord: {
@@ -1210,6 +2402,7 @@ export function buildOpportunitySeedScenario() {
     },
     sourceImportDecision: SAM_GOV_IMPORT_DECISION,
     workspace: OPPORTUNITY_WORKSPACE,
+    manualOpportunities: MANUAL_PORTFOLIO_OPPORTUNITIES,
     secondarySourceScenario: {
       sourceSavedSearch: USA_SPENDING_SOURCE_SEARCH,
       sourceSearchExecution: {
