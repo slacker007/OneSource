@@ -523,6 +523,7 @@ This section is mandatory for every future coding iteration because conversation
 - [ ] Before editing code, restate the target checklist item and its acceptance criteria in the loop output.
 - [ ] Implement the smallest vertical slice that satisfies the selected item end to end.
 - [ ] Run the narrowest relevant verification commands after changes.
+- [ ] If the task writes or changes code, add or update automated tests for the new or changed behavior and run the full automated test suite that exists in the repo for that phase.
 - [ ] If the item changes user-facing behavior, run Playwright against Chromium on the live application where feasible.
 - [ ] Update this `PRD.md` before ending the loop by checking completed items and appending a short handoff note.
 - [ ] If the checklist item is completed and verified, create a non-amended git commit for that item unless the user explicitly says not to commit.
@@ -533,7 +534,8 @@ This section is mandatory for every future coding iteration because conversation
 ## Definition Of Done For Every Checklist Item
 
 - [ ] Code compiles or the repo remains in a clearly runnable intermediate state with documented next steps.
-- [ ] Tests relevant to the changed area pass, or the reason they could not run is written in `Current Handoff`.
+- [ ] If the task writes or changes code, automated tests covering the new or changed behavior are written or updated in the same loop.
+- [ ] If the task writes or changes code, all automated tests in the repo for that phase, including previously written tests and newly written tests, pass in the current loop, or the reason they could not run is written in `Current Handoff` and the item remains incomplete.
 - [ ] User-facing work has Playwright verification in Chromium against a live app instance, or the exception is documented in `Current Handoff`.
 - [ ] Documentation is updated if setup, behavior, data model, or workflow changed.
 - [ ] The feature runs in the `docker compose` stack if the stack exists for that phase.
@@ -776,7 +778,8 @@ This section is mandatory for every future coding iteration because conversation
 
 - [ ] Prefer server-side data access and validation over client-only logic.
 - [ ] Keep business rules in domain modules, not scattered across pages.
-- [ ] Add tests when introducing business logic, permissions, parsing, scoring, or imports.
+- [ ] Add or update tests for every code change, including business logic, permissions, parsing, scoring, imports, and UI behavior where applicable.
+- [ ] Do not consider a code-writing task complete until the full automated test suite for the current phase passes, including previously existing tests and newly added tests.
 - [ ] Use feature folders and explicit file names so a new agent can find context quickly.
 - [ ] Update docs whenever setup or architecture changes.
 
@@ -784,8 +787,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: `PRD.md` now contains explicit `sam.gov` search execution fields, tighter normalized opportunity mappings, and named future-connector requirements for `usaspending_api` and `gsa_ebuy`. `AGENTS.md` now enforces stronger production-grade engineering, AI-agent safety, compose-managed verification, commit discipline, and a required end-of-loop completion marker of `<promise>complete</promise>`. `P0-04` remains complete; application implementation has not started.
+- Current status: `PRD.md` now contains explicit `sam.gov` search execution fields, tighter normalized opportunity mappings, and named future-connector requirements for `usaspending_api` and `gsa_ebuy`. `AGENTS.md` now enforces stronger production-grade engineering, AI-agent safety, compose-managed verification, commit discipline, the required end-of-loop completion marker of `<promise>complete</promise>`, and a stricter testing rule: every code-writing task must add or update tests and pass the full automated test suite, including previously existing tests and newly written tests, before it can be considered complete. `P0-04` remains complete; application implementation has not started.
 - Next recommended item: `P0-01 Initialize the application with Next.js, TypeScript, Tailwind, ESLint, Prettier, Vitest, Playwright, and a basic app shell.`
 - Blockers: none.
 - Files touched in latest loop: `PRD.md`, `AGENTS.md`.
-- Tests run in latest loop: `git diff --check`; targeted `sed` and `rg` verification of updated sections. No live app or Playwright run exists yet because the application stack has not been scaffolded.
+- Tests run in latest loop: `git diff --check`; targeted `sed` and `rg` verification of updated sections. No automated app test suite or Playwright run exists yet because the application stack has not been scaffolded.

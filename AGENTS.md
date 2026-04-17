@@ -32,6 +32,7 @@ Build OneSource as a production-grade capture intelligence platform for governme
 - Do not leave the repo in an ambiguous state. If blocked, document the blocker clearly.
 - Do not rely on chat history. Persist all required context in repo files.
 - Do not mark a checklist item complete without passing the required verification or explicitly documenting why verification could not run.
+- For any task that writes or changes code, write or update automated tests covering that behavior; the task is not complete until all automated tests in the repo, including previously existing tests and newly added tests, pass in the current loop.
 - Do not create a completion commit for unverified partial work.
 
 ## Required Repository Memory
@@ -200,6 +201,7 @@ Testing is required work, not cleanup work.
 ### Test Rules
 
 - Every bug fix must include a regression test unless impossible; if impossible, explain why in docs.
+- Every task that writes or changes code must add or update automated tests that cover the new or changed behavior at the appropriate layer.
 - Avoid writing tests that only mirror implementation details.
 - Prefer deterministic fixtures over network-dependent tests.
 - Mock only true boundaries. Do not mock core business logic merely to make tests pass.
@@ -213,11 +215,12 @@ Testing is required work, not cleanup work.
 ### Verification Before Closing A Loop
 
 - Run the narrowest relevant test commands for the changed area.
+- When a task writes or changes code, also run the full automated test suite that exists in the repo for that phase. All previously written tests and all newly written tests must pass in the current loop before the task can be considered complete.
 - When the changed area is user-facing, run the relevant Playwright test in Chromium against a running application instance.
 - When the compose stack exists, prefer compose-managed verification over host-only commands.
 - If the repo is early-stage and full test suites do not exist yet, run at least the directly relevant checks that do exist.
 - If verification cannot run, document exactly why in `PRD.md`.
-- Do not mark a checklist item complete if the required verification is still missing.
+- Do not mark a checklist item complete if the required verification is still missing. If the full automated suite for a code-writing task does not pass, the item remains incomplete.
 
 ## Commit And Change Management Standard
 
