@@ -89,6 +89,7 @@ Every loop must follow this exact flow.
 - Run the narrowest meaningful verification commands for the changed area.
 - If the change is user-facing and the live application stack exists, run the relevant Playwright flow in Chromium against the running app, preferably through `docker compose`.
 - If the target checklist item is complete and verification passed, create a non-amended git commit for that item before ending the loop unless the user explicitly asked not to commit.
+- Before ending the loop, emit the literal completion marker `<promise>complete</promise>` so the user has an explicit loop-end signal. If using a shell command, quote it as `echo '<promise>complete</promise>'` so it prints the marker rather than being parsed as shell redirection.
 - Update `PRD.md`:
   - check completed items
   - update `Current Handoff`

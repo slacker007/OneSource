@@ -784,8 +784,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: `PRD.md` now contains explicit `sam.gov` search execution fields, tighter normalized opportunity mappings, and named future-connector requirements for `usaspending_api` and `gsa_ebuy`. `AGENTS.md` now enforces stronger production-grade engineering, AI-agent safety, compose-managed verification, and commit discipline. `P0-04` remains complete; application implementation has not started.
+- Current status: `PRD.md` now contains explicit `sam.gov` search execution fields, tighter normalized opportunity mappings, and named future-connector requirements for `usaspending_api` and `gsa_ebuy`. `AGENTS.md` now enforces stronger production-grade engineering, AI-agent safety, compose-managed verification, commit discipline, and a required end-of-loop completion marker of `<promise>complete</promise>`. `P0-04` remains complete; application implementation has not started.
 - Next recommended item: `P0-01 Initialize the application with Next.js, TypeScript, Tailwind, ESLint, Prettier, Vitest, Playwright, and a basic app shell.`
 - Blockers: none.
-- Files touched in latest loop: `PRD.md`, `AGENTS.md`, `docs/research/2026-04-17-connector-and-engineering-standards.md`.
-- Tests run in latest loop: `git diff --check`; targeted `rg` and `sed` verification of updated sections. No live app or Playwright run exists yet because the application stack has not been scaffolded.
+- Files touched in latest loop: `PRD.md`, `AGENTS.md`.
+- Tests run in latest loop: `git diff --check`; targeted `sed` and `rg` verification of updated sections. No live app or Playwright run exists yet because the application stack has not been scaffolded.
