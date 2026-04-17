@@ -246,6 +246,251 @@ async function upsertImportDecision({
   return prisma.sourceImportDecision.create({ data });
 }
 
+async function syncOpportunityWorkspace({
+  organizationId,
+  opportunityId,
+  primarySourceRecordId,
+  primaryImportDecisionId,
+  userId,
+  userEmail,
+  workspace,
+}) {
+  await prisma.opportunityActivityEvent.deleteMany({
+    where: { opportunityId },
+  });
+  await prisma.bidDecision.deleteMany({
+    where: { opportunityId },
+  });
+  await prisma.opportunityScorecard.deleteMany({
+    where: { opportunityId },
+  });
+  await prisma.opportunityStageTransition.deleteMany({
+    where: { opportunityId },
+  });
+  await prisma.opportunityDocument.deleteMany({
+    where: { opportunityId },
+  });
+  await prisma.opportunityNote.deleteMany({
+    where: { opportunityId },
+  });
+  await prisma.opportunityMilestone.deleteMany({
+    where: { opportunityId },
+  });
+  await prisma.opportunityTask.deleteMany({
+    where: { opportunityId },
+  });
+
+  const relatedEntityIdsByRef = new Map([
+    ["primary-source-record", primarySourceRecordId],
+    ["primary-import-decision", primaryImportDecisionId],
+  ]);
+
+  for (const task of workspace.tasks) {
+    const createdTask = await prisma.opportunityTask.create({
+      data: {
+        organizationId,
+        opportunityId,
+        createdByUserId: userId,
+        assigneeUserId: userId,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        dueAt: task.dueAt ? new Date(task.dueAt) : null,
+        startedAt: task.startedAt ? new Date(task.startedAt) : null,
+        completedAt: task.completedAt ? new Date(task.completedAt) : null,
+        sortOrder: task.sortOrder ?? 0,
+        metadata: task.metadata ?? null,
+      },
+    });
+
+    relatedEntityIdsByRef.set(task.key, createdTask.id);
+  }
+
+  for (const milestone of workspace.milestones) {
+    const createdMilestone = await prisma.opportunityMilestone.create({
+      data: {
+        organizationId,
+        opportunityId,
+        createdByUserId: userId,
+        title: milestone.title,
+        description: milestone.description ?? null,
+        milestoneTypeKey: milestone.milestoneTypeKey ?? null,
+        status: milestone.status,
+        targetDate: new Date(milestone.targetDate),
+        completedAt: milestone.completedAt
+          ? new Date(milestone.completedAt)
+          : null,
+        sortOrder: milestone.sortOrder ?? 0,
+        metadata: milestone.metadata ?? null,
+      },
+    });
+
+    relatedEntityIdsByRef.set(milestone.key, createdMilestone.id);
+  }
+
+  for (const note of workspace.notes) {
+    const createdNote = await prisma.opportunityNote.create({
+      data: {
+        organizationId,
+        opportunityId,
+        authorUserId: userId,
+        title: note.title ?? null,
+        body: note.body,
+        contentFormat: note.contentFormat ?? "markdown",
+        isPinned: note.isPinned ?? false,
+      },
+    });
+
+    relatedEntityIdsByRef.set(note.key, createdNote.id);
+  }
+
+  for (const document of workspace.documents) {
+    const sourceRecordId =
+      document.sourceRecordRef === "primary-source-record"
+        ? primarySourceRecordId
+        : null;
+
+    const createdDocument = await prisma.opportunityDocument.create({
+      data: {
+        organizationId,
+        opportunityId,
+        sourceRecordId,
+        uploadedByUserId: userId,
+        title: document.title,
+        documentType: document.documentType ?? null,
+        sourceType: document.sourceType,
+        sourceUrl: document.sourceUrl ?? null,
+        originalFileName: document.originalFileName ?? null,
+        storageProvider: document.storageProvider ?? null,
+        storagePath: document.storagePath ?? null,
+        mimeType: document.mimeType ?? null,
+        fileSizeBytes: document.fileSizeBytes ?? null,
+        checksumSha256: document.checksumSha256 ?? null,
+        extractedText: document.extractedText ?? null,
+        extractionStatus: document.extractionStatus,
+        extractedAt: document.extractedAt ? new Date(document.extractedAt) : null,
+        metadata: document.metadata ?? null,
+      },
+    });
+
+    relatedEntityIdsByRef.set(document.key, createdDocument.id);
+  }
+
+  for (const transition of workspace.stageTransitions) {
+    const createdTransition = await prisma.opportunityStageTransition.create({
+      data: {
+        organizationId,
+        opportunityId,
+        actorUserId: userId,
+        triggerType: transition.triggerType,
+        fromStageKey: transition.fromStageKey ?? null,
+        fromStageLabel: transition.fromStageLabel ?? null,
+        toStageKey: transition.toStageKey,
+        toStageLabel: transition.toStageLabel ?? null,
+        rationale: transition.rationale ?? null,
+        requiredFieldsSnapshot: transition.requiredFieldsSnapshot ?? null,
+        metadata: transition.metadata ?? null,
+        transitionedAt: new Date(transition.transitionedAt),
+      },
+    });
+
+    relatedEntityIdsByRef.set(transition.key, createdTransition.id);
+  }
+
+  const scorecard = await prisma.opportunityScorecard.create({
+    data: {
+      organizationId,
+      opportunityId,
+      calculatedByUserId: userId,
+      scoringModelKey: workspace.scorecard.scoringModelKey ?? null,
+      scoringModelVersion: workspace.scorecard.scoringModelVersion ?? null,
+      totalScore: workspace.scorecard.totalScore ?? null,
+      maximumScore: workspace.scorecard.maximumScore ?? null,
+      scorePercent: workspace.scorecard.scorePercent ?? null,
+      recommendationOutcome: workspace.scorecard.recommendationOutcome ?? null,
+      recommendationSummary: workspace.scorecard.recommendationSummary ?? null,
+      summary: workspace.scorecard.summary ?? null,
+      inputSnapshot: workspace.scorecard.inputSnapshot ?? null,
+      isCurrent: true,
+      calculatedAt: new Date(workspace.scorecard.calculatedAt),
+      factorScores: {
+        create: workspace.scorecard.factors.map((factor) => ({
+          factorKey: factor.key,
+          factorLabel: factor.label,
+          weight: factor.weight ?? null,
+          score: factor.score ?? null,
+          maximumScore: factor.maximumScore ?? null,
+          explanation: factor.explanation ?? null,
+          factorMetadata: factor.factorMetadata ?? null,
+          sortOrder: factor.sortOrder ?? 0,
+        })),
+      },
+    },
+  });
+
+  relatedEntityIdsByRef.set("primary-scorecard", scorecard.id);
+
+  const bidDecision = await prisma.bidDecision.create({
+    data: {
+      organizationId,
+      opportunityId,
+      scorecardId: scorecard.id,
+      recommendedByUserId:
+        workspace.bidDecision.recommendedByActorType === AuditActorType.USER
+          ? userId
+          : null,
+      decidedByUserId: userId,
+      decisionTypeKey: workspace.bidDecision.decisionTypeKey ?? null,
+      recommendationOutcome: workspace.bidDecision.recommendationOutcome ?? null,
+      recommendationSummary: workspace.bidDecision.recommendationSummary ?? null,
+      recommendationMetadata:
+        workspace.bidDecision.recommendationMetadata ?? null,
+      recommendedByActorType: workspace.bidDecision.recommendedByActorType,
+      recommendedByIdentifier:
+        workspace.bidDecision.recommendedByIdentifier ?? null,
+      recommendedAt: workspace.bidDecision.recommendedAt
+        ? new Date(workspace.bidDecision.recommendedAt)
+        : null,
+      finalOutcome: workspace.bidDecision.finalOutcome ?? null,
+      finalRationale: workspace.bidDecision.finalRationale ?? null,
+      decisionMetadata: workspace.bidDecision.decisionMetadata ?? null,
+      decidedAt: workspace.bidDecision.decidedAt
+        ? new Date(workspace.bidDecision.decidedAt)
+        : null,
+      isCurrent: true,
+    },
+  });
+
+  relatedEntityIdsByRef.set("initial-pursuit-decision", bidDecision.id);
+
+  for (const event of workspace.activityEvents) {
+    const relatedEntityId = event.relatedEntityRef
+      ? relatedEntityIdsByRef.get(event.relatedEntityRef) ?? null
+      : null;
+
+    await prisma.opportunityActivityEvent.create({
+      data: {
+        organizationId,
+        opportunityId,
+        actorUserId: event.actorType === AuditActorType.USER ? userId : null,
+        actorType: event.actorType,
+        actorIdentifier:
+          event.actorType === AuditActorType.USER
+            ? userEmail
+            : event.actorIdentifier ?? null,
+        eventType: event.eventType,
+        title: event.title,
+        description: event.description ?? null,
+        relatedEntityType: event.relatedEntityType ?? null,
+        relatedEntityId,
+        metadata: event.metadata ?? null,
+        occurredAt: new Date(event.occurredAt),
+      },
+    });
+  }
+}
+
 async function main() {
   const scenario = buildOpportunitySeedScenario();
 
@@ -698,6 +943,11 @@ async function main() {
       additionalInfoUrl: scenario.importedOpportunity.additionalInfoUrl,
       uiLink: scenario.importedOpportunity.uiLink,
       apiSelfLink: scenario.importedOpportunity.apiSelfLink,
+      currentStageKey: scenario.importedOpportunity.currentStageKey,
+      currentStageLabel: scenario.importedOpportunity.currentStageLabel,
+      currentStageChangedAt: scenario.importedOpportunity.currentStageChangedAt
+        ? new Date(scenario.importedOpportunity.currentStageChangedAt)
+        : null,
     },
     create: {
       organizationId: organization.id,
@@ -756,6 +1006,11 @@ async function main() {
       additionalInfoUrl: scenario.importedOpportunity.additionalInfoUrl,
       uiLink: scenario.importedOpportunity.uiLink,
       apiSelfLink: scenario.importedOpportunity.apiSelfLink,
+      currentStageKey: scenario.importedOpportunity.currentStageKey,
+      currentStageLabel: scenario.importedOpportunity.currentStageLabel,
+      currentStageChangedAt: scenario.importedOpportunity.currentStageChangedAt
+        ? new Date(scenario.importedOpportunity.currentStageChangedAt)
+        : null,
     },
   });
 
@@ -802,7 +1057,7 @@ async function main() {
     },
   });
 
-  await upsertImportDecision({
+  const primaryImportDecision = await upsertImportDecision({
     organizationId: organization.id,
     sourceConnectorConfigId: samGovConnectorConfig.id,
     sourceRecordId: sourceRecord.id,
@@ -1081,6 +1336,16 @@ async function main() {
     requestedByUserId: adminUser.id,
     decidedByUserId: adminUser.id,
     decision: secondaryScenario.sourceImportDecision,
+  });
+
+  await syncOpportunityWorkspace({
+    organizationId: organization.id,
+    opportunityId: importedOpportunity.id,
+    primarySourceRecordId: sourceRecord.id,
+    primaryImportDecisionId: primaryImportDecision.id,
+    userId: adminUser.id,
+    userEmail: adminUser.email,
+    workspace: scenario.workspace,
   });
 
   await prisma.auditLog.create({

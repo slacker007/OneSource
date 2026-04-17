@@ -277,6 +277,9 @@ const IMPORTED_OPPORTUNITY = {
   uiLink: "https://sam.gov/opp/FA4861-26-R-0001/view",
   apiSelfLink:
     "https://api.sam.gov/opportunities/v2/search?noticeid=FA4861-26-R-0001",
+  currentStageKey: "capture_active",
+  currentStageLabel: "Capture Active",
+  currentStageChangedAt: "2026-04-15T16:05:00.000Z",
 };
 
 const SAM_GOV_SOURCE_RECORD = {
@@ -713,6 +716,458 @@ const USA_SPENDING_IMPORT_DECISION = {
     USA_SPENDING_SOURCE_NORMALIZED_PAYLOAD.importPreviewPayload,
 };
 
+const OPPORTUNITY_WORKSPACE = {
+  tasks: [
+    {
+      key: "incumbent-analysis",
+      title: "Complete incumbent analysis brief",
+      description:
+        "Summarize incumbent strengths, likely discriminators, and contract history before the internal capture stand-up.",
+      status: "IN_PROGRESS",
+      priority: "HIGH",
+      dueAt: "2026-04-20T17:00:00.000Z",
+      startedAt: "2026-04-16T14:00:00.000Z",
+      completedAt: null,
+      sortOrder: 0,
+      metadata: {
+        ownerDiscipline: "capture",
+        linkedCompetitorKeys: ["vector-analytics", "apex-defense"],
+      },
+    },
+    {
+      key: "customer-questions",
+      title: "Draft customer questions for Q&A window",
+      description:
+        "Prepare clarification questions around data access, legacy-system constraints, and incumbent transition expectations.",
+      status: "NOT_STARTED",
+      priority: "MEDIUM",
+      dueAt: "2026-04-18T18:00:00.000Z",
+      startedAt: null,
+      completedAt: null,
+      sortOrder: 1,
+      metadata: {
+        ownerDiscipline: "proposal",
+        dependsOnMilestoneKey: "questions-window",
+      },
+    },
+    {
+      key: "staffing-approach",
+      title: "Confirm OASIS+ staffing approach",
+      description:
+        "Validate labor-category mapping and incumbent backfill assumptions with the delivery lead.",
+      status: "COMPLETED",
+      priority: "HIGH",
+      dueAt: "2026-04-14T21:00:00.000Z",
+      startedAt: "2026-04-14T15:00:00.000Z",
+      completedAt: "2026-04-14T19:30:00.000Z",
+      sortOrder: 2,
+      metadata: {
+        ownerDiscipline: "delivery",
+        vehicleCode: "OASIS-PLUS-UNR",
+      },
+    },
+  ],
+  milestones: [
+    {
+      key: "bid-review",
+      title: "Internal bid review",
+      description:
+        "Executive and capture review of fit score, incumbent position, and required staffing assumptions.",
+      milestoneTypeKey: "bid_decision",
+      status: "COMPLETED",
+      targetDate: "2026-04-13T16:00:00.000Z",
+      completedAt: "2026-04-13T16:20:00.000Z",
+      sortOrder: 0,
+      metadata: {
+        meetingType: "go-no-go",
+      },
+    },
+    {
+      key: "questions-window",
+      title: "Customer questions due",
+      description:
+        "Submit clarifications before the public Q&A period closes.",
+      milestoneTypeKey: "question_deadline",
+      status: "PLANNED",
+      targetDate: "2026-04-18T23:59:00.000Z",
+      completedAt: null,
+      sortOrder: 1,
+      metadata: {
+        external: true,
+      },
+    },
+    {
+      key: "proposal-deadline",
+      title: "Proposal submission deadline",
+      description:
+        "Final proposal due to the customer via the official submission channel.",
+      milestoneTypeKey: "proposal_due",
+      status: "PLANNED",
+      targetDate: "2026-05-01T21:00:00.000Z",
+      completedAt: null,
+      sortOrder: 2,
+      metadata: {
+        external: true,
+        submissionTimezone: "America/New_York",
+      },
+    },
+  ],
+  notes: [
+    {
+      key: "capture-summary",
+      title: "Capture summary",
+      body: [
+        "## Capture Summary",
+        "",
+        "- Air Force mission fit is strong because the team has existing workflow-modernization past performance.",
+        "- Incumbent risk remains moderate until USAspending evidence and partner intel are reconciled.",
+        "- Vehicle access is confirmed through OASIS+ and MAS IT paths.",
+      ].join("\n"),
+      contentFormat: "markdown",
+      isPinned: true,
+    },
+    {
+      key: "partner-follow-up",
+      title: "Partner follow-up",
+      body: [
+        "Need partner confirmation on cleared data architects before the next capture review.",
+        "",
+        "Follow up with staffing lead if resumes are not ready by Monday.",
+      ].join("\n"),
+      contentFormat: "markdown",
+      isPinned: false,
+    },
+  ],
+  documents: [
+    {
+      key: "pws-source-doc",
+      title: "Performance Work Statement",
+      documentType: "statement_of_work",
+      sourceType: "SOURCE_ATTACHMENT",
+      sourceRecordRef: "primary-source-record",
+      sourceUrl:
+        "https://sam.gov/opp/FA4861-26-R-0001/documents/performance-work-statement.pdf",
+      originalFileName: "performance-work-statement.pdf",
+      storageProvider: "source_url",
+      storagePath: null,
+      mimeType: "application/pdf",
+      fileSizeBytes: 245760,
+      checksumSha256:
+        "3d7f5c9b9373f54d5d2af1d643e1a5570d4f1abf83adf18f5b7247b74b68f45d",
+      extractedText:
+        "Performance work statement summary: provide enterprise knowledge management, workflow modernization, analytics support, and transition planning.",
+      extractionStatus: "SUCCEEDED",
+      extractedAt: "2026-04-12T14:06:10.000Z",
+      metadata: {
+        sourceAttachmentLabel: "Performance Work Statement",
+      },
+    },
+    {
+      key: "capture-plan",
+      title: "Capture Plan v1",
+      documentType: "capture_plan",
+      sourceType: "MANUAL_UPLOAD",
+      sourceRecordRef: null,
+      sourceUrl: null,
+      originalFileName: "capture-plan-v1.docx",
+      storageProvider: "local_disk",
+      storagePath:
+        "documents/opportunities/fa4861-26-r-0001/capture-plan-v1.docx",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      fileSizeBytes: 98304,
+      checksumSha256:
+        "7f102b444572c302c95759f6a95ce76e4a9bc4be19da7c6794a6cb3ab8bfa1ef",
+      extractedText:
+        "Capture plan highlights: confirm incumbency, validate staffing, refine win themes, and prepare customer questions before proposal kickoff.",
+      extractionStatus: "SUCCEEDED",
+      extractedAt: "2026-04-15T09:15:00.000Z",
+      metadata: {
+        uploadedByRole: "capture_manager",
+      },
+    },
+  ],
+  stageTransitions: [
+    {
+      key: "identified-to-qualified",
+      triggerType: "IMPORT",
+      fromStageKey: "identified",
+      fromStageLabel: "Identified",
+      toStageKey: "qualified",
+      toStageLabel: "Qualified",
+      rationale:
+        "Qualified immediately after import because the opportunity matched target NAICS, set-aside posture, and active vehicle access.",
+      requiredFieldsSnapshot: {
+        leadAgency: true,
+        responseDeadline: true,
+        vehicleCoverage: true,
+      },
+      metadata: {
+        sourceSystem: "sam_gov",
+      },
+      transitionedAt: "2026-04-12T14:05:30.000Z",
+    },
+    {
+      key: "qualified-to-pursuit-approved",
+      triggerType: "MANUAL",
+      fromStageKey: "qualified",
+      fromStageLabel: "Qualified",
+      toStageKey: "pursuit_approved",
+      toStageLabel: "Pursuit Approved",
+      rationale:
+        "Leadership approved pursuit after the initial review confirmed mission fit and viable staffing paths.",
+      requiredFieldsSnapshot: {
+        scorecardComplete: true,
+        incumbentReviewComplete: false,
+        executiveReviewComplete: true,
+      },
+      metadata: {
+        meetingName: "weekly bid review",
+      },
+      transitionedAt: "2026-04-13T16:20:00.000Z",
+    },
+    {
+      key: "pursuit-approved-to-capture-active",
+      triggerType: "MANUAL",
+      fromStageKey: "pursuit_approved",
+      fromStageLabel: "Pursuit Approved",
+      toStageKey: "capture_active",
+      toStageLabel: "Capture Active",
+      rationale:
+        "Capture activities started after the first scorecard and bid decision were recorded.",
+      requiredFieldsSnapshot: {
+        bidDecisionRecorded: true,
+        kickoffScheduled: true,
+      },
+      metadata: {
+        kickoffOwner: "OneSource Admin",
+      },
+      transitionedAt: "2026-04-15T16:05:00.000Z",
+    },
+  ],
+  scorecard: {
+    scoringModelKey: "default_capture_v1",
+    scoringModelVersion: "2026-04-01",
+    totalScore: "79.50",
+    maximumScore: "100.00",
+    scorePercent: "79.50",
+    recommendationOutcome: "GO",
+    recommendationSummary:
+      "Vehicle access and capability fit support pursuit, but relationship strength still needs customer-intel follow-up.",
+    summary:
+      "The seeded opportunity scores as a strong pursuit candidate with manageable incumbent and relationship risk.",
+    inputSnapshot: {
+      agencyPriority: "tier_1_air_force",
+      naicsCode: "541511",
+      vehicleCoverage: ["OASIS-PLUS-UNR", "MAS-IT-70"],
+      incumbentSignals: ["usaspending_award_context"],
+    },
+    calculatedAt: "2026-04-15T16:30:00.000Z",
+    factors: [
+      {
+        key: "capability_fit",
+        label: "Capability Fit",
+        weight: "30.00",
+        score: "24.00",
+        maximumScore: "30.00",
+        explanation:
+          "Past performance and service offerings align well with enterprise knowledge management support.",
+        factorMetadata: {
+          evidence: ["workflow modernization", "analytics support"],
+        },
+        sortOrder: 0,
+      },
+      {
+        key: "strategic_alignment",
+        label: "Strategic Alignment",
+        weight: "20.00",
+        score: "16.00",
+        maximumScore: "20.00",
+        explanation:
+          "Air Force digital operations are a priority growth segment for the organization.",
+        factorMetadata: {
+          growthSegment: "air_force_digital_operations",
+        },
+        sortOrder: 1,
+      },
+      {
+        key: "vehicle_access",
+        label: "Vehicle Access",
+        weight: "15.00",
+        score: "15.00",
+        maximumScore: "15.00",
+        explanation:
+          "Primary and secondary contract vehicles are both already available to the team.",
+        factorMetadata: {
+          vehicleCodes: ["OASIS-PLUS-UNR", "MAS-IT-70"],
+        },
+        sortOrder: 2,
+      },
+      {
+        key: "relationship_strength",
+        label: "Relationship Strength",
+        weight: "15.00",
+        score: "8.50",
+        maximumScore: "15.00",
+        explanation:
+          "The account is known, but stakeholder coverage is incomplete and incumbent access remains limited.",
+        factorMetadata: {
+          openActions: ["confirm stakeholders", "validate incumbent intel"],
+        },
+        sortOrder: 3,
+      },
+      {
+        key: "schedule_realism",
+        label: "Schedule Realism",
+        weight: "10.00",
+        score: "9.00",
+        maximumScore: "10.00",
+        explanation:
+          "The current response window is workable if capture tasks stay on schedule.",
+        factorMetadata: {
+          daysUntilDeadline: 16,
+        },
+        sortOrder: 4,
+      },
+      {
+        key: "risk_profile",
+        label: "Risk Profile",
+        weight: "10.00",
+        score: "7.00",
+        maximumScore: "10.00",
+        explanation:
+          "Incumbent risk and customer intimacy are the main watch items, but neither blocks pursuit yet.",
+        factorMetadata: {
+          incumbentRisk: "moderate",
+          customerAccess: "developing",
+        },
+        sortOrder: 5,
+      },
+    ],
+  },
+  bidDecision: {
+    decisionTypeKey: "initial_pursuit",
+    recommendationOutcome: "GO",
+    recommendationSummary:
+      "Proceed with capture because the opportunity fits strategic priorities and scores above the default pursuit threshold.",
+    recommendationMetadata: {
+      threshold: 70,
+      scorePercent: 79.5,
+    },
+    recommendedByActorType: "SYSTEM",
+    recommendedByIdentifier: "rule_engine:default_capture_v1",
+    recommendedAt: "2026-04-15T16:31:00.000Z",
+    finalOutcome: "GO",
+    finalRationale:
+      "Leadership approved pursuit because the account is strategic and vehicle access is already cleared.",
+    decisionMetadata: {
+      approvingForum: "weekly bid review",
+      followUpTaskKey: "incumbent-analysis",
+    },
+    decidedAt: "2026-04-16T14:10:00.000Z",
+  },
+  activityEvents: [
+    {
+      eventType: "source_import_applied",
+      title: "Source import created the canonical opportunity",
+      description:
+        "The `sam.gov` source record was promoted into the pipeline and linked as the primary source lineage record.",
+      actorType: "SYSTEM",
+      actorIdentifier: "connector:sam_gov",
+      relatedEntityType: "source_import_decision",
+      relatedEntityRef: "primary-import-decision",
+      occurredAt: "2026-04-12T14:05:30.000Z",
+      metadata: {
+        sourceSystem: "sam_gov",
+      },
+    },
+    {
+      eventType: "stage_transition",
+      title: "Opportunity advanced to Capture Active",
+      description:
+        "Capture work started after the first scorecard and bid decision were recorded.",
+      actorType: "USER",
+      actorIdentifier: "admin@onesource.local",
+      relatedEntityType: "stage_transition",
+      relatedEntityRef: "pursuit-approved-to-capture-active",
+      occurredAt: "2026-04-15T16:05:00.000Z",
+      metadata: {
+        toStageKey: "capture_active",
+      },
+    },
+    {
+      eventType: "scorecard_calculated",
+      title: "Scorecard recorded a GO recommendation",
+      description:
+        "The deterministic scorecard landed above the default pursuit threshold.",
+      actorType: "USER",
+      actorIdentifier: "admin@onesource.local",
+      relatedEntityType: "scorecard",
+      relatedEntityRef: "primary-scorecard",
+      occurredAt: "2026-04-15T16:30:00.000Z",
+      metadata: {
+        totalScore: 79.5,
+      },
+    },
+    {
+      eventType: "bid_decision_recorded",
+      title: "Bid decision recorded as GO",
+      description:
+        "Leadership approved pursuit and documented the rationale in the workspace.",
+      actorType: "USER",
+      actorIdentifier: "admin@onesource.local",
+      relatedEntityType: "bid_decision",
+      relatedEntityRef: "initial-pursuit-decision",
+      occurredAt: "2026-04-16T14:10:00.000Z",
+      metadata: {
+        finalOutcome: "GO",
+      },
+    },
+    {
+      eventType: "task_progressed",
+      title: "Incumbent analysis task moved into progress",
+      description:
+        "Capture team started the incumbent analysis workstream.",
+      actorType: "USER",
+      actorIdentifier: "admin@onesource.local",
+      relatedEntityType: "task",
+      relatedEntityRef: "incumbent-analysis",
+      occurredAt: "2026-04-16T14:00:00.000Z",
+      metadata: {
+        taskStatus: "IN_PROGRESS",
+      },
+    },
+    {
+      eventType: "note_added",
+      title: "Pinned capture summary note added",
+      description:
+        "The opportunity workspace now includes the initial capture summary and assumptions.",
+      actorType: "USER",
+      actorIdentifier: "admin@onesource.local",
+      relatedEntityType: "note",
+      relatedEntityRef: "capture-summary",
+      occurredAt: "2026-04-15T09:30:00.000Z",
+      metadata: {
+        pinned: true,
+      },
+    },
+    {
+      eventType: "document_linked",
+      title: "Performance Work Statement linked into the workspace",
+      description:
+        "The primary statement of work document is available with extracted text.",
+      actorType: "USER",
+      actorIdentifier: "admin@onesource.local",
+      relatedEntityType: "document",
+      relatedEntityRef: "pws-source-doc",
+      occurredAt: "2026-04-12T14:06:10.000Z",
+      metadata: {
+        sourceType: "SOURCE_ATTACHMENT",
+      },
+    },
+  ],
+};
+
 export function buildOpportunitySeedScenario() {
   return {
     connectorConfigs: SOURCE_CONNECTOR_CONFIGS,
@@ -754,6 +1209,7 @@ export function buildOpportunitySeedScenario() {
       },
     },
     sourceImportDecision: SAM_GOV_IMPORT_DECISION,
+    workspace: OPPORTUNITY_WORKSPACE,
     secondarySourceScenario: {
       sourceSavedSearch: USA_SPENDING_SOURCE_SEARCH,
       sourceSearchExecution: {

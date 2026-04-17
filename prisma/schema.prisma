@@ -99,13 +99,62 @@ enum OpportunityCompetitorRole {
   POTENTIAL_COMPETITOR
 }
 
+enum OpportunityTaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  CANCELLED
+}
+
+enum OpportunityTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum OpportunityMilestoneStatus {
+  PLANNED
+  AT_RISK
+  COMPLETED
+  MISSED
+  CANCELLED
+}
+
+enum OpportunityDocumentSourceType {
+  MANUAL_UPLOAD
+  SOURCE_ATTACHMENT
+  GENERATED
+  EXTERNAL_LINK
+}
+
+enum OpportunityDocumentExtractionStatus {
+  NOT_REQUESTED
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum OpportunityStageTransitionTrigger {
+  MANUAL
+  SYSTEM
+  IMPORT
+}
+
+enum BidDecisionOutcome {
+  GO
+  NO_GO
+  DEFER
+}
+
 model Organization {
-  id                     String                  @id @default(cuid()) @map("id")
-  name                   String                  @map("name")
-  slug                   String                  @unique @map("slug")
-  status                 OrganizationStatus      @default(ACTIVE) @map("status")
-  createdAt              DateTime                @default(now()) @map("created_at")
-  updatedAt              DateTime                @updatedAt @map("updated_at")
+  id                     String                       @id @default(cuid()) @map("id")
+  name                   String                       @map("name")
+  slug                   String                       @unique @map("slug")
+  status                 OrganizationStatus           @default(ACTIVE) @map("status")
+  createdAt              DateTime                     @default(now()) @map("created_at")
+  updatedAt              DateTime                     @updatedAt @map("updated_at")
   users                  User[]
   roles                  Role[]
   auditLogs              AuditLog[]
@@ -119,31 +168,49 @@ model Organization {
   sourceRecords          SourceRecord[]
   sourceImportDecisions  SourceImportDecision[]
   competitors            Competitor[]
+  opportunityTasks       OpportunityTask[]
+  opportunityMilestones  OpportunityMilestone[]
+  opportunityNotes       OpportunityNote[]
+  opportunityActivity    OpportunityActivityEvent[]
+  opportunityDocuments   OpportunityDocument[]
+  opportunityTransitions OpportunityStageTransition[]
+  opportunityScorecards  OpportunityScorecard[]
+  bidDecisions           BidDecision[]
 
   @@map("organizations")
 }
 
 model User {
-  id                             String                  @id @default(cuid()) @map("id")
-  organizationId                 String                  @map("organization_id")
-  email                          String                  @unique @map("email")
-  emailVerified                  DateTime?               @map("email_verified")
-  name                           String?                 @map("name")
-  image                          String?                 @map("image")
-  status                         UserStatus              @default(INVITED) @map("status")
-  createdAt                      DateTime                @default(now()) @map("created_at")
-  updatedAt                      DateTime                @updatedAt @map("updated_at")
-  organization                   Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  accounts                       Account[]
-  sessions                       Session[]
-  roles                          UserRole[]
-  auditLogs                      AuditLog[]              @relation("AuditActor")
-  createdSourceSavedSearches     SourceSavedSearch[]     @relation("SavedSearchCreator")
-  requestedSourceSearches        SourceSearchExecution[] @relation("SourceSearchExecutionRequester")
-  requestedSourceSyncRuns        SourceSyncRun[]         @relation("SourceSyncRunRequester")
-  importedSourceRecords          SourceRecord[]          @relation("SourceRecordImportActor")
-  requestedSourceImportDecisions SourceImportDecision[]  @relation("SourceImportDecisionRequester")
-  decidedSourceImportDecisions   SourceImportDecision[]  @relation("SourceImportDecisionDecider")
+  id                              String                       @id @default(cuid()) @map("id")
+  organizationId                  String                       @map("organization_id")
+  email                           String                       @unique @map("email")
+  emailVerified                   DateTime?                    @map("email_verified")
+  name                            String?                      @map("name")
+  image                           String?                      @map("image")
+  status                          UserStatus                   @default(INVITED) @map("status")
+  createdAt                       DateTime                     @default(now()) @map("created_at")
+  updatedAt                       DateTime                     @updatedAt @map("updated_at")
+  organization                    Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  accounts                        Account[]
+  sessions                        Session[]
+  roles                           UserRole[]
+  auditLogs                       AuditLog[]                   @relation("AuditActor")
+  createdSourceSavedSearches      SourceSavedSearch[]          @relation("SavedSearchCreator")
+  requestedSourceSearches         SourceSearchExecution[]      @relation("SourceSearchExecutionRequester")
+  requestedSourceSyncRuns         SourceSyncRun[]              @relation("SourceSyncRunRequester")
+  importedSourceRecords           SourceRecord[]               @relation("SourceRecordImportActor")
+  requestedSourceImportDecisions  SourceImportDecision[]       @relation("SourceImportDecisionRequester")
+  decidedSourceImportDecisions    SourceImportDecision[]       @relation("SourceImportDecisionDecider")
+  createdOpportunityTasks         OpportunityTask[]            @relation("OpportunityTaskCreator")
+  assignedOpportunityTasks        OpportunityTask[]            @relation("OpportunityTaskAssignee")
+  createdOpportunityMilestones    OpportunityMilestone[]       @relation("OpportunityMilestoneCreator")
+  authoredOpportunityNotes        OpportunityNote[]            @relation("OpportunityNoteAuthor")
+  opportunityActivityEvents       OpportunityActivityEvent[]   @relation("OpportunityActivityActor")
+  uploadedOpportunityDocuments    OpportunityDocument[]        @relation("OpportunityDocumentUploader")
+  opportunityStageTransitions     OpportunityStageTransition[] @relation("OpportunityStageTransitionActor")
+  calculatedOpportunityScorecards OpportunityScorecard[]       @relation("OpportunityScorecardCalculator")
+  recommendedBidDecisions         BidDecision[]                @relation("BidDecisionRecommender")
+  decidedBidDecisions             BidDecision[]                @relation("BidDecisionDecider")
 
   @@index([organizationId], map: "users_organization_id_idx")
   @@map("users")
@@ -288,64 +355,76 @@ model ContractVehicle {
 }
 
 model Opportunity {
-  id                            String                  @id @default(cuid()) @map("id")
-  organizationId                String                  @map("organization_id")
-  leadAgencyId                  String?                 @map("lead_agency_id")
-  importedFromSourceRecordId    String?                 @unique(map: "opportunities_imported_from_source_record_id_key") @map("imported_from_source_record_id")
-  originSourceSystem            String?                 @map("origin_source_system")
-  title                         String                  @map("title")
-  description                   String?                 @map("description")
-  externalNoticeId              String?                 @map("external_notice_id")
-  solicitationNumber            String?                 @map("solicitation_number")
-  sourceSummaryText             String?                 @map("source_summary_text")
-  sourceSummaryUrl              String?                 @map("source_summary_url")
-  postedAt                      DateTime?               @map("posted_at")
-  postedDateRaw                 String?                 @map("posted_date_raw")
-  responseDeadlineAt            DateTime?               @map("response_deadline_at")
-  responseDeadlineRaw           String?                 @map("response_deadline_raw")
-  procurementTypeLabel          String?                 @map("procurement_type_label")
-  procurementBaseTypeLabel      String?                 @map("procurement_base_type_label")
-  archiveType                   String?                 @map("archive_type")
-  archivedAt                    DateTime?               @map("archived_at")
-  archiveDateRaw                String?                 @map("archive_date_raw")
-  sourceStatus                  String?                 @map("source_status")
-  isActiveSourceRecord          Boolean                 @default(true) @map("is_active_source_record")
-  isArchivedSourceRecord        Boolean                 @default(false) @map("is_archived_source_record")
-  setAsideCode                  String?                 @map("set_aside_code")
-  setAsideDescription           String?                 @map("set_aside_description")
-  naicsCode                     String?                 @map("naics_code")
-  classificationCode            String?                 @map("classification_code")
-  organizationType              String?                 @map("organization_type")
-  officeCity                    String?                 @map("office_city")
-  officeState                   String?                 @map("office_state")
-  officePostalCode              String?                 @map("office_postal_code")
-  officeCountryCode             String?                 @map("office_country_code")
-  placeOfPerformanceStreet1     String?                 @map("place_of_performance_street_1")
-  placeOfPerformanceStreet2     String?                 @map("place_of_performance_street_2")
-  placeOfPerformanceCityCode    String?                 @map("place_of_performance_city_code")
-  placeOfPerformanceCityName    String?                 @map("place_of_performance_city_name")
-  placeOfPerformanceStateCode   String?                 @map("place_of_performance_state_code")
-  placeOfPerformanceStateName   String?                 @map("place_of_performance_state_name")
-  placeOfPerformancePostalCode  String?                 @map("place_of_performance_postal_code")
-  placeOfPerformanceCountryCode String?                 @map("place_of_performance_country_code")
-  additionalInfoUrl             String?                 @map("additional_info_url")
-  uiLink                        String?                 @map("ui_link")
-  apiSelfLink                   String?                 @map("api_self_link")
-  createdAt                     DateTime                @default(now()) @map("created_at")
-  updatedAt                     DateTime                @updatedAt @map("updated_at")
-  organization                  Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  leadAgency                    Agency?                 @relation(fields: [leadAgencyId], references: [id], onDelete: SetNull)
-  importedFromSourceRecord      SourceRecord?           @relation("OpportunityImportedFromSourceRecord", fields: [importedFromSourceRecordId], references: [id], onDelete: SetNull)
-  sourceRecords                 SourceRecord[]          @relation("OpportunitySourceRecords")
-  sourceImportDecisionsAsTarget SourceImportDecision[]  @relation("SourceImportDecisionTargetOpportunity")
+  id                            String                       @id @default(cuid()) @map("id")
+  organizationId                String                       @map("organization_id")
+  leadAgencyId                  String?                      @map("lead_agency_id")
+  importedFromSourceRecordId    String?                      @unique(map: "opportunities_imported_from_source_record_id_key") @map("imported_from_source_record_id")
+  originSourceSystem            String?                      @map("origin_source_system")
+  title                         String                       @map("title")
+  description                   String?                      @map("description")
+  externalNoticeId              String?                      @map("external_notice_id")
+  solicitationNumber            String?                      @map("solicitation_number")
+  sourceSummaryText             String?                      @map("source_summary_text")
+  sourceSummaryUrl              String?                      @map("source_summary_url")
+  postedAt                      DateTime?                    @map("posted_at")
+  postedDateRaw                 String?                      @map("posted_date_raw")
+  responseDeadlineAt            DateTime?                    @map("response_deadline_at")
+  responseDeadlineRaw           String?                      @map("response_deadline_raw")
+  procurementTypeLabel          String?                      @map("procurement_type_label")
+  procurementBaseTypeLabel      String?                      @map("procurement_base_type_label")
+  archiveType                   String?                      @map("archive_type")
+  archivedAt                    DateTime?                    @map("archived_at")
+  archiveDateRaw                String?                      @map("archive_date_raw")
+  sourceStatus                  String?                      @map("source_status")
+  isActiveSourceRecord          Boolean                      @default(true) @map("is_active_source_record")
+  isArchivedSourceRecord        Boolean                      @default(false) @map("is_archived_source_record")
+  setAsideCode                  String?                      @map("set_aside_code")
+  setAsideDescription           String?                      @map("set_aside_description")
+  naicsCode                     String?                      @map("naics_code")
+  classificationCode            String?                      @map("classification_code")
+  organizationType              String?                      @map("organization_type")
+  officeCity                    String?                      @map("office_city")
+  officeState                   String?                      @map("office_state")
+  officePostalCode              String?                      @map("office_postal_code")
+  officeCountryCode             String?                      @map("office_country_code")
+  placeOfPerformanceStreet1     String?                      @map("place_of_performance_street_1")
+  placeOfPerformanceStreet2     String?                      @map("place_of_performance_street_2")
+  placeOfPerformanceCityCode    String?                      @map("place_of_performance_city_code")
+  placeOfPerformanceCityName    String?                      @map("place_of_performance_city_name")
+  placeOfPerformanceStateCode   String?                      @map("place_of_performance_state_code")
+  placeOfPerformanceStateName   String?                      @map("place_of_performance_state_name")
+  placeOfPerformancePostalCode  String?                      @map("place_of_performance_postal_code")
+  placeOfPerformanceCountryCode String?                      @map("place_of_performance_country_code")
+  additionalInfoUrl             String?                      @map("additional_info_url")
+  uiLink                        String?                      @map("ui_link")
+  apiSelfLink                   String?                      @map("api_self_link")
+  currentStageKey               String?                      @map("current_stage_key")
+  currentStageLabel             String?                      @map("current_stage_label")
+  currentStageChangedAt         DateTime?                    @map("current_stage_changed_at")
+  createdAt                     DateTime                     @default(now()) @map("created_at")
+  updatedAt                     DateTime                     @updatedAt @map("updated_at")
+  organization                  Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  leadAgency                    Agency?                      @relation(fields: [leadAgencyId], references: [id], onDelete: SetNull)
+  importedFromSourceRecord      SourceRecord?                @relation("OpportunityImportedFromSourceRecord", fields: [importedFromSourceRecordId], references: [id], onDelete: SetNull)
+  sourceRecords                 SourceRecord[]               @relation("OpportunitySourceRecords")
+  sourceImportDecisionsAsTarget SourceImportDecision[]       @relation("SourceImportDecisionTargetOpportunity")
   vehicles                      OpportunityVehicle[]
   competitors                   OpportunityCompetitor[]
+  tasks                         OpportunityTask[]
+  milestones                    OpportunityMilestone[]
+  notes                         OpportunityNote[]
+  activityEvents                OpportunityActivityEvent[]
+  documents                     OpportunityDocument[]
+  stageTransitions              OpportunityStageTransition[]
+  scorecards                    OpportunityScorecard[]
+  bidDecisions                  BidDecision[]
 
   @@index([organizationId, title], map: "opportunities_organization_id_title_idx")
   @@index([organizationId, leadAgencyId], map: "opportunities_organization_id_lead_agency_id_idx")
   @@index([organizationId, originSourceSystem], map: "opportunities_organization_id_origin_source_system_idx")
   @@index([organizationId, responseDeadlineAt], map: "opportunities_organization_id_response_deadline_at_idx")
   @@index([organizationId, naicsCode], map: "opportunities_organization_id_naics_code_idx")
+  @@index([organizationId, currentStageKey], map: "opportunities_organization_id_current_stage_key_idx")
   @@map("opportunities")
 }
 
@@ -570,6 +649,7 @@ model SourceRecord {
   attachments                  SourceRecordAttachment[]
   contacts                     SourceRecordContact[]
   award                        SourceRecordAward?
+  documents                    OpportunityDocument[]
   importDecisions              SourceImportDecision[]
   searchResults                SourceSearchResult[]
   syncRunRecords               SourceSyncRunRecord[]
@@ -645,6 +725,253 @@ model SourceRecordAward {
   sourceRecord       SourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
 
   @@map("source_record_awards")
+}
+
+model OpportunityTask {
+  id              String                  @id @default(cuid()) @map("id")
+  organizationId  String                  @map("organization_id")
+  opportunityId   String                  @map("opportunity_id")
+  createdByUserId String?                 @map("created_by_user_id")
+  assigneeUserId  String?                 @map("assignee_user_id")
+  title           String                  @map("title")
+  description     String?                 @map("description") @db.Text
+  status          OpportunityTaskStatus   @default(NOT_STARTED) @map("status")
+  priority        OpportunityTaskPriority @default(MEDIUM) @map("priority")
+  dueAt           DateTime?               @map("due_at")
+  startedAt       DateTime?               @map("started_at")
+  completedAt     DateTime?               @map("completed_at")
+  sortOrder       Int                     @default(0) @map("sort_order")
+  metadata        Json?                   @map("metadata")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity     Opportunity             @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  createdByUser   User?                   @relation("OpportunityTaskCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  assigneeUser    User?                   @relation("OpportunityTaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, dueAt], map: "opportunity_tasks_org_status_due_at_idx")
+  @@index([opportunityId, dueAt], map: "opportunity_tasks_opportunity_id_due_at_idx")
+  @@index([assigneeUserId], map: "opportunity_tasks_assignee_user_id_idx")
+  @@index([createdByUserId], map: "opportunity_tasks_created_by_user_id_idx")
+  @@map("opportunity_tasks")
+}
+
+model OpportunityMilestone {
+  id               String                     @id @default(cuid()) @map("id")
+  organizationId   String                     @map("organization_id")
+  opportunityId    String                     @map("opportunity_id")
+  createdByUserId  String?                    @map("created_by_user_id")
+  title            String                     @map("title")
+  description      String?                    @map("description") @db.Text
+  milestoneTypeKey String?                    @map("milestone_type_key")
+  status           OpportunityMilestoneStatus @default(PLANNED) @map("status")
+  targetDate       DateTime                   @map("target_date")
+  completedAt      DateTime?                  @map("completed_at")
+  sortOrder        Int                        @default(0) @map("sort_order")
+  metadata         Json?                      @map("metadata")
+  createdAt        DateTime                   @default(now()) @map("created_at")
+  updatedAt        DateTime                   @updatedAt @map("updated_at")
+  organization     Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity      Opportunity                @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  createdByUser    User?                      @relation("OpportunityMilestoneCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, targetDate], map: "opportunity_milestones_org_target_date_idx")
+  @@index([opportunityId, targetDate], map: "opportunity_milestones_opportunity_id_target_date_idx")
+  @@index([createdByUserId], map: "opportunity_milestones_created_by_user_id_idx")
+  @@map("opportunity_milestones")
+}
+
+model OpportunityNote {
+  id             String       @id @default(cuid()) @map("id")
+  organizationId String       @map("organization_id")
+  opportunityId  String       @map("opportunity_id")
+  authorUserId   String?      @map("author_user_id")
+  title          String?      @map("title")
+  body           String       @map("body") @db.Text
+  contentFormat  String       @default("markdown") @map("content_format")
+  isPinned       Boolean      @default(false) @map("is_pinned")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity    Opportunity  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  authorUser     User?        @relation("OpportunityNoteAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt], map: "opportunity_notes_org_created_at_idx")
+  @@index([opportunityId, createdAt], map: "opportunity_notes_opportunity_id_created_at_idx")
+  @@index([authorUserId], map: "opportunity_notes_author_user_id_idx")
+  @@map("opportunity_notes")
+}
+
+model OpportunityActivityEvent {
+  id                String         @id @default(cuid()) @map("id")
+  organizationId    String         @map("organization_id")
+  opportunityId     String         @map("opportunity_id")
+  actorUserId       String?        @map("actor_user_id")
+  actorType         AuditActorType @default(USER) @map("actor_type")
+  actorIdentifier   String?        @map("actor_identifier")
+  eventType         String         @map("event_type")
+  title             String         @map("title")
+  description       String?        @map("description") @db.Text
+  relatedEntityType String?        @map("related_entity_type")
+  relatedEntityId   String?        @map("related_entity_id")
+  metadata          Json?          @map("metadata")
+  occurredAt        DateTime       @default(now()) @map("occurred_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  organization      Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity       Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  actorUser         User?          @relation("OpportunityActivityActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, occurredAt], map: "opportunity_activity_org_occurred_at_idx")
+  @@index([opportunityId, occurredAt], map: "opportunity_activity_opportunity_id_occurred_at_idx")
+  @@index([actorUserId], map: "opportunity_activity_actor_user_id_idx")
+  @@index([relatedEntityType, relatedEntityId], map: "opportunity_activity_related_entity_idx")
+  @@map("opportunity_activity_events")
+}
+
+model OpportunityDocument {
+  id               String                              @id @default(cuid()) @map("id")
+  organizationId   String                              @map("organization_id")
+  opportunityId    String                              @map("opportunity_id")
+  sourceRecordId   String?                             @map("source_record_id")
+  uploadedByUserId String?                             @map("uploaded_by_user_id")
+  title            String                              @map("title")
+  documentType     String?                             @map("document_type")
+  sourceType       OpportunityDocumentSourceType       @default(MANUAL_UPLOAD) @map("source_type")
+  sourceUrl        String?                             @map("source_url")
+  originalFileName String?                             @map("original_file_name")
+  storageProvider  String?                             @map("storage_provider")
+  storagePath      String?                             @map("storage_path")
+  mimeType         String?                             @map("mime_type")
+  fileSizeBytes    Int?                                @map("file_size_bytes")
+  checksumSha256   String?                             @map("checksum_sha256")
+  extractedText    String?                             @map("extracted_text") @db.Text
+  extractionStatus OpportunityDocumentExtractionStatus @default(NOT_REQUESTED) @map("extraction_status")
+  extractedAt      DateTime?                           @map("extracted_at")
+  metadata         Json?                               @map("metadata")
+  createdAt        DateTime                            @default(now()) @map("created_at")
+  updatedAt        DateTime                            @updatedAt @map("updated_at")
+  organization     Organization                        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity      Opportunity                         @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  sourceRecord     SourceRecord?                       @relation(fields: [sourceRecordId], references: [id], onDelete: SetNull)
+  uploadedByUser   User?                               @relation("OpportunityDocumentUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt], map: "opportunity_documents_org_created_at_idx")
+  @@index([opportunityId, createdAt], map: "opportunity_documents_opportunity_id_created_at_idx")
+  @@index([sourceRecordId], map: "opportunity_documents_source_record_id_idx")
+  @@index([uploadedByUserId], map: "opportunity_documents_uploaded_by_user_id_idx")
+  @@map("opportunity_documents")
+}
+
+model OpportunityStageTransition {
+  id                     String                            @id @default(cuid()) @map("id")
+  organizationId         String                            @map("organization_id")
+  opportunityId          String                            @map("opportunity_id")
+  actorUserId            String?                           @map("actor_user_id")
+  triggerType            OpportunityStageTransitionTrigger @default(MANUAL) @map("trigger_type")
+  fromStageKey           String?                           @map("from_stage_key")
+  fromStageLabel         String?                           @map("from_stage_label")
+  toStageKey             String                            @map("to_stage_key")
+  toStageLabel           String?                           @map("to_stage_label")
+  rationale              String?                           @map("rationale") @db.Text
+  requiredFieldsSnapshot Json?                             @map("required_fields_snapshot")
+  metadata               Json?                             @map("metadata")
+  transitionedAt         DateTime                          @default(now()) @map("transitioned_at")
+  createdAt              DateTime                          @default(now()) @map("created_at")
+  organization           Organization                      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity            Opportunity                       @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  actorUser              User?                             @relation("OpportunityStageTransitionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, transitionedAt], map: "opportunity_stage_transitions_org_transitioned_at_idx")
+  @@index([opportunityId, transitionedAt], map: "oppty_stage_transitions_opportunity_id_transitioned_at_idx")
+  @@index([actorUserId], map: "opportunity_stage_transitions_actor_user_id_idx")
+  @@map("opportunity_stage_transitions")
+}
+
+model OpportunityScorecard {
+  id                    String                   @id @default(cuid()) @map("id")
+  organizationId        String                   @map("organization_id")
+  opportunityId         String                   @map("opportunity_id")
+  calculatedByUserId    String?                  @map("calculated_by_user_id")
+  scoringModelKey       String?                  @map("scoring_model_key")
+  scoringModelVersion   String?                  @map("scoring_model_version")
+  totalScore            Decimal?                 @map("total_score") @db.Decimal(7, 2)
+  maximumScore          Decimal?                 @map("maximum_score") @db.Decimal(7, 2)
+  scorePercent          Decimal?                 @map("score_percent") @db.Decimal(5, 2)
+  recommendationOutcome BidDecisionOutcome?      @map("recommendation_outcome")
+  recommendationSummary String?                  @map("recommendation_summary") @db.Text
+  summary               String?                  @map("summary") @db.Text
+  inputSnapshot         Json?                    @map("input_snapshot")
+  isCurrent             Boolean                  @default(true) @map("is_current")
+  calculatedAt          DateTime                 @default(now()) @map("calculated_at")
+  createdAt             DateTime                 @default(now()) @map("created_at")
+  updatedAt             DateTime                 @updatedAt @map("updated_at")
+  organization          Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity           Opportunity              @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  calculatedByUser      User?                    @relation("OpportunityScorecardCalculator", fields: [calculatedByUserId], references: [id], onDelete: SetNull)
+  factorScores          OpportunityScoreFactor[]
+  bidDecisions          BidDecision[]
+
+  @@index([organizationId, calculatedAt], map: "opportunity_scorecards_org_calculated_at_idx")
+  @@index([opportunityId, calculatedAt], map: "opportunity_scorecards_opportunity_id_calculated_at_idx")
+  @@index([calculatedByUserId], map: "opportunity_scorecards_calculated_by_user_id_idx")
+  @@index([opportunityId, isCurrent], map: "opportunity_scorecards_opportunity_id_is_current_idx")
+  @@map("opportunity_scorecards")
+}
+
+model OpportunityScoreFactor {
+  id             String               @id @default(cuid()) @map("id")
+  scorecardId    String               @map("scorecard_id")
+  factorKey      String               @map("factor_key")
+  factorLabel    String               @map("factor_label")
+  weight         Decimal?             @map("weight") @db.Decimal(5, 2)
+  score          Decimal?             @map("score") @db.Decimal(7, 2)
+  maximumScore   Decimal?             @map("maximum_score") @db.Decimal(7, 2)
+  explanation    String?              @map("explanation") @db.Text
+  factorMetadata Json?                @map("factor_metadata")
+  sortOrder      Int                  @default(0) @map("sort_order")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  scorecard      OpportunityScorecard @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
+
+  @@unique([scorecardId, factorKey], map: "opportunity_score_factors_scorecard_id_factor_key_key")
+  @@index([scorecardId, sortOrder], map: "opportunity_score_factors_scorecard_id_sort_order_idx")
+  @@map("opportunity_score_factors")
+}
+
+model BidDecision {
+  id                      String                @id @default(cuid()) @map("id")
+  organizationId          String                @map("organization_id")
+  opportunityId           String                @map("opportunity_id")
+  scorecardId             String?               @map("scorecard_id")
+  recommendedByUserId     String?               @map("recommended_by_user_id")
+  decidedByUserId         String?               @map("decided_by_user_id")
+  decisionTypeKey         String?               @map("decision_type_key")
+  recommendationOutcome   BidDecisionOutcome?   @map("recommendation_outcome")
+  recommendationSummary   String?               @map("recommendation_summary") @db.Text
+  recommendationMetadata  Json?                 @map("recommendation_metadata")
+  recommendedByActorType  AuditActorType        @default(SYSTEM) @map("recommended_by_actor_type")
+  recommendedByIdentifier String?               @map("recommended_by_identifier")
+  recommendedAt           DateTime?             @map("recommended_at")
+  finalOutcome            BidDecisionOutcome?   @map("final_outcome")
+  finalRationale          String?               @map("final_rationale") @db.Text
+  decisionMetadata        Json?                 @map("decision_metadata")
+  decidedAt               DateTime?             @map("decided_at")
+  isCurrent               Boolean               @default(true) @map("is_current")
+  createdAt               DateTime              @default(now()) @map("created_at")
+  updatedAt               DateTime              @updatedAt @map("updated_at")
+  organization            Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity             Opportunity           @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  scorecard               OpportunityScorecard? @relation(fields: [scorecardId], references: [id], onDelete: SetNull)
+  recommendedByUser       User?                 @relation("BidDecisionRecommender", fields: [recommendedByUserId], references: [id], onDelete: SetNull)
+  decidedByUser           User?                 @relation("BidDecisionDecider", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, decidedAt], map: "bid_decisions_org_decided_at_idx")
+  @@index([opportunityId, decidedAt], map: "bid_decisions_opportunity_id_decided_at_idx")
+  @@index([opportunityId, isCurrent], map: "bid_decisions_opportunity_id_is_current_idx")
+  @@index([scorecardId], map: "bid_decisions_scorecard_id_idx")
+  @@index([recommendedByUserId], map: "bid_decisions_recommended_by_user_id_idx")
+  @@index([decidedByUserId], map: "bid_decisions_decided_by_user_id_idx")
+  @@map("bid_decisions")
 }
 
 model SourceImportDecision {

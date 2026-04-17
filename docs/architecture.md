@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold plus the first three Phase 1 persistence slices for authentication, auditability, opportunity/source lineage, and connector-ready multi-source persistence.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold plus the first four Phase 1 persistence slices for authentication, auditability, opportunity/source lineage, connector-ready multi-source persistence, and opportunity workspace execution storage.
 
 ## Current System Shape
 
-OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, and Prisma ORM. The app exposes a single public homepage plus a health-check route and runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, and the connector metadata plus promotion-decision entities needed for later capture workflows.
+OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, and Prisma ORM. The app exposes a single public homepage plus a health-check route and runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, the connector metadata plus promotion-decision entities, and the execution-side workspace records needed for later capture workflows.
 
 Current runtime components:
 
@@ -79,6 +79,14 @@ Prisma now owns the initial database schema and migration history. The Phase 1 b
 - `source_record_attachments`, `source_record_contacts`, and `source_record_awards`: normalized child entities for source-specific linked artifacts, contacts, and award enrichment
 - `source_import_decisions`: auditable promotion decisions that either create a new opportunity or link a source record to an existing opportunity
 - `source_search_results` and `source_sync_run_records`: lineage joins that record which search execution and sync run observed a retained source record
+- `opportunity_tasks`: execution work items with assignee, status, priority, due dates, and metadata
+- `opportunity_milestones`: key capture dates and checkpoints with status and target dates
+- `opportunity_notes`: pinned and unpinned workspace notes with author attribution
+- `opportunity_documents`: linked or uploaded document metadata plus extracted text storage
+- `opportunity_stage_transitions`: append-oriented stage-change history with rationale and required-field snapshots
+- `opportunity_scorecards` plus `opportunity_score_factors`: score snapshots and factor-level explanations
+- `bid_decisions`: persisted recommendation and final go/no-go decision history
+- `opportunity_activity_events`: append-oriented workspace feed entries tied back to related entities where possible
 
 Current schema assumptions:
 
@@ -89,6 +97,8 @@ Current schema assumptions:
 - Search and sync history use explicit join tables to preserve lineage to retained `source_records` without overwriting a prior execution every time the same external record is seen again.
 - Connector configs are organization-scoped rows rather than enums so capability flags, auth types, and validation state can evolve without schema rewrites.
 - Import decisions are modeled separately from retained source records so one source can create a canonical opportunity while another only enriches that same opportunity.
+- Current pipeline stage state is denormalized onto `opportunities.currentStageKey` and `currentStageLabel` for later list/dashboard queries, while the full transition history remains append-oriented in `opportunity_stage_transitions`.
+- Score factor explanations are stored as child rows rather than opaque JSON so later workspace UI and analytics can query factor-level results without re-parsing blobs.
 
 Current seed defaults:
 
@@ -102,6 +112,7 @@ Current seed defaults:
 - one imported opportunity linked to its agency, vehicles, competitors, and canonical `sam.gov` source record
 - one retained `sam.gov` source record containing raw payload, normalized payload, import-preview payload, attachments, contacts, and a create-opportunity import decision
 - one retained `usaspending_api` source record linked to the same opportunity, with award enrichment data and a link-to-existing import decision
+- one seeded workspace on the canonical opportunity with three tasks, three milestones, two notes, two documents, three stage transitions, one scorecard with six factor rows, one bid decision, and seven activity-feed events
 - one bootstrap audit-log event recording the seed action
 
 ## Container And Environment Strategy
@@ -137,7 +148,7 @@ No live connector exists yet. The product architecture now persists source-agnos
 - No Auth.js runtime, protected routes, or authorization checks yet
 - No audit event emitters on business workflows yet beyond the seed bootstrap record
 - No `src/modules` domain structure yet
-- No workspace execution persistence for tasks, milestones, notes, documents, stage transitions, scorecards, or bid decisions yet
+- No typed domain module or database access layer yet
 - No executable connector service layer yet despite the new connector metadata baseline
 - No production job runner beyond the placeholder worker heartbeat
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This runbook captures the real operational procedures for the current repo baseline. It now covers the full Phase 0 stack plus the first Prisma-backed auth, audit, opportunity, source-lineage, and connector-metadata schema slices, and it should be updated as the app gains live auth flows, scheduled jobs, and external connectors.
+This runbook captures the real operational procedures for the current repo baseline. It now covers the full Phase 0 stack plus the first Prisma-backed auth, audit, opportunity, source-lineage, connector-metadata, and workspace-execution schema slices, and it should be updated as the app gains live auth flows, scheduled jobs, and external connectors.
 
 ## Current Services
 
@@ -97,12 +97,12 @@ Apply the current seed defaults:
 npm run db:seed
 ```
 
-The current seed is idempotent enough for local development. It upserts the default organization, system roles, and local admin user; persists one agency, two contract vehicles, two competitors; creates connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; then appends one bootstrap audit-log record.
+The current seed is idempotent enough for local development. It upserts the default organization, system roles, and local admin user; persists one agency, two contract vehicles, two competitors; creates connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; seeds one realistic workspace with tasks, milestones, notes, documents, stage transitions, a scorecard, a bid decision, and activity events; then appends one bootstrap audit-log record.
 
-To inspect the seeded connector and import-decision example directly:
+To inspect the seeded workspace graph directly:
 
 ```bash
-node --input-type=module -e 'import { PrismaClient } from "@prisma/client"; const prisma = new PrismaClient(); const summary = await prisma.organization.findFirst({ where: { slug: "default-org" }, select: { sourceConnectorConfigs: { orderBy: { sourceSystemKey: "asc" }, select: { sourceSystemKey: true, authType: true } }, sourceImportDecisions: { orderBy: { requestedAt: "asc" }, select: { mode: true, status: true, sourceRecord: { select: { sourceSystem: true, sourceRecordId: true } } } }, sourceRecords: { orderBy: [{ sourceSystem: "asc" }, { sourceRecordId: "asc" }], select: { sourceSystem: true, sourceRecordId: true, attachments: { select: { displayLabel: true } }, contacts: { select: { fullName: true } }, award: { select: { awardNumber: true, awardAmount: true } } } } } }); console.log(JSON.stringify(summary, null, 2)); await prisma.$disconnect();'
+node --input-type=module -e 'import { PrismaClient } from "@prisma/client"; const prisma = new PrismaClient(); const summary = await prisma.opportunity.findFirst({ where: { externalNoticeId: "FA4861-26-R-0001" }, select: { title: true, currentStageKey: true, tasks: { select: { title: true, status: true } }, milestones: { select: { title: true, status: true } }, notes: { select: { title: true, isPinned: true } }, documents: { select: { title: true, sourceType: true, extractionStatus: true } }, stageTransitions: { select: { toStageKey: true, transitionedAt: true } }, scorecards: { select: { totalScore: true, recommendationOutcome: true, factorScores: { select: { factorKey: true, score: true } } } }, bidDecisions: { select: { finalOutcome: true, decidedAt: true } }, activityEvents: { select: { eventType: true, occurredAt: true } } } }); console.log(JSON.stringify(summary, null, 2)); await prisma.$disconnect();'
 ```
 
 ## Logs

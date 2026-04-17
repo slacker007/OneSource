@@ -132,4 +132,54 @@ describe("buildOpportunitySeedScenario", () => {
       "APPLIED",
     );
   });
+
+  it("provides a realistic persisted workspace with execution records, score factors, and a bid decision", () => {
+    const scenario = buildOpportunitySeedScenario();
+
+    expect(scenario.importedOpportunity.currentStageKey).toBe("capture_active");
+    expect(scenario.workspace.tasks).toHaveLength(3);
+    expect(scenario.workspace.milestones).toHaveLength(3);
+    expect(scenario.workspace.notes).toHaveLength(2);
+    expect(scenario.workspace.documents).toHaveLength(2);
+    expect(scenario.workspace.stageTransitions).toHaveLength(3);
+    expect(scenario.workspace.activityEvents.length).toBeGreaterThanOrEqual(6);
+
+    expect(scenario.workspace.scorecard).toMatchObject({
+      scoringModelKey: "default_capture_v1",
+      totalScore: "79.50",
+      recommendationOutcome: "GO",
+    });
+    expect(scenario.workspace.scorecard.factors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "capability_fit",
+          score: "24.00",
+        }),
+        expect.objectContaining({
+          key: "vehicle_access",
+          maximumScore: "15.00",
+        }),
+      ]),
+    );
+
+    expect(scenario.workspace.bidDecision).toMatchObject({
+      decisionTypeKey: "initial_pursuit",
+      recommendationOutcome: "GO",
+      finalOutcome: "GO",
+    });
+
+    expect(scenario.workspace.documents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "pws-source-doc",
+          sourceType: "SOURCE_ATTACHMENT",
+          extractionStatus: "SUCCEEDED",
+        }),
+        expect.objectContaining({
+          key: "capture-plan",
+          sourceType: "MANUAL_UPLOAD",
+        }),
+      ]),
+    );
+  });
 });

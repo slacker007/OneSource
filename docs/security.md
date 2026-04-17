@@ -6,10 +6,11 @@ This document records the current security posture that exists in the repo today
 
 ## Current Baseline
 
-The current repo includes the first persistence slice for auth and audit work plus the connector-metadata persistence baseline, but it does not yet expose live sign-in flows. Security-relevant implementation present today:
+The current repo includes the first persistence slice for auth and audit work plus the connector-metadata and workspace-persistence baselines, but it does not yet expose live sign-in flows. Security-relevant implementation present today:
 
 - Prisma-managed tables for organizations, users, roles, accounts, sessions, verification tokens, and audit logs
 - Prisma-managed opportunity lineage tables for agencies, vehicles, opportunities, competitors, connector configs, saved searches, search executions, sync runs, retained source records, source child records, and import decisions
+- Prisma-managed workspace tables for tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, and activity events
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
 - boot-time environment validation for `DATABASE_URL`
@@ -31,6 +32,7 @@ These values are intended for local development only. They are not production cr
 - The seed path demonstrates raw payload retention, normalized payload retention, import-preview payload retention, attachment/contact retention for `sam.gov`, and award-enrichment retention for `usaspending_api`.
 - Search lineage and sync lineage are persisted separately through `source_search_results` and `source_sync_run_records` so later workflows can explain how a source record entered the system.
 - Promotion decisions are stored separately in `source_import_decisions`, which preserves whether a source record created a new canonical opportunity or only linked enrichment data to an existing one.
+- Workspace documents now support extracted text retention. Treat those rows as potentially sensitive because the extracted content can contain customer requirements, solution details, or partner information.
 
 ## Secrets And Configuration
 
@@ -63,6 +65,6 @@ The only current producer is the bootstrap seed path. Future loops must add audi
 - No route-level or action-level audit emission yet
 - No password, OAuth, MFA, or account-recovery workflow yet
 - No secret-vault integration behind connector credential references yet
-- No authorization guardrails around access to retained source records yet
+- No authorization guardrails around access to retained source records, workspace notes, or extracted document text yet
 
 Until `P2-01` and `P2-02` are complete, this schema should be treated as a persistence baseline rather than an end-user security feature.
