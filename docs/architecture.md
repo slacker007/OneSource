@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold plus the first Phase 1 persistence slice for authentication and auditability.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold plus the first two Phase 1 persistence slices for authentication, auditability, and opportunity/source lineage.
 
 ## Current System Shape
 
-OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, and Prisma ORM. The app exposes a single public homepage plus a health-check route and runs alongside PostgreSQL and a placeholder worker in `docker compose`.
+OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, and Prisma ORM. The app exposes a single public homepage plus a health-check route and runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists both the auth baseline and the first opportunity/source-lineage aggregate needed for later capture workflows.
 
 Current runtime components:
 
@@ -67,18 +67,34 @@ Prisma now owns the initial database schema and migration history. The Phase 1 b
 - `roles` and `user_roles`: database-backed role catalog plus user-role assignments
 - `accounts`, `sessions`, and `verification_tokens`: Auth.js-compatible auth tables for future sign-in flows
 - `audit_logs`: append-oriented audit storage for actor, target, action, and metadata
+- `agencies`: canonical agency and office lineage for opportunities and source records
+- `contract_vehicles` plus `opportunity_vehicles`: reusable vehicle catalog and opportunity-to-vehicle links
+- `opportunities`: canonical pursuit record with normalized source-derived metadata
+- `competitors` plus `opportunity_competitors`: competitor catalog and opportunity-to-competitor links
+- `source_saved_searches`: persisted canonical and source-specific search filters
+- `source_search_executions`: executed search envelopes, outbound request metadata, and result counts
+- `source_sync_runs`: sync execution history and status counters
+- `source_records`: raw payload retention, normalized payload retention, import-preview payloads, and canonical opportunity linkage
+- `source_search_results` and `source_sync_run_records`: lineage joins that record which search execution and sync run observed a retained source record
 
 Current schema assumptions:
 
 - Each user belongs to exactly one organization in the initial release slice.
 - Roles are organization-scoped database rows rather than enums so later admin tooling can inspect and evolve assignments without schema rewrites.
 - Audit actions and target types are stored as strings to avoid a migration for every new auditable workflow while the product surface is still expanding.
+- Source systems are stored as string keys such as `sam_gov` rather than a database enum so later connectors can be added without a schema migration purely for identifier expansion.
+- Search and sync history use explicit join tables to preserve lineage to retained `source_records` without overwriting a prior execution every time the same external record is seen again.
 
 Current seed defaults:
 
 - one organization with slug `default-org`
 - the seven core PRD roles
 - one local development admin user at `admin@onesource.local`
+- one Air Force agency record
+- two contract vehicles and two competitor records
+- one saved `sam.gov` search, one successful search execution, and one successful sync run
+- one imported opportunity linked to its agency, vehicles, competitors, and canonical source record
+- one retained source record containing raw payload, normalized payload, and import-preview payload snapshots
 - one bootstrap audit-log event recording the seed action
 
 ## Container And Environment Strategy
@@ -114,7 +130,8 @@ No live connector exists yet. The product architecture still targets source-agno
 - No Auth.js runtime, protected routes, or authorization checks yet
 - No audit event emitters on business workflows yet beyond the seed bootstrap record
 - No `src/modules` domain structure yet
-- No opportunity, connector, or workflow persistence beyond the auth and audit baseline
+- No connector capability/config metadata or second-source scenario proof yet
+- No workspace execution persistence for tasks, milestones, notes, documents, stage transitions, scorecards, or bid decisions yet
 - No production job runner beyond the placeholder worker heartbeat
 
 These gaps are expected at the current phase and should be resolved through the sequenced PRD checklist rather than ad hoc refactors.

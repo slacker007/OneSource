@@ -9,6 +9,7 @@ This document records the current security posture that exists in the repo today
 The current repo includes the first persistence slice for auth and audit work but does not yet expose live sign-in flows. Security-relevant implementation present today:
 
 - Prisma-managed tables for organizations, users, roles, accounts, sessions, verification tokens, and audit logs
+- Prisma-managed opportunity lineage tables for agencies, vehicles, opportunities, competitors, saved searches, search executions, sync runs, and retained source records
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
 - boot-time environment validation for `DATABASE_URL`
@@ -23,6 +24,13 @@ The local seed command creates development-only bootstrap records:
 - system roles: admin, executive, business development, capture manager, proposal manager, contributor, viewer
 
 These values are intended for local development only. They are not production credentials and must not be used as real identity defaults in deployed environments.
+
+## Source Data Provenance
+
+- External source payloads are treated as untrusted input and are stored in `source_records` as raw JSON plus normalized JSON for traceability.
+- The seed path demonstrates raw payload retention, normalized payload retention, and import-preview payload retention on one `sam.gov`-style source record.
+- Search lineage and sync lineage are persisted separately through `source_search_results` and `source_sync_run_records` so later workflows can explain how a source record entered the system.
+- Connector secrets are still not stored in the application database; credential handling remains future work for `P1-02a` and `P7-03`.
 
 ## Secrets And Configuration
 
@@ -54,5 +62,6 @@ The only current producer is the bootstrap seed path. Future loops must add audi
 - No route-level or action-level audit emission yet
 - No password, OAuth, MFA, or account-recovery workflow yet
 - No connector credential storage yet
+- No authorization guardrails around access to retained source records yet
 
 Until `P2-01` and `P2-02` are complete, this schema should be treated as a persistence baseline rather than an end-user security feature.

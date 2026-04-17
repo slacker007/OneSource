@@ -7,6 +7,7 @@ This document records the canonical verification workflows for the repo as of th
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI and runtime helpers
+- Seed-fixture tests: deterministic opportunity-lineage fixture coverage under `src/lib/opportunities/`
 - Browser tests: Playwright Chromium smoke coverage in `tests/`
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
@@ -45,6 +46,8 @@ docker compose up -d db
 npm run prisma:migrate:dev -- --name your_migration_name
 npm run db:seed
 ```
+
+When a schema item depends on seeded relationships, verify the persisted graph directly with a narrow Prisma query before closing the loop.
 
 To point Playwright at an already-running host or compose stack:
 
