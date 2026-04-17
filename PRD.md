@@ -526,6 +526,7 @@ This section is mandatory for every future coding iteration because conversation
 - [ ] If the task writes or changes code, add or update automated tests for the new or changed behavior and run the full automated test suite that exists in the repo for that phase.
 - [ ] If the item changes user-facing behavior, run Playwright against Chromium on the live application where feasible.
 - [ ] Do not emit `<promise>complete</promise>` for ordinary loop completion or checklist-item completion. Reserve it for one final project-complete signal only.
+- [ ] When setup, workflow, verification, or operational knowledge changes, write explicit documentation in `README.md`; if `README.md` does not exist yet, create it in the same loop.
 - [ ] Update this `PRD.md` before ending the loop by checking completed items and appending a short handoff note.
 - [ ] If the checklist item is completed and verified, create a non-amended git commit for that item unless the user explicitly says not to commit.
 - [ ] If requirements changed, update this document in the same loop so the next agent does not rely on chat history.
@@ -562,8 +563,8 @@ This section is mandatory for every future coding iteration because conversation
   Verify with: documented compose-based test commands and at least one successful Playwright Chromium run through the containerized workflow.
 
 - [ ] P0-03 Create baseline documentation files: `README.md`, `docs/architecture.md`, and `docs/runbook.md`.
-  Done when: setup, stack choices, folder layout, daily dev commands, compose workflows, and verification commands are documented.
-  Verify with: docs reflect actual scripts and files present in repo.
+  Done when: `README.md` exists and contains explicit setup, stack choices, folder layout, daily dev commands, compose workflows, and verification commands, and `docs/architecture.md` plus `docs/runbook.md` exist with truthful initial project context.
+  Verify with: the documentation files exist and reflect actual scripts, files, and currently available workflows in the repo.
 
 - [x] P0-04 Add a persistent `Current Handoff` section to this PRD and update it at the end of every loop.
   Done when: this document contains a handoff template and at least one concrete entry.
@@ -788,8 +789,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: `PRD.md` now contains explicit `sam.gov` search execution fields, tighter normalized opportunity mappings, and named future-connector requirements for `usaspending_api` and `gsa_ebuy`. `AGENTS.md` now enforces stronger production-grade engineering, AI-agent safety, compose-managed verification, commit discipline, a project-level completion marker rule that reserves `<promise>complete</promise>` for one final project-complete signal only, and a stricter testing rule: every code-writing task must add or update tests and pass the full automated test suite, including previously existing tests and newly written tests, before it can be considered complete. `P0-04` remains complete; application implementation has not started.
+- Current status: `PRD.md` now requires explicit `README.md` documentation whenever setup or workflow knowledge changes and requires `README.md` to be created if absent. `README.md` has now been created with truthful initial project context, but `P0-03` remains incomplete because `docs/architecture.md` and `docs/runbook.md` do not exist yet and the app stack has not been scaffolded. `AGENTS.md` continues to enforce stronger production-grade engineering, AI-agent safety, compose-managed verification, commit discipline, a project-level completion marker rule that reserves `<promise>complete</promise>` for one final project-complete signal only, and a stricter testing rule: every code-writing task must add or update tests and pass the full automated test suite, including previously existing tests and newly written tests, before it can be considered complete.
 - Next recommended item: `P0-01 Initialize the application with Next.js, TypeScript, Tailwind, ESLint, Prettier, Vitest, Playwright, and a basic app shell.`
 - Blockers: none.
-- Files touched in latest loop: `PRD.md`, `AGENTS.md`.
-- Tests run in latest loop: `git diff --check`; targeted `sed` and `rg` verification of updated sections. No automated app test suite or Playwright run exists yet because the application stack has not been scaffolded.
+- Files touched in latest loop: `PRD.md`, `README.md`.
+- Tests run in latest loop: `git diff --check`; targeted `sed` and `rg` verification of updated sections and `README.md` existence/content. No automated app test suite or Playwright run exists yet because the application stack has not been scaffolded.
