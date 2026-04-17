@@ -550,225 +550,225 @@ This section is mandatory for every future coding iteration because conversation
 
 ### Phase 0: Foundation And Working Agreement
 
-- [ ] P0-01 Initialize the application with Next.js, TypeScript, Tailwind, ESLint, Prettier, Vitest, Playwright, and a basic app shell.
-  Done when: the repo installs cleanly, the app starts locally, lint/test scripts exist, a placeholder homepage renders, and Playwright can launch Chromium against the app.
-  Verify with: install, lint, unit test, build, and a Playwright Chromium smoke test documented in `README.md`.
+- [x] P0-01 Initialize the application with Next.js, TypeScript, Tailwind, ESLint, Prettier, Vitest, Playwright, and a basic app shell.
+      Done when: the repo installs cleanly, the app starts locally, lint/test scripts exist, a placeholder homepage renders, and Playwright can launch Chromium against the app.
+      Verify with: install, lint, unit test, build, and a Playwright Chromium smoke test documented in `README.md`.
 
 - [ ] P0-02 Add Docker Compose for the full local stack and an environment variable schema with example env file.
-  Done when: the web app, PostgreSQL, and required worker processes start through one compose workflow, required env vars are documented, and the app validates env at boot.
-  Verify with: `docker compose up` on the stack, app boot against validated env, and one browser smoke test against the compose-managed app.
+      Done when: the web app, PostgreSQL, and required worker processes start through one compose workflow, required env vars are documented, and the app validates env at boot.
+      Verify with: `docker compose up` on the stack, app boot against validated env, and one browser smoke test against the compose-managed app.
 
 - [ ] P0-02a Add compose profiles or equivalent workflows for test execution, including Playwright against Chromium.
-  Done when: the repo supports containerized test runs for unit, integration, and browser-based end-to-end verification without requiring a manually bootstrapped host environment.
-  Verify with: documented compose-based test commands and at least one successful Playwright Chromium run through the containerized workflow.
+      Done when: the repo supports containerized test runs for unit, integration, and browser-based end-to-end verification without requiring a manually bootstrapped host environment.
+      Verify with: documented compose-based test commands and at least one successful Playwright Chromium run through the containerized workflow.
 
 - [ ] P0-03 Create baseline documentation files: `README.md`, `docs/architecture.md`, and `docs/runbook.md`.
-  Done when: `README.md` exists and contains explicit setup, stack choices, folder layout, daily dev commands, compose workflows, and verification commands, and `docs/architecture.md` plus `docs/runbook.md` exist with truthful initial project context.
-  Verify with: the documentation files exist and reflect actual scripts, files, and currently available workflows in the repo.
+      Done when: `README.md` exists and contains explicit setup, stack choices, folder layout, daily dev commands, compose workflows, and verification commands, and `docs/architecture.md` plus `docs/runbook.md` exist with truthful initial project context.
+      Verify with: the documentation files exist and reflect actual scripts, files, and currently available workflows in the repo.
 
 - [x] P0-04 Add a persistent `Current Handoff` section to this PRD and update it at the end of every loop.
-  Done when: this document contains a handoff template and at least one concrete entry.
-  Verify with: `PRD.md` shows current status, next item, blockers, files touched, and tests run.
+      Done when: this document contains a handoff template and at least one concrete entry.
+      Verify with: `PRD.md` shows current status, next item, blockers, files touched, and tests run.
 
 ### Phase 1: Data Model And Core Infrastructure
 
 - [ ] P1-01 Create the initial Prisma schema for users, roles, sessions, organizations, and audit logs.
-  Done when: auth and audit tables exist with migrations and seed-safe defaults.
-  Verify with: Prisma validate, migration generation, and seed run.
+      Done when: auth and audit tables exist with migrations and seed-safe defaults.
+      Verify with: Prisma validate, migration generation, and seed run.
 
 - [ ] P1-02 Add the core opportunity schema including agencies, vehicles, opportunities, source records, source sync entities, saved source searches, raw source payload storage, and competitors.
-  Done when: one opportunity can relate to agency, vehicle, source metadata, import lineage, search lineage, sync history, raw payload retention, and competitor records.
-  Verify with: migration plus seed examples covering these relationships.
+      Done when: one opportunity can relate to agency, vehicle, source metadata, import lineage, search lineage, sync history, raw payload retention, and competitor records.
+      Verify with: migration plus seed examples covering these relationships.
 
 - [ ] P1-02a Add source-connector metadata and persistence models that support more than one external source without schema rewrites.
-  Done when: connector configs, saved searches, search executions, sync runs, source records, and promotion decisions are modeled as source-agnostic entities that can support `sam.gov`, `usaspending_api`, and session-backed sources such as `gsa_ebuy` without schema rewrites.
-  Verify with: schema examples for `sam.gov` plus one concrete second-source scenario from `usaspending_api` or `gsa_ebuy`.
+      Done when: connector configs, saved searches, search executions, sync runs, source records, and promotion decisions are modeled as source-agnostic entities that can support `sam.gov`, `usaspending_api`, and session-backed sources such as `gsa_ebuy` without schema rewrites.
+      Verify with: schema examples for `sam.gov` plus one concrete second-source scenario from `usaspending_api` or `gsa_ebuy`.
 
 - [ ] P1-03 Add execution schema for tasks, milestones, notes, activity events, documents, stage transitions, scorecards, and bid decisions.
-  Done when: the full opportunity workspace can be persisted without TODO schema gaps.
-  Verify with: schema tests or seed script that inserts a realistic opportunity workspace.
+      Done when: the full opportunity workspace can be persisted without TODO schema gaps.
+      Verify with: schema tests or seed script that inserts a realistic opportunity workspace.
 
 - [ ] P1-04 Add a typed database access layer and shared domain types for the core entities.
-  Done when: app code stops reaching directly into raw Prisma models in route handlers without module wrappers.
-  Verify with: at least one domain module exposes typed query/service functions.
+      Done when: app code stops reaching directly into raw Prisma models in route handlers without module wrappers.
+      Verify with: at least one domain module exposes typed query/service functions.
 
 - [ ] P1-05 Create realistic seed data representing multiple agencies, opportunities, stages, tasks, and score outcomes.
-  Done when: seeded data is sufficient to exercise dashboards, filtering, and scoring in development.
-  Verify with: seed command populates visible demo data.
+      Done when: seeded data is sufficient to exercise dashboards, filtering, and scoring in development.
+      Verify with: seed command populates visible demo data.
 
 ### Phase 2: Authentication, Authorization, And Auditability
 
 - [ ] P2-01 Implement Auth.js sign-in, sign-out, session handling, and protected routes.
-  Done when: anonymous users cannot access the app shell and authenticated users can.
-  Verify with: auth flow unit coverage and a Playwright sign-in smoke test.
+      Done when: anonymous users cannot access the app shell and authenticated users can.
+      Verify with: auth flow unit coverage and a Playwright sign-in smoke test.
 
 - [ ] P2-02 Implement role-based permissions in server-side guards and shared client helpers.
-  Done when: restricted actions are blocked even if triggered outside the UI.
-  Verify with: permission tests for at least admin, executive, BD, and viewer.
+      Done when: restricted actions are blocked even if triggered outside the UI.
+      Verify with: permission tests for at least admin, executive, BD, and viewer.
 
 - [ ] P2-03 Implement audit event creation for create, update, delete, import, stage transition, and decision actions.
-  Done when: important state changes emit structured audit rows with actor, target, action, and timestamp.
-  Verify with: tests covering at least three audit-producing flows.
+      Done when: important state changes emit structured audit rows with actor, target, action, and timestamp.
+      Verify with: tests covering at least three audit-producing flows.
 
 - [ ] P2-04 Add a simple admin page for user role visibility and audit-log inspection.
-  Done when: admins can inspect recent audit events and see assigned roles.
-  Verify with: UI smoke tests and permission enforcement tests.
+      Done when: admins can inspect recent audit events and see assigned roles.
+      Verify with: UI smoke tests and permission enforcement tests.
 
 ### Phase 3: App Shell And Navigation
 
 - [ ] P3-01 Build the primary authenticated layout with sidebar, top bar, global search placeholder, and responsive navigation.
-  Done when: all major sections are navigable and the shell works on desktop and small screens.
-  Verify with: responsive UI smoke test in Chromium via Playwright.
+      Done when: all major sections are navigable and the shell works on desktop and small screens.
+      Verify with: responsive UI smoke test in Chromium via Playwright.
 
 - [ ] P3-02 Establish shared UI patterns for tables, forms, badges, drawers, dialogs, empty states, and error states.
-  Done when: feature modules reuse these primitives instead of reimplementing them.
-  Verify with: component stories or usage in at least two pages.
+      Done when: feature modules reuse these primitives instead of reimplementing them.
+      Verify with: component stories or usage in at least two pages.
 
 - [ ] P3-03 Add a dashboard landing page showing counts by stage, upcoming deadlines, and top opportunities.
-  Done when: seeded data renders meaningful dashboard widgets with real queries.
-  Verify with: dashboard page tests and a Playwright Chromium dashboard smoke flow.
+      Done when: seeded data renders meaningful dashboard widgets with real queries.
+      Verify with: dashboard page tests and a Playwright Chromium dashboard smoke flow.
 
 ### Phase 4: Opportunity Management
 
 - [ ] P4-01 Build the opportunities list page with search, sort, filter, pagination, and URL-synced query state.
-  Done when: users can filter by agency, NAICS or capability tag, stage, due date, and source.
-  Verify with: list query tests and one Playwright Chromium filter flow.
+      Done when: users can filter by agency, NAICS or capability tag, stage, due date, and source.
+      Verify with: list query tests and one Playwright Chromium filter flow.
 
 - [ ] P4-01a Build an external source search page for connectors such as `sam.gov` with keyword and structured filters.
-  Done when: users can search available external opportunities by the explicit `sam.gov` filter set defined in this PRD, including posted-date range, response-deadline range, notice ID, solicitation number, procurement type, organization, NAICS, classification code, set-aside, place of performance, and status.
-  Verify with: search parameter tests and one Playwright Chromium search flow using mocked connector responses.
+      Done when: users can search available external opportunities by the explicit `sam.gov` filter set defined in this PRD, including posted-date range, response-deadline range, notice ID, solicitation number, procurement type, organization, NAICS, classification code, set-aside, place of performance, and status.
+      Verify with: search parameter tests and one Playwright Chromium search flow using mocked connector responses.
 
 - [ ] P4-01b Add source-result actions to preview, deduplicate, and pull an external opportunity into the tracking pipeline.
-  Done when: a user can select a source result, review raw and normalized details side by side, detect likely duplicates, and create or link the canonical tracked opportunity.
-  Verify with: deduplication tests and one Playwright Chromium UI flow covering import from search result.
+      Done when: a user can select a source result, review raw and normalized details side by side, detect likely duplicates, and create or link the canonical tracked opportunity.
+      Verify with: deduplication tests and one Playwright Chromium UI flow covering import from search result.
 
 - [ ] P4-02 Build create and edit flows for opportunities with validation and autosaved draft behavior where practical.
-  Done when: users can create and update opportunities without direct database manipulation.
-  Verify with: form validation tests and a Playwright Chromium happy-path UI test.
+      Done when: users can create and update opportunities without direct database manipulation.
+      Verify with: form validation tests and a Playwright Chromium happy-path UI test.
 
 - [ ] P4-03 Build the opportunity detail workspace with overview, scoring, tasks, documents, notes, and history sections.
-  Done when: a user can stay inside one workspace to understand and execute a pursuit.
-  Verify with: integration test covering page load and section data rendering plus a Playwright Chromium workspace smoke flow.
+      Done when: a user can stay inside one workspace to understand and execute a pursuit.
+      Verify with: integration test covering page load and section data rendering plus a Playwright Chromium workspace smoke flow.
 
 - [ ] P4-04 Add stage transition controls with required-field gating and recorded rationale.
-  Done when: invalid stage changes are blocked and valid changes emit activity and audit records.
-  Verify with: tests for blocked and allowed transitions.
+      Done when: invalid stage changes are blocked and valid changes emit activity and audit records.
+      Verify with: tests for blocked and allowed transitions.
 
 ### Phase 5: Tasks, Milestones, And Collaboration
 
 - [ ] P5-01 Implement task CRUD with assignee, due date, status, priority, and opportunity linkage.
-  Done when: tasks can be created from an opportunity and surfaced in personal views.
-  Verify with: task service tests and a Playwright Chromium UI smoke test.
+      Done when: tasks can be created from an opportunity and surfaced in personal views.
+      Verify with: task service tests and a Playwright Chromium UI smoke test.
 
 - [ ] P5-02 Implement milestone tracking for key capture dates, proposal deadlines, and decision checkpoints.
-  Done when: milestones appear in the opportunity workspace and on the dashboard.
-  Verify with: milestone queries render in both places.
+      Done when: milestones appear in the opportunity workspace and on the dashboard.
+      Verify with: milestone queries render in both places.
 
 - [ ] P5-03 Implement notes and activity feed entries with actor attribution and timestamps.
-  Done when: users can add context and see a chronological trail of important events.
-  Verify with: notes create/display tests.
+      Done when: users can add context and see a chronological trail of important events.
+      Verify with: notes create/display tests.
 
 - [ ] P5-04 Add deadline reminders and overdue indicators using a background job.
-  Done when: upcoming and overdue tasks or milestones are detectable without page polling logic.
-  Verify with: job execution test and visible reminder state in UI.
+      Done when: upcoming and overdue tasks or milestones are detectable without page polling logic.
+      Verify with: job execution test and visible reminder state in UI.
 
 ### Phase 6: Scoring, Decision Support, And Down-Selection
 
 - [ ] P6-01 Create the organization profile and scoring configuration models for capabilities, certifications, vehicles, and weighted criteria.
-  Done when: the system has structured input data required to score an opportunity.
-  Verify with: admin form or seed path to manage scoring inputs.
+      Done when: the system has structured input data required to score an opportunity.
+      Verify with: admin form or seed path to manage scoring inputs.
 
 - [ ] P6-02 Implement the deterministic scoring engine for capability fit, strategic alignment, vehicle access, relationship strength, schedule realism, and risk.
-  Done when: every opportunity can produce a normalized score and factor breakdown.
-  Verify with: pure unit tests for scoring formulas and edge cases.
+      Done when: every opportunity can produce a normalized score and factor breakdown.
+      Verify with: pure unit tests for scoring formulas and edge cases.
 
 - [ ] P6-03 Implement go/no-go recommendation logic that combines score, risk, and configurable thresholds.
-  Done when: the app produces a recommended decision with explanation but still allows human override.
-  Verify with: tests covering recommend-go, recommend-no-go, and borderline cases.
+      Done when: the app produces a recommended decision with explanation but still allows human override.
+      Verify with: tests covering recommend-go, recommend-no-go, and borderline cases.
 
 - [ ] P6-04 Build the scoring and decision UI in the opportunity workspace.
-  Done when: users can inspect factor weights, rationale, recommendation, and final decision history.
-  Verify with: UI integration test on the opportunity detail page and a Playwright Chromium decision-view flow.
+      Done when: users can inspect factor weights, rationale, recommendation, and final decision history.
+      Verify with: UI integration test on the opportunity detail page and a Playwright Chromium decision-view flow.
 
 - [ ] P6-05 Build a decision console page ranking opportunities by value, score, urgency, or risk.
-  Done when: leadership can sort and compare pursuit options across the pipeline.
-  Verify with: ranking query tests and one Playwright Chromium browser flow.
+      Done when: leadership can sort and compare pursuit options across the pipeline.
+      Verify with: ranking query tests and one Playwright Chromium browser flow.
 
 ### Phase 7: Ingestion, Normalization, And Documents
 
 - [ ] P7-01 Implement CSV import for opportunities with preview, mapping, validation, and deduplication.
-  Done when: users can ingest spreadsheets without direct database edits.
-  Verify with: import parser tests and a sample file fixture.
+      Done when: users can ingest spreadsheets without direct database edits.
+      Verify with: import parser tests and a sample file fixture.
 
 - [ ] P7-02 Add document upload support with stored metadata, linked opportunity records, and extracted plain text.
-  Done when: PDF, DOCX, or TXT files can be attached and text extraction succeeds for common cases.
-  Verify with: upload and extraction tests using small fixtures.
+      Done when: PDF, DOCX, or TXT files can be attached and text extraction succeeds for common cases.
+      Verify with: upload and extraction tests using small fixtures.
 
 - [ ] P7-03 Implement a source connector abstraction and build the first live connector for `sam.gov`.
-  Done when: the app can authenticate to `sam.gov`, execute the full supported filter set, fetch normalized opportunity details, preserve raw payloads, and pass selected results into the import pipeline on demand or by schedule, all through a reusable connector interface that can also accommodate award-centric sources such as `usaspending_api` and constrained-access sources such as `gsa_ebuy`.
-  Verify with: connector translation and normalization tests plus a manual search/import run against the configured `sam.gov` source.
+      Done when: the app can authenticate to `sam.gov`, execute the full supported filter set, fetch normalized opportunity details, preserve raw payloads, and pass selected results into the import pipeline on demand or by schedule, all through a reusable connector interface that can also accommodate award-centric sources such as `usaspending_api` and constrained-access sources such as `gsa_ebuy`.
+      Verify with: connector translation and normalization tests plus a manual search/import run against the configured `sam.gov` source.
 
 - [ ] P7-04 Implement deduplication and canonicalization rules for multi-source opportunities.
-  Done when: duplicate imports merge into one opportunity record with source lineage preserved.
-  Verify with: tests for exact-match and fuzzy-match scenarios.
+      Done when: duplicate imports merge into one opportunity record with source lineage preserved.
+      Verify with: tests for exact-match and fuzzy-match scenarios.
 
 - [ ] P7-05 Add background jobs for scheduled ingestion, document parsing retries, and score recalculation after imports.
-  Done when: ingestion and parsing workloads are asynchronous, retryable, and idempotent.
-  Verify with: job tests and manual runbook steps.
+      Done when: ingestion and parsing workloads are asynchronous, retryable, and idempotent.
+      Verify with: job tests and manual runbook steps.
 
 - [ ] P7-06 Add source sync observability for connector health, last successful sync, rate-limit handling, and failed import review.
-  Done when: admins can inspect whether `sam.gov` searches and imports are healthy and retry failed runs without touching the database directly.
-  Verify with: job/admin tests and manual review of sync status UI.
+      Done when: admins can inspect whether `sam.gov` searches and imports are healthy and retry failed runs without touching the database directly.
+      Verify with: job/admin tests and manual review of sync status UI.
 
 ### Phase 8: Knowledge System
 
 - [ ] P8-01 Build a knowledge asset model and CRUD UI for past-performance snippets, boilerplate content, and win themes.
-  Done when: assets can be created, tagged, filtered, and linked to opportunities.
-  Verify with: CRUD tests and a Playwright Chromium browse/create flow.
+      Done when: assets can be created, tagged, filtered, and linked to opportunities.
+      Verify with: CRUD tests and a Playwright Chromium browse/create flow.
 
 - [ ] P8-02 Implement tagging and retrieval by agency, capability, contract type, and vehicle.
-  Done when: relevant assets can be filtered down quickly in the UI.
-  Verify with: query tests on seeded tagged content.
+      Done when: relevant assets can be filtered down quickly in the UI.
+      Verify with: query tests on seeded tagged content.
 
 - [ ] P8-03 Surface suggested knowledge assets inside the opportunity workspace based on current opportunity metadata.
-  Done when: users see reusable content suggestions without leaving the workspace.
-  Verify with: suggestion ranking tests and detail-page rendering.
+      Done when: users see reusable content suggestions without leaving the workspace.
+      Verify with: suggestion ranking tests and detail-page rendering.
 
 ### Phase 9: Analytics And Feedback Loops
 
 - [ ] P9-01 Build pipeline analytics for stage counts, conversion rates, aging, and upcoming deadlines.
-  Done when: leadership can evaluate pipeline health from the dashboard area.
-  Verify with: analytics query tests and dashboard widgets.
+      Done when: leadership can evaluate pipeline health from the dashboard area.
+      Verify with: analytics query tests and dashboard widgets.
 
 - [ ] P9-02 Build decision analytics for bid volume, go/no-go outcomes, score distribution, and effort versus outcome.
-  Done when: the system starts showing whether decision quality is improving.
-  Verify with: seeded analytics outputs and snapshot-style query tests.
+      Done when: the system starts showing whether decision quality is improving.
+      Verify with: seeded analytics outputs and snapshot-style query tests.
 
 - [ ] P9-03 Add win/loss outcome capture and postmortem fields.
-  Done when: closed opportunities can record outcome reason, competitor, and lessons learned.
-  Verify with: closeout form and persistence tests.
+      Done when: closed opportunities can record outcome reason, competitor, and lessons learned.
+      Verify with: closeout form and persistence tests.
 
 - [ ] P9-04 Add an admin recalibration workflow for updating scoring weights based on observed outcomes.
-  Done when: scoring configuration can evolve without code edits.
-  Verify with: config update tests and recalculation flow.
+      Done when: scoring configuration can evolve without code edits.
+      Verify with: config update tests and recalculation flow.
 
 ### Phase 10: Proposal Layer, Integrations, And Hardening
 
 - [ ] P10-01 Add a lightweight proposal record with status, owner, compliance checklist, and linked documents.
-  Done when: proposal execution can be tracked after pursuit approval without building full authoring.
-  Verify with: proposal CRUD tests and workspace rendering.
+      Done when: proposal execution can be tracked after pursuit approval without building full authoring.
+      Verify with: proposal CRUD tests and workspace rendering.
 
 - [ ] P10-02 Add integration boundaries for CRM export or sync, document repositories, and communication tools.
-  Done when: outbound or inbound integration can be added behind stable interfaces without rewriting core modules.
-  Verify with: interface tests or stub adapters.
+      Done when: outbound or inbound integration can be added behind stable interfaces without rewriting core modules.
+      Verify with: interface tests or stub adapters.
 
 - [ ] P10-03 Add observability and operational safeguards including structured logs, error boundaries, and health checks.
-  Done when: failures are diagnosable and basic runtime health can be inspected.
-  Verify with: health endpoint tests, compose-managed service validation, and manual error-path validation.
+      Done when: failures are diagnosable and basic runtime health can be inspected.
+      Verify with: health endpoint tests, compose-managed service validation, and manual error-path validation.
 
 - [ ] P10-04 Perform end-to-end launch hardening: permissions review, seed reset flow, empty/error state review, and deployment docs.
-  Done when: the repo is ready for a controlled internal pilot.
-  Verify with: Playwright Chromium regression pass against the compose-managed stack and updated runbook.
+      Done when: the repo is ready for a controlled internal pilot.
+      Verify with: Playwright Chromium regression pass against the compose-managed stack and updated runbook.
 
 ## Release Gates
 
@@ -789,8 +789,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: This loop treated a user-requested durable-memory hardening change as a follow-up to `P0-04`. `AGENTS.md` now requires agents to read `NOTES.md` at loop start, create it if missing, and append timestamped working notes throughout each task plus a final stopping-point note before loop end so crash recovery does not depend on chat history. `README.md` now documents that workflow, and `NOTES.md` has been created with an initial timestamped entry. `P0-03` remains incomplete because `docs/architecture.md` and `docs/runbook.md` still do not exist and the app stack has not been scaffolded.
-- Next recommended item: `P0-01 Initialize the application with Next.js, TypeScript, Tailwind, ESLint, Prettier, Vitest, Playwright, and a basic app shell.`
+- Current status: `P0-01` is complete. The repo now contains a verified Next.js 16 + TypeScript scaffold with Tailwind CSS 4, ESLint 9, Prettier 3, Vitest, Playwright, and a basic OneSource homepage shell under `src/app` and `src/components/home`. The root package metadata and lockfile were corrected from the temporary scaffold state, generated test artifacts are ignored by ESLint, and `README.md` now documents real local setup plus verification commands including Playwright browser installation. `P0-02`, `P0-02a`, and `P0-03` remain open because there is still no `docker compose` stack, env schema, `docs/architecture.md`, or `docs/runbook.md`.
+- Next recommended item: `P0-02 Add Docker Compose for the full local stack and an environment variable schema with example env file.`
 - Blockers: none.
-- Files touched in latest loop: `AGENTS.md`, `NOTES.md`, `PRD.md`, `README.md`.
-- Tests run in latest loop: `git diff --check`; targeted `sed` and `nl` verification of updated `AGENTS.md`, `README.md`, `PRD.md`, and `NOTES.md` sections. No automated app test suite or Playwright run exists yet because the application stack has not been scaffolded.
+- Files touched in latest loop: `.gitignore`, `NOTES.md`, `PRD.md`, `README.md`, `eslint.config.mjs`, `package-lock.json`, `package.json`, `playwright.config.ts`, `src/app/globals.css`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/components/home/app-shell-preview.tsx`, `src/components/home/app-shell-preview.test.tsx`, `tests/smoke.spec.ts`, `vitest.config.ts`, `vitest.setup.ts`, and removal of the temporary scaffold under `tmp-app/`.
+- Tests run in latest loop: `npm install`; `npm run e2e:install`; `sudo npx playwright install-deps chromium`; `npm run lint`; `npm run build`; `npm test`; `npm run e2e`; `git diff --check`. Verification did not use `docker compose` because `P0-02` is not implemented yet. Playwright verification did run in Chromium against the local app.
