@@ -1,7 +1,8 @@
 FROM node:20-bookworm-slim AS deps
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json prisma.config.ts ./
+COPY prisma ./prisma
 COPY vendor/npm-offline-cache.tar.gz /tmp/npm-offline-cache.tar.gz
 RUN mkdir -p /tmp/npm-offline-cache \
   && tar -xzf /tmp/npm-offline-cache.tar.gz -C /tmp/npm-offline-cache \

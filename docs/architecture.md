@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold plus the first four Phase 1 persistence slices for authentication, auditability, opportunity/source lineage, connector-ready multi-source persistence, and opportunity workspace execution storage.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold plus the first five Phase 1 foundation slices for authentication, auditability, opportunity/source lineage, connector-ready multi-source persistence, opportunity workspace execution storage, and the first typed domain access layer over the Prisma baseline.
 
 ## Current System Shape
 
@@ -22,6 +22,7 @@ The compose images are intentionally built from a repo-contained offline npm cac
 - `src/app`: App Router routes, layout, global styles, and route handlers
 - `src/components`: shared UI components and component tests
 - `src/lib`: runtime helpers such as environment parsing, Prisma client construction, and database health checks
+- `src/modules/opportunities`: shared DTOs and typed repository functions for opportunity-centric read models
 - `prisma`: schema, generated migrations, and seed scripts
 - `scripts`: operational helper scripts including the placeholder worker
 - `tests`: Playwright smoke coverage
@@ -33,7 +34,7 @@ The compose images are intentionally built from a repo-contained offline npm cac
 
 1. Next.js boots and executes [instrumentation.ts](/Users/maverick/Documents/RalphLoops/OneSource/instrumentation.ts:1).
 2. `register()` calls `getServerEnv()` from [src/lib/env.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/env.ts:1), which validates required environment variables with Zod and fails fast on invalid config.
-3. The homepage route renders [AppShellPreview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/home/app-shell-preview.tsx:1), which is currently a static product shell used to verify layout, styling, and browser automation.
+3. The homepage route renders [AppShellPreview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/home/app-shell-preview.tsx:1), which remains a static product shell used to verify layout, styling, and browser automation while the typed repository layer matures behind tests.
 4. The health route at [src/app/api/health/route.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/app/api/health/route.ts:1) calls [checkDatabaseConnection](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/database-health.ts:1) and returns either `200 ok` or `503 degraded`.
 
 ### Worker
@@ -45,16 +46,17 @@ The compose images are intentionally built from a repo-contained offline npm cac
 
 ## Module Boundaries
 
-Current boundaries are intentionally simple:
+Current boundaries are intentionally simple but no longer purely route-plus-lib:
 
 - Route rendering stays in `src/app`.
 - Shared presentation logic lives in `src/components`.
 - Cross-route runtime helpers live in `src/lib`.
+- Typed entity DTOs and repository functions now live in `src/modules/opportunities`.
 - Background-process behavior lives in `scripts`.
 
-This keeps early Phase 0 behavior out of page files while leaving room for the planned domain-module structure in `PRD.md`:
+This keeps early Phase 0 behavior out of page files while establishing the first `src/modules` pattern expected by `PRD.md`:
 
-- future business domains under `src/modules`
+- additional business domains under `src/modules`
 - source integrations isolated from opportunity domain logic
 - typed DTO boundaries between connectors, normalization, and application services
 
@@ -135,6 +137,7 @@ Current automated coverage consists of:
 
 - Vitest unit tests for the homepage shell and env parsing
 - Vitest unit coverage for the canonical system role catalog
+- Vitest coverage for the typed opportunity repository DTO mapping and dashboard query contract
 - Playwright Chromium smoke coverage for the homepage
 - Prisma schema validation, migration, and seed verification against PostgreSQL
 - compose-backed lint, build, unit-test, and browser-test workflows documented in `docs/testing.md`
@@ -147,8 +150,6 @@ No live connector exists yet. The product architecture now persists source-agnos
 
 - No Auth.js runtime, protected routes, or authorization checks yet
 - No audit event emitters on business workflows yet beyond the seed bootstrap record
-- No `src/modules` domain structure yet
-- No typed domain module or database access layer yet
 - No executable connector service layer yet despite the new connector metadata baseline
 - No production job runner beyond the placeholder worker heartbeat
 

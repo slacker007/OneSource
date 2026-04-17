@@ -6,7 +6,7 @@ This document records the canonical verification workflows for the repo as of th
 
 ## Current Coverage
 
-- Unit tests: Vitest with Testing Library for UI and runtime helpers
+- Unit tests: Vitest with Testing Library for UI, runtime helpers, and typed repository mapping
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
 - Browser tests: Playwright Chromium smoke coverage in `tests/`
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
@@ -19,6 +19,8 @@ Integration tests do not exist yet. When database-backed integration tests are a
 Docker containers in this environment still cannot reach `registry.npmjs.org` directly. To keep compose workflows self-sufficient anyway, the repo commits `vendor/npm-offline-cache.tar.gz`, which contains the exact npm tarballs required by the current lockfile on the Linux development target.
 
 Docker builds unpack that archive and run `npm ci --offline`, so compose verification does not require a host-side `node_modules` tree.
+
+The Docker dependency stage also copies `prisma/` plus `prisma.config.ts` before `npm ci` so clean container builds can generate the Prisma client during the offline install step.
 
 Refresh the archive whenever `package-lock.json` changes:
 
@@ -48,6 +50,8 @@ npm run db:seed
 ```
 
 When a schema item depends on seeded relationships, verify the persisted graph directly with a narrow Prisma query before closing the loop.
+
+When the changed area adds typed repository or DTO mapping logic, keep those tests deterministic by injecting a fake database client into the repository module rather than depending on a generated Prisma client in unit-test environments.
 
 For the current workspace-persistence slice, the narrow direct verification query should confirm:
 

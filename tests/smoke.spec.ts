@@ -9,5 +9,5 @@ test("homepage smoke test", async ({ page }) => {
       name: /government opportunity tracking with audit-ready decisions/i,
     }),
   ).toBeVisible();
-  await expect(page.getByText(/foundation active/i)).toBeVisible();
+  await expect(page.getByText(/typed data layer active/i)).toBeVisible();
 });

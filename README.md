@@ -1,6 +1,6 @@
 # OneSource
 
-OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold plus the first four Phase 1 data-model slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, boot-time environment validation, a placeholder worker process, and an offline npm cache archive that makes Docker builds self-sufficient in this environment.
+OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold plus the first five Phase 1 foundation slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, a typed opportunity-domain repository layer with shared DTOs, boot-time environment validation, a placeholder worker process, and an offline npm cache archive that makes Docker builds self-sufficient in this environment.
 
 ## Current Status
 
@@ -8,8 +8,8 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - Implementation scope, checklist sequencing, and current handoff state live in `PRD.md`.
 - Engineering and verification rules live in `AGENTS.md`.
 - Active loop notes and crash-recovery context live in `NOTES.md`.
-- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, and `P1-03` are complete.
-- The next recommended item is `P1-04`, which adds a typed database access layer and shared domain types on top of the Prisma persistence baseline.
+- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, and `P1-04` are complete.
+- The next recommended item is `P1-05`, which expands the seed data into a broader realistic demo dataset for dashboards and filtering flows.
 
 ## Stack In Repo Today
 
@@ -30,6 +30,7 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - `src/app`: Next.js routes, layout, and global styling
 - `src/components`: shared and page-specific UI components
 - `src/lib`: shared runtime helpers such as env parsing and health checks
+- `src/modules`: typed domain modules such as the opportunity repository and shared DTOs
 - `prisma`: Prisma schema, generated migrations, and seed defaults
 - `scripts`: runtime helper scripts including the placeholder worker
 - `tests`: Playwright browser tests
@@ -109,9 +110,13 @@ npm run db:seed
 
 The current seed creates a default organization, the canonical system role set, a local development admin user at `admin@onesource.local`, one Air Force agency, two contract vehicles, two competitors, connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`, one imported `sam.gov` opportunity with retained raw and normalized payloads plus attachment and contact child records, one applied import decision that created the canonical opportunity, one `usaspending_api` enrichment search and retained award-centric source record with an applied link-to-existing import decision, and one realistic workspace on the canonical opportunity with tasks, milestones, notes, documents, stage transitions, a scorecard with factor rows, a bid decision, and activity events.
 
+The typed opportunity repository under `src/modules/opportunities/` exposes shared DTOs plus typed query functions for dashboard-style summaries and opportunity cards. The homepage remains a static shell for now so compose builds do not depend on a runtime Prisma client yet, but future persisted read models should use these module boundaries instead of raw model payloads.
+
 ## Offline Docker Dependency Cache
 
 This repo includes `vendor/npm-offline-cache.tar.gz`, a curated archive of the npm tarballs needed by the current lockfile on the Linux development target. Docker images install dependencies with `npm ci --offline`, so compose workflows do not depend on a repo-local `node_modules` tree or live npm registry access from containers.
+
+The Docker dependency stage also copies `prisma/` plus `prisma.config.ts` before `npm ci` so the offline install can generate the Prisma client required by clean container builds.
 
 When dependency versions change:
 
@@ -173,7 +178,6 @@ The canonical loop is now:
 ## Known Gaps
 
 - No Auth.js runtime, protected routes, or server-side authorization enforcement yet
-- No typed domain access layer over the Prisma models yet
 - No production job runner beyond the placeholder worker heartbeat
 
 Those gaps are intentional scope still tracked in `PRD.md`; this README only documents what exists today.

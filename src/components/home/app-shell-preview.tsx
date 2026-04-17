@@ -1,40 +1,67 @@
-const priorities = [
-  {
-    label: "Pipeline health",
-    value: "28 active pursuits",
-    detail: "9 require go/no-go review within 5 business days.",
-  },
-  {
-    label: "Near-term deadlines",
-    value: "6 submissions due",
-    detail: "Highest urgency is DHS zero trust support, due Apr 24.",
-  },
-  {
-    label: "Source coverage",
-    value: "SAM.gov ready",
-    detail: "Connector and normalized ingestion land in later phases.",
-  },
+import type { HomeDashboardSnapshot } from "@/modules/opportunities/opportunity.types";
+
+const stageCardTones = [
+  "bg-accent-soft text-accent-strong",
+  "bg-[#efe1d3] text-[#7e431f]",
+  "bg-[#dfe8ec] text-[#20465a]",
 ];
 
-const stageCards = [
-  { stage: "Qualified", count: 14, tone: "bg-accent-soft text-accent-strong" },
-  { stage: "Capture", count: 8, tone: "bg-[#efe1d3] text-[#7e431f]" },
-  { stage: "Proposal", count: 4, tone: "bg-[#dfe8ec] text-[#20465a]" },
-];
+type AppShellPreviewProps = {
+  snapshot: HomeDashboardSnapshot | null;
+};
 
-const tasks = [
-  "Approve scoring weights for cyber recompetes",
-  "Confirm incumbent and vehicle access assumptions",
-  "Draft timeline for CMS data modernization bid",
-];
+export function AppShellPreview({ snapshot }: AppShellPreviewProps) {
+  const focusOpportunity = snapshot?.focusOpportunity ?? null;
+  const priorities = snapshot
+    ? [
+        {
+          label: "Pipeline health",
+          value: `${snapshot.activeOpportunityCount} active pursuit${snapshot.activeOpportunityCount === 1 ? "" : "s"}`,
+          detail: `${snapshot.opportunitiesRequiringAttentionCount} item${snapshot.opportunitiesRequiringAttentionCount === 1 ? "" : "s"} currently need capture-team attention.`,
+        },
+        {
+          label: "Near-term deadlines",
+          value: `${snapshot.upcomingDeadlineCount} response deadline${snapshot.upcomingDeadlineCount === 1 ? "" : "s"} due soon`,
+          detail:
+            focusOpportunity?.responseDeadlineAt
+              ? `Closest deadline is ${formatShortDate(focusOpportunity.responseDeadlineAt)} for ${focusOpportunity.title}.`
+              : "No active deadlines are stored in the current seeded workspace.",
+        },
+        {
+          label: "Source coverage",
+          value: `${snapshot.enabledConnectorCount} connector${snapshot.enabledConnectorCount === 1 ? "" : "s"} enabled`,
+          detail:
+            snapshot.connectors.length > 0
+              ? `Typed repository access now wraps ${snapshot.connectors.length} persisted connector record${snapshot.connectors.length === 1 ? "" : "s"}.`
+              : "No connector configurations are stored yet.",
+        },
+      ]
+    : [
+        {
+          label: "Pipeline health",
+          value: "Awaiting seeded data",
+          detail:
+            "The typed repository layer is wired in; load seed data to populate the workspace snapshot.",
+        },
+        {
+          label: "Near-term deadlines",
+          value: "No response dates yet",
+          detail:
+            "The home page now handles an empty persisted state without falling back to raw Prisma model payloads.",
+        },
+        {
+          label: "Source coverage",
+          value: "Connector data unavailable",
+          detail:
+            "Connector summaries will appear here once the organization seed has been applied.",
+        },
+      ];
 
-const milestones = [
-  { title: "Go/no-go board", date: "Apr 22" },
-  { title: "Draft review", date: "Apr 25" },
-  { title: "Submission", date: "Apr 30" },
-];
+  const stageCards = snapshot?.stageSummaries.slice(0, 3) ?? [];
+  const decisionQueue = snapshot?.decisionQueue ?? [];
+  const focusTasks = snapshot?.focusTasks ?? [];
+  const focusMilestones = snapshot?.focusMilestones ?? [];
 
-export function AppShellPreview() {
   return (
     <main className="shell-grid flex-1 px-4 py-5 sm:px-6 lg:px-8">
       <div className="border-border bg-surface mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-7xl flex-col overflow-hidden rounded-[32px] border shadow-[0_30px_120px_rgba(20,37,34,0.14)] lg:flex-row">
@@ -53,8 +80,9 @@ export function AppShellPreview() {
                   Capture intelligence for the next serious bid.
                 </p>
                 <p className="max-w-xs text-sm leading-6 text-stone-300">
-                  The repo is now scaffolded with the app, styling, linting,
-                  unit tests, and browser smoke coverage needed for Phase 0.
+                  The app shell is now backed by typed domain queries over the
+                  persisted opportunity workspace baseline instead of static
+                  placeholders.
                 </p>
               </div>
             </div>
@@ -86,9 +114,9 @@ export function AppShellPreview() {
               Current loop
             </p>
             <p className="mt-2 text-sm leading-6 text-stone-200">
-              `P0-02` adds the compose-managed app, database, env validation,
-              and placeholder worker before containerized test workflows and
-              deeper product modules begin.
+              `P1-04` adds shared domain types plus a typed repository layer so
+              the app can consume core opportunity entities without raw Prisma
+              payloads leaking into page code.
             </p>
           </div>
         </aside>
@@ -105,19 +133,19 @@ export function AppShellPreview() {
                     Government opportunity tracking with audit-ready decisions.
                   </h1>
                   <p className="text-muted max-w-3xl text-base leading-7">
-                    This starter shell anchors the repo with a credible
-                    homepage, shared visual direction, and testable scaffolding
-                    for the modules that follow.
+                    The home experience now reads from typed domain queries over
+                    persisted opportunities, connectors, tasks, milestones, and
+                    bid decisions so later feature work can reuse stable DTOs.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 text-sm">
                 <div className="border-border text-foreground rounded-full border bg-white px-4 py-2 font-medium">
-                  Status: Foundation active
+                  Status: Typed data layer active
                 </div>
                 <div className="bg-accent rounded-full px-4 py-2 font-medium text-white">
-                  Next: Compose test workflows
+                  Next: Seed expansion
                 </div>
               </div>
             </header>
@@ -146,14 +174,50 @@ export function AppShellPreview() {
                 <p className="text-sm tracking-[0.24em] text-white/70 uppercase">
                   Decision queue
                 </p>
-                <p className="font-heading mt-4 text-3xl leading-tight font-semibold">
-                  3 opportunities need executive review this week.
-                </p>
-                <div className="mt-6 space-y-3 text-sm text-white/80">
-                  <p>1. DHS enterprise monitoring BPA</p>
-                  <p>2. CMS data modernization task order</p>
-                  <p>3. Army cloud operations recompete</p>
-                </div>
+                {focusOpportunity ? (
+                  <>
+                    <p className="font-heading mt-4 text-3xl leading-tight font-semibold">
+                      {focusOpportunity.title}
+                    </p>
+                    <div className="mt-4 space-y-2 text-sm text-white/80">
+                      <p>
+                        {focusOpportunity.currentStageLabel}
+                        {focusOpportunity.leadAgency
+                          ? ` for ${focusOpportunity.leadAgency.name}`
+                          : ""}
+                      </p>
+                      {focusOpportunity.score?.totalScore ? (
+                        <p>
+                          Current score {focusOpportunity.score.totalScore}
+                          {focusOpportunity.score.maximumScore
+                            ? ` / ${focusOpportunity.score.maximumScore}`
+                            : ""}
+                          {focusOpportunity.score.recommendationOutcome
+                            ? ` with ${focusOpportunity.score.recommendationOutcome} recommendation`
+                            : ""}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="mt-6 space-y-3 text-sm text-white/80">
+                      {decisionQueue.map((opportunity, index) => (
+                        <p key={opportunity.id}>
+                          {index + 1}. {opportunity.title}
+                        </p>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-heading mt-4 text-3xl leading-tight font-semibold">
+                      No persisted opportunities yet.
+                    </p>
+                    <p className="mt-6 text-sm text-white/80">
+                      Run the seed workflow to populate the typed dashboard
+                      snapshot with opportunities, tasks, milestones, and bid
+                      decisions.
+                    </p>
+                  </>
+                )}
               </article>
             </div>
 
@@ -169,24 +233,31 @@ export function AppShellPreview() {
                     </p>
                   </div>
                   <div className="bg-accent-soft text-accent-strong rounded-full px-4 py-2 text-sm font-medium">
-                    Placeholder data
+                    Typed DTOs
                   </div>
                 </div>
-                <div className="mt-6 grid gap-3 md:grid-cols-3">
-                  {stageCards.map((item) => (
-                    <div
-                      key={item.stage}
-                      className={`rounded-3xl px-5 py-6 ${item.tone}`}
-                    >
-                      <p className="text-sm tracking-[0.18em] uppercase opacity-75">
-                        {item.stage}
-                      </p>
-                      <p className="font-heading mt-4 text-4xl font-semibold">
-                        {item.count}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                {stageCards.length > 0 ? (
+                  <div className="mt-6 grid gap-3 md:grid-cols-3">
+                    {stageCards.map((item, index) => (
+                      <div
+                        key={item.stageKey}
+                        className={`rounded-3xl px-5 py-6 ${stageCardTones[index % stageCardTones.length]}`}
+                      >
+                        <p className="text-sm tracking-[0.18em] uppercase opacity-75">
+                          {item.stageLabel}
+                        </p>
+                        <p className="font-heading mt-4 text-4xl font-semibold">
+                          {item.opportunityCount}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted mt-6 text-sm leading-6">
+                    Seeded opportunity records will appear here once the
+                    organization has active pursuits in the database.
+                  </p>
+                )}
               </article>
 
               <article className="border-border rounded-[28px] border bg-[#f6efe4] p-6 shadow-[0_14px_40px_rgba(67,49,33,0.08)]">
@@ -196,39 +267,60 @@ export function AppShellPreview() {
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <div>
                     <p className="font-heading text-foreground text-2xl font-semibold">
-                      Today&apos;s priority tasks
+                      Open capture tasks
                     </p>
-                    <ul className="text-muted mt-4 space-y-3 text-sm leading-6">
-                      {tasks.map((task) => (
-                        <li
-                          key={task}
-                          className="rounded-2xl border border-black/6 bg-white/70 px-4 py-3"
-                        >
-                          {task}
-                        </li>
-                      ))}
-                    </ul>
+                    {focusTasks.length > 0 ? (
+                      <ul className="text-muted mt-4 space-y-3 text-sm leading-6">
+                        {focusTasks.map((task) => (
+                          <li
+                            key={task.id}
+                            className="rounded-2xl border border-black/6 bg-white/70 px-4 py-3"
+                          >
+                            <p className="text-foreground font-medium">
+                              {task.title}
+                            </p>
+                            <p className="mt-1 text-xs uppercase tracking-[0.14em]">
+                              {task.priority}
+                              {task.dueAt ? ` · due ${formatShortDate(task.dueAt)}` : ""}
+                              {task.assigneeName ? ` · ${task.assigneeName}` : ""}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-muted mt-4 text-sm leading-6">
+                        No active tasks are stored for the current focus
+                        opportunity.
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <p className="font-heading text-foreground text-2xl font-semibold">
                       Upcoming milestones
                     </p>
-                    <div className="mt-4 space-y-3">
-                      {milestones.map((milestone) => (
-                        <div
-                          key={milestone.title}
-                          className="flex items-center justify-between rounded-2xl border border-black/6 bg-white/70 px-4 py-3"
-                        >
-                          <span className="text-foreground text-sm font-medium">
-                            {milestone.title}
-                          </span>
-                          <span className="text-warning rounded-full bg-white px-3 py-1 text-xs font-semibold tracking-[0.16em] uppercase">
-                            {milestone.date}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    {focusMilestones.length > 0 ? (
+                      <div className="mt-4 space-y-3">
+                        {focusMilestones.map((milestone) => (
+                          <div
+                            key={milestone.id}
+                            className="flex items-center justify-between rounded-2xl border border-black/6 bg-white/70 px-4 py-3"
+                          >
+                            <span className="text-foreground text-sm font-medium">
+                              {milestone.title}
+                            </span>
+                            <span className="text-warning rounded-full bg-white px-3 py-1 text-xs font-semibold tracking-[0.16em] uppercase">
+                              {formatShortDate(milestone.targetDate)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted mt-4 text-sm leading-6">
+                        No active milestones are stored for the current focus
+                        opportunity.
+                      </p>
+                    )}
                   </div>
                 </div>
               </article>
@@ -238,4 +330,12 @@ export function AppShellPreview() {
       </div>
     </main>
   );
+}
+
+function formatShortDate(isoDate: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(isoDate));
 }
