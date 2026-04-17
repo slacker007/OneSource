@@ -34,7 +34,7 @@ Build OneSource as a production-grade capture intelligence platform for governme
 - Do not mark a checklist item complete without passing the required verification or explicitly documenting why verification could not run.
 - For any task that writes or changes code, write or update automated tests covering that behavior; the task is not complete until all automated tests in the repo, including previously existing tests and newly added tests, pass in the current loop.
 - Do not create a completion commit for unverified partial work.
-
+- Only after all tasks have been completed, emit the explicit completion command `echo '<promise>complete</promise>'`
 ## Required Repository Memory
 
 These files are the durable memory of the project. Future loops must maintain them.
@@ -90,7 +90,10 @@ Every loop must follow this exact flow.
 - Run the narrowest meaningful verification commands for the changed area.
 - If the change is user-facing and the live application stack exists, run the relevant Playwright flow in Chromium against the running app, preferably through `docker compose`.
 - If the target checklist item is complete and verification passed, create a non-amended git commit for that item before ending the loop unless the user explicitly asked not to commit.
+<<<<<<< HEAD
 - Do not emit `<promise>complete</promise>` at the end of an ordinary loop or after completing a single checklist item. Reserve that literal marker for one final signal only, after all project tasks are complete and the entire project is done.
+=======
+>>>>>>> refs/remotes/origin/main
 - Update `PRD.md`:
   - check completed items
   - update `Current Handoff`
