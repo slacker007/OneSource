@@ -12,6 +12,10 @@
   --accent-strong: #103a35;
   --accent-soft: rgba(32, 95, 85, 0.12);
   --warning: #a85d2a;
+  --font-body:
+    "IBM Plex Sans", "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-heading:
+    "Space Grotesk", "Avenir Next Condensed", "Trebuchet MS", sans-serif;
 }
 
 @theme inline {

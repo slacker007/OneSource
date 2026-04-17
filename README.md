@@ -1,6 +1,6 @@
 # OneSource
 
-OneSource is a capture intelligence platform for government contracting teams. The repo now has the Phase 0 application scaffold in place: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, and Playwright, plus a basic homepage shell that acts as the starting surface for later product work.
+OneSource is a capture intelligence platform for government contracting teams. The repo now has the Phase 0 scaffold plus a compose-managed runtime stack: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, boot-time environment validation, and a placeholder worker process for future background jobs.
 
 ## Current Status
 
@@ -8,23 +8,28 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - Implementation scope, checklist sequencing, and current handoff state live in `PRD.md`.
 - Engineering and verification rules live in `AGENTS.md`.
 - Active loop notes and crash-recovery context live in `NOTES.md`.
-- `P0-01` is the current scaffold milestone.
-- `P0-02`, `P0-02a`, and `P0-03` remain open. There is no `docker compose` stack, database, worker, or environment-schema layer yet.
+- `P0-01`, `P0-02`, and `P0-04` are complete.
+- `P0-02a` and `P0-03` remain open. There are still no compose profiles for containerized test execution, and `docs/architecture.md` plus `docs/runbook.md` are still missing.
 
 ## Stack In Repo Today
 
 - Next.js 16 App Router
 - TypeScript
 - Tailwind CSS 4
+- PostgreSQL 16
 - ESLint 9 with Next.js config
 - Prettier 3 with Tailwind plugin
 - Vitest + Testing Library
 - Playwright for Chromium smoke coverage
+- Zod environment validation
+- A placeholder background worker with database heartbeat logging
 
 ## Repository Layout
 
 - `src/app`: Next.js routes, layout, and global styling
 - `src/components`: shared and page-specific UI components
+- `src/lib`: shared runtime helpers such as env parsing and health checks
+- `scripts`: runtime helper scripts including the placeholder worker
 - `tests`: Playwright browser tests
 - `docs/research`: dated external research notes
 - `SPEC.md`: product context and market framing
@@ -34,53 +39,88 @@ OneSource is a capture intelligence platform for government contracting teams. T
 
 ## Local Setup
 
-1. Install dependencies:
+1. Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+2. Install dependencies:
 
 ```bash
 npm install
 ```
 
-2. Install the Chromium browser used by Playwright:
+The current compose image intentionally reuses the pinned local dependency tree from `node_modules`, so run `npm install` before `docker compose up --build`.
+
+3. Install the Chromium browser used by Playwright:
 
 ```bash
 npm run e2e:install
 ```
 
-3. Start the local dev server:
+4. Start the local PostgreSQL, web app, and worker stack:
+
+```bash
+docker compose up --build
+```
+
+For a detached stack:
+
+```bash
+docker compose up --build -d
+```
+
+5. Optional: run the app directly on the host instead of through Compose:
 
 ```bash
 npm run dev
 ```
 
-The app serves at `http://127.0.0.1:3000`.
+The app serves at `http://127.0.0.1:3000`, PostgreSQL is exposed on `127.0.0.1:5432`, and the readiness endpoint is `http://127.0.0.1:3000/api/health`.
+
+## Required Environment Variables
+
+- `DATABASE_URL`: postgres connection string used by the app and worker. Required and validated at app boot.
+- `POSTGRES_DB`: database name for the compose-managed PostgreSQL service.
+- `POSTGRES_USER`: database user for the compose-managed PostgreSQL service.
+- `POSTGRES_PASSWORD`: database password for the compose-managed PostgreSQL service.
+- `WORKER_POLL_INTERVAL_MS`: optional worker heartbeat interval in milliseconds. Defaults to `30000`.
+
+The committed `.env.example` contains the canonical development defaults.
 
 ## Verification Commands
 
 - Lint: `npm run lint`
 - Unit tests with coverage: `npm test`
 - Production build: `npm run build`
-- Chromium smoke test: `npm run e2e`
+- Chromium smoke test with a Playwright-managed local server: `npm run e2e`
+- Chromium smoke test against an already-running compose stack: `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e`
 - Format check: `npm run format:check`
 - Apply formatting: `npm run format`
+- Compose stack status: `docker compose ps`
+- Compose logs: `docker compose logs -f web worker`
+- Compose teardown: `docker compose down`
 
-`npm run e2e` starts the app automatically through the Playwright `webServer` configuration and runs the browser smoke test against `http://127.0.0.1:3000`.
+`npm run e2e` starts the app automatically through the Playwright `webServer` configuration and injects a default local `DATABASE_URL` when one is not already set. When `PLAYWRIGHT_BASE_URL` is provided, Playwright skips the internal web server and targets the existing app instance instead.
 
 ## Current Workflow
 
-Until the containerized stack exists, the canonical loop is:
+The canonical Phase 0 loop is now:
 
 1. Read `SPEC.md`, `PRD.md`, `AGENTS.md`, `README.md`, and `NOTES.md`.
 2. Inspect `git status`.
-3. Select one unchecked PRD item.
-4. Append timestamped task notes to `NOTES.md` during the loop.
-5. Update durable docs in the same loop whenever setup, behavior, or requirements change.
-6. Run the narrowest relevant verification, and for code changes also run the full automated suite currently available in the repo.
+3. Copy `.env.example` to `.env` if local env config is missing.
+4. Select one unchecked PRD item.
+5. Append timestamped task notes to `NOTES.md` during the loop.
+6. Update durable docs in the same loop whenever setup, behavior, or requirements change.
+7. Run the narrowest relevant verification, and for code changes also run the full automated suite currently available in the repo.
+8. When the stack is needed, prefer `docker compose up --build` and a compose-backed Playwright smoke run.
 
 ## Known Gaps
 
-- No `docker compose` workflow yet
-- No environment-variable schema or example env file yet
-- No database, Prisma schema, auth layer, or worker process yet
+- No compose profiles or equivalent workflows yet for running the automated test suite fully inside containers
+- No Prisma schema, auth layer, or real job runner yet
 - `docs/architecture.md` and `docs/runbook.md` are still missing, so `P0-03` remains incomplete
 
 Those gaps are intentional scope still tracked in `PRD.md`; this README only documents what exists today.

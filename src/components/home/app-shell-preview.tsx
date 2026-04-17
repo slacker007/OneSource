@@ -86,8 +86,9 @@ export function AppShellPreview() {
               Current loop
             </p>
             <p className="mt-2 text-sm leading-6 text-stone-200">
-              `P0-01` establishes the application shell and verification
-              workflow before database, auth, and connector work begin.
+              `P0-02` adds the compose-managed app, database, env validation,
+              and placeholder worker before containerized test workflows and
+              deeper product modules begin.
             </p>
           </div>
         </aside>
@@ -116,7 +117,7 @@ export function AppShellPreview() {
                   Status: Foundation active
                 </div>
                 <div className="bg-accent rounded-full px-4 py-2 font-medium text-white">
-                  Next: Docker + env validation
+                  Next: Compose test workflows
                 </div>
               </div>
             </header>
