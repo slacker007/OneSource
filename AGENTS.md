@@ -35,6 +35,7 @@ Build OneSource as a production-grade capture intelligence platform for governme
 - For any task that writes or changes code, write or update automated tests covering that behavior; the task is not complete until all automated tests in the repo, including previously existing tests and newly added tests, pass in the current loop.
 - Do not create a completion commit for unverified partial work.
 - Only after all tasks have been completed, emit the explicit completion command `echo '<promise>complete</promise>'`
+
 ## Required Repository Memory
 
 These files are the durable memory of the project. Future loops must maintain them.
@@ -45,6 +46,8 @@ These files are the durable memory of the project. Future loops must maintain th
   Implementation scope, phase plan, checklists, API and data contracts, and current handoff state.
 - `AGENTS.md`
   Engineering, verification, documentation, and agent operating rules.
+- `NOTES.md`
+  Timestamped working notes for the active loop so the next agent can recover mid-task state after an interrupted or crashed run.
 - `README.md`
   Setup, local development, canonical `docker compose` workflows, and core commands.
 - `docs/architecture.md`
@@ -69,10 +72,12 @@ Every loop must follow this exact flow.
 ### 1. Start Of Loop
 
 - Read `SPEC.md`, `PRD.md`, `AGENTS.md`, and `README.md` if it exists.
+- Read `NOTES.md` if it exists so the latest in-progress state and crash-recovery context are visible before new work begins.
 - Inspect `git status` and recent local changes before making assumptions.
 - Identify the single target checklist item from `PRD.md`.
 - Restate the exact checklist item and its acceptance criteria before editing code or docs.
 - If the user requests requirements hardening or durable-memory updates that do not map cleanly to an unchecked checklist item, explicitly state which existing PRD item the loop is being treated as a follow-up to and why.
+- If `NOTES.md` does not exist yet, create it before substantive work begins.
 
 ### 2. During The Loop
 
@@ -83,6 +88,7 @@ Every loop must follow this exact flow.
 - Treat any unexpected local changes as user-owned unless proven otherwise.
 - Prefer official documentation for unstable or external integrations, security guidance, AI safety guidance, and browser-testing workflows.
 - If external research materially shapes implementation or product requirements, add a dated note under `docs/research/` in the same loop.
+- Append timestamped working notes to `NOTES.md` throughout the loop for each task, especially after decisions, discoveries, edits, blockers, and before long-running or risky steps, so another agent can resume mid-task without chat history.
 - When requirements change, update `PRD.md` and any impacted durable docs in the same loop so the next agent does not need chat context.
 
 ### 3. End Of Loop
@@ -90,10 +96,8 @@ Every loop must follow this exact flow.
 - Run the narrowest meaningful verification commands for the changed area.
 - If the change is user-facing and the live application stack exists, run the relevant Playwright flow in Chromium against the running app, preferably through `docker compose`.
 - If the target checklist item is complete and verification passed, create a non-amended git commit for that item before ending the loop unless the user explicitly asked not to commit.
-<<<<<<< HEAD
 - Do not emit `<promise>complete</promise>` at the end of an ordinary loop or after completing a single checklist item. Reserve that literal marker for one final signal only, after all project tasks are complete and the entire project is done.
-=======
->>>>>>> refs/remotes/origin/main
+- Update `NOTES.md` with the current stopping point, next intended step, blockers, and verification status before ending the loop so interrupted work can be resumed safely.
 - Update `PRD.md`:
   - check completed items
   - update `Current Handoff`

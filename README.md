@@ -27,22 +27,25 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - `SPEC.md`: product intent and market context
 - `PRD.md`: implementation plan, checklist state, and handoff
 - `AGENTS.md`: repository operating rules
+- `NOTES.md`: timestamped working notes for the active loop and crash-recovery handoff
 - `README.md`: setup and workflow guide for the current repo state
 
 ## Current Workflow
 
 There is no runnable application or container stack yet. Until `P0-01` and `P0-02` are implemented, the canonical workflow is documentation-first:
 
-1. Read `SPEC.md`, `PRD.md`, and `AGENTS.md`.
+1. Read `SPEC.md`, `PRD.md`, `AGENTS.md`, and `NOTES.md` if it exists.
 2. Inspect `git status`.
 3. Work one PRD checklist item at a time.
-4. Update durable docs in the same loop when requirements or workflows change.
+4. Create `NOTES.md` if it does not exist and append timestamped working notes as the loop progresses.
+5. Update durable docs in the same loop when requirements or workflows change.
 
 ## Commands Available Today
 
 - Inspect repo status: `git status`
 - Review implementation plan: `sed -n '1,240p' PRD.md`
 - Review agent rules: `sed -n '1,240p' AGENTS.md`
+- Review active loop notes: `sed -n '1,240p' NOTES.md`
 
 ## Commands Not Yet Available
 
