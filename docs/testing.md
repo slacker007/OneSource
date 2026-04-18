@@ -6,7 +6,7 @@ This document records the canonical verification workflows for the repo as of th
 
 ## Current Coverage
 
-- Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, deterministic scoring and recommendation formulas plus fallback scorecard mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
+- Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, deterministic scoring and recommendation formulas plus fallback scorecard mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, audited opportunity write flows, scheduled source-sync sweeps, queued document parsing retries, and persisted scorecard recalculation logic
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
 - Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus stored-file download visibility, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` fixture-backed connector search flow plus preview-and-merge or preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with scoring-profile visibility, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
@@ -36,6 +36,9 @@ npm run lint
 npm test
 npm run build
 npm run e2e
+SAM_GOV_USE_FIXTURES=true npm run job:source-sync
+npm run job:document-parse
+npm run job:scorecards
 ```
 
 For the current auth and authz slices, the Playwright smoke test is expected to:
@@ -51,7 +54,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - render one seeded overdue task badge plus one seeded upcoming milestone badge before any new writes are made, proving the background worker and seed path persisted reminder state
 - create a milestone from the workspace with title, type, target date, and status, then confirm that milestone appears on the dashboard deadline surface
 - create a note from the workspace with title, pinned state, and body content, then confirm that note appears in the notes section and history feed
-- upload a text document from the workspace, confirm the success state and extracted-text snippet render, and confirm a stored-file download link is visible on the resulting document card
+- upload a text document from the workspace, confirm the success state plus queued extraction status render, and confirm a stored-file download link is visible on the resulting document card
 - open `/opportunities/new`, restore a browser-local draft, create a tracked opportunity through the guarded form path, then edit that opportunity through the guarded update flow
 - navigate into `/sources`, submit a structured fixture-backed `sam.gov` search, and observe the URL plus connector-backed result set update together
 - open a source-result preview, inspect duplicate detection, and either link the result into the existing tracked opportunity or confirm the already-linked state on reruns
@@ -157,6 +160,13 @@ For the current Phase 5 reminder slice, targeted verification should confirm:
 - the reminder job persists state transitions while appending both workspace activity events and audit-log rows
 - the typed opportunity repository maps persisted reminder state into the workspace, dashboard attention logic, and personal task board without leaking raw Prisma payloads into the page layer
 - the browser smoke flow can observe seeded reminder badges in both the workspace and `/tasks` queue without client polling logic
+
+For the current Phase 7 background-job slice, targeted verification should confirm:
+
+- the scheduled source-sync job selects only due saved searches, creates `source_sync_runs`, persists `source_search_executions` plus lineage joins, and remains idempotent across reruns against the same retained records
+- the document-parsing job retries pending local documents, updates extraction status and attempt metadata, and records a bounded failed state once `DOCUMENT_PARSER_MAX_ATTEMPTS` is reached
+- the scorecard job recalculates stale or missing-current scorecards, persists new current factor rows, and skips opportunities whose current scorecard already matches the deterministic scoring snapshot
+- manual operator commands `SAM_GOV_USE_FIXTURES=true npm run job:source-sync`, `npm run job:document-parse`, and `npm run job:scorecards` complete successfully against the local stack before `P7-05` is closed
 
 When the changed area includes Prisma schema or seed logic, also run:
 

@@ -22,7 +22,7 @@ afterEach(async () => {
 });
 
 describe("opportunity-document-storage", () => {
-  it("stores uploaded files on disk and extracts plain text for text-like formats", async () => {
+  it("stores uploaded files on disk and queues text-like formats for background extraction", async () => {
     const storageRoot = await createTempStorageRoot();
 
     const upload = await persistOpportunityDocumentUpload({
@@ -39,8 +39,11 @@ describe("opportunity-document-storage", () => {
 
     expect(upload.originalFileName).toBe("capture-plan.txt");
     expect(upload.mimeType).toBe("text/plain");
-    expect(upload.extractionStatus).toBe("SUCCEEDED");
-    expect(upload.extractedText).toMatch(/deliver modernization and analytics support/i);
+    expect(upload.extractionStatus).toBe("PENDING");
+    expect(upload.extractedText).toBeNull();
+    expect(upload.metadata).toMatchObject({
+      extractionMethod: "background_text_extraction",
+    });
     expect(upload.storagePath).toMatch(/^opportunities\/opp_123\/capture-plan-/);
     expect(upload.checksumSha256).toMatch(/^[a-f0-9]{64}$/);
 
@@ -53,7 +56,7 @@ describe("opportunity-document-storage", () => {
     expect(storedContents).toContain("Mission scope");
   });
 
-  it("stores binary uploads while leaving extraction pending for later work", async () => {
+  it("stores binary uploads while leaving extraction unrequested for later parser upgrades", async () => {
     const storageRoot = await createTempStorageRoot();
 
     const upload = await persistOpportunityDocumentUpload({

@@ -64,6 +64,24 @@ const serverEnvSchema = z.object({
   SAM_GOV_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   SAM_GOV_USE_FIXTURES: booleanishSchema.default(false),
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(30000),
+  DEADLINE_REMINDER_LOOKAHEAD_DAYS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(7),
+  SOURCE_SYNC_INTERVAL_MINUTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(1440),
+  SOURCE_SYNC_BATCH_SIZE: z.coerce.number().int().positive().default(3),
+  DOCUMENT_PARSER_BATCH_SIZE: z.coerce.number().int().positive().default(10),
+  DOCUMENT_PARSER_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
+  OPPORTUNITY_SCORECARD_BATCH_SIZE: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

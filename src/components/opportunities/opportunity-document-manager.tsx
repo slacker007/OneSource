@@ -59,7 +59,7 @@ export function OpportunityDocumentManager({
           </h3>
           <p className="mt-1 text-sm leading-6 text-muted">
             Store capture artifacts in the workspace with persisted metadata and
-            plain-text extraction when the uploaded format is text-like.
+            background text extraction for supported text-like formats.
           </p>
         </div>
         <Badge tone="accent">Local file stored on upload</Badge>
@@ -113,9 +113,9 @@ export function OpportunityDocumentManager({
       </FormField>
 
       <p className="mt-3 text-xs leading-6 text-muted">
-        Text extraction runs immediately for UTF-8 text-like uploads. Binary
-        formats are still stored with metadata so later parsing jobs can retry
-        them safely.
+        Supported text-like uploads are queued for asynchronous extraction by
+        the background worker. Unsupported binary formats are still stored with
+        explicit metadata so later parser upgrades can revisit them safely.
       </p>
 
       {createState.formError ? (

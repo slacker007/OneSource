@@ -65,7 +65,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("searchbox", { name: /global search/i }),
+    page.getByLabel(/global search/i),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
   await page.getByRole("link", { name: /^Opportunities/i }).click();
@@ -429,7 +429,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   });
   await page.getByRole("button", { name: /^upload document$/i }).click();
   await expect(
-    page.getByText(/document uploaded\. the workspace now shows the stored metadata and extraction status/i),
+    page.getByText(/document uploaded\. the workspace now shows the stored metadata and queued extraction status/i),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: createdDocumentTitle, exact: true }),
@@ -438,7 +438,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     page.getByRole("link", { name: /download stored file/i }).first(),
   ).toBeVisible();
   await expect(
-    page.getByText(/capture plan summary/i).first(),
+    page.getByText(/pending/i).first(),
   ).toBeVisible();
 
   await page.getByRole("link", { name: /^Tasks/i }).click();
@@ -532,7 +532,7 @@ test.describe("mobile navigation", () => {
       page.getByRole("table", { name: /opportunity pipeline results/i }),
     ).toBeVisible();
     await expect(
-      page.getByRole("searchbox", { name: /global search/i }),
+      page.getByLabel(/global search/i),
     ).toBeVisible();
   });
 });

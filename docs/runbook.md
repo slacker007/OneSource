@@ -8,7 +8,7 @@ This runbook captures the real operational procedures for the current repo basel
 
 - `web`: Next.js production server on port `3000`
 - `db`: PostgreSQL 16 on port `5432`
-- `worker`: background process that scans task and milestone deadlines, persists reminder state, and writes structured summary logs
+- `worker`: background process that scans deadline reminders, due `sam.gov` saved searches, queued document parsing work, and stale opportunity scorecards while writing structured summary logs
 - `test`: profile-gated compose runner for lint, build, and unit tests
 - `playwright`: profile-gated Chromium browser test runner
 
@@ -104,17 +104,36 @@ Apply the current seed defaults:
 npm run db:seed
 ```
 
-The current seed is idempotent enough for local development. It upserts the default organization, system roles, and seven realistic local users; persists one organization scoring profile with target NAICS codes, focus agencies, relationship agencies, capability inventory rows, certification rows, selected vehicles, and six weighted scoring criteria; persists five agencies, five contract vehicles, and five competitors; creates connector configs for `sam.gov`, `usaspending_api`, `gsa_ebuy`, and `csv_upload`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; seeds four additional manual opportunities across `qualified`, `proposal_in_development`, `submitted`, and `no_bid`; seeds realistic workspace data with varied tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, activity events, retained extracted text, and local-disk document paths; then runs the same deadline-reminder sweep used by the worker so the app opens with truthful overdue and upcoming reminder state before appending the bootstrap audit-log record.
+The current seed is idempotent enough for local development. It upserts the default organization, system roles, and seven realistic local users; persists one organization scoring profile with target NAICS codes, focus agencies, relationship agencies, capability inventory rows, certification rows, selected vehicles, and six weighted scoring criteria; persists five agencies, five contract vehicles, and five competitors; creates connector configs for `sam.gov`, `usaspending_api`, `gsa_ebuy`, and `csv_upload`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; seeds four additional manual opportunities across `qualified`, `proposal_in_development`, `submitted`, and `no_bid`; seeds realistic workspace data with varied tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, activity events, retained extracted text, queued extraction status, and local-disk document paths; then runs the same deadline-reminder sweep used by the worker so the app opens with truthful overdue and upcoming reminder state before appending the bootstrap audit-log record.
 
 The same seed also writes deterministic local password hashes for all seven users so the credentials-provider sign-in flow works immediately in development. Use the admin email `admin@onesource.local` or the viewer email `avery.stone@onesource.local` plus the shared local development password documented in [src/lib/auth/local-demo-auth.mjs](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/local-demo-auth.mjs:1) for smoke verification only.
 
 ## Document Storage
 
 - Opportunity document uploads are stored on local disk beneath `DOCUMENT_UPLOAD_DIR`, which defaults to `.data/opportunity-documents`.
-- The upload flow writes the file first, then persists `opportunity_documents` metadata including checksum, file size, mime type, extraction status, and extracted text when the content is UTF-8 text-like.
+- The upload flow writes the file first, then persists `opportunity_documents` metadata including checksum, file size, mime type, extraction status, and extracted text when extraction has already succeeded.
 - Stored files are served back through `GET /api/opportunities/documents/[documentId]/download`, which rechecks authentication and organization scope before returning the file or redirecting to an external source URL.
-- The current synchronous extractor handles text-like formats such as `.txt`, `.md`, `.csv`, `.json`, `.xml`, `.yaml`, and HTML. Binary formats are still stored, but they remain `NOT_REQUESTED` until a later Phase 7 parsing job can process them.
+- Supported UTF-8 text-like uploads such as `.txt`, `.md`, `.csv`, `.json`, `.xml`, `.yaml`, and HTML are now persisted as `PENDING` extraction work and are parsed asynchronously by the document-parsing job. Binary or unsupported formats are stored with `NOT_REQUESTED`.
+- The document-parsing job retries pending local-disk documents up to `DOCUMENT_PARSER_MAX_ATTEMPTS`, then leaves the document in a failed state for operator review if extraction never succeeds.
 - Local uploads live under `.data/`, which is ignored by git. Remove that directory manually if you need to reset stored development artifacts.
+
+## Background Job Commands
+
+Run the same one-shot sweeps the worker uses:
+
+```bash
+npm run job:deadline-reminders
+SAM_GOV_USE_FIXTURES=true npm run job:source-sync
+npm run job:document-parse
+npm run job:scorecards
+```
+
+Operational notes:
+
+- `job:source-sync` currently executes only saved searches whose `sourceSystem` is `sam_gov`. Saved searches for future connectors are skipped with a warning and counted as failed runs until those connector implementations exist.
+- `job:document-parse` processes pending or previously failed local documents in batch order, updates extraction status, and appends audit plus workspace activity evidence on success.
+- `job:scorecards` recalculates only stale or missing-current scorecards, so reruns are intentionally idempotent and should quickly converge to mostly skipped work.
+- The long-running `npm run worker` process runs all four sweeps on each polling interval instead of requiring manual invocation.
 
 To inspect the seeded opportunity portfolio directly:
 
@@ -138,7 +157,7 @@ Worker logs are structured JSON with:
 - `message`
 - optional `detail`
 
-The reminder sweep summary currently includes:
+The reminder and worker summaries currently include:
 
 - `scannedTaskCount`
 - `scannedMilestoneCount`
@@ -148,6 +167,16 @@ The reminder sweep summary currently includes:
 - `overdueTaskCount`
 - `upcomingMilestoneCount`
 - `overdueMilestoneCount`
+- `queuedSavedSearches`
+- `processedRuns`
+- `succeededRuns`
+- `failedRuns`
+- `processedDocuments`
+- `succeededDocuments`
+- `failedDocuments`
+- `processedOpportunities`
+- `recalculatedOpportunities`
+- `skippedOpportunities`
 
 ## SAM.gov Connector Operations
 
@@ -155,6 +184,7 @@ The reminder sweep summary currently includes:
 - Fixture mode is the canonical setting for automated host and compose verification because it avoids flaky upstream credentials, latency, and result drift.
 - Live mode requires `SAM_GOV_API_KEY` and should be used for post-project follow-on `FP-01`, exploratory operator testing, or future scheduled-ingestion work.
 - Search executions persist outbound request envelopes plus normalized `source_records` and normalized attachment/contact/award child rows, so preview and import actions operate on retained lineage data rather than transient page-local IDs.
+- Scheduled source sync now reuses the same connector boundary through the worker and `job:source-sync`, creating `source_sync_runs` plus fresh `source_search_executions` for due saved searches.
 - The current repo state does not require a credentialed live search/import run to close `P7-03`; that manual upstream exercise is intentionally deferred to post-project follow-on `FP-01` when a real `SAM_GOV_API_KEY` is available.
 
 ## Compose Test Workflows
@@ -206,6 +236,9 @@ npm run lint
 npm test
 npm run build
 npm run e2e
+SAM_GOV_USE_FIXTURES=true npm run job:source-sync
+npm run job:document-parse
+npm run job:scorecards
 ```
 
 To target an already-running app instance:
@@ -236,13 +269,13 @@ Symptoms:
 
 - `web` exits during startup
 - error references `DATABASE_URL`, `AUTH_SECRET`, `NEXTAUTH_URL`, or `WORKER_POLL_INTERVAL_MS`
-- error references `DEADLINE_REMINDER_LOOKAHEAD_DAYS`
+- error references `DEADLINE_REMINDER_LOOKAHEAD_DAYS`, `SOURCE_SYNC_INTERVAL_MINUTES`, `SOURCE_SYNC_BATCH_SIZE`, `DOCUMENT_PARSER_BATCH_SIZE`, `DOCUMENT_PARSER_MAX_ATTEMPTS`, or `OPPORTUNITY_SCORECARD_BATCH_SIZE`
 
 Recovery:
 
 1. Check `.env` against `.env.example`.
 2. Ensure `DATABASE_URL` uses `postgres://` or `postgresql://`.
-3. Ensure `AUTH_SECRET` is at least 32 characters, `NEXTAUTH_URL` is an absolute URL, and `DEADLINE_REMINDER_LOOKAHEAD_DAYS` is a positive integer.
+3. Ensure `AUTH_SECRET` is at least 32 characters, `NEXTAUTH_URL` is an absolute URL, `DEADLINE_REMINDER_LOOKAHEAD_DAYS`, `SOURCE_SYNC_INTERVAL_MINUTES`, `SOURCE_SYNC_BATCH_SIZE`, `DOCUMENT_PARSER_BATCH_SIZE`, and `OPPORTUNITY_SCORECARD_BATCH_SIZE` are positive integers, and `DOCUMENT_PARSER_MAX_ATTEMPTS` is at least `1`.
 4. Restart the stack with `make compose-up`.
 
 ### Database Unhealthy
@@ -251,13 +284,28 @@ Symptoms:
 
 - `docker compose ps` shows `db` unhealthy
 - `/api/health` returns `503`
-- worker logs report deadline reminder sweep failures
+- worker logs report reminder, source-sync, document-parsing, or scorecard sweep failures
 
 Recovery:
 
 1. Inspect database logs with `docker compose logs db`.
 2. Confirm `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` match the composed `DATABASE_URL`.
 3. If the local data directory is intentionally disposable and corrupted, remove `./.docker/postgres-data` and rebuild the stack.
+
+### Background Job Warnings Or Failures
+
+Symptoms:
+
+- `job:source-sync` reports `failedRuns`
+- `job:document-parse` reports failed documents or repeated retries
+- `job:scorecards` exits unexpectedly
+
+Recovery:
+
+1. Inspect `docker compose logs worker` or rerun the failing one-shot job directly to capture structured JSON output.
+2. For `job:source-sync`, confirm the saved search uses `sourceSystem = "sam_gov"` today and that `SAM_GOV_USE_FIXTURES` or `SAM_GOV_API_KEY` is set appropriately for the intended mode.
+3. For `job:document-parse`, verify the file still exists under `DOCUMENT_UPLOAD_DIR` and that the document mime type is one of the supported text-like formats.
+4. For `job:scorecards`, rerun `npm run db:seed` if the local seed graph is intentionally being reset, then rerun the job to confirm the stale-scorecard condition is reproducible.
 
 ### Prisma Migration Fails
 

@@ -403,7 +403,7 @@ export async function createOpportunityDocumentAction(
   return {
     ...INITIAL_OPPORTUNITY_DOCUMENT_ACTION_STATE,
     successMessage:
-      "Document uploaded. The workspace now shows the stored metadata and extraction status.",
+      "Document uploaded. The workspace now shows the stored metadata and queued extraction status.",
   };
 }
 

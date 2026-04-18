@@ -38,12 +38,19 @@ export type PersistedOpportunityDocumentUpload = {
   checksumSha256: string;
   extractedAt: Date | null;
   extractedText: string | null;
-  extractionStatus: "SUCCEEDED" | "NOT_REQUESTED";
+  extractionStatus: "PENDING" | "NOT_REQUESTED";
   fileSizeBytes: number;
   mimeType: string | null;
   metadata: Record<string, string | null>;
   originalFileName: string;
   storagePath: string;
+};
+
+export type OpportunityDocumentExtractionAttempt = {
+  extractedText: string | null;
+  method: string;
+  reason: string;
+  status: "SUCCEEDED" | "FAILED";
 };
 
 export async function persistOpportunityDocumentUpload({
@@ -81,25 +88,30 @@ export async function persistOpportunityDocumentUpload({
   await mkdir(path.dirname(absoluteStoragePath), { recursive: true });
   await writeFile(absoluteStoragePath, fileBuffer);
 
-  const extraction = extractPlainTextFromUpload({
-    fileBuffer,
+  const mimeType = normalizeMimeType(file.type);
+  const shouldQueueExtraction = shouldQueueOpportunityDocumentExtraction({
     fileName: originalFileName,
-    mimeType: normalizeMimeType(file.type),
+    mimeType,
   });
 
   return {
     checksumSha256,
-    extractedAt: extraction.extractedText ? new Date() : null,
-    extractedText: extraction.extractedText,
-    extractionStatus: extraction.status,
+    extractedAt: null,
+    extractedText: null,
+    extractionStatus: shouldQueueExtraction ? "PENDING" : "NOT_REQUESTED",
     fileSizeBytes: file.size,
     metadata: {
       fileExtension: extension || null,
       fileNameStem: baseName,
-      extractionMethod: extraction.method,
-      extractionReason: extraction.reason,
+      extractionMethod: shouldQueueExtraction
+        ? "background_text_extraction"
+        : "unsupported_binary_format",
+      extractionQueuedAt: shouldQueueExtraction ? new Date().toISOString() : null,
+      extractionReason: shouldQueueExtraction
+        ? "The file is stored immediately and queued for asynchronous text extraction by the background worker."
+        : "Stored the uploaded file and metadata, but background extraction is currently limited to UTF-8 text-like formats.",
     },
-    mimeType: normalizeMimeType(file.type),
+    mimeType,
     originalFileName,
     storagePath: relativeStoragePath,
   };
@@ -123,7 +135,17 @@ export async function readStoredOpportunityDocument(
   return readFile(resolveOpportunityDocumentAbsolutePath(relativeStoragePath, storageRoot));
 }
 
-function extractPlainTextFromUpload({
+export function shouldQueueOpportunityDocumentExtraction({
+  fileName,
+  mimeType,
+}: {
+  fileName: string;
+  mimeType: string | null;
+}) {
+  return canExtractText({ fileName, mimeType });
+}
+
+export function extractPlainTextFromOpportunityDocument({
   fileBuffer,
   fileName,
   mimeType,
@@ -131,14 +153,14 @@ function extractPlainTextFromUpload({
   fileBuffer: Buffer;
   fileName: string;
   mimeType: string | null;
-}) {
+}): OpportunityDocumentExtractionAttempt {
   if (!canExtractText({ fileName, mimeType })) {
     return {
       extractedText: null,
       method: "unsupported_binary_format",
       reason:
-        "Stored the uploaded file and metadata, but synchronous extraction currently runs only for UTF-8 text-like formats.",
-      status: "NOT_REQUESTED" as const,
+        "Background extraction currently runs only for UTF-8 text-like formats stored on local disk.",
+      status: "FAILED" as const,
     };
   }
 
@@ -146,13 +168,13 @@ function extractPlainTextFromUpload({
   const normalizedText = normalizeExtractedText(decodedText);
 
   return {
-    extractedText: normalizedText,
-    method: "utf8_text_decode",
-    reason: normalizedText
-      ? "Plain text was extracted directly from the uploaded UTF-8 content."
-      : "The uploaded text-like file did not contain extractable text after normalization.",
-    status: "SUCCEEDED" as const,
-  };
+      extractedText: normalizedText,
+      method: "utf8_text_decode",
+      reason: normalizedText
+        ? "Plain text was extracted directly from the uploaded UTF-8 content."
+        : "The uploaded text-like file did not contain extractable text after normalization.",
+      status: "SUCCEEDED" as const,
+    };
 }
 
 function canExtractText({

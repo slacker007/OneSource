@@ -12,7 +12,11 @@
     "build": "next build",
     "start": "next start --hostname 127.0.0.1 --port 3000",
     "start:compose": "next start --hostname 0.0.0.0 --port 3000",
-    "worker": "node scripts/worker.mjs",
+    "worker": "tsx scripts/worker.ts",
+    "job:deadline-reminders": "tsx scripts/run-deadline-reminder-job.ts",
+    "job:source-sync": "tsx scripts/run-source-sync-job.ts",
+    "job:document-parse": "tsx scripts/run-document-parsing-job.ts",
+    "job:scorecards": "tsx scripts/run-opportunity-scorecard-job.ts",
     "lint": "eslint .",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
@@ -52,6 +56,7 @@
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4",
+    "tsx": "^4.20.6",
     "typescript": "^5",
     "vitest": "^4.1.4"
   }
