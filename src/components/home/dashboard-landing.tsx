@@ -5,6 +5,8 @@ import type {
   DashboardDeadlineSummary,
   HomeDashboardSnapshot,
   OpportunitySummary,
+  PipelineConversionSummary,
+  PipelineStageAgingSummary,
 } from "@/modules/opportunities/opportunity.types";
 
 type DashboardLandingProps = {
@@ -115,6 +117,64 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
               className="mt-6 border-white/15 bg-white/5 text-white"
               message="The current organization snapshot does not have any ranked pursuits yet."
               title="No ranked opportunities"
+            />
+          )}
+        </article>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <article className="border-border rounded-[28px] border bg-[linear-gradient(180deg,rgba(244,250,247,1),rgba(232,244,239,0.96))] p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                Pipeline health
+              </p>
+              <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+                Conversion rates
+              </h2>
+            </div>
+            <Badge tone="accent">{snapshot.activeOpportunityCount} active</Badge>
+          </div>
+
+          {snapshot.pipelineConversionSummaries.length > 0 ? (
+            <div className="mt-6 grid gap-3 md:grid-cols-2">
+              {snapshot.pipelineConversionSummaries.map((summary) => (
+                <ConversionRateCard key={summary.key} summary={summary} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              className="mt-6 bg-white/70"
+              message="The current organization snapshot does not have enough pipeline history to calculate conversions yet."
+              title="No conversion analytics yet"
+            />
+          )}
+        </article>
+
+        <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                Pipeline health
+              </p>
+              <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+                Pipeline aging
+              </h2>
+            </div>
+            <Badge tone="warning">Active stages</Badge>
+          </div>
+
+          {snapshot.pipelineStageAgingSummaries.length > 0 ? (
+            <div className="mt-6 space-y-3">
+              {snapshot.pipelineStageAgingSummaries.map((summary) => (
+                <StageAgingCard key={summary.stageKey} summary={summary} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              className="mt-6"
+              message="Stage aging will appear once opportunities start moving through the active pipeline."
+              title="No active stage aging yet"
             />
           )}
         </article>
@@ -254,9 +314,72 @@ function DeadlineCard({
   );
 }
 
+function ConversionRateCard({
+  summary,
+}: {
+  summary: PipelineConversionSummary;
+}) {
+  return (
+    <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-white/78 px-5 py-5">
+      <p className="text-muted text-xs tracking-[0.18em] uppercase">
+        {summary.label}
+      </p>
+      <p className="font-heading text-foreground mt-3 text-4xl font-semibold tracking-[-0.04em]">
+        {formatPercent(summary.ratePercent)}
+      </p>
+      <p className="text-muted mt-3 text-sm leading-6">
+        {summary.numerator} of {summary.denominator}{" "}
+        {summary.denominator === 1 ? "opportunity" : "opportunities"} reached
+        this step.
+      </p>
+    </div>
+  );
+}
+
+function StageAgingCard({
+  summary,
+}: {
+  summary: PipelineStageAgingSummary;
+}) {
+  return (
+    <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,249,239,0.62)] px-5 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-muted text-xs tracking-[0.18em] uppercase">
+            {summary.stageLabel}
+          </p>
+          <p className="text-foreground mt-2 text-lg font-semibold">
+            Avg age {formatDayCount(summary.averageAgeDays)}
+          </p>
+        </div>
+        <Badge tone="muted">
+          {summary.opportunityCount}{" "}
+          {summary.opportunityCount === 1 ? "opportunity" : "opportunities"}
+        </Badge>
+      </div>
+
+      <p className="text-muted mt-3 text-sm leading-6">
+        Oldest current stage: {formatDayCount(summary.oldestAgeDays)} on{" "}
+        {summary.oldestOpportunityTitle}
+      </p>
+    </div>
+  );
+}
+
 function formatShortDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
   }).format(new Date(value));
+}
+
+function formatPercent(value: number) {
+  return `${new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 1,
+  }).format(value)}%`;
+}
+
+function formatDayCount(value: number) {
+  return `${value} ${value === 1 ? "day" : "days"}`;
 }

@@ -390,6 +390,23 @@ export type OpportunityStageSummary = {
   opportunityCount: number;
 };
 
+export type PipelineConversionSummary = {
+  key: "qualification" | "approval" | "proposal" | "submission";
+  label: string;
+  numerator: number;
+  denominator: number;
+  ratePercent: number;
+};
+
+export type PipelineStageAgingSummary = {
+  stageKey: string;
+  stageLabel: string;
+  opportunityCount: number;
+  averageAgeDays: number;
+  oldestAgeDays: number;
+  oldestOpportunityTitle: string;
+};
+
 export type DashboardDeadlineSummary = {
   id: string;
   title: string;
@@ -409,6 +426,8 @@ export type HomeDashboardSnapshot = {
   enabledConnectorCount: number;
   opportunitiesRequiringAttentionCount: number;
   stageSummaries: OpportunityStageSummary[];
+  pipelineConversionSummaries: PipelineConversionSummary[];
+  pipelineStageAgingSummaries: PipelineStageAgingSummary[];
   upcomingDeadlines: DashboardDeadlineSummary[];
   topOpportunities: OpportunitySummary[];
 };

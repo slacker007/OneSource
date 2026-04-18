@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 8 workspace-knowledge-suggestion baseline on top of the completed Phase 7 intake and observability work. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 9 pipeline-analytics baseline on top of the completed Phase 8 knowledge work. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, deterministic scoring and recommendation formulas plus fallback scorecard mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, audited opportunity write flows, scheduled source-sync sweeps, queued document parsing retries, and persisted scorecard recalculation logic
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, ranked knowledge suggestions, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus stored-file download visibility, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/knowledge` browse/create/filter flow, the `/sources` fixture-backed connector search flow plus preview-and-merge or preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with source-sync observability plus scoring-profile visibility, one live retry-queue action, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard stage-count, conversion-rate, pipeline-aging, and upcoming-deadline widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, ranked knowledge suggestions, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus stored-file download visibility, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/knowledge` browse/create/filter flow, the `/sources` fixture-backed connector search flow plus preview-and-merge or preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with source-sync observability plus scoring-profile visibility, one live retry-queue action, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -110,8 +110,8 @@ For the current Phase 6 scoring slices, targeted verification should confirm:
 
 For the current Phase 3 dashboard slice, targeted unit verification should confirm:
 
-- the seeded dashboard landing component renders stage counts, ranked opportunities, and upcoming deadlines from typed snapshot data
-- the typed opportunity repository derives the dashboard snapshot without leaking raw Prisma model payloads into the page layer
+- the seeded dashboard landing component renders stage counts, pipeline conversion rates, active-stage aging, ranked opportunities, and upcoming deadlines from typed snapshot data
+- the typed opportunity repository derives the dashboard snapshot without leaking raw Prisma model payloads into the page layer and calculates conversion plus aging summaries from stage history and timestamps
 - the authenticated shell still opens the mobile drawer through the shared drawer primitive
 
 For the current Phase 7 connector-backed source-search slice, targeted unit verification should confirm:

@@ -40,6 +40,46 @@ const snapshot: HomeDashboardSnapshot = {
       opportunityCount: 1,
     },
   ],
+  pipelineConversionSummaries: [
+    {
+      key: "qualification",
+      label: "Qualification rate",
+      numerator: 2,
+      denominator: 2,
+      ratePercent: 100,
+    },
+    {
+      key: "approval",
+      label: "Pursuit approval rate",
+      numerator: 1,
+      denominator: 2,
+      ratePercent: 50,
+    },
+    {
+      key: "proposal",
+      label: "Proposal start rate",
+      numerator: 1,
+      denominator: 1,
+      ratePercent: 100,
+    },
+    {
+      key: "submission",
+      label: "Submission rate",
+      numerator: 0,
+      denominator: 1,
+      ratePercent: 0,
+    },
+  ],
+  pipelineStageAgingSummaries: [
+    {
+      stageKey: "capture_active",
+      stageLabel: "Capture Active",
+      opportunityCount: 1,
+      averageAgeDays: 7,
+      oldestAgeDays: 7,
+      oldestOpportunityTitle: "Enterprise Knowledge Management Support Services",
+    },
+  ],
   upcomingDeadlines: [
     {
       id: "opp_123:response-deadline",
@@ -117,13 +157,25 @@ describe("DashboardLanding", () => {
       }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", {
+        name: /conversion rates/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /pipeline aging/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
       screen.getAllByText(/enterprise knowledge management support services/i),
-    ).toHaveLength(3);
+    ).toHaveLength(4);
     expect(
       screen.getByText(/tracked opportunities/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/score 79\.50\/100/i)).toBeInTheDocument();
     expect(screen.getByText(/go\/no-go board/i)).toBeInTheDocument();
+    expect(screen.getByText(/50%/i)).toBeInTheDocument();
+    expect(screen.getByText(/avg age 7 days/i)).toBeInTheDocument();
   });
 
   it("renders an error state when no snapshot is available", () => {

@@ -62,6 +62,17 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
+      name: /conversion rates/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /pipeline aging/i,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(/qualification rate/i)).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
       name: /va claims intake automation bpa/i,
     }),
   ).toBeVisible();

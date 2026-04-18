@@ -143,11 +143,13 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         solicitationNumber: "FA4861-26-R-0012",
         currentStageKey: "capture_active",
         currentStageLabel: "Capture Active",
+        currentStageChangedAt: new Date("2026-04-10T00:00:00.000Z"),
         responseDeadlineAt: new Date("2026-05-01T17:00:00.000Z"),
         originSourceSystem: "sam_gov",
         naicsCode: "541511",
         sourceSummaryText:
           "Enterprise knowledge management and workflow modernization support.",
+        createdAt: new Date("2026-03-20T00:00:00.000Z"),
         isActiveSourceRecord: true,
         isArchivedSourceRecord: false,
         updatedAt: new Date("2026-04-18T01:00:00.000Z"),
@@ -250,10 +252,26 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         ],
         bidDecisions: [
           {
+            id: "decision_alpha",
+            isCurrent: true,
             decisionTypeKey: "initial_pursuit",
             recommendationOutcome: "GO",
             finalOutcome: "GO",
             decidedAt: new Date("2026-04-15T16:05:00.000Z"),
+          },
+        ],
+        stageTransitions: [
+          {
+            fromStageKey: "identified",
+            toStageKey: "qualified",
+          },
+          {
+            fromStageKey: "qualified",
+            toStageKey: "pursuit_approved",
+          },
+          {
+            fromStageKey: "pursuit_approved",
+            toStageKey: "capture_active",
           },
         ],
       },
@@ -263,10 +281,12 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         solicitationNumber: "W91QUZ-26-R-1042",
         currentStageKey: null,
         currentStageLabel: null,
+        currentStageChangedAt: null,
         responseDeadlineAt: new Date("2026-06-20T17:00:00.000Z"),
         originSourceSystem: "sam_gov",
         naicsCode: "541512",
         sourceSummaryText: "Cloud operations and sustainment support.",
+        createdAt: new Date("2026-04-09T00:00:00.000Z"),
         isActiveSourceRecord: true,
         isArchivedSourceRecord: false,
         updatedAt: new Date("2026-04-17T01:00:00.000Z"),
@@ -277,6 +297,7 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         milestones: [],
         scorecards: [],
         bidDecisions: [],
+        stageTransitions: [],
       },
       {
         id: "opp_gamma",
@@ -284,10 +305,12 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         solicitationNumber: "70RCSJ-26-R-ZT01",
         currentStageKey: "submitted",
         currentStageLabel: "Submitted",
+        currentStageChangedAt: new Date("2026-04-16T00:00:00.000Z"),
         responseDeadlineAt: new Date("2026-04-18T21:00:00.000Z"),
         originSourceSystem: "manual_entry",
         naicsCode: "541519",
         sourceSummaryText: "Submitted cyber support pursuit.",
+        createdAt: new Date("2026-03-28T00:00:00.000Z"),
         isActiveSourceRecord: true,
         isArchivedSourceRecord: false,
         updatedAt: new Date("2026-04-18T02:00:00.000Z"),
@@ -356,10 +379,22 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         ],
         bidDecisions: [
           {
+            id: "decision_gamma",
+            isCurrent: true,
             decisionTypeKey: "submit_authorization",
             recommendationOutcome: "GO",
             finalOutcome: "GO",
             decidedAt: new Date("2026-04-18T20:15:00.000Z"),
+          },
+        ],
+        stageTransitions: [
+          {
+            fromStageKey: "capture_active",
+            toStageKey: "proposal_in_development",
+          },
+          {
+            fromStageKey: "proposal_in_development",
+            toStageKey: "submitted",
           },
         ],
       },
@@ -853,6 +888,46 @@ describe("opportunity.repository", () => {
         {
           title: "Response deadline",
           opportunityTitle: "Enterprise Knowledge Management Support Services",
+        },
+      ],
+      pipelineConversionSummaries: [
+        {
+          key: "qualification",
+          numerator: 2,
+          denominator: 3,
+          ratePercent: 66.67,
+        },
+        {
+          key: "approval",
+          numerator: 2,
+          denominator: 2,
+          ratePercent: 100,
+        },
+        {
+          key: "proposal",
+          numerator: 1,
+          denominator: 2,
+          ratePercent: 50,
+        },
+        {
+          key: "submission",
+          numerator: 1,
+          denominator: 1,
+          ratePercent: 100,
+        },
+      ],
+      pipelineStageAgingSummaries: [
+        {
+          stageKey: "unstaged",
+          averageAgeDays: 8,
+          oldestAgeDays: 8,
+          oldestOpportunityTitle: "Army Cloud Operations Recompete",
+        },
+        {
+          stageKey: "capture_active",
+          averageAgeDays: 7,
+          oldestAgeDays: 7,
+          oldestOpportunityTitle: "Enterprise Knowledge Management Support Services",
         },
       ],
     });

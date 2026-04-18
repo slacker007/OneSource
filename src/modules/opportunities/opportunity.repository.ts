@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import {
+  OPPORTUNITY_STAGE_DEFINITIONS,
+  type OpportunityStageKey,
+} from "./opportunity-stage-policy";
+import {
   calculateOpportunityScore,
   type CalculatedOpportunityScorecard,
   type OrganizationScoringProfileInput,
@@ -19,6 +23,8 @@ import type {
   ContractVehicleSummary,
   DashboardDeadlineSummary,
   HomeDashboardSnapshot,
+  PipelineConversionSummary,
+  PipelineStageAgingSummary,
   OpportunityTaskAssigneeOption,
   OpportunityWorkspaceActivity,
   OpportunityWorkspaceBidDecision,
@@ -57,6 +63,43 @@ const CLOSED_PIPELINE_STAGE_KEYS = [
   "no_bid",
   "submitted",
 ];
+const PIPELINE_PROGRESS_STAGE_KEYS = OPPORTUNITY_STAGE_DEFINITIONS.filter(
+  (definition) => definition.key !== "no_bid",
+).map((definition) => definition.key);
+const PIPELINE_PROGRESS_STAGE_INDEX = new Map(
+  PIPELINE_PROGRESS_STAGE_KEYS.map((stageKey, index) => [stageKey, index]),
+);
+const PIPELINE_CONVERSION_DEFINITIONS = [
+  {
+    key: "qualification",
+    label: "Qualification rate",
+    numeratorStageKey: "qualified",
+    denominatorStageKey: null,
+  },
+  {
+    key: "approval",
+    label: "Pursuit approval rate",
+    numeratorStageKey: "pursuit_approved",
+    denominatorStageKey: "qualified",
+  },
+  {
+    key: "proposal",
+    label: "Proposal start rate",
+    numeratorStageKey: "proposal_in_development",
+    denominatorStageKey: "pursuit_approved",
+  },
+  {
+    key: "submission",
+    label: "Submission rate",
+    numeratorStageKey: "submitted",
+    denominatorStageKey: "proposal_in_development",
+  },
+] as const satisfies Array<{
+  key: PipelineConversionSummary["key"];
+  label: string;
+  numeratorStageKey: OpportunityStageKey;
+  denominatorStageKey: OpportunityStageKey | null;
+}>;
 const OPPORTUNITY_LIST_DUE_WINDOWS = [
   "all",
   "overdue",
@@ -184,10 +227,12 @@ const organizationDashboardArgs = {
         solicitationNumber: true,
         currentStageKey: true,
         currentStageLabel: true,
+        currentStageChangedAt: true,
         responseDeadlineAt: true,
         originSourceSystem: true,
         naicsCode: true,
         sourceSummaryText: true,
+        createdAt: true,
         isActiveSourceRecord: true,
         isArchivedSourceRecord: true,
         updatedAt: true,
@@ -313,6 +358,13 @@ const organizationDashboardArgs = {
             recommendationOutcome: true,
             finalOutcome: true,
             decidedAt: true,
+          },
+        },
+        stageTransitions: {
+          orderBy: [{ transitionedAt: "asc" }, { createdAt: "asc" }],
+          select: {
+            fromStageKey: true,
+            toStageKey: true,
           },
         },
       },
@@ -789,10 +841,12 @@ type OrganizationDashboardOpportunityRecord = {
   solicitationNumber: string | null;
   currentStageKey: string | null;
   currentStageLabel: string | null;
+  currentStageChangedAt: Date | null;
   responseDeadlineAt: Date | null;
   originSourceSystem: string | null;
   naicsCode: string | null;
   sourceSummaryText: string | null;
+  createdAt: Date;
   isActiveSourceRecord: boolean;
   isArchivedSourceRecord: boolean;
   updatedAt: Date;
@@ -861,6 +915,10 @@ type OrganizationDashboardOpportunityRecord = {
       OpportunityBidDecisionSummary["recommendationOutcome"];
     finalOutcome: OpportunityBidDecisionSummary["finalOutcome"];
     decidedAt: Date | null;
+  }>;
+  stageTransitions: Array<{
+    fromStageKey: string | null;
+    toStageKey: string | null;
   }>;
 };
 
@@ -1210,6 +1268,13 @@ export async function getHomeDashboardSnapshot({
     opportunities: opportunitiesForAction,
     now,
   });
+  const pipelineConversionSummaries = buildPipelineConversionSummaries(
+    record.opportunities,
+  );
+  const pipelineStageAgingSummaries = buildPipelineStageAgingSummaries({
+    opportunities: record.opportunities,
+    now,
+  });
 
   return {
     organization: {
@@ -1227,6 +1292,8 @@ export async function getHomeDashboardSnapshot({
       (opportunity) => requiresAttention(opportunity),
     ).length,
     stageSummaries: buildStageSummaries(opportunities),
+    pipelineConversionSummaries,
+    pipelineStageAgingSummaries,
     upcomingDeadlines,
     topOpportunities: [...opportunitiesForAction]
       .sort(compareTopOpportunities)
@@ -2372,6 +2439,175 @@ function buildStageSummaries(
   });
 }
 
+function buildPipelineConversionSummaries(
+  opportunities: OrganizationDashboardOpportunityRecord[],
+): PipelineConversionSummary[] {
+  const reachedStageKeysByOpportunity = opportunities.map((opportunity) =>
+    buildReachedStageKeySet(opportunity),
+  );
+
+  return PIPELINE_CONVERSION_DEFINITIONS.map((definition) => {
+    const denominator =
+      definition.denominatorStageKey === null
+        ? opportunities.length
+        : reachedStageKeysByOpportunity.filter((reachedStageKeys) =>
+            reachedStageKeys.has(definition.denominatorStageKey),
+          ).length;
+    const numerator = reachedStageKeysByOpportunity.filter((reachedStageKeys) =>
+      reachedStageKeys.has(definition.numeratorStageKey),
+    ).length;
+
+    return {
+      key: definition.key,
+      label: definition.label,
+      numerator,
+      denominator,
+      ratePercent: denominator === 0 ? 0 : roundPercent((numerator / denominator) * 100),
+    };
+  });
+}
+
+function buildPipelineStageAgingSummaries({
+  opportunities,
+  now,
+}: {
+  opportunities: OrganizationDashboardOpportunityRecord[];
+  now: Date;
+}): PipelineStageAgingSummary[] {
+  const agingByStage = new Map<
+    string,
+    {
+      stageKey: string;
+      stageLabel: string;
+      opportunityCount: number;
+      totalAgeDays: number;
+      oldestAgeDays: number;
+      oldestOpportunityTitle: string;
+    }
+  >();
+
+  for (const opportunity of opportunities) {
+    if (!isActiveStageKey(opportunity.currentStageKey)) {
+      continue;
+    }
+
+    const stageKey = opportunity.currentStageKey ?? "unstaged";
+    const stageLabel =
+      opportunity.currentStageLabel ??
+      humanizeStageKey(opportunity.currentStageKey) ??
+      "Unstaged";
+    const ageAnchor =
+      opportunity.currentStageChangedAt ?? opportunity.createdAt ?? opportunity.updatedAt;
+    const ageDays = calculateAgeInDays(ageAnchor, now);
+    const existing = agingByStage.get(stageKey);
+
+    if (existing) {
+      existing.opportunityCount += 1;
+      existing.totalAgeDays += ageDays;
+
+      if (ageDays > existing.oldestAgeDays) {
+        existing.oldestAgeDays = ageDays;
+        existing.oldestOpportunityTitle = opportunity.title;
+      }
+
+      continue;
+    }
+
+    agingByStage.set(stageKey, {
+      stageKey,
+      stageLabel,
+      opportunityCount: 1,
+      totalAgeDays: ageDays,
+      oldestAgeDays: ageDays,
+      oldestOpportunityTitle: opportunity.title,
+    });
+  }
+
+  return Array.from(agingByStage.values())
+    .map((summary) => ({
+      stageKey: summary.stageKey,
+      stageLabel: summary.stageLabel,
+      opportunityCount: summary.opportunityCount,
+      averageAgeDays: Math.round(summary.totalAgeDays / summary.opportunityCount),
+      oldestAgeDays: summary.oldestAgeDays,
+      oldestOpportunityTitle: summary.oldestOpportunityTitle,
+    }))
+    .sort((left, right) => {
+      if (right.oldestAgeDays !== left.oldestAgeDays) {
+        return right.oldestAgeDays - left.oldestAgeDays;
+      }
+
+      if (right.opportunityCount !== left.opportunityCount) {
+        return right.opportunityCount - left.opportunityCount;
+      }
+
+      return left.stageLabel.localeCompare(right.stageLabel);
+    });
+}
+
+function buildReachedStageKeySet(
+  opportunity: OrganizationDashboardOpportunityRecord,
+) {
+  const reachedStageKeys = new Set<string>();
+  const currentStageKey = normalizeOpportunityStageKey(opportunity.currentStageKey);
+
+  if (currentStageKey) {
+    addReachedStageKeyCascade(reachedStageKeys, currentStageKey);
+  }
+
+  for (const transition of opportunity.stageTransitions) {
+    const fromStageKey = normalizeOpportunityStageKey(transition.fromStageKey);
+    const toStageKey = normalizeOpportunityStageKey(transition.toStageKey);
+
+    if (fromStageKey) {
+      addReachedStageKeyCascade(reachedStageKeys, fromStageKey);
+    }
+
+    if (toStageKey) {
+      addReachedStageKeyCascade(reachedStageKeys, toStageKey);
+    }
+  }
+
+  return reachedStageKeys;
+}
+
+function addReachedStageKeyCascade(
+  reachedStageKeys: Set<string>,
+  stageKey: OpportunityStageKey,
+) {
+  if (stageKey === "no_bid") {
+    reachedStageKeys.add(stageKey);
+    return;
+  }
+
+  const stageIndex = PIPELINE_PROGRESS_STAGE_INDEX.get(stageKey);
+
+  if (stageIndex === undefined) {
+    return;
+  }
+
+  for (const cumulativeStageKey of PIPELINE_PROGRESS_STAGE_KEYS.slice(
+    0,
+    stageIndex + 1,
+  )) {
+    reachedStageKeys.add(cumulativeStageKey);
+  }
+}
+
+function normalizeOpportunityStageKey(
+  stageKey: string | null | undefined,
+): OpportunityStageKey | null {
+  if (!stageKey) {
+    return null;
+  }
+
+  return OPPORTUNITY_STAGE_DEFINITIONS.some(
+    (definition) => definition.key === stageKey,
+  )
+    ? (stageKey as OpportunityStageKey)
+    : null;
+}
+
 function requiresAttention(opportunity: OpportunitySummary) {
   return (
     opportunity.tasks.some(
@@ -2396,6 +2632,12 @@ function isActiveStageKey(stageKey: string | null | undefined) {
   }
 
   return !CLOSED_PIPELINE_STAGE_KEYS.includes(stageKey);
+}
+
+function calculateAgeInDays(startDate: Date, endDate: Date) {
+  const diffMs = endDate.getTime() - startDate.getTime();
+
+  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
 }
 
 function buildUpcomingDeadlines({
