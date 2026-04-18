@@ -185,6 +185,9 @@ const ORGANIZATION_SCORING_PROFILE = {
   ],
   activeScoringModelKey: "default_capture_v1",
   activeScoringModelVersion: "2026-04-18",
+  goRecommendationThreshold: "70.00",
+  deferRecommendationThreshold: "45.00",
+  minimumRiskScorePercent: "50.00",
   capabilities: [
     {
       key: "cloud-platform-engineering",

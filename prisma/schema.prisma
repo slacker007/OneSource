@@ -369,22 +369,25 @@ model ContractVehicle {
 }
 
 model OrganizationProfile {
-  id                        String                         @id @default(cuid()) @map("id")
-  organizationId            String                         @unique(map: "organization_profiles_organization_id_key") @map("organization_id")
-  overview                  String?                        @map("overview") @db.Text
-  strategicFocus            String?                        @map("strategic_focus") @db.Text
-  targetNaicsCodes          String[]                       @default([]) @map("target_naics_codes")
-  priorityAgencyIds         String[]                       @default([]) @map("priority_agency_ids")
-  relationshipAgencyIds     String[]                       @default([]) @map("relationship_agency_ids")
-  activeScoringModelKey     String                         @map("active_scoring_model_key")
-  activeScoringModelVersion String                         @map("active_scoring_model_version")
-  createdAt                 DateTime                       @default(now()) @map("created_at")
-  updatedAt                 DateTime                       @updatedAt @map("updated_at")
-  organization              Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  capabilities              OrganizationCapability[]
-  certifications            OrganizationCertification[]
-  selectedVehicles          OrganizationProfileVehicle[]
-  scoringCriteria           OrganizationScoringCriterion[]
+  id                           String                         @id @default(cuid()) @map("id")
+  organizationId               String                         @unique(map: "organization_profiles_organization_id_key") @map("organization_id")
+  overview                     String?                        @map("overview") @db.Text
+  strategicFocus               String?                        @map("strategic_focus") @db.Text
+  targetNaicsCodes             String[]                       @default([]) @map("target_naics_codes")
+  priorityAgencyIds            String[]                       @default([]) @map("priority_agency_ids")
+  relationshipAgencyIds        String[]                       @default([]) @map("relationship_agency_ids")
+  activeScoringModelKey        String                         @map("active_scoring_model_key")
+  activeScoringModelVersion    String                         @map("active_scoring_model_version")
+  goRecommendationThreshold    Decimal                        @default(70.00) @map("go_recommendation_threshold") @db.Decimal(5, 2)
+  deferRecommendationThreshold Decimal                        @default(45.00) @map("defer_recommendation_threshold") @db.Decimal(5, 2)
+  minimumRiskScorePercent      Decimal                        @default(50.00) @map("minimum_risk_score_percent") @db.Decimal(5, 2)
+  createdAt                    DateTime                       @default(now()) @map("created_at")
+  updatedAt                    DateTime                       @updatedAt @map("updated_at")
+  organization                 Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  capabilities                 OrganizationCapability[]
+  certifications               OrganizationCertification[]
+  selectedVehicles             OrganizationProfileVehicle[]
+  scoringCriteria              OrganizationScoringCriterion[]
 
   @@map("organization_profiles")
 }

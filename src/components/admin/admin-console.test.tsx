@@ -26,6 +26,9 @@ describe("AdminConsole", () => {
             targetNaicsCodes: ["541512", "541519"],
             activeScoringModelKey: "default_capture_v1",
             activeScoringModelVersion: "2026-04-18",
+            goRecommendationThreshold: "70.00",
+            deferRecommendationThreshold: "45.00",
+            minimumRiskScorePercent: "50.00",
             priorityAgencies: [
               {
                 id: "agency_air_force",
@@ -156,6 +159,8 @@ describe("AdminConsole", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText(/admin@onesource\.local/i)).toHaveLength(2);
     expect(screen.getByText(/default_capture_v1/i)).toBeInTheDocument();
+    expect(screen.getByText(/go >= 70\.00/i)).toBeInTheDocument();
+    expect(screen.getByText(/risk floor >= 50\.00%/i)).toBeInTheDocument();
     expect(screen.getByText(/cloud platform engineering/i)).toBeInTheDocument();
     expect(screen.getByText(/30\.00/i)).toBeInTheDocument();
     expect(screen.getByText(/no roles assigned/i)).toBeInTheDocument();

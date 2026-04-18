@@ -5,6 +5,9 @@ import { calculateOpportunityScore } from "./opportunity-scoring";
 const profile = {
   activeScoringModelKey: "default_capture_v1",
   activeScoringModelVersion: "2026-04-18",
+  goRecommendationThreshold: 70,
+  deferRecommendationThreshold: 45,
+  minimumRiskScorePercent: 50,
   strategicFocus:
     "Prioritize cloud modernization and workflow automation pursuits for priority agencies.",
   targetNaicsCodes: ["541512"],
@@ -113,7 +116,8 @@ describe("opportunity-scoring", () => {
       totalScore: 99.5,
       maximumScore: 100,
       scorePercent: 99.5,
-      recommendationOutcome: null,
+      recommendationOutcome: "GO",
+      recommendationSummary: expect.stringMatching(/recommend go/i),
     });
     expect(scorecard.factors).toHaveLength(6);
     expect(scorecard.factors).toEqual(
@@ -170,6 +174,8 @@ describe("opportunity-scoring", () => {
     });
 
     expect(scorecard.totalScore).toBe(18.25);
+    expect(scorecard.recommendationOutcome).toBe("NO_GO");
+    expect(scorecard.recommendationSummary).toMatch(/recommend no_go/i);
     expect(scorecard.factors).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -188,6 +194,33 @@ describe("opportunity-scoring", () => {
         }),
       ]),
     );
+  });
+
+  it("returns a defer recommendation for borderline opportunities that need more review", () => {
+    const scorecard = calculateOpportunityScore({
+      referenceDate: new Date("2026-04-18T00:00:00.000Z"),
+      profile,
+      opportunity: {
+        id: "opp_borderline",
+        title: "Army cloud operations sustainment support",
+        description:
+          "Provide cloud operations and sustainment support for Army users.",
+        sourceSummaryText:
+          "Workflow modernization support with no structured vehicle linkage yet.",
+        responseDeadlineAt: "2026-06-20T17:00:00.000Z",
+        currentStageKey: "qualified",
+        naicsCode: "541512",
+        leadAgency: null,
+        isActiveSourceRecord: true,
+        isArchivedSourceRecord: false,
+        vehicles: [],
+        competitors: [],
+      },
+    });
+
+    expect(scorecard.totalScore).toBe(48.25);
+    expect(scorecard.recommendationOutcome).toBe("DEFER");
+    expect(scorecard.recommendationSummary).toMatch(/below the 70\.00 go threshold/i);
   });
 
   it("still produces a normalized scorecard when the organization profile is missing", () => {

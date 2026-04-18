@@ -143,6 +143,15 @@ export function AdminConsole({ sessionUser, snapshot }: AdminConsoleProps) {
                   title={`Model ${snapshot.scoringProfile.activeScoringModelKey} / ${snapshot.scoringProfile.activeScoringModelVersion}`}
                 />
                 <ProfileBadgeGroup
+                  badges={[
+                    `GO >= ${snapshot.scoringProfile.goRecommendationThreshold}`,
+                    `DEFER >= ${snapshot.scoringProfile.deferRecommendationThreshold}`,
+                    `Risk floor >= ${snapshot.scoringProfile.minimumRiskScorePercent}%`,
+                  ]}
+                  emptyLabel="No recommendation thresholds configured"
+                  title="Decision thresholds"
+                />
+                <ProfileBadgeGroup
                   badges={snapshot.scoringProfile.priorityAgencies.map(
                     (agency) => agency.label,
                   )}

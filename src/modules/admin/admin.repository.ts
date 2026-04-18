@@ -26,6 +26,9 @@ const organizationAdminSnapshotArgs =
         relationshipAgencyIds: true,
         activeScoringModelKey: true,
         activeScoringModelVersion: true,
+        goRecommendationThreshold: true,
+        deferRecommendationThreshold: true,
+        minimumRiskScorePercent: true,
         capabilities: {
           where: {
             isActive: true,
@@ -209,6 +212,12 @@ export async function getAdminWorkspaceSnapshot({
           organization.organizationProfile.activeScoringModelKey,
         activeScoringModelVersion:
           organization.organizationProfile.activeScoringModelVersion,
+        goRecommendationThreshold:
+          organization.organizationProfile.goRecommendationThreshold.toString(),
+        deferRecommendationThreshold:
+          organization.organizationProfile.deferRecommendationThreshold.toString(),
+        minimumRiskScorePercent:
+          organization.organizationProfile.minimumRiskScorePercent.toString(),
         priorityAgencies: organization.organizationProfile.priorityAgencyIds
           .map((agencyId) => agenciesById.get(agencyId))
           .filter(isDefined),

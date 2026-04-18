@@ -37,6 +37,9 @@ function buildOrganizationAdminRecord(): OrganizationAdminRecord {
       relationshipAgencyIds: ["agency_army", "agency_va"],
       activeScoringModelKey: "default_capture_v1",
       activeScoringModelVersion: "2026-04-18",
+      goRecommendationThreshold: { toString: () => "70.00" },
+      deferRecommendationThreshold: { toString: () => "45.00" },
+      minimumRiskScorePercent: { toString: () => "50.00" },
       capabilities: [
         {
           id: "cap_cloud",
@@ -195,6 +198,9 @@ describe("admin.repository", () => {
     expect(snapshot?.scoringProfile).toMatchObject({
       activeScoringModelKey: "default_capture_v1",
       activeScoringModelVersion: "2026-04-18",
+      goRecommendationThreshold: "70.00",
+      deferRecommendationThreshold: "45.00",
+      minimumRiskScorePercent: "50.00",
       targetNaicsCodes: ["541512", "541519"],
       priorityAgencies: [
         { id: "agency_air_force", label: "99th Contracting Squadron (FA4861)" },

@@ -819,6 +819,10 @@ async function main() {
       relationshipAgencyIds,
       activeScoringModelKey: scoringProfile.activeScoringModelKey,
       activeScoringModelVersion: scoringProfile.activeScoringModelVersion,
+      goRecommendationThreshold: scoringProfile.goRecommendationThreshold,
+      deferRecommendationThreshold:
+        scoringProfile.deferRecommendationThreshold,
+      minimumRiskScorePercent: scoringProfile.minimumRiskScorePercent,
     },
     create: {
       organizationId: organization.id,
@@ -829,6 +833,10 @@ async function main() {
       relationshipAgencyIds,
       activeScoringModelKey: scoringProfile.activeScoringModelKey,
       activeScoringModelVersion: scoringProfile.activeScoringModelVersion,
+      goRecommendationThreshold: scoringProfile.goRecommendationThreshold,
+      deferRecommendationThreshold:
+        scoringProfile.deferRecommendationThreshold,
+      minimumRiskScorePercent: scoringProfile.minimumRiskScorePercent,
     },
   });
 

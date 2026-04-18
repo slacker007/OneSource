@@ -69,6 +69,9 @@ const organizationScoringProfileSelect = {
   select: {
     activeScoringModelKey: true,
     activeScoringModelVersion: true,
+    goRecommendationThreshold: true,
+    deferRecommendationThreshold: true,
+    minimumRiskScorePercent: true,
     strategicFocus: true,
     targetNaicsCodes: true,
     priorityAgencyIds: true,
@@ -661,6 +664,9 @@ type OrganizationDashboardConnectorRecord = {
 type OrganizationScoringProfileRecord = {
   activeScoringModelKey: string;
   activeScoringModelVersion: string;
+  goRecommendationThreshold: { toString(): string };
+  deferRecommendationThreshold: { toString(): string };
+  minimumRiskScorePercent: { toString(): string };
   strategicFocus: string | null;
   targetNaicsCodes: string[];
   priorityAgencyIds: string[];
@@ -1442,6 +1448,15 @@ function mapOrganizationScoringProfile(
   return {
     activeScoringModelKey: profile.activeScoringModelKey,
     activeScoringModelVersion: profile.activeScoringModelVersion,
+    goRecommendationThreshold: Number.parseFloat(
+      profile.goRecommendationThreshold.toString(),
+    ),
+    deferRecommendationThreshold: Number.parseFloat(
+      profile.deferRecommendationThreshold.toString(),
+    ),
+    minimumRiskScorePercent: Number.parseFloat(
+      profile.minimumRiskScorePercent.toString(),
+    ),
     strategicFocus: profile.strategicFocus,
     targetNaicsCodes: profile.targetNaicsCodes,
     priorityAgencyIds: profile.priorityAgencyIds,

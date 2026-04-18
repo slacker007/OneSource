@@ -19,6 +19,9 @@ function buildOrganizationProfileRecord() {
   return {
     activeScoringModelKey: "default_capture_v1",
     activeScoringModelVersion: "2026-04-18",
+    goRecommendationThreshold: { toString: () => "70.00" },
+    deferRecommendationThreshold: { toString: () => "45.00" },
+    minimumRiskScorePercent: { toString: () => "50.00" },
     strategicFocus:
       "Prioritize Air Force and Army workflow modernization pursuits with vehicle access already in place.",
     targetNaicsCodes: ["541511", "541512"],
@@ -646,7 +649,7 @@ describe("opportunity.repository", () => {
     expect(summaries[1].currentStageLabel).toBe("Unstaged");
     expect(summaries[1].score).toMatchObject({
       maximumScore: "100.00",
-      recommendationOutcome: null,
+      recommendationOutcome: "DEFER",
     });
     expect(summaries[2]).toMatchObject({
       title: "DHS Zero Trust Assessment Support",
@@ -804,7 +807,8 @@ describe("opportunity.repository", () => {
       scoringModelKey: "default_capture_v1",
       scoringModelVersion: "2026-04-18",
       maximumScore: "100.00",
-      recommendationOutcome: null,
+      recommendationOutcome: "GO",
+      recommendationSummary: expect.stringMatching(/recommend go/i),
     });
     expect(snapshot?.scorecard?.factors).toHaveLength(6);
     expect(snapshot?.opportunity.score?.maximumScore).toBe("100.00");

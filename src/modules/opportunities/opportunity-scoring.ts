@@ -1,5 +1,10 @@
+import type { BidDecisionOutcome } from "./opportunity.types";
+
 const DEFAULT_SCORING_MODEL_KEY = "default_capture_v1";
 const DEFAULT_SCORING_MODEL_VERSION = "unconfigured";
+const DEFAULT_GO_RECOMMENDATION_THRESHOLD = 70;
+const DEFAULT_DEFER_RECOMMENDATION_THRESHOLD = 45;
+const DEFAULT_MINIMUM_RISK_SCORE_PERCENT = 50;
 
 const CLOSED_STAGE_KEYS = new Set(["submitted", "awarded", "lost", "no_bid"]);
 
@@ -100,6 +105,9 @@ export type OrganizationScoringProfileInput = {
   targetNaicsCodes: string[];
   priorityAgencyIds: string[];
   relationshipAgencyIds: string[];
+  goRecommendationThreshold: number;
+  deferRecommendationThreshold: number;
+  minimumRiskScorePercent: number;
   capabilities: OpportunityScoringCapabilityInput[];
   certifications: OpportunityScoringCertificationInput[];
   selectedVehicles: OpportunityScoringVehicleInput[];
@@ -147,8 +155,8 @@ export type CalculatedOpportunityScorecard = {
   totalScore: number;
   maximumScore: number;
   scorePercent: number;
-  recommendationOutcome: null;
-  recommendationSummary: null;
+  recommendationOutcome: BidDecisionOutcome | null;
+  recommendationSummary: string | null;
   summary: string;
   calculatedAt: string;
   factors: CalculatedOpportunityScoreFactor[];
@@ -208,6 +216,14 @@ export function calculateOpportunityScore({
   );
   const scorePercent =
     maximumScore > 0 ? roundScore((totalScore / maximumScore) * 100) : 0;
+  const recommendation = buildOpportunityRecommendation({
+    opportunity,
+    scorePercent,
+    totalScore,
+    maximumScore,
+    riskRatio: factorDetails.risk.ratio,
+    profile: resolvedProfile,
+  });
 
   return {
     scoringModelKey:
@@ -218,8 +234,8 @@ export function calculateOpportunityScore({
     totalScore,
     maximumScore,
     scorePercent,
-    recommendationOutcome: null,
-    recommendationSummary: null,
+    recommendationOutcome: recommendation.outcome,
+    recommendationSummary: recommendation.summary,
     summary: buildScoreSummary({ factors, totalScore, maximumScore }),
     calculatedAt: referenceDate.toISOString(),
     factors,
@@ -240,10 +256,79 @@ function resolveProfile(
     targetNaicsCodes: [],
     priorityAgencyIds: [],
     relationshipAgencyIds: [],
+    goRecommendationThreshold: DEFAULT_GO_RECOMMENDATION_THRESHOLD,
+    deferRecommendationThreshold: DEFAULT_DEFER_RECOMMENDATION_THRESHOLD,
+    minimumRiskScorePercent: DEFAULT_MINIMUM_RISK_SCORE_PERCENT,
     capabilities: [],
     certifications: [],
     selectedVehicles: [],
     scoringCriteria: [],
+  };
+}
+
+function buildOpportunityRecommendation({
+  opportunity,
+  scorePercent,
+  totalScore,
+  maximumScore,
+  riskRatio,
+  profile,
+}: {
+  opportunity: OpportunityScoringOpportunityInput;
+  scorePercent: number;
+  totalScore: number;
+  maximumScore: number;
+  riskRatio: number;
+  profile: OrganizationScoringProfileInput;
+}) {
+  if (
+    opportunity.currentStageKey &&
+    CLOSED_STAGE_KEYS.has(opportunity.currentStageKey)
+  ) {
+    return {
+      outcome: null,
+      summary: null,
+    };
+  }
+
+  const goThreshold = clampThreshold(profile.goRecommendationThreshold);
+  const deferThreshold = Math.min(
+    goThreshold,
+    clampThreshold(profile.deferRecommendationThreshold),
+  );
+  const minimumRiskScorePercent = clampThreshold(
+    profile.minimumRiskScorePercent,
+  );
+  const riskScorePercent = roundScore(riskRatio * 100);
+  const formattedScore = `${totalScore.toFixed(2)}/${maximumScore.toFixed(2)}`;
+
+  if (
+    scorePercent >= goThreshold &&
+    riskScorePercent >= minimumRiskScorePercent
+  ) {
+    return {
+      outcome: "GO" as const,
+      summary: `Recommend GO because the opportunity scored ${formattedScore}, cleared the ${goThreshold.toFixed(2)} pursuit threshold, and the risk factor stayed at ${riskScorePercent.toFixed(2)}%, above the ${minimumRiskScorePercent.toFixed(2)}% floor.`,
+    };
+  }
+
+  if (scorePercent >= goThreshold) {
+    return {
+      outcome: "DEFER" as const,
+      summary: `Recommend DEFER because the opportunity scored ${formattedScore}, but the risk factor is only ${riskScorePercent.toFixed(2)}%, below the ${minimumRiskScorePercent.toFixed(2)}% floor required for an automatic GO recommendation.`,
+    };
+  }
+
+  if (scorePercent >= deferThreshold) {
+    return {
+      outcome: "DEFER" as const,
+      summary: `Recommend DEFER because the opportunity scored ${formattedScore}, above the ${deferThreshold.toFixed(2)} review threshold but below the ${goThreshold.toFixed(2)} GO threshold.`,
+    };
+  }
+
+  return {
+    outcome: "NO_GO" as const,
+    summary: `Recommend NO_GO because the opportunity scored ${formattedScore}, below the ${deferThreshold.toFixed(2)} minimum pursuit threshold, with the risk factor currently at ${riskScorePercent.toFixed(2)}%.`,
   };
 }
 
@@ -764,6 +849,18 @@ function parseDate(value: string | null) {
 
 function roundScore(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function clampThreshold(value: number) {
+  if (value < 0) {
+    return 0;
+  }
+
+  if (value > 100) {
+    return 100;
+  }
+
+  return roundScore(value);
 }
 
 function clamp01(value: number) {

@@ -77,6 +77,9 @@ export type AdminScoringProfileSummary = {
   targetNaicsCodes: string[];
   activeScoringModelKey: string;
   activeScoringModelVersion: string;
+  goRecommendationThreshold: string;
+  deferRecommendationThreshold: string;
+  minimumRiskScorePercent: string;
   priorityAgencies: AdminScoringProfileAgencySummary[];
   relationshipAgencies: AdminScoringProfileAgencySummary[];
   capabilities: AdminScoringCapabilitySummary[];
