@@ -79,7 +79,13 @@ export function SourceSearch({
             <div className="flex flex-wrap gap-2">
               <Badge>External search</Badge>
               <Badge tone="muted">Connector-ready DTOs</Badge>
-              <Badge tone="warning">Mocked `sam.gov` responses</Badge>
+              <Badge tone="warning">
+                {snapshot.executionMode === "live_connector"
+                  ? "Live `sam.gov` connector"
+                  : snapshot.executionMode === "fixture_connector"
+                    ? "Fixture-backed `sam.gov` connector"
+                    : "Connector health required"}
+              </Badge>
             </div>
             <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
               External source search
@@ -87,9 +93,9 @@ export function SourceSearch({
             <p className="text-muted max-w-3xl text-sm leading-7">
               Search configured opportunity sources with a typed canonical query,
               then translate that query into the explicit `sam.gov` request
-              shape. This slice now adds preview, duplicate review, and
-              server-side pull-into-pipeline actions while the live connector
-              remains mocked.
+              shape. Successful runs now persist normalized source records plus
+              the execution envelope, so preview and import operate on durable
+              lineage instead of synthetic mock IDs.
             </p>
           </div>
 
@@ -119,7 +125,9 @@ export function SourceSearch({
       {importFeedbackBanner}
 
       {(snapshot.validationErrors.length > 0 ||
-        snapshot.executionMode === "unsupported_connector") && (
+        snapshot.executionMode === "unsupported_connector" ||
+        snapshot.executionMode === "connector_unavailable" ||
+        snapshot.executionMode === "connector_error") && (
         <ErrorState
           action={
             snapshot.validationErrors.length > 0 ? (
@@ -134,6 +142,10 @@ export function SourceSearch({
           title={
             snapshot.executionMode === "unsupported_connector"
               ? "Selected connector is not executable yet"
+              : snapshot.executionMode === "connector_unavailable"
+                ? "Connector configuration is incomplete"
+                : snapshot.executionMode === "connector_error"
+                  ? "Connector execution failed"
               : "Search query needs correction"
           }
         />
@@ -168,7 +180,7 @@ export function SourceSearch({
         <form action="/sources" className="mt-6 space-y-6">
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
             <FormField
-              hint="The route already knows about other configured connectors, but only mocked sam.gov execution is wired in this slice."
+              hint="The route already knows about other configured connectors, but only the sam.gov connector is executable in this slice."
               htmlFor="source-connector"
               label="Source connector"
             >
@@ -185,7 +197,7 @@ export function SourceSearch({
                   >
                     {connector.sourceDisplayName}
                     {connector.sourceSystemKey === "sam_gov"
-                      ? " (mocked execution)"
+                      ? " (search enabled)"
                       : " (coming later)"}
                   </option>
                 ))}
@@ -583,8 +595,6 @@ export function SourceSearch({
                 sanitizedReturnPath,
                 previewSnapshot.result.id,
               )}
-              searchExecutedAt={snapshot.executedAt}
-              searchQuery={snapshot.query}
             />
           ) : (
             <EmptyState
@@ -619,7 +629,7 @@ export function SourceSearch({
               Connector capability
             </p>
             <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-              Search contract ready for live adapter work
+              Search contract and connector capability
             </h2>
             <ul className="mt-4 space-y-2 text-sm leading-6 text-foreground">
               {snapshot.activeCapability.supportedFilterLabels.map((label) => (
@@ -680,14 +690,10 @@ function PreviewPanel({
   importAction,
   previewSnapshot,
   returnPath,
-  searchExecutedAt,
-  searchQuery,
 }: {
   importAction: (formData: FormData) => Promise<void>;
   previewSnapshot: SourceImportPreviewSnapshot;
   returnPath: string;
-  searchExecutedAt: string | null;
-  searchQuery: CanonicalSourceSearchQuery | null;
 }) {
   const { alreadyTrackedOpportunity, connector, duplicateCandidates, importPreview, result } =
     previewSnapshot;
@@ -706,7 +712,7 @@ function PreviewPanel({
             Source-result preview
           </h2>
           <p className="text-muted text-sm leading-6">
-            Review the mocked raw payload beside the normalized canonical
+            Review the retained raw payload beside the normalized canonical
             fields, then either create a tracked opportunity or link the source
             result to an existing record.
           </p>
@@ -789,18 +795,8 @@ function PreviewPanel({
         <div className="mt-5 space-y-4">
           <form action={importAction} className="space-y-3 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4">
             <input name="mode" type="hidden" value="CREATE_OPPORTUNITY" />
-            <input name="resultId" type="hidden" value={result.id} />
+            <input name="sourceRecordId" type="hidden" value={result.id} />
             <input name="returnPath" type="hidden" value={returnPath} />
-            <input
-              name="searchExecutedAt"
-              type="hidden"
-              value={searchExecutedAt ?? ""}
-            />
-            <input
-              name="searchQuery"
-              type="hidden"
-              value={JSON.stringify(searchQuery)}
-            />
             <p className="text-sm font-semibold text-foreground">
               Create a new tracked opportunity
             </p>
@@ -822,18 +818,8 @@ function PreviewPanel({
               className="space-y-4 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4"
             >
               <input name="mode" type="hidden" value="LINK_TO_EXISTING" />
-              <input name="resultId" type="hidden" value={result.id} />
+              <input name="sourceRecordId" type="hidden" value={result.id} />
               <input name="returnPath" type="hidden" value={returnPath} />
-              <input
-                name="searchExecutedAt"
-                type="hidden"
-                value={searchExecutedAt ?? ""}
-              />
-              <input
-                name="searchQuery"
-                type="hidden"
-                value={JSON.stringify(searchQuery)}
-              />
               <div>
                 <p className="text-sm font-semibold text-foreground">
                   Link to an existing tracked opportunity
@@ -984,6 +970,24 @@ function buildResultEmptyState(snapshot: SourceSearchSnapshot) {
     );
   }
 
+  if (snapshot.executionMode === "connector_unavailable") {
+    return (
+      <EmptyState
+        message="Set SAM_GOV_API_KEY for live execution, or run with SAM_GOV_USE_FIXTURES=true for deterministic fixture-backed verification."
+        title="Connector credentials are missing"
+      />
+    );
+  }
+
+  if (snapshot.executionMode === "connector_error") {
+    return (
+      <EmptyState
+        message="The connector returned an upstream error for this query. Review the execution summary and translated request, then retry with adjusted filters or restored credentials."
+        title="Connector request failed"
+      />
+    );
+  }
+
   return (
     <EmptyState
       action={
@@ -994,7 +998,7 @@ function buildResultEmptyState(snapshot: SourceSearchSnapshot) {
           Reset to the default mock query
         </Link>
       }
-      message="No mocked source records matched this filter set. Adjust the posted dates, remove a structured filter, or switch back to the default query."
+      message="No external source records matched this filter set. Adjust the posted dates, remove a structured filter, or switch back to the default query."
       title="No external opportunities matched"
     />
   );
@@ -1068,12 +1072,18 @@ function getPreviewId(returnPath: string) {
 
 function formatExecutionMode(mode: SourceSearchSnapshot["executionMode"]) {
   switch (mode) {
-    case "mocked_sam_gov":
-      return "Mocked search";
+    case "live_connector":
+      return "Live connector";
+    case "fixture_connector":
+      return "Fixture connector";
     case "unsupported_connector":
       return "Connector pending";
     case "invalid_query":
       return "Validation blocked";
+    case "connector_unavailable":
+      return "Connector unavailable";
+    case "connector_error":
+      return "Connector error";
     default:
       return "Unknown";
   }

@@ -30,6 +30,11 @@ export default async function SourcesPage({ searchParams }: SourcesPageProps) {
   const resolvedSearchParams = await searchParams;
   const [snapshot, csvImportSnapshot] = await Promise.all([
     getSourceSearchSnapshot({
+      actor: {
+        email: session.user.email ?? null,
+        organizationId: session.user.organizationId,
+        userId: session.user.id ?? null,
+      },
       db: prisma as unknown as SourceSearchRepositoryClient,
       searchParams: resolvedSearchParams,
     }),
@@ -42,7 +47,7 @@ export default async function SourcesPage({ searchParams }: SourcesPageProps) {
   const previewSnapshot = previewId
     ? await getSourceImportPreviewSnapshot({
         db: prisma as unknown as SourceImportRepositoryClient,
-        resultId: previewId,
+        sourceRecordId: previewId,
       })
     : null;
   const returnPath = buildReturnPath(resolvedSearchParams);

@@ -14,21 +14,19 @@ import {
   type CsvImportWorkspaceRepositoryClient,
 } from "@/modules/source-integrations/csv-import.service";
 import {
-  applyMockSourceImport,
+  applySourceImport,
   type SourceImportRepositoryClient,
 } from "@/modules/source-integrations/source-import.service";
 
 export async function applySourceImportAction(formData: FormData) {
   const { session } = await requireAppPermission("manage_source_searches");
   const returnPath = readRequiredString(formData.get("returnPath"));
-  const resultId = readRequiredString(formData.get("resultId"));
+  const sourceRecordId = readRequiredString(formData.get("sourceRecordId"));
   const mode = readRequiredString(formData.get("mode"));
   const targetOpportunityId = readOptionalString(formData.get("targetOpportunityId"));
-  const searchExecutedAt = readOptionalString(formData.get("searchExecutedAt"));
-  const searchQuery = parseOptionalJson(formData.get("searchQuery"));
 
   try {
-    const result = await applyMockSourceImport({
+    const result = await applySourceImport({
       db: prisma as unknown as SourceImportRepositoryClient,
       input: {
         actor: {
@@ -39,9 +37,7 @@ export async function applySourceImportAction(formData: FormData) {
         },
         mode:
           mode === "LINK_TO_EXISTING" ? "LINK_TO_EXISTING" : "CREATE_OPPORTUNITY",
-        resultId,
-        searchExecutedAt,
-        searchQuery,
+        sourceRecordId,
         targetOpportunityId,
       },
     });
@@ -50,7 +46,7 @@ export async function applySourceImportAction(formData: FormData) {
       buildReturnPath(returnPath, {
         importStatus: result.action,
         opportunityId: result.targetOpportunityId,
-        preview: resultId,
+        preview: sourceRecordId,
       }),
     );
   } catch (error) {
@@ -60,7 +56,7 @@ export async function applySourceImportAction(formData: FormData) {
     redirect(
       buildReturnPath(returnPath, {
         importError: message,
-        preview: resultId,
+        preview: sourceRecordId,
       }),
     );
   }
@@ -247,18 +243,6 @@ function readOptionalString(value: FormDataEntryValue | null) {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
-}
-
-function parseOptionalJson(value: FormDataEntryValue | null) {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
 }
 
 function mapPreviewRowBackToRawValues({

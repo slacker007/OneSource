@@ -23,6 +23,8 @@ export default defineConfig({
           "development-auth-secret-for-playwright-local"
         } NEXTAUTH_URL=${
           process.env.NEXTAUTH_URL ?? "http://127.0.0.1:3000"
+        } SAM_GOV_USE_FIXTURES=${
+          process.env.SAM_GOV_USE_FIXTURES ?? "true"
         } npm run dev`,
         url: "http://127.0.0.1:3000",
         reuseExistingServer: !process.env.CI,

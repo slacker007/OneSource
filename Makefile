@@ -31,16 +31,16 @@ compose-up-detached: docker-artifacts
 	$(COMPOSE) up --build -d
 
 compose-test-lint: docker-artifacts
-	$(COMPOSE) --profile test run --rm --build test run lint
+	SAM_GOV_USE_FIXTURES=true $(COMPOSE) --profile test run --rm --build test run lint
 
 compose-test: docker-artifacts
-	$(COMPOSE) --profile test run --rm --build test
+	SAM_GOV_USE_FIXTURES=true $(COMPOSE) --profile test run --rm --build test
 
 compose-test-build: docker-artifacts
-	$(COMPOSE) --profile test run --rm --build test run build
+	SAM_GOV_USE_FIXTURES=true $(COMPOSE) --profile test run --rm --build test run build
 
 compose-test-e2e: docker-artifacts
-	$(COMPOSE) --profile test up --build --abort-on-container-exit --exit-code-from playwright playwright
+	SAM_GOV_USE_FIXTURES=true $(COMPOSE) --profile test up --build --abort-on-container-exit --exit-code-from playwright playwright
 
 compose-down:
 	$(COMPOSE) down

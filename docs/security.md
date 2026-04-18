@@ -23,7 +23,7 @@ The current repo includes the first live authentication, authorization, audit-em
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
 - shared audited opportunity write services for create, update, delete, import-decision, stage-transition, and bid-decision flows
-- boot-time environment validation for `DATABASE_URL`, `AUTH_SECRET`, and `NEXTAUTH_URL`
+- boot-time environment validation for `DATABASE_URL`, `AUTH_SECRET`, `NEXTAUTH_URL`, and the optional `sam.gov` connector runtime settings
 - compose-managed PostgreSQL for local development
 
 ## Seed Defaults
@@ -41,6 +41,7 @@ The current local credentials flow uses the shared development password document
 ## Source Data Provenance
 
 - External source payloads are treated as untrusted input and are stored in `source_records` as raw JSON plus normalized JSON for traceability.
+- The executable `sam.gov` connector now persists outbound request envelopes in `source_search_executions`, retains normalized `source_records`, and materializes normalized attachment/contact/award child rows before any preview or import action is allowed.
 - The seed path demonstrates raw payload retention, normalized payload retention, import-preview payload retention, attachment/contact retention for `sam.gov`, award-enrichment retention for `usaspending_api`, and multiple manual opportunities with varied stage and decision outcomes for development-only dashboard work.
 - Search lineage and sync lineage are persisted separately through `source_search_results` and `source_sync_run_records` so later workflows can explain how a source record entered the system.
 - Promotion decisions are stored separately in `source_import_decisions`, which preserves whether a source record created a new canonical opportunity or only linked enrichment data to an existing one.
@@ -52,6 +53,10 @@ The current local credentials flow uses the shared development password document
 - `AUTH_SECRET` is required and is used by Auth.js to sign and verify session tokens.
 - `NEXTAUTH_URL` is required and must be an absolute base URL so Auth.js redirect handling stays deterministic.
 - `DOCUMENT_UPLOAD_DIR` controls where guarded local opportunity-document uploads are stored on disk. The default development value is `.data/opportunity-documents`.
+- `SAM_GOV_API_KEY` is optional in local development and required only when the connector is running in live upstream mode.
+- `SAM_GOV_SEARCH_ENDPOINT` defaults to the official `https://api.sam.gov/prod/opportunities/v2/search` endpoint and should only be overridden for controlled testing.
+- `SAM_GOV_TIMEOUT_MS` bounds connector request duration.
+- `SAM_GOV_USE_FIXTURES` switches the connector into deterministic fixture mode for automated verification and should remain `false` in production-like environments.
 - `.env` is ignored by git; `.env.example` is the only committed env file.
 - Connector configs can store a `credentialReference` string, but the repo still stores only secret references such as `secret://sam-gov/public-api-key`, never raw connector credentials.
 - No production API keys, auth provider secrets, or session secrets are committed.
@@ -79,10 +84,12 @@ Current audit producers are the bootstrap seed path and the shared opportunity w
 - Document uploads are treated as untrusted input. The server action revalidates the file metadata, bounds file size, writes under the configured storage root, and only exposes downloads back through an authenticated organization-scoped route.
 - Plain-text extraction currently runs only for UTF-8 text-like uploads. Binary formats are retained with explicit `NOT_REQUESTED` extraction status so later retry jobs can process them without fabricating content.
 - The current admin console is read-only and meant for visibility, not user-role mutation or audit remediation workflows yet.
+- Fixture-backed connector mode is for deterministic local and CI-style verification only; it is not evidence that live upstream credentials, rate limits, or validation failure handling have been exercised in this environment.
 - No auth-event or permission-failure audit emission yet
 - Auth events and permission failures still do not emit audit rows, and many future user-facing mutations have not been wired to the audited write-service boundary yet
 - No production-grade password reset, OAuth, MFA, or account-recovery workflow yet
 - No secret-vault integration behind connector credential references yet
+- Credentialed live `sam.gov` validation is intentionally deferred to post-project follow-on `FP-01`; its absence does not block current fixture-backed `P7-03` acceptance
 - No authorization guardrails around specific retained source records, workspace notes, documents, or future mutating actions yet
 
 Until the later hardening items are complete, this authz slice should be treated as a baseline security boundary rather than full production-ready RBAC coverage.

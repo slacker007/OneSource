@@ -34,6 +34,14 @@ Compose workflows do not depend on host `node_modules`. Docker images install wi
 make docker-artifacts
 ```
 
+4. Configure the `sam.gov` connector mode you intend to operate:
+
+- `SAM_GOV_USE_FIXTURES=true` keeps `/sources` deterministic for automated verification.
+- `SAM_GOV_USE_FIXTURES=false` enables live upstream calls.
+- `SAM_GOV_API_KEY` is required only for live upstream search execution.
+- `SAM_GOV_SEARCH_ENDPOINT` defaults to `https://api.sam.gov/prod/opportunities/v2/search`.
+- `SAM_GOV_TIMEOUT_MS` defaults to `15000`.
+
 ## Boot The Default Stack
 
 Start the app, database, and worker:
@@ -141,6 +149,14 @@ The reminder sweep summary currently includes:
 - `upcomingMilestoneCount`
 - `overdueMilestoneCount`
 
+## SAM.gov Connector Operations
+
+- The `/sources` search surface now runs through a reusable `sam.gov` connector that can execute in either live or deterministic fixture mode.
+- Fixture mode is the canonical setting for automated host and compose verification because it avoids flaky upstream credentials, latency, and result drift.
+- Live mode requires `SAM_GOV_API_KEY` and should be used for post-project follow-on `FP-01`, exploratory operator testing, or future scheduled-ingestion work.
+- Search executions persist outbound request envelopes plus normalized `source_records` and normalized attachment/contact/award child rows, so preview and import actions operate on retained lineage data rather than transient page-local IDs.
+- The current repo state does not require a credentialed live search/import run to close `P7-03`; that manual upstream exercise is intentionally deferred to post-project follow-on `FP-01` when a real `SAM_GOV_API_KEY` is available.
+
 ## Compose Test Workflows
 
 Lint:
@@ -168,8 +184,7 @@ make compose-test-e2e
 ```
 
 The Playwright container waits for the `web` health check before running tests. Browser execution is intentionally serialized because the smoke suite mutates one shared seeded database.
-
-If the local `.env` predates the reminder worker slice and does not include `DEADLINE_REMINDER_LOOKAHEAD_DAYS`, either refresh `.env` from `.env.example` or prefix the compose command with `DEADLINE_REMINDER_LOOKAHEAD_DAYS=7`.
+The `make compose-test*` targets force `SAM_GOV_USE_FIXTURES=true` so connector-backed `/sources` verification stays deterministic.
 
 ## Auth And Authz Smoke Check
 

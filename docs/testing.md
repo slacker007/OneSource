@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 7 CSV-intake and document-upload baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 7 CSV-intake, document-upload, and reusable `sam.gov` connector baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, deterministic scoring and recommendation formulas plus fallback scorecard mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus stored-file download visibility, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` mocked external-search flow plus preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with scoring-profile visibility, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus stored-file download visibility, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` fixture-backed connector search flow plus preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with scoring-profile visibility, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -53,7 +53,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - create a note from the workspace with title, pinned state, and body content, then confirm that note appears in the notes section and history feed
 - upload a text document from the workspace, confirm the success state and extracted-text snippet render, and confirm a stored-file download link is visible on the resulting document card
 - open `/opportunities/new`, restore a browser-local draft, create a tracked opportunity through the guarded form path, then edit that opportunity through the guarded update flow
-- navigate into `/sources`, submit a structured mocked `sam.gov` search, and observe the URL plus mocked result set update together
+- navigate into `/sources`, submit a structured fixture-backed `sam.gov` search, and observe the URL plus connector-backed result set update together
 - open a source-result preview, inspect duplicate detection, and either link the result into the existing tracked opportunity or confirm the already-linked state on reruns
 - upload a CSV file on `/sources`, confirm auto-detected mappings and row-level preview states render, then import one clean row and confirm it appears on the tracked opportunity list
 - navigate from the desktop shell into another primary section with the top-bar search placeholder still visible
@@ -91,17 +91,17 @@ For the current Phase 3 dashboard slice, targeted unit verification should confi
 - the typed opportunity repository derives the dashboard snapshot without leaking raw Prisma model payloads into the page layer
 - the authenticated shell still opens the mobile drawer through the shared drawer primitive
 
-For the current Phase 4 source-search slice, targeted unit verification should confirm:
+For the current Phase 7 connector-backed source-search slice, targeted unit verification should confirm:
 
 - the typed source-integration module parses URL search params into a normalized canonical query object with `sam.gov` validation rules and bounded defaults
-- the typed source-integration module translates canonical filters into the explicit `sam.gov` outbound request parameters and filters deterministic mocked results without leaking transport details into the page layer
-- the rendered source-search page shows URL-synced control values, translated request visibility, mocked result rows, and truthful empty or validation states
+- the typed source-integration module translates canonical filters into the explicit `sam.gov` outbound request parameters, executes through the reusable connector boundary, and persists `source_search_executions`, `source_search_results`, `source_records`, and normalized attachment/contact/award child rows without leaking transport details into the page layer
+- the rendered source-search page shows URL-synced control values, translated request visibility, execution-mode status, connector-backed result rows, and truthful empty or validation states
 
-For the current Phase 4 source-import slice, targeted unit verification should confirm:
+For the current Phase 7 connector-backed source-import slice, targeted unit verification should confirm:
 
-- the preview service builds raw and normalized mocked source payloads for the selected result without coupling preview rendering to page-local ad hoc logic
+- the preview service loads raw and normalized source payloads from retained `source_records` for the selected result without coupling preview rendering to page-local ad hoc logic
 - duplicate detection ranks exact source matches and likely tracked-opportunity matches deterministically from seeded opportunity metadata
-- the guarded import service persists source records, import decisions, and canonical opportunity linkage for both create-new and link-existing decisions
+- the guarded import service applies create-new and link-existing decisions against persisted `source_records` while maintaining import decisions and canonical opportunity linkage
 
 For the current Phase 4 opportunities-list slice, targeted unit verification should confirm:
 
@@ -192,6 +192,8 @@ npm run e2e
 
 The current Playwright smoke suite is intentionally serialized through `playwright.config.ts` because it mutates one shared seeded database. Do not re-enable fully parallel browser execution unless the browser tests are rewritten to isolate their data.
 
+Automated browser verification intentionally runs the `sam.gov` connector in fixture mode. That deterministic mocked path is now the acceptance path for `P7-03`. For a manual live upstream check, set `SAM_GOV_API_KEY`, ensure `SAM_GOV_USE_FIXTURES=false`, seed the database, and then exercise the `/sources` search-and-import flow against the running app. That credentialed live run is tracked separately as post-project follow-on `FP-01`.
+
 ## Compose Verification Commands
 
 The compose-managed Playwright workflow does not require a host browser install because it uses the official Playwright image.
@@ -221,7 +223,7 @@ make compose-test-e2e
 ```
 
 The Playwright workflow automatically starts PostgreSQL and the web app, waits for the app health check, then runs Chromium from the dedicated Playwright container. Compose-backed browser execution uses the same serialized Playwright configuration as host-side `npm run e2e`.
-If the local `.env` is missing `DEADLINE_REMINDER_LOOKAHEAD_DAYS`, prefix the compose command with `DEADLINE_REMINDER_LOOKAHEAD_DAYS=7`.
+The `make compose-test*` targets force `SAM_GOV_USE_FIXTURES=true` so connector-backed `/sources` verification stays deterministic in CI-like local runs.
 
 ## Runtime Support Commands
 

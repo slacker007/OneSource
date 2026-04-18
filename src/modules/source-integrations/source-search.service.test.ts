@@ -2,12 +2,50 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   buildSamGovOutboundRequest,
-  executeMockSamGovSearch,
   getSourceSearchSnapshot,
   parseSourceSearchParams,
 } from "./source-search.service";
 
 function createRepositoryClient() {
+  const tx = {
+    sourceRecord: {
+      upsert: vi.fn(),
+    },
+    sourceRecordAttachment: {
+      createMany: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    sourceRecordAward: {
+      deleteMany: vi.fn(),
+      upsert: vi.fn(),
+    },
+    sourceRecordContact: {
+      createMany: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    sourceSearchExecution: {
+      create: vi.fn(),
+    },
+    sourceSearchResult: {
+      createMany: vi.fn(),
+    },
+  };
+
+  vi.mocked(tx.sourceSearchExecution.create).mockResolvedValue({
+    id: "search_exec_123",
+    requestedAt: new Date("2026-04-18T09:00:00.000Z"),
+  });
+  vi.mocked(tx.sourceRecord.upsert)
+    .mockResolvedValueOnce({ id: "source_enterprise" })
+    .mockResolvedValueOnce({ id: "source_army" });
+  vi.mocked(tx.sourceRecordAttachment.createMany).mockResolvedValue(undefined);
+  vi.mocked(tx.sourceRecordAttachment.deleteMany).mockResolvedValue(undefined);
+  vi.mocked(tx.sourceRecordAward.deleteMany).mockResolvedValue(undefined);
+  vi.mocked(tx.sourceRecordAward.upsert).mockResolvedValue(undefined);
+  vi.mocked(tx.sourceRecordContact.createMany).mockResolvedValue(undefined);
+  vi.mocked(tx.sourceRecordContact.deleteMany).mockResolvedValue(undefined);
+  vi.mocked(tx.sourceSearchResult.createMany).mockResolvedValue(undefined);
+
   return {
     organization: {
       findUnique: vi.fn().mockResolvedValue({
@@ -25,6 +63,7 @@ function createRepositoryClient() {
             supportsScheduledSync: true,
             supportsResultPreview: true,
             connectorVersion: "sam-gov.v1",
+            credentialReference: "secret://sam-gov/public-api-key",
           },
           {
             id: "connector_usaspending",
@@ -36,10 +75,13 @@ function createRepositoryClient() {
             supportsScheduledSync: true,
             supportsResultPreview: true,
             connectorVersion: "usaspending.v1",
+            credentialReference: null,
           },
         ],
       }),
     },
+    $transaction: vi.fn(async (callback) => callback(tx)),
+    __tx: tx,
   };
 }
 
@@ -88,7 +130,7 @@ describe("source-search.service", () => {
     const outboundRequest = buildSamGovOutboundRequest(requestState.query!);
 
     expect(outboundRequest).toEqual({
-      endpoint: "https://api.sam.gov/opportunities/v2/search",
+      endpoint: "https://api.sam.gov/prod/opportunities/v2/search",
       queryParams: {
         postedFrom: "04/01/2026",
         postedTo: "04/18/2026",
@@ -120,55 +162,93 @@ describe("source-search.service", () => {
     ]);
   });
 
-  it("filters mocked sam.gov results by structured search params", () => {
-    const requestState = parseSourceSearchParams({
-      keywords: "cloud operations",
-      postedFrom: "2026-04-01",
-      postedTo: "2026-04-30",
-      ptype: ["r"],
-      state: "VA",
-      limit: "25",
-      offset: "0",
-    });
-
-    const execution = executeMockSamGovSearch(requestState.query!);
-
-    expect(execution.totalCount).toBe(1);
-    expect(execution.results).toMatchObject([
-      {
-        noticeId: "W91QUZ-26-R-1042",
-        title: "Army Cloud Operations Recompete",
-        procurementTypeCode: "r",
-        placeOfPerformanceState: "VA",
-      },
-    ]);
-  });
-
-  it("builds a page snapshot with mocked results for sam.gov", async () => {
+  it("builds a persisted fixture-backed search snapshot for sam.gov", async () => {
+    process.env.SAM_GOV_USE_FIXTURES = "true";
     const db = createRepositoryClient();
 
     const snapshot = await getSourceSearchSnapshot({
+      actor: {
+        email: "alex.morgan@onesource.local",
+        organizationId: "org_123",
+        userId: "user_123",
+      },
       db: db as never,
       searchParams: {
-        keywords: "claims intake",
+        keywords: "operations",
         postedFrom: "2026-03-01",
         postedTo: "2026-04-30",
-        typeOfSetAside: "SDVOSB",
       },
     });
 
     expect(snapshot).not.toBeNull();
     expect(snapshot).toMatchObject({
-      executionMode: "mocked_sam_gov",
-      totalCount: 1,
-      resultCountLabel: "Showing 1-1 of 1 mocked external results",
+      executionMode: "fixture_connector",
+      totalCount: 2,
+      resultCountLabel: "Showing 1-2 of 2 external results",
+      searchExecutionId: "search_exec_123",
       activeConnector: {
         sourceSystemKey: "sam_gov",
       },
       results: [
         {
-          noticeId: "36C10B26Q0142",
-          title: "VA Claims Intake Automation BPA",
+          id: "source_enterprise",
+          noticeId: "FA4861-26-R-0001",
+          title: "Enterprise Knowledge Management Support Services",
+          naicsCode: "541511",
+        },
+        {
+          id: "source_army",
+          noticeId: "W91QUZ-26-R-1042",
+          title: "Army Cloud Operations Recompete",
+          naicsCode: "541512",
+        },
+      ],
+    });
+    expect(db.__tx.sourceSearchExecution.create).toHaveBeenCalledTimes(1);
+    expect(db.__tx.sourceRecord.upsert).toHaveBeenCalledTimes(2);
+    expect(db.__tx.sourceRecordAttachment.deleteMany).toHaveBeenCalledTimes(2);
+    expect(db.__tx.sourceRecordAttachment.createMany).toHaveBeenCalledTimes(2);
+    expect(db.__tx.sourceRecordContact.deleteMany).toHaveBeenCalledTimes(2);
+    expect(db.__tx.sourceRecordContact.createMany).toHaveBeenCalledTimes(2);
+    expect(db.__tx.sourceRecordAward.deleteMany).toHaveBeenCalledTimes(2);
+    expect(db.__tx.sourceRecordAward.upsert).not.toHaveBeenCalled();
+    expect(db.__tx.sourceRecordAttachment.createMany).toHaveBeenNthCalledWith(1, {
+      data: [
+        expect.objectContaining({
+          displayLabel: "Performance Work Statement",
+          linkType: "resource_link",
+          sortOrder: 0,
+          sourceRecordId: "source_enterprise",
+        }),
+        expect.objectContaining({
+          displayLabel: "Questions And Answers",
+          linkType: "resource_link",
+          sortOrder: 1,
+          sourceRecordId: "source_enterprise",
+        }),
+      ],
+    });
+    expect(db.__tx.sourceRecordContact.createMany).toHaveBeenNthCalledWith(2, {
+      data: [
+        expect.objectContaining({
+          contactType: "primary",
+          fullName: "PEO Contracting Lead",
+          sortOrder: 0,
+          sourceRecordId: "source_army",
+        }),
+      ],
+    });
+    expect(db.__tx.sourceSearchResult.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          resultRank: 1,
+          searchExecutionId: "search_exec_123",
+          sourceRecordId: "source_enterprise",
+        },
+        {
+          resultRank: 2,
+          searchExecutionId: "search_exec_123",
+          sourceRecordId: "source_army",
         },
       ],
     });
@@ -178,6 +258,11 @@ describe("source-search.service", () => {
     const db = createRepositoryClient();
 
     const snapshot = await getSourceSearchSnapshot({
+      actor: {
+        email: "alex.morgan@onesource.local",
+        organizationId: "org_123",
+        userId: "user_123",
+      },
       db: db as never,
       searchParams: {
         source: "usaspending_api",
@@ -190,7 +275,7 @@ describe("source-search.service", () => {
     expect(snapshot).toMatchObject({
       executionMode: "unsupported_connector",
       totalCount: 0,
-      resultCountLabel: "Connector not yet implemented",
+      resultCountLabel: "No external results returned",
       activeConnector: {
         sourceSystemKey: "usaspending_api",
       },

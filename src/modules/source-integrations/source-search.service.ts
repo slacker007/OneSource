@@ -1,3 +1,17 @@
+import { Prisma } from "@prisma/client";
+
+import { getServerEnv } from "@/lib/env";
+
+import {
+  buildSamGovOutboundRequest,
+  executeSamGovSearch,
+  SAM_GOV_CAPABILITY,
+  SAM_GOV_PROCUREMENT_TYPE_OPTIONS,
+  SAM_GOV_STATUS_OPTIONS,
+  SamGovConnectorError,
+  type SamGovOutboundRequest,
+} from "./sam-gov.connector";
+
 type SourceConnectorAuthType =
   | "API_KEY"
   | "OAUTH"
@@ -15,6 +29,10 @@ export type SourceSearchConnectorSummary = {
   supportsResultPreview: boolean;
   supportsSearch: boolean;
   supportsScheduledSync: boolean;
+};
+
+type SourceSearchConnectorRecord = SourceSearchConnectorSummary & {
+  credentialReference: string | null;
 };
 
 export type SourceSearchFormValues = {
@@ -63,33 +81,9 @@ export type CanonicalSourceSearchQuery = {
   status: string | null;
 };
 
-export type SamGovOutboundRequest = {
-  endpoint: string;
-  queryParams: {
-    ccode?: string;
-    limit: number;
-    ncode?: string;
-    noticeid?: string;
-    offset: number;
-    organizationCode?: string;
-    organizationName?: string;
-    postedFrom: string;
-    postedTo: string;
-    "ptype[]"?: string[];
-    rdlfrom?: string;
-    rdlto?: string;
-    solnum?: string;
-    state?: string;
-    status?: string;
-    title?: string;
-    typeOfSetAside?: string;
-    typeOfSetAsideDescription?: string;
-    zip?: string;
-  };
-};
-
 export type SourceSearchResultSummary = {
   id: string;
+  naicsCode: string | null;
   noticeId: string;
   organizationCode: string | null;
   organizationName: string;
@@ -134,7 +128,13 @@ export type SourceSearchSnapshot = {
   connectors: SourceSearchConnectorSummary[];
   executedAt: string | null;
   executionMessage: string;
-  executionMode: "invalid_query" | "mocked_sam_gov" | "unsupported_connector";
+  executionMode:
+    | "invalid_query"
+    | "unsupported_connector"
+    | "connector_unavailable"
+    | "connector_error"
+    | "fixture_connector"
+    | "live_connector";
   formValues: SourceSearchFormValues;
   organization: {
     id: string;
@@ -146,55 +146,9 @@ export type SourceSearchSnapshot = {
   query: CanonicalSourceSearchQuery | null;
   resultCountLabel: string;
   results: SourceSearchResultSummary[];
+  searchExecutionId: string | null;
   totalCount: number;
   validationErrors: string[];
-};
-
-const DEFAULT_ORGANIZATION_SLUG = "default-org";
-const DEFAULT_POSTED_FROM = "2026-03-01";
-const DEFAULT_POSTED_TO = "2026-04-30";
-const DEFAULT_PAGE_SIZE = 25;
-const DEFAULT_PAGE_OFFSET = 0;
-const SAM_GOV_SEARCH_ENDPOINT = "https://api.sam.gov/opportunities/v2/search";
-
-const SAM_GOV_PROCUREMENT_TYPE_OPTIONS = [
-  { value: "u", label: "Justification (J&A)", description: "Justification and approval notices." },
-  { value: "p", label: "Pre-solicitation", description: "Pre-solicitation market notices." },
-  { value: "a", label: "Award Notice", description: "Awarded procurement notices." },
-  { value: "r", label: "Sources Sought", description: "Early market research and capability requests." },
-  { value: "s", label: "Special Notice", description: "Special procurement or informational notices." },
-  { value: "o", label: "Solicitation", description: "Solicitation opportunities open for response." },
-  { value: "g", label: "Sale of Surplus Property", description: "Government surplus property sales." },
-  { value: "k", label: "Combined Synopsis/Solicitation", description: "Combined synopsis and solicitation notices." },
-  { value: "i", label: "Intent to Bundle Requirements", description: "DoD-funded bundling intent notices." },
-] as const;
-
-const SAM_GOV_STATUS_OPTIONS = [
-  { value: "", label: "All statuses" },
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
-  { value: "archived", label: "Archived" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "deleted", label: "Deleted" },
-] as const;
-
-const SAM_GOV_CAPABILITY: SourceSearchCapability = {
-  pageSizeOptions: [10, 25, 50, 100],
-  procurementTypes: [...SAM_GOV_PROCUREMENT_TYPE_OPTIONS],
-  statusOptions: [...SAM_GOV_STATUS_OPTIONS],
-  supportedFilterLabels: [
-    "posted date range",
-    "response deadline range",
-    "notice ID",
-    "solicitation number",
-    "procurement type",
-    "organization name and code",
-    "NAICS and classification code",
-    "set-aside",
-    "place of performance",
-    "status",
-    "page size and offset",
-  ],
 };
 
 export type SourceSearchRepositoryClient = {
@@ -205,7 +159,90 @@ export type SourceSearchRepositoryClient = {
       };
     } & typeof organizationSourceSearchArgs): Promise<OrganizationSourceSearchRecord | null>;
   };
+  $transaction<T>(
+    callback: (tx: SourceSearchTransactionClient) => Promise<T>,
+  ): Promise<T>;
 };
+
+type SourceSearchTransactionClient = {
+  sourceRecord: {
+    upsert(args: {
+      where: {
+        organizationId_sourceSystem_sourceRecordId: {
+          organizationId: string;
+          sourceRecordId: string;
+          sourceSystem: string;
+        };
+      };
+      create: Prisma.SourceRecordUncheckedCreateInput;
+      update: Prisma.SourceRecordUncheckedUpdateInput;
+      select: {
+        id: true;
+      };
+    }): Promise<{ id: string }>;
+  };
+  sourceRecordAttachment: {
+    createMany(args: {
+      data: Prisma.SourceRecordAttachmentCreateManyInput[];
+    }): Promise<unknown>;
+    deleteMany(args: {
+      where: {
+        sourceRecordId: string;
+      };
+    }): Promise<unknown>;
+  };
+  sourceRecordAward: {
+    deleteMany(args: {
+      where: {
+        sourceRecordId: string;
+      };
+    }): Promise<unknown>;
+    upsert(args: {
+      where: {
+        sourceRecordId: string;
+      };
+      create: Prisma.SourceRecordAwardUncheckedCreateInput;
+      update: Prisma.SourceRecordAwardUncheckedUpdateInput;
+    }): Promise<unknown>;
+  };
+  sourceRecordContact: {
+    createMany(args: {
+      data: Prisma.SourceRecordContactCreateManyInput[];
+    }): Promise<unknown>;
+    deleteMany(args: {
+      where: {
+        sourceRecordId: string;
+      };
+    }): Promise<unknown>;
+  };
+  sourceSearchExecution: {
+    create(args: {
+      data: Prisma.SourceSearchExecutionUncheckedCreateInput;
+      select: {
+        id: true;
+        requestedAt: true;
+      };
+    }): Promise<{
+      id: string;
+      requestedAt: Date;
+    }>;
+  };
+  sourceSearchResult: {
+    createMany(args: {
+      data: Array<{
+        searchExecutionId: string;
+        sourceRecordId: string;
+        resultRank: number;
+      }>;
+    }): Promise<unknown>;
+  };
+};
+
+const DEFAULT_ORGANIZATION_SLUG = "default-org";
+const DEFAULT_POSTED_FROM = "2026-03-01";
+const DEFAULT_POSTED_TO = "2026-04-30";
+const DEFAULT_PAGE_SIZE = 25;
+const DEFAULT_PAGE_OFFSET = 0;
 
 const organizationSourceSearchArgs = {
   select: {
@@ -226,191 +263,26 @@ const organizationSourceSearchArgs = {
         supportsScheduledSync: true,
         supportsResultPreview: true,
         connectorVersion: true,
+        credentialReference: true,
       },
     },
   },
-};
+} as const;
 
 type OrganizationSourceSearchRecord = {
   id: string;
   name: string;
   slug: string;
-  sourceConnectorConfigs: SourceSearchConnectorSummary[];
+  sourceConnectorConfigs: SourceSearchConnectorRecord[];
 };
 
-export type MockSamGovSearchResult = SourceSearchResultSummary & {
-  classificationCode: string | null;
-  naicsCode: string | null;
-  setAsideCode: string | null;
+type SearchActorContext = {
+  email: string | null;
+  organizationId: string;
+  userId: string | null;
 };
 
-export type MockSamGovImportPreview = {
-  importPreviewPayload: Record<string, unknown>;
-  normalizedPayload: Record<string, unknown>;
-  normalizationVersion: string;
-  rawPayload: Record<string, unknown>;
-  sourceDescriptionUrl: string | null;
-  sourceDetailUrl: string | null;
-  sourceHashFingerprint: string;
-  sourceUiUrl: string;
-  warnings: string[];
-};
-
-const SAM_GOV_MOCK_RESULTS: MockSamGovSearchResult[] = [
-  {
-    id: "sam_result_1",
-    sourceSystem: "sam_gov",
-    noticeId: "FA4861-26-R-0001",
-    title: "Enterprise Knowledge Management Support Services",
-    solicitationNumber: "FA4861-26-R-0001",
-    organizationName: "99th Contracting Squadron",
-    organizationCode: "FA4861",
-    postedDate: "2026-04-12",
-    responseDeadline: "2026-05-04",
-    procurementTypeCode: "o",
-    procurementTypeLabel: "Solicitation",
-    status: "active",
-    naicsCode: "541511",
-    classificationCode: "R408",
-    setAsideCode: "SBA",
-    setAsideDescription: "Total Small Business Set-Aside",
-    placeOfPerformanceState: "NV",
-    placeOfPerformanceZip: "89191",
-    summary:
-      "Knowledge management, workflow modernization, and capture-support services for Air Force contracting operations.",
-    uiLink: "https://sam.gov/opp/FA4861-26-R-0001/view",
-  },
-  {
-    id: "sam_result_2",
-    sourceSystem: "sam_gov",
-    noticeId: "W91QUZ-26-R-1042",
-    title: "Army Cloud Operations Recompete",
-    solicitationNumber: "W91QUZ-26-R-1042",
-    organizationName: "PEO Enterprise Information Systems",
-    organizationCode: "W91QUZ",
-    postedDate: "2026-04-08",
-    responseDeadline: "2026-05-20",
-    procurementTypeCode: "r",
-    procurementTypeLabel: "Sources Sought",
-    status: "active",
-    naicsCode: "541512",
-    classificationCode: "D302",
-    setAsideCode: null,
-    setAsideDescription: null,
-    placeOfPerformanceState: "VA",
-    placeOfPerformanceZip: "22350",
-    summary:
-      "Cloud operations, sustainment, and platform engineering support for Army enterprise systems.",
-    uiLink: "https://sam.gov/opp/W91QUZ-26-R-1042/view",
-  },
-  {
-    id: "sam_result_3",
-    sourceSystem: "sam_gov",
-    noticeId: "36C10B26Q0142",
-    title: "VA Claims Intake Automation BPA",
-    solicitationNumber: "36C10B26Q0142",
-    organizationName: "Department of Veterans Affairs",
-    organizationCode: "36C10B",
-    postedDate: "2026-03-29",
-    responseDeadline: "2026-04-26",
-    procurementTypeCode: "k",
-    procurementTypeLabel: "Combined Synopsis/Solicitation",
-    status: "active",
-    naicsCode: "541519",
-    classificationCode: "R499",
-    setAsideCode: "SDVOSB",
-    setAsideDescription: "Service-Disabled Veteran-Owned Small Business Set-Aside",
-    placeOfPerformanceState: "TX",
-    placeOfPerformanceZip: "78758",
-    summary:
-      "Claims-intake automation and analytics support for a nationwide modernization effort.",
-    uiLink: "https://sam.gov/opp/36C10B26Q0142/view",
-  },
-  {
-    id: "sam_result_4",
-    sourceSystem: "sam_gov",
-    noticeId: "N00189-26-R-0088",
-    title: "Navy Logistics Data Support Bridge",
-    solicitationNumber: "N00189-26-R-0088",
-    organizationName: "NAVSUP Fleet Logistics Center Norfolk",
-    organizationCode: "N00189",
-    postedDate: "2026-02-17",
-    responseDeadline: "2026-03-19",
-    procurementTypeCode: "s",
-    procurementTypeLabel: "Special Notice",
-    status: "archived",
-    naicsCode: "541614",
-    classificationCode: "R706",
-    setAsideCode: null,
-    setAsideDescription: null,
-    placeOfPerformanceState: "VA",
-    placeOfPerformanceZip: "23511",
-    summary:
-      "Bridge support for logistics data quality, reporting, and inventory visibility.",
-    uiLink: "https://sam.gov/opp/N00189-26-R-0088/view",
-  },
-];
-
-const SAM_GOV_MOCK_NORMALIZATION_VERSION = "mock-sam-gov.v1";
-
-const SAM_GOV_DETAIL_OVERRIDES = {
-  sam_result_1: {
-    departmentName: "Department of the Air Force",
-    subtierName: "Air Combat Command",
-    officeCity: "Nellis AFB",
-    officeName: "99th Contracting Squadron",
-    resourceLinks: [
-      "https://sam.gov/opp/FA4861-26-R-0001/documents/performance-work-statement.pdf",
-      "https://sam.gov/opp/FA4861-26-R-0001/documents/questions-and-answers.xlsx",
-    ],
-    streetAddress: "4700 Grissom Ave",
-    streetAddress2: "Suite 100",
-  },
-  sam_result_2: {
-    departmentName: "Department of the Army",
-    subtierName: "PEO Enterprise Information Systems",
-    officeCity: "Fort Belvoir",
-    officeName: "Army Contracting Command",
-    resourceLinks: [
-      "https://sam.gov/opp/W91QUZ-26-R-1042/documents/draft-pws.pdf",
-    ],
-    streetAddress: "9800 Savage Road",
-    streetAddress2: null,
-  },
-  sam_result_3: {
-    departmentName: "Department of Veterans Affairs",
-    subtierName: "Technology Acquisition Center",
-    officeCity: "Austin",
-    officeName: "Department of Veterans Affairs",
-    resourceLinks: [
-      "https://sam.gov/opp/36C10B26Q0142/documents/performance-workbook.pdf",
-    ],
-    streetAddress: "6801 Metropolis Drive",
-    streetAddress2: null,
-  },
-  sam_result_4: {
-    departmentName: "Department of the Navy",
-    subtierName: "NAVSUP",
-    officeCity: "Norfolk",
-    officeName: "NAVSUP Fleet Logistics Center Norfolk",
-    resourceLinks: [
-      "https://sam.gov/opp/N00189-26-R-0088/documents/bridge-overview.pdf",
-    ],
-    streetAddress: "1968 Gilbert Street",
-    streetAddress2: null,
-  },
-} as const satisfies Record<
-  MockSamGovSearchResult["id"],
-  {
-    departmentName: string;
-    subtierName: string;
-    officeCity: string;
-    officeName: string;
-    resourceLinks: string[];
-    streetAddress: string;
-    streetAddress2: string | null;
-  }
->;
+export { buildSamGovOutboundRequest };
 
 export function parseSourceSearchParams(
   searchParams: Record<string, string | string[] | undefined> | undefined,
@@ -561,276 +433,23 @@ export function parseSourceSearchParams(
   };
 }
 
-export function buildSamGovOutboundRequest(
-  query: CanonicalSourceSearchQuery,
-): SamGovOutboundRequest {
-  const queryParams: SamGovOutboundRequest["queryParams"] = {
-    postedFrom: formatDateForSamGov(query.postedDateFrom),
-    postedTo: formatDateForSamGov(query.postedDateTo),
-    limit: query.pageSize,
-    offset: query.pageOffset,
-  };
-
-  assignIfPresent(queryParams, "title", query.keywords);
-  assignIfPresent(queryParams, "noticeid", query.noticeId);
-  assignIfPresent(queryParams, "solnum", query.solicitationNumber);
-  assignIfPresent(queryParams, "organizationName", query.organizationName);
-  assignIfPresent(queryParams, "organizationCode", query.organizationCode);
-  assignIfPresent(queryParams, "ncode", query.naicsCode);
-  assignIfPresent(queryParams, "ccode", query.classificationCode);
-  assignIfPresent(queryParams, "typeOfSetAside", query.setAsideCode);
-  assignIfPresent(
-    queryParams,
-    "typeOfSetAsideDescription",
-    query.setAsideDescription,
-  );
-  assignIfPresent(queryParams, "state", query.placeOfPerformanceState);
-  assignIfPresent(queryParams, "zip", query.placeOfPerformanceZip);
-  assignIfPresent(queryParams, "status", query.status);
-
-  if (query.procurementTypes.length > 0) {
-    queryParams["ptype[]"] = query.procurementTypes;
-  }
-
-  if (query.responseDeadlineFrom) {
-    queryParams.rdlfrom = formatDateForSamGov(query.responseDeadlineFrom);
-  }
-
-  if (query.responseDeadlineTo) {
-    queryParams.rdlto = formatDateForSamGov(query.responseDeadlineTo);
-  }
-
-  return {
-    endpoint: SAM_GOV_SEARCH_ENDPOINT,
-    queryParams,
-  };
-}
-
-export function executeMockSamGovSearch(query: CanonicalSourceSearchQuery) {
-  const outboundRequest = buildSamGovOutboundRequest(query);
-  const filteredResults = SAM_GOV_MOCK_RESULTS.filter((result) =>
-    matchesMockSamGovResult(result, query),
-  ).sort(compareMockSearchResults);
-  const pagedResults = filteredResults.slice(
-    query.pageOffset,
-    query.pageOffset + query.pageSize,
-  );
-
-  return {
-    outboundRequest,
-    results: pagedResults,
-    totalCount: filteredResults.length,
-  };
-}
-
-export function getMockSamGovSearchResultById(resultId: string) {
-  return SAM_GOV_MOCK_RESULTS.find((result) => result.id === resultId) ?? null;
-}
-
-export function buildMockSamGovImportPreview(
-  resultId: string,
-): MockSamGovImportPreview | null {
-  const result = getMockSamGovSearchResultById(resultId);
-
-  if (!result) {
-    return null;
-  }
-
-  const detail =
-    SAM_GOV_DETAIL_OVERRIDES[
-      result.id as keyof typeof SAM_GOV_DETAIL_OVERRIDES
-    ];
-  const postedDateRaw = formatDateForSamGov(result.postedDate);
-  const responseDeadlineRaw = result.responseDeadline
-    ? formatDateForSamGov(result.responseDeadline)
-    : null;
-  const pointOfContact = [
-    {
-      additionalInfo: {
-        content:
-          "Use the public opportunity page for amendments and procurement updates.",
-      },
-      email: buildMockContactEmail(result.organizationCode),
-      fullName: buildMockContactName(result.organizationName),
-      phone: buildMockContactPhone(result.noticeId),
-      title: "Contracting Officer",
-      type: "primary",
-    },
-  ];
-
-  const rawPayload = {
-    active: result.status === "active" ? "Yes" : "No",
-    additionalInfoLink: `${result.uiLink}/resources`,
-    archiveDate: result.status === "archived" ? postedDateRaw : null,
-    archiveType: result.status === "archived" ? "Archived Opportunity" : null,
-    baseType: result.procurementTypeLabel,
-    classificationCode: result.classificationCode,
-    department: detail.departmentName,
-    description: result.summary,
-    fullParentPathCode: result.organizationCode,
-    fullParentPathName: `${detail.departmentName} > ${detail.subtierName} > ${result.organizationName}`,
-    links: {
-      self: {
-        href: buildMockSamGovDetailUrl(result.noticeId),
-      },
-    },
-    naicsCode: result.naicsCode,
-    noticeId: result.noticeId,
-    office: detail.officeName,
-    officeAddress: {
-      city: detail.officeCity,
-      countryCode: "USA",
-      state: result.placeOfPerformanceState,
-      zip: result.placeOfPerformanceZip,
-    },
-    organizationCode: result.organizationCode,
-    organizationName: result.organizationName,
-    organizationType: "OFFICE",
-    placeOfPerformance: {
-      city: {
-        code: null,
-        name: detail.officeCity,
-      },
-      country: {
-        code: "USA",
-      },
-      state: {
-        code: result.placeOfPerformanceState,
-        name: getStateName(result.placeOfPerformanceState),
-      },
-      streetAddress: detail.streetAddress,
-      streetAddress2: detail.streetAddress2,
-      zip: result.placeOfPerformanceZip,
-    },
-    pointOfContact,
-    postedDate: postedDateRaw,
-    resourceLinks: detail.resourceLinks,
-    responseDeadLine: responseDeadlineRaw,
-    solicitationNumber: result.solicitationNumber,
-    status: result.status,
-    subTier: detail.subtierName,
-    title: result.title,
-    type: result.procurementTypeLabel,
-    typeOfSetAside: result.setAsideCode,
-    typeOfSetAsideDescription: result.setAsideDescription,
-    uiLink: result.uiLink,
-  } satisfies Record<string, unknown>;
-
-  const sourceHashFingerprint = buildMockSourceFingerprint(result);
-  const normalizedPayload = {
-    additionalInfoUrl: `${result.uiLink}/resources`,
-    agencyDepartmentName: detail.departmentName,
-    agencyOfficeName: result.organizationName,
-    agencyPathCode: result.organizationCode,
-    agencyPathName: `${detail.departmentName} > ${detail.subtierName} > ${result.organizationName}`,
-    agencySubtierName: detail.subtierName,
-    apiSelfLink: buildMockSamGovDetailUrl(result.noticeId),
-    archiveDateRaw: rawPayload.archiveDate,
-    archiveType: rawPayload.archiveType,
-    archivedAt:
-      result.status === "archived"
-        ? toIsoDateTime(result.postedDate, "T00:00:00.000Z")
-        : null,
-    canonicalFingerprint: sourceHashFingerprint,
-    classificationCode: result.classificationCode,
-    contacts: pointOfContact.map((contact) => ({
-      additionalInfoText: contact.additionalInfo.content,
-      contactType: contact.type,
-      email: contact.email,
-      fullName: contact.fullName,
-      phone: contact.phone,
-      title: contact.title,
-    })),
-    externalNoticeId: result.noticeId,
-    isActiveSourceRecord: result.status === "active",
-    isArchivedSourceRecord: result.status === "archived",
-    naicsCode: result.naicsCode,
-    normalizationVersion: SAM_GOV_MOCK_NORMALIZATION_VERSION,
-    normalizedAt: new Date().toISOString(),
-    officeCity: detail.officeCity,
-    officeCountryCode: "USA",
-    officePostalCode: result.placeOfPerformanceZip,
-    officeState: result.placeOfPerformanceState,
-    organizationType: "OFFICE",
-    placeOfPerformanceCityCode: null,
-    placeOfPerformanceCityName: detail.officeCity,
-    placeOfPerformanceCountryCode: "USA",
-    placeOfPerformancePostalCode: result.placeOfPerformanceZip,
-    placeOfPerformanceStateCode: result.placeOfPerformanceState,
-    placeOfPerformanceStateName: getStateName(result.placeOfPerformanceState),
-    placeOfPerformanceStreet1: detail.streetAddress,
-    placeOfPerformanceStreet2: detail.streetAddress2,
-    postedAt: toIsoDateTime(result.postedDate, "T00:00:00.000Z"),
-    postedDateRaw,
-    procurementBaseTypeLabel: result.procurementTypeLabel,
-    procurementTypeLabel: result.procurementTypeLabel,
-    resourceLinks: detail.resourceLinks.map((url) => ({
-      displayLabel: buildResourceLabel(url),
-      linkType: "resource_link",
-      url,
-    })),
-    responseDeadlineAt: result.responseDeadline
-      ? toIsoDateTime(result.responseDeadline, "T21:00:00.000Z")
-      : null,
-    responseDeadlineRaw,
-    setAsideCode: result.setAsideCode,
-    setAsideDescription: result.setAsideDescription,
-    solicitationNumber: result.solicitationNumber,
-    sourceRecordId: result.noticeId,
-    sourceStatus: result.status,
-    sourceSummaryText: result.summary,
-    sourceSummaryUrl: result.uiLink,
-    sourceSystem: result.sourceSystem,
-    title: result.title,
-    uiLink: result.uiLink,
-  } satisfies Record<string, unknown>;
-
-  return {
-    importPreviewPayload: {
-      canonicalOpportunity: {
-        currentStageKey: "identified",
-        currentStageLabel: "Identified",
-        externalNoticeId: result.noticeId,
-        leadAgency: result.organizationName,
-        originSourceSystem: result.sourceSystem,
-        title: result.title,
-      },
-      duplicateCheckKey: sourceHashFingerprint,
-      rawPayload,
-      warnings: [
-        "Mock preview uses deterministic detail payloads until the live sam.gov detail adapter lands.",
-        "Response deadlines are normalized from date-only mock fixtures and do not yet include upstream time-zone precision.",
-      ],
-    },
-    normalizedPayload,
-    normalizationVersion: SAM_GOV_MOCK_NORMALIZATION_VERSION,
-    rawPayload,
-    sourceDescriptionUrl: result.uiLink,
-    sourceDetailUrl: buildMockSamGovDetailUrl(result.noticeId),
-    sourceHashFingerprint,
-    sourceUiUrl: result.uiLink,
-    warnings: [
-      "Mock preview uses deterministic detail payloads until the live sam.gov detail adapter lands.",
-      "Response deadlines are normalized from date-only mock fixtures and do not yet include upstream time-zone precision.",
-    ],
-  };
-}
-
 export async function getSourceSearchSnapshot({
+  actor,
   db,
   organizationSlug = DEFAULT_ORGANIZATION_SLUG,
   searchParams,
 }: {
+  actor: SearchActorContext;
   db: SourceSearchRepositoryClient;
   organizationSlug?: string;
   searchParams?: Record<string, string | string[] | undefined>;
 }): Promise<SourceSearchSnapshot | null> {
-  const organization = (await db.organization.findUnique({
+  const organization = await db.organization.findUnique({
     where: {
       slug: organizationSlug,
     },
     ...organizationSourceSearchArgs,
-  })) as OrganizationSourceSearchRecord | null;
+  });
 
   if (!organization) {
     return null;
@@ -843,67 +462,496 @@ export async function getSourceSearchSnapshot({
     ) ?? null;
 
   if (requestState.validationErrors.length > 0) {
-    return {
-      organization: {
-        id: organization.id,
-        name: organization.name,
-        slug: organization.slug,
-      },
-      connectors: organization.sourceConnectorConfigs,
+    return buildBaseSnapshot({
       activeConnector,
-      activeCapability: SAM_GOV_CAPABILITY,
-      formValues: requestState.formValues,
-      query: null,
-      validationErrors: requestState.validationErrors,
-      results: [],
-      totalCount: 0,
-      pageResultCount: 0,
-      executedAt: null,
-      executionMode: "invalid_query",
+      connectors: organization.sourceConnectorConfigs,
       executionMessage:
         "Search execution is blocked until the current filter values satisfy the typed sam.gov contract.",
+      executionMode: "invalid_query",
+      formValues: requestState.formValues,
+      organization,
       outboundRequest: null,
-      resultCountLabel: "Search not executed",
-    };
+      query: null,
+      results: [],
+      searchExecutionId: null,
+      totalCount: 0,
+      validationErrors: requestState.validationErrors,
+    });
   }
 
   if (
     requestState.query?.sourceSystem !== "sam_gov" ||
     !activeConnector?.supportsSearch ||
-    !activeConnector?.isEnabled
+    !activeConnector.isEnabled
   ) {
-    return {
-      organization: {
-        id: organization.id,
-        name: organization.name,
-        slug: organization.slug,
-      },
-      connectors: organization.sourceConnectorConfigs,
+    return buildBaseSnapshot({
       activeConnector,
-      activeCapability: SAM_GOV_CAPABILITY,
-      formValues: requestState.formValues,
-      query: requestState.query,
-      validationErrors: [],
-      results: [],
-      totalCount: 0,
-      pageResultCount: 0,
-      executedAt: null,
-      executionMode: "unsupported_connector",
+      connectors: organization.sourceConnectorConfigs,
       executionMessage:
-        "This slice only ships mocked sam.gov search responses. Other configured connectors remain visible so the page can grow into the broader connector framework later.",
+        "This workspace only has an executable connector for sam.gov in the current slice. Other configured connectors remain visible so the shared connector interface can expand without rewriting the page.",
+      executionMode: "unsupported_connector",
+      formValues: requestState.formValues,
+      organization,
       outboundRequest: null,
-      resultCountLabel: "Connector not yet implemented",
-    };
+      query: requestState.query,
+      results: [],
+      searchExecutionId: null,
+      totalCount: 0,
+      validationErrors: [],
+    });
   }
 
-  const executedAt = new Date().toISOString();
-  const execution = executeMockSamGovSearch(requestState.query);
+  const env = getServerEnv();
+  const useFixtures = env.SAM_GOV_USE_FIXTURES || env.NODE_ENV === "test";
+
+  try {
+    const execution = await executeSamGovSearch({
+      apiKey: env.SAM_GOV_API_KEY ?? null,
+      config: {
+        connectorVersion: activeConnector.connectorVersion,
+        credentialReference: activeConnector.credentialReference,
+        searchEndpoint: env.SAM_GOV_SEARCH_ENDPOINT,
+      },
+      query: requestState.query,
+      timeoutMs: env.SAM_GOV_TIMEOUT_MS,
+      useFixtures,
+    });
+
+    const persistedExecution = await persistSuccessfulSearchExecution({
+      actor,
+      connector: activeConnector,
+      db,
+      execution,
+      organization,
+      query: requestState.query,
+    });
+
+    return buildBaseSnapshot({
+      activeConnector,
+      connectors: organization.sourceConnectorConfigs,
+      executedAt: persistedExecution.executedAt,
+      executionMessage:
+        execution.executionMode === "live_connector"
+          ? "The SAM.gov connector translated the canonical query, executed the live upstream search, persisted the execution envelope, and materialized normalized source records for preview and import."
+          : "The SAM.gov connector executed against deterministic fixture payloads so tests and offline development can exercise the same reusable connector and persistence flow without a live API dependency.",
+      executionMode: execution.executionMode,
+      formValues: requestState.formValues,
+      organization,
+      outboundRequest: execution.outboundRequest,
+      query: requestState.query,
+      results: persistedExecution.results,
+      searchExecutionId: persistedExecution.searchExecutionId,
+      totalCount: execution.totalRecords,
+      validationErrors: [],
+    });
+  } catch (error) {
+    if (
+      error instanceof SamGovConnectorError &&
+      error.code === "connector_not_configured"
+    ) {
+      return buildBaseSnapshot({
+        activeConnector,
+        connectors: organization.sourceConnectorConfigs,
+        executionMessage: error.message,
+        executionMode: "connector_unavailable",
+        formValues: requestState.formValues,
+        organization,
+        outboundRequest: error.outboundRequest,
+        query: requestState.query,
+        results: [],
+        searchExecutionId: null,
+        totalCount: 0,
+        validationErrors: [],
+      });
+    }
+
+    if (error instanceof SamGovConnectorError) {
+      const failedExecution = await persistFailedSearchExecution({
+        actor,
+        connector: activeConnector,
+        db,
+        error,
+        organization,
+        query: requestState.query,
+      });
+
+      return buildBaseSnapshot({
+        activeConnector,
+        connectors: organization.sourceConnectorConfigs,
+        executedAt: failedExecution.executedAt,
+        executionMessage: error.message,
+        executionMode: "connector_error",
+        formValues: requestState.formValues,
+        organization,
+        outboundRequest: error.outboundRequest,
+        query: requestState.query,
+        results: [],
+        searchExecutionId: failedExecution.searchExecutionId,
+        totalCount: 0,
+        validationErrors: [],
+      });
+    }
+
+    throw error;
+  }
+}
+
+async function persistSuccessfulSearchExecution({
+  actor,
+  connector,
+  db,
+  execution,
+  organization,
+  query,
+}: {
+  actor: SearchActorContext;
+  connector: SourceSearchConnectorRecord;
+  db: SourceSearchRepositoryClient;
+  execution: Awaited<ReturnType<typeof executeSamGovSearch>>;
+  organization: OrganizationSourceSearchRecord;
+  query: CanonicalSourceSearchQuery;
+}) {
+  return db.$transaction(async (tx) => {
+    const searchExecution = await tx.sourceSearchExecution.create({
+      data: {
+        canonicalFilters: asJsonValue(query),
+        completedAt: new Date(),
+        connectorVersion: connector.connectorVersion,
+        httpStatus: execution.httpStatus,
+        organizationId: organization.id,
+        outboundRequest: asJsonValue({
+          credentialReference: connector.credentialReference,
+          endpoint: execution.outboundRequest.endpoint,
+          queryParams: execution.outboundRequest.queryParams,
+        }),
+        requestedAt: new Date(),
+        requestedByActorType: "USER",
+        requestedByUserId: actor.userId,
+        responseLatencyMs: execution.responseLatencyMs,
+        resultCount: execution.materializedRecords.length,
+        sourceConnectorConfigId: connector.id,
+        sourceSystem: "sam_gov",
+        status: "SUCCEEDED",
+        totalRecords: execution.totalRecords,
+      },
+      select: {
+        id: true,
+        requestedAt: true,
+      },
+    });
+
+    const persistedResults: SourceSearchResultSummary[] = [];
+    const linkRows: Array<{
+      resultRank: number;
+      searchExecutionId: string;
+      sourceRecordId: string;
+    }> = [];
+
+    for (const [index, materialized] of execution.materializedRecords.entries()) {
+      const sourceRecord = await tx.sourceRecord.upsert({
+        where: {
+          organizationId_sourceSystem_sourceRecordId: {
+            organizationId: organization.id,
+            sourceRecordId: materialized.sourceRecordId,
+            sourceSystem: "sam_gov",
+          },
+        },
+        create: {
+          organizationId: organization.id,
+          sourceConnectorConfigId: connector.id,
+          sourceSystem: "sam_gov",
+          sourceRecordId: materialized.sourceRecordId,
+          sourceApiEndpoint: execution.outboundRequest.endpoint,
+          sourceUiUrl: materialized.sourceUiUrl,
+          sourceDetailUrl: materialized.sourceDetailUrl,
+          sourceDescriptionUrl: materialized.sourceDescriptionUrl,
+          sourceFetchedAt: new Date(),
+          sourceSearchExecutedAt: searchExecution.requestedAt,
+          sourceSearchQuery: asJsonValue(query),
+          sourceRawPayload: asJsonValue(materialized.rawPayload),
+          sourceNormalizedPayload: asJsonValue(materialized.normalizedPayload),
+          sourceImportPreviewPayload: asJsonValue(materialized.importPreviewPayload),
+          sourceNormalizationVersion: readString(
+            materialized.normalizedPayload.normalizationVersion,
+          ) ?? connector.connectorVersion ?? "sam-gov.search",
+          sourceNormalizationAppliedAt: new Date(),
+          sourceRawPostedDate: readString(materialized.rawPayload.postedDate),
+          sourceRawResponseDeadline: readString(
+            materialized.rawPayload.responseDeadLine,
+          ),
+          sourceRawArchiveDate: readString(materialized.rawPayload.archiveDate),
+          sourceStatusRaw: materialized.summary.status,
+          sourceImportMethod: "MANUAL_PULL",
+          sourceImportActorType: "USER",
+          sourceImportActorIdentifier: actor.email,
+          sourceImportActorUserId: actor.userId,
+          sourceHashFingerprint: materialized.sourceHashFingerprint,
+        },
+        update: {
+          sourceConnectorConfigId: connector.id,
+          sourceApiEndpoint: execution.outboundRequest.endpoint,
+          sourceUiUrl: materialized.sourceUiUrl,
+          sourceDetailUrl: materialized.sourceDetailUrl,
+          sourceDescriptionUrl: materialized.sourceDescriptionUrl,
+          sourceFetchedAt: new Date(),
+          sourceSearchExecutedAt: searchExecution.requestedAt,
+          sourceSearchQuery: asJsonValue(query),
+          sourceRawPayload: asJsonValue(materialized.rawPayload),
+          sourceNormalizedPayload: asJsonValue(materialized.normalizedPayload),
+          sourceImportPreviewPayload: asJsonValue(materialized.importPreviewPayload),
+          sourceNormalizationVersion: readString(
+            materialized.normalizedPayload.normalizationVersion,
+          ) ?? connector.connectorVersion ?? "sam-gov.search",
+          sourceNormalizationAppliedAt: new Date(),
+          sourceRawPostedDate: readString(materialized.rawPayload.postedDate),
+          sourceRawResponseDeadline: readString(
+            materialized.rawPayload.responseDeadLine,
+          ),
+          sourceRawArchiveDate: readString(materialized.rawPayload.archiveDate),
+          sourceStatusRaw: materialized.summary.status,
+          sourceImportMethod: "MANUAL_PULL",
+          sourceImportActorType: "USER",
+          sourceImportActorIdentifier: actor.email,
+          sourceImportActorUserId: actor.userId,
+          sourceHashFingerprint: materialized.sourceHashFingerprint,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      await syncSourceRecordChildren({
+        materialized,
+        sourceRecordId: sourceRecord.id,
+        tx,
+      });
+
+      persistedResults.push({
+        ...materialized.summary,
+        id: sourceRecord.id,
+      });
+      linkRows.push({
+        resultRank: index + 1,
+        searchExecutionId: searchExecution.id,
+        sourceRecordId: sourceRecord.id,
+      });
+    }
+
+    if (linkRows.length > 0) {
+      await tx.sourceSearchResult.createMany({
+        data: linkRows,
+      });
+    }
+
+    return {
+      executedAt: searchExecution.requestedAt.toISOString(),
+      results: persistedResults,
+      searchExecutionId: searchExecution.id,
+    };
+  });
+}
+
+async function persistFailedSearchExecution({
+  actor,
+  connector,
+  db,
+  error,
+  organization,
+  query,
+}: {
+  actor: SearchActorContext;
+  connector: SourceSearchConnectorRecord;
+  db: SourceSearchRepositoryClient;
+  error: SamGovConnectorError;
+  organization: OrganizationSourceSearchRecord;
+  query: CanonicalSourceSearchQuery;
+}) {
+  const searchExecution = await db.$transaction((tx) =>
+    tx.sourceSearchExecution.create({
+      data: {
+        canonicalFilters: asJsonValue(query),
+        completedAt: new Date(),
+        connectorVersion: connector.connectorVersion,
+        errorCode: error.code,
+        errorMessage: error.message,
+        httpStatus: error.httpStatus,
+        organizationId: organization.id,
+        outboundRequest: asJsonValue({
+          credentialReference: connector.credentialReference,
+          endpoint: error.outboundRequest.endpoint,
+          queryParams: error.outboundRequest.queryParams,
+        }),
+        requestedAt: new Date(),
+        requestedByActorType: "USER",
+        requestedByUserId: actor.userId,
+        responseLatencyMs: error.responseLatencyMs,
+        resultCount: 0,
+        sourceConnectorConfigId: connector.id,
+        sourceSystem: "sam_gov",
+        status: "FAILED",
+        totalRecords: 0,
+      },
+      select: {
+        id: true,
+        requestedAt: true,
+      },
+    }),
+  );
+
+  return {
+    executedAt: searchExecution.requestedAt.toISOString(),
+    searchExecutionId: searchExecution.id,
+  };
+}
+
+async function syncSourceRecordChildren({
+  materialized,
+  sourceRecordId,
+  tx,
+}: {
+  materialized: Awaited<
+    ReturnType<typeof executeSamGovSearch>
+  >["materializedRecords"][number];
+  sourceRecordId: string;
+  tx: SourceSearchTransactionClient;
+}) {
+  await tx.sourceRecordAttachment.deleteMany({
+    where: {
+      sourceRecordId,
+    },
+  });
+
+  if (materialized.attachments.length > 0) {
+    await tx.sourceRecordAttachment.createMany({
+      data: materialized.attachments.map((attachment) => ({
+        displayLabel: attachment.displayLabel,
+        externalId: attachment.externalId,
+        fileSizeBytes: attachment.fileSizeBytes,
+        linkType: attachment.linkType,
+        metadata: attachment.metadata
+          ? (attachment.metadata as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+        mimeType: attachment.mimeType,
+        sortOrder: attachment.sortOrder,
+        sourceFileName: attachment.sourceFileName,
+        sourceRecordId,
+        url: attachment.url,
+      })),
+    });
+  }
+
+  await tx.sourceRecordContact.deleteMany({
+    where: {
+      sourceRecordId,
+    },
+  });
+
+  if (materialized.contacts.length > 0) {
+    await tx.sourceRecordContact.createMany({
+      data: materialized.contacts.map((contact) => ({
+        additionalInfoText: contact.additionalInfoText,
+        contactType: contact.contactType,
+        email: contact.email,
+        fax: contact.fax,
+        fullName: contact.fullName,
+        phone: contact.phone,
+        sortOrder: contact.sortOrder,
+        sourceRecordId,
+        title: contact.title,
+      })),
+    });
+  }
+
+  if (materialized.award) {
+    const awardData = {
+      awardAmount: normalizeAwardAmount(materialized.award.awardAmount),
+      awardDate: materialized.award.awardDate
+        ? new Date(materialized.award.awardDate)
+        : null,
+      awardNumber: materialized.award.awardNumber,
+      awardeeCityCode: materialized.award.awardeeCityCode,
+      awardeeCityName: materialized.award.awardeeCityName,
+      awardeeCountryCode: materialized.award.awardeeCountryCode,
+      awardeeCountryName: materialized.award.awardeeCountryName,
+      awardeeName: materialized.award.awardeeName,
+      awardeePostalCode: materialized.award.awardeePostalCode,
+      awardeeStateCode: materialized.award.awardeeStateCode,
+      awardeeStateName: materialized.award.awardeeStateName,
+      awardeeStreet1: materialized.award.awardeeStreet1,
+      awardeeStreet2: materialized.award.awardeeStreet2,
+      awardeeUEI: materialized.award.awardeeUEI,
+    } satisfies Omit<
+      Prisma.SourceRecordAwardUncheckedCreateInput,
+      "sourceRecordId"
+    >;
+
+    await tx.sourceRecordAward.upsert({
+      where: {
+        sourceRecordId,
+      },
+      create: {
+        ...awardData,
+        sourceRecordId,
+      },
+      update: awardData,
+    });
+    return;
+  }
+
+  await tx.sourceRecordAward.deleteMany({
+    where: {
+      sourceRecordId,
+    },
+  });
+}
+
+function buildBaseSnapshot({
+  activeConnector,
+  connectors,
+  executedAt = null,
+  executionMessage,
+  executionMode,
+  formValues,
+  organization,
+  outboundRequest,
+  query,
+  results,
+  searchExecutionId,
+  totalCount,
+  validationErrors,
+}: {
+  activeConnector: SourceSearchConnectorSummary | null;
+  connectors: SourceSearchConnectorSummary[];
+  executedAt?: string | null;
+  executionMessage: string;
+  executionMode: SourceSearchSnapshot["executionMode"];
+  formValues: SourceSearchFormValues;
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  outboundRequest: SamGovOutboundRequest | null;
+  query: CanonicalSourceSearchQuery | null;
+  results: SourceSearchResultSummary[];
+  searchExecutionId: string | null;
+  totalCount: number;
+  validationErrors: string[];
+}) {
   const pageStart =
-    execution.totalCount === 0 ? 0 : requestState.query.pageOffset + 1;
-  const pageEnd =
-    execution.totalCount === 0
+    totalCount === 0 || results.length === 0
       ? 0
-      : requestState.query.pageOffset + execution.results.length;
+      : (query?.pageOffset ?? 0) + 1;
+  const pageEnd =
+    totalCount === 0 || results.length === 0
+      ? 0
+      : (query?.pageOffset ?? 0) + results.length;
+  const resultCountLabel =
+    executionMode === "invalid_query"
+      ? "Search not executed"
+      : totalCount === 0
+        ? "No external results returned"
+        : `Showing ${pageStart}-${pageEnd} of ${totalCount} external results`;
 
   return {
     organization: {
@@ -911,148 +959,27 @@ export async function getSourceSearchSnapshot({
       name: organization.name,
       slug: organization.slug,
     },
-    connectors: organization.sourceConnectorConfigs,
+    connectors,
     activeConnector,
-    activeCapability: SAM_GOV_CAPABILITY,
-    formValues: requestState.formValues,
-    query: requestState.query,
-    validationErrors: [],
-    results: execution.results,
-    totalCount: execution.totalCount,
-    pageResultCount: execution.results.length,
+    activeCapability: {
+      pageSizeOptions: [...SAM_GOV_CAPABILITY.pageSizeOptions],
+      procurementTypes: [...SAM_GOV_PROCUREMENT_TYPE_OPTIONS],
+      statusOptions: [...SAM_GOV_STATUS_OPTIONS],
+      supportedFilterLabels: [...SAM_GOV_CAPABILITY.supportedFilterLabels],
+    },
     executedAt,
-    executionMode: "mocked_sam_gov",
-    executionMessage:
-      "The page translated the canonical query into sam.gov search parameters and executed a deterministic mocked response set so UI work can land before the live connector.",
-    outboundRequest: execution.outboundRequest,
-    resultCountLabel: `Showing ${pageStart}-${pageEnd} of ${execution.totalCount} mocked external results`,
-  };
-}
-
-function matchesMockSamGovResult(
-  result: MockSamGovSearchResult,
-  query: CanonicalSourceSearchQuery,
-) {
-  if (result.postedDate < query.postedDateFrom || result.postedDate > query.postedDateTo) {
-    return false;
-  }
-
-  if (query.responseDeadlineFrom || query.responseDeadlineTo) {
-    if (!result.responseDeadline) {
-      return false;
-    }
-
-    if (
-      query.responseDeadlineFrom &&
-      result.responseDeadline < query.responseDeadlineFrom
-    ) {
-      return false;
-    }
-
-    if (query.responseDeadlineTo && result.responseDeadline > query.responseDeadlineTo) {
-      return false;
-    }
-  }
-
-  if (
-    query.procurementTypes.length > 0 &&
-    !query.procurementTypes.includes(result.procurementTypeCode)
-  ) {
-    return false;
-  }
-
-  if (
-    query.keywords &&
-    !matchesCaseInsensitive(result.title, query.keywords) &&
-    !matchesCaseInsensitive(result.summary, query.keywords) &&
-    !matchesCaseInsensitive(result.organizationName, query.keywords)
-  ) {
-    return false;
-  }
-
-  if (query.noticeId && result.noticeId.toUpperCase() !== query.noticeId.toUpperCase()) {
-    return false;
-  }
-
-  if (
-    query.solicitationNumber &&
-    !matchesCaseInsensitive(result.solicitationNumber, query.solicitationNumber)
-  ) {
-    return false;
-  }
-
-  if (
-    query.organizationName &&
-    !matchesCaseInsensitive(result.organizationName, query.organizationName)
-  ) {
-    return false;
-  }
-
-  if (
-    query.organizationCode &&
-    !matchesCaseInsensitive(result.organizationCode, query.organizationCode)
-  ) {
-    return false;
-  }
-
-  if (query.naicsCode && !matchesCaseInsensitive(result.naicsCode, query.naicsCode)) {
-    return false;
-  }
-
-  if (
-    query.classificationCode &&
-    !matchesCaseInsensitive(result.classificationCode, query.classificationCode)
-  ) {
-    return false;
-  }
-
-  if (
-    query.setAsideCode &&
-    !matchesCaseInsensitive(result.setAsideCode, query.setAsideCode)
-  ) {
-    return false;
-  }
-
-  if (
-    query.setAsideDescription &&
-    !matchesCaseInsensitive(result.setAsideDescription, query.setAsideDescription)
-  ) {
-    return false;
-  }
-
-  if (
-    query.placeOfPerformanceState &&
-    !matchesCaseInsensitive(
-      result.placeOfPerformanceState,
-      query.placeOfPerformanceState,
-    )
-  ) {
-    return false;
-  }
-
-  if (
-    query.placeOfPerformanceZip &&
-    !matchesCaseInsensitive(result.placeOfPerformanceZip, query.placeOfPerformanceZip)
-  ) {
-    return false;
-  }
-
-  if (query.status && result.status !== query.status) {
-    return false;
-  }
-
-  return true;
-}
-
-function compareMockSearchResults(
-  left: MockSamGovSearchResult,
-  right: MockSamGovSearchResult,
-) {
-  if (left.postedDate !== right.postedDate) {
-    return right.postedDate.localeCompare(left.postedDate);
-  }
-
-  return left.title.localeCompare(right.title);
+    executionMessage,
+    executionMode,
+    formValues,
+    outboundRequest,
+    pageResultCount: results.length,
+    query,
+    resultCountLabel,
+    results,
+    searchExecutionId,
+    totalCount,
+    validationErrors,
+  } satisfies SourceSearchSnapshot;
 }
 
 function normalizeProcurementTypes(
@@ -1249,115 +1176,21 @@ function normalizeDateInput(value: string | undefined) {
   return null;
 }
 
-function formatDateForSamGov(isoDate: string) {
-  const [year, month, day] = isoDate.split("-");
-  return `${month}/${day}/${year}`;
-}
-
-function buildMockSamGovDetailUrl(noticeId: string) {
-  return `https://api.sam.gov/prod/opportunities/v2/${noticeId}`;
-}
-
-function buildMockSourceFingerprint(result: MockSamGovSearchResult) {
-  return [
-    result.sourceSystem,
-    result.noticeId,
-    result.postedDate,
-    result.naicsCode ?? "none",
-    slugifyFingerprintSegment(result.organizationName),
-  ].join(":");
-}
-
-function slugifyFingerprintSegment(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function buildMockContactEmail(organizationCode: string | null) {
-  const prefix =
-    organizationCode?.toLowerCase().replace(/[^a-z0-9]+/g, "") ?? "contracting";
-
-  return `${prefix}@agency.example.gov`;
-}
-
-function buildMockContactName(organizationName: string) {
-  const firstWord = organizationName.split(/\s+/)[0] ?? "Program";
-  return `${firstWord} Contracting Lead`;
-}
-
-function buildMockContactPhone(noticeId: string) {
-  const digits = noticeId.replace(/\D/g, "").slice(-4).padStart(4, "0");
-  return `555-010-${digits}`;
-}
-
-function toIsoDateTime(isoDate: string, timeSuffix: string) {
-  return `${isoDate}${timeSuffix}`;
-}
-
-function buildResourceLabel(url: string) {
-  const lastSegment = url.split("/").filter(Boolean).at(-1) ?? "resource";
-  return lastSegment
-    .replace(/\.[a-z0-9]+$/i, "")
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function getStateName(stateCode: string | null) {
-  if (!stateCode) {
+function normalizeOptionalString(value: string | undefined | null) {
+  if (!value) {
     return null;
   }
 
-  return STATE_NAME_BY_CODE[stateCode] ?? stateCode;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
-const STATE_NAME_BY_CODE: Record<string, string> = {
-  NV: "Nevada",
-  TX: "Texas",
-  VA: "Virginia",
-};
-
-function assignIfPresent<
-  Key extends keyof SamGovOutboundRequest["queryParams"],
->(
-  queryParams: SamGovOutboundRequest["queryParams"],
-  key: Key,
-  value: string | null,
-) {
-  if (value) {
-    queryParams[key] = value as SamGovOutboundRequest["queryParams"][Key];
-  }
-}
-
-function matchesCaseInsensitive(
-  haystack: string | null | undefined,
-  needle: string,
-) {
-  if (!haystack) {
-    return false;
-  }
-
-  return haystack.toLowerCase().includes(needle.toLowerCase());
-}
-
-function emptyStringToNull(value: string) {
-  return value === "" ? null : value;
-}
-
-function normalizeOptionalString(value: string | undefined) {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
-}
-
-function normalizeUppercaseOptionalString(value: string | undefined) {
+function normalizeUppercaseOptionalString(value: string | undefined | null) {
   const normalized = normalizeOptionalString(value);
   return normalized ? normalized.toUpperCase() : null;
 }
 
-function getFirstSearchParamValue(
-  value: string | string[] | undefined,
-) {
+function getFirstSearchParamValue(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
     return value[0];
   }
@@ -1371,4 +1204,28 @@ function getSearchParamValues(value: string | string[] | undefined) {
   }
 
   return value ? [value] : [];
+}
+
+function emptyStringToNull(value: string) {
+  return value.length > 0 ? value : null;
+}
+
+function asJsonValue(value: Record<string, unknown> | CanonicalSourceSearchQuery) {
+  return value as Prisma.InputJsonValue;
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" ? value : null;
+}
+
+function normalizeAwardAmount(value: string | number | null) {
+  if (typeof value === "number") {
+    return new Prisma.Decimal(value);
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    return new Prisma.Decimal(value);
+  }
+
+  return null;
 }

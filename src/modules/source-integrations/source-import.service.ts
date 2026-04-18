@@ -11,12 +11,7 @@ import {
   type AuditLogWriter,
 } from "@/modules/audit/audit.service";
 
-import {
-  buildMockSamGovImportPreview,
-  getMockSamGovSearchResultById,
-  type MockSamGovImportPreview,
-  type MockSamGovSearchResult,
-} from "./source-search.service";
+import type { SourceSearchResultSummary } from "./source-search.service";
 
 const DEFAULT_ORGANIZATION_SLUG = "default-org";
 const IMPORT_MATCH_THRESHOLD = 60;
@@ -75,7 +70,7 @@ const organizationSourceImportArgs = {
       },
     },
   },
-};
+} as const;
 
 type OrganizationSourceImportRecord = {
   id: string;
@@ -117,13 +112,39 @@ type OrganizationSourceImportRecord = {
   }>;
 };
 
-export type SourceImportRepositoryClient = SourceImportTransactionClient & {
+type SourceRecordPreviewRecord = {
+  id: string;
+  organizationId: string;
+  opportunityId: string | null;
+  sourceConnectorConfigId: string | null;
+  sourceSystem: string;
+  sourceRecordId: string;
+  sourceRawPayload: Prisma.JsonValue;
+  sourceNormalizedPayload: Prisma.JsonValue;
+  sourceImportPreviewPayload: Prisma.JsonValue | null;
+  sourceNormalizationVersion: string;
+  sourceUiUrl: string | null;
+  sourceDetailUrl: string | null;
+  sourceDescriptionUrl: string | null;
+  sourceHashFingerprint: string;
+  opportunity: {
+    id: string;
+    title: string;
+    currentStageKey: string | null;
+    currentStageLabel: string | null;
+  } | null;
+};
+
+export type SourceImportRepositoryClient = {
   organization: {
     findUnique(args: {
       where: {
         slug: string;
       };
     } & typeof organizationSourceImportArgs): Promise<OrganizationSourceImportRecord | null>;
+  };
+  sourceRecord: {
+    findFirst(args: unknown): Promise<SourceRecordPreviewRecord | null>;
   };
   $transaction<T>(
     callback: (tx: SourceImportTransactionClient) => Promise<T>,
@@ -161,27 +182,7 @@ type SourceImportTransactionClient = AuditLogWriter & {
     } | null>;
   };
   sourceRecord: {
-    create(args: {
-      data: Prisma.SourceRecordUncheckedCreateInput;
-      select: {
-        id: true;
-        opportunityId: true;
-      };
-    }): Promise<{
-      id: string;
-      opportunityId: string | null;
-    }>;
-    findFirst(args: {
-      where: {
-        organizationId: string;
-        sourceSystem: string;
-        sourceRecordId: string;
-      };
-      select: {
-        id: true;
-        opportunityId: true;
-      };
-    }): Promise<{
+    findFirst(args: unknown): Promise<{
       id: string;
       opportunityId: string | null;
     } | null>;
@@ -256,6 +257,18 @@ export type SourceImportDuplicateCandidate = {
   title: string;
 };
 
+export type SourceImportPreview = {
+  importPreviewPayload: Record<string, unknown>;
+  normalizedPayload: Record<string, unknown>;
+  normalizationVersion: string;
+  rawPayload: Record<string, unknown>;
+  sourceDescriptionUrl: string | null;
+  sourceDetailUrl: string | null;
+  sourceHashFingerprint: string;
+  sourceUiUrl: string | null;
+  warnings: string[];
+};
+
 export type SourceImportPreviewSnapshot = {
   alreadyTrackedOpportunity: {
     id: string;
@@ -267,23 +280,21 @@ export type SourceImportPreviewSnapshot = {
     sourceDisplayName: string;
   } | null;
   duplicateCandidates: SourceImportDuplicateCandidate[];
-  importPreview: MockSamGovImportPreview;
-  result: MockSamGovSearchResult;
+  importPreview: SourceImportPreview;
+  result: SourceSearchResultSummary;
   suggestedTargetOpportunityId: string | null;
 };
 
-export type ApplyMockSourceImportInput = {
+export type ApplySourceImportInput = {
   actor: AuditActorContext & {
     organizationId: string;
   };
   mode: SourceImportDecisionMode;
-  resultId: string;
-  searchExecutedAt?: string | null;
-  searchQuery?: Prisma.InputJsonValue | null;
+  sourceRecordId: string;
   targetOpportunityId?: string | null;
 };
 
-export type ApplyMockSourceImportResult = {
+export type ApplySourceImportResult = {
   action: "already_tracked" | "created" | "linked";
   sourceRecordId: string;
   targetOpportunityId: string;
@@ -293,11 +304,11 @@ export type ApplyMockSourceImportResult = {
 export async function getSourceImportPreviewSnapshot({
   db,
   organizationSlug = DEFAULT_ORGANIZATION_SLUG,
-  resultId,
+  sourceRecordId,
 }: {
   db: SourceImportRepositoryClient;
   organizationSlug?: string;
-  resultId: string;
+  sourceRecordId: string;
 }): Promise<SourceImportPreviewSnapshot | null> {
   const organization = await db.organization.findUnique({
     where: {
@@ -310,23 +321,58 @@ export async function getSourceImportPreviewSnapshot({
     return null;
   }
 
+  const sourceRecord = await db.sourceRecord.findFirst({
+    where: {
+      id: sourceRecordId,
+      organizationId: organization.id,
+    },
+    select: {
+      id: true,
+      organizationId: true,
+      opportunityId: true,
+      sourceConnectorConfigId: true,
+      sourceSystem: true,
+      sourceRecordId: true,
+      sourceRawPayload: true,
+      sourceNormalizedPayload: true,
+      sourceImportPreviewPayload: true,
+      sourceNormalizationVersion: true,
+      sourceUiUrl: true,
+      sourceDetailUrl: true,
+      sourceDescriptionUrl: true,
+      sourceHashFingerprint: true,
+      opportunity: {
+        select: {
+          id: true,
+          title: true,
+          currentStageKey: true,
+          currentStageLabel: true,
+        },
+      },
+    },
+  });
+
+  if (!sourceRecord) {
+    return null;
+  }
+
   return buildSourceImportPreviewSnapshot({
     organization,
-    resultId,
+    sourceRecord,
   });
 }
 
 export function buildSourceImportPreviewSnapshot({
   organization,
-  resultId,
+  sourceRecord,
 }: {
   organization: OrganizationSourceImportRecord;
-  resultId: string;
+  sourceRecord: SourceRecordPreviewRecord;
 }): SourceImportPreviewSnapshot | null {
-  const result = getMockSamGovSearchResultById(resultId);
-  const importPreview = buildMockSamGovImportPreview(resultId);
+  const importPreview = buildImportPreview(sourceRecord);
+  const result = buildResultSummary(sourceRecord);
 
-  if (!result || !importPreview) {
+  if (!importPreview || !result) {
     return null;
   }
 
@@ -336,10 +382,7 @@ export function buildSourceImportPreviewSnapshot({
     sourceRecords: organization.sourceRecords,
   });
   const exactSourceRecord = organization.sourceRecords.find(
-    (sourceRecord) =>
-      sourceRecord.sourceSystem === result.sourceSystem &&
-      sourceRecord.sourceRecordId === result.noticeId &&
-      sourceRecord.opportunity,
+    (record) => record.id === sourceRecord.id && record.opportunity,
   );
 
   return {
@@ -347,7 +390,7 @@ export function buildSourceImportPreviewSnapshot({
     connector:
       organization.sourceConnectorConfigs.find(
         (connector) =>
-          connector.sourceSystemKey === result.sourceSystem &&
+          connector.sourceSystemKey === sourceRecord.sourceSystem &&
           connector.isEnabled &&
           connector.supportsResultPreview,
       ) ?? null,
@@ -361,18 +404,53 @@ export function buildSourceImportPreviewSnapshot({
   };
 }
 
-export async function applyMockSourceImport({
+export async function applySourceImport({
   db,
   input,
 }: {
   db: SourceImportRepositoryClient;
-  input: ApplyMockSourceImportInput;
-}): Promise<ApplyMockSourceImportResult> {
-  const preview = buildMockSamGovImportPreview(input.resultId);
-  const result = getMockSamGovSearchResultById(input.resultId);
+  input: ApplySourceImportInput;
+}): Promise<ApplySourceImportResult> {
+  const previewSourceRecord = await db.sourceRecord.findFirst({
+    where: {
+      id: input.sourceRecordId,
+      organizationId: input.actor.organizationId,
+    },
+    select: {
+      id: true,
+      organizationId: true,
+      opportunityId: true,
+      sourceConnectorConfigId: true,
+      sourceSystem: true,
+      sourceRecordId: true,
+      sourceRawPayload: true,
+      sourceNormalizedPayload: true,
+      sourceImportPreviewPayload: true,
+      sourceNormalizationVersion: true,
+      sourceUiUrl: true,
+      sourceDetailUrl: true,
+      sourceDescriptionUrl: true,
+      sourceHashFingerprint: true,
+      opportunity: {
+        select: {
+          id: true,
+          title: true,
+          currentStageKey: true,
+          currentStageLabel: true,
+        },
+      },
+    },
+  });
+
+  if (!previewSourceRecord) {
+    throw new Error("Selected source result could not be resolved.");
+  }
+
+  const preview = buildImportPreview(previewSourceRecord);
+  const result = buildResultSummary(previewSourceRecord);
 
   if (!preview || !result) {
-    throw new Error("Selected source result could not be resolved.");
+    throw new Error("Selected source result could not be normalized for import.");
   }
 
   return db.$transaction(async (tx) => {
@@ -389,9 +467,8 @@ export async function applyMockSourceImport({
 
     const existingSourceRecord = await tx.sourceRecord.findFirst({
       where: {
+        id: input.sourceRecordId,
         organizationId: input.actor.organizationId,
-        sourceSystem: result.sourceSystem,
-        sourceRecordId: result.noticeId,
       },
       select: {
         id: true,
@@ -399,7 +476,11 @@ export async function applyMockSourceImport({
       },
     });
 
-    if (existingSourceRecord?.opportunityId) {
+    if (!existingSourceRecord) {
+      throw new Error("The selected source record no longer exists.");
+    }
+
+    if (existingSourceRecord.opportunityId) {
       const existingOpportunity = await tx.opportunity.findFirst({
         where: {
           id: existingSourceRecord.opportunityId,
@@ -431,87 +512,9 @@ export async function applyMockSourceImport({
       result,
     });
     const occurredAt = new Date();
-    let sourceRecordId = existingSourceRecord?.id ?? null;
     let targetOpportunityId = input.targetOpportunityId ?? null;
     let targetOpportunityTitle: string;
-    let action: ApplyMockSourceImportResult["action"];
-
-    if (!sourceRecordId) {
-      const createdSourceRecord = await tx.sourceRecord.create({
-        data: {
-          agencyId,
-          opportunityId: null,
-          organizationId: input.actor.organizationId,
-          sourceApiEndpoint: "https://api.sam.gov/opportunities/v2/search",
-          sourceConnectorConfigId: connector?.id ?? null,
-          sourceDescriptionUrl: preview.sourceDescriptionUrl,
-          sourceDetailUrl: preview.sourceDetailUrl,
-          sourceFetchedAt: occurredAt,
-          sourceHashFingerprint: preview.sourceHashFingerprint,
-          sourceImportActorIdentifier: input.actor.identifier ?? null,
-          sourceImportActorType: "USER",
-          sourceImportMethod: "MANUAL_PULL",
-          sourceNormalizationAppliedAt: occurredAt,
-          sourceNormalizationVersion: preview.normalizationVersion,
-          sourceNormalizedPayload: asJsonValue(preview.normalizedPayload),
-          sourceRawArchiveDate: readString(preview.rawPayload.archiveDate),
-          sourceRawPayload: asJsonValue(preview.rawPayload),
-          sourceRawPostedDate: readString(preview.rawPayload.postedDate),
-          sourceRawResponseDeadline: readString(
-            preview.rawPayload.responseDeadLine,
-          ),
-          sourceRecordId: result.noticeId,
-          sourceSearchExecutedAt: parseNullableDate(input.searchExecutedAt),
-          sourceSearchQuery: toNullableJson(input.searchQuery),
-          sourceStatusRaw: result.status,
-          sourceSystem: result.sourceSystem,
-          sourceUiUrl: preview.sourceUiUrl,
-          sourceImportPreviewPayload: asJsonValue(preview.importPreviewPayload),
-        },
-        select: {
-          id: true,
-          opportunityId: true,
-        },
-      });
-
-      sourceRecordId = createdSourceRecord.id;
-    } else {
-      await tx.sourceRecord.update({
-        where: {
-          id: sourceRecordId,
-        },
-        data: {
-          agencyId,
-          sourceApiEndpoint: "https://api.sam.gov/opportunities/v2/search",
-          sourceConnectorConfigId: connector?.id ?? null,
-          sourceDescriptionUrl: preview.sourceDescriptionUrl,
-          sourceDetailUrl: preview.sourceDetailUrl,
-          sourceFetchedAt: occurredAt,
-          sourceHashFingerprint: preview.sourceHashFingerprint,
-          sourceImportActorIdentifier: input.actor.identifier ?? null,
-          sourceImportActorType: "USER",
-          sourceImportMethod: "MANUAL_PULL",
-          sourceNormalizationAppliedAt: occurredAt,
-          sourceNormalizationVersion: preview.normalizationVersion,
-          sourceNormalizedPayload: asJsonValue(preview.normalizedPayload),
-          sourceRawArchiveDate: readString(preview.rawPayload.archiveDate),
-          sourceRawPayload: asJsonValue(preview.rawPayload),
-          sourceRawPostedDate: readString(preview.rawPayload.postedDate),
-          sourceRawResponseDeadline: readString(
-            preview.rawPayload.responseDeadLine,
-          ),
-          sourceSearchExecutedAt: parseNullableDate(input.searchExecutedAt),
-          sourceSearchQuery: toNullableJson(input.searchQuery),
-          sourceStatusRaw: result.status,
-          sourceUiUrl: preview.sourceUiUrl,
-          sourceImportPreviewPayload: asJsonValue(preview.importPreviewPayload),
-        },
-        select: {
-          id: true,
-          opportunityId: true,
-        },
-      });
-    }
+    let action: ApplySourceImportResult["action"];
 
     if (input.mode === "CREATE_OPPORTUNITY") {
       const createdOpportunity = await tx.opportunity.create({
@@ -521,7 +524,7 @@ export async function applyMockSourceImport({
           organizationId: input.actor.organizationId,
           preview,
           result,
-          sourceRecordId,
+          sourceRecordId: existingSourceRecord.id,
         }),
         select: {
           id: true,
@@ -531,10 +534,16 @@ export async function applyMockSourceImport({
 
       await tx.sourceRecord.update({
         where: {
-          id: sourceRecordId,
+          id: existingSourceRecord.id,
         },
         data: {
           opportunityId: createdOpportunity.id,
+          sourceConnectorConfigId: connector?.id ?? previewSourceRecord.sourceConnectorConfigId,
+          sourceImportActorIdentifier: input.actor.identifier ?? null,
+          sourceImportActorType: "USER",
+          sourceImportActorUserId:
+            input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+          sourceImportMethod: "MANUAL_PULL",
         },
         select: {
           id: true,
@@ -548,7 +557,7 @@ export async function applyMockSourceImport({
           action: AUDIT_ACTIONS.opportunityCreate,
           actor: input.actor,
           metadata: {
-            importedFromSourceRecordId: sourceRecordId,
+            importedFromSourceRecordId: existingSourceRecord.id,
             originSourceSystem: result.sourceSystem,
           },
           occurredAt,
@@ -587,10 +596,16 @@ export async function applyMockSourceImport({
 
       await tx.sourceRecord.update({
         where: {
-          id: sourceRecordId,
+          id: existingSourceRecord.id,
         },
         data: {
           opportunityId: linkedOpportunity.id,
+          sourceConnectorConfigId: connector?.id ?? previewSourceRecord.sourceConnectorConfigId,
+          sourceImportActorIdentifier: input.actor.identifier ?? null,
+          sourceImportActorType: "USER",
+          sourceImportActorUserId:
+            input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+          sourceImportMethod: "MANUAL_PULL",
         },
         select: {
           id: true,
@@ -617,14 +632,14 @@ export async function applyMockSourceImport({
         organizationId: input.actor.organizationId,
         rationale:
           input.mode === "CREATE_OPPORTUNITY"
-            ? "Promoted mocked external search result into a new tracked opportunity."
-            : "Linked mocked external search result to an existing tracked opportunity after duplicate review.",
+            ? "Promoted the persisted source result into a new tracked opportunity."
+            : "Linked the persisted source result to an existing tracked opportunity after duplicate review.",
         requestedAt: occurredAt,
         requestedByActorType: "USER",
         requestedByUserId:
           input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
-        sourceConnectorConfigId: connector?.id ?? null,
-        sourceRecordId,
+        sourceConnectorConfigId: connector?.id ?? previewSourceRecord.sourceConnectorConfigId,
+        sourceRecordId: existingSourceRecord.id,
         status: "APPLIED",
         targetOpportunityId,
       },
@@ -640,7 +655,7 @@ export async function applyMockSourceImport({
         actor: input.actor,
         metadata: {
           mode: input.mode,
-          sourceRecordId,
+          sourceRecordId: existingSourceRecord.id,
           sourceSystem: result.sourceSystem,
           targetOpportunityId,
         },
@@ -672,7 +687,7 @@ export async function applyMockSourceImport({
         metadata: {
           importDecisionId: importDecision.id,
           mode: input.mode,
-          sourceRecordId,
+          sourceRecordId: existingSourceRecord.id,
         },
         occurredAt,
         opportunityId: targetOpportunityId,
@@ -688,11 +703,126 @@ export async function applyMockSourceImport({
 
     return {
       action,
-      sourceRecordId,
+      sourceRecordId: existingSourceRecord.id,
       targetOpportunityId,
       targetOpportunityTitle,
     };
   });
+}
+
+function buildImportPreview(sourceRecord: SourceRecordPreviewRecord): SourceImportPreview | null {
+  const rawPayload = readRecord(sourceRecord.sourceRawPayload);
+  const normalizedPayload = readRecord(sourceRecord.sourceNormalizedPayload);
+
+  if (!rawPayload || !normalizedPayload) {
+    return null;
+  }
+
+  const previewPayload =
+    readRecord(sourceRecord.sourceImportPreviewPayload) ??
+    ({
+      canonicalOpportunity: {
+        currentStageKey: "identified",
+        currentStageLabel: "Identified",
+        externalNoticeId:
+          readString(normalizedPayload.externalNoticeId) ?? sourceRecord.sourceRecordId,
+        leadAgency: readString(normalizedPayload.agencyOfficeName),
+        originSourceSystem: sourceRecord.sourceSystem,
+        title:
+          readString(normalizedPayload.title) ??
+          readString(rawPayload.title) ??
+          "Untitled source result",
+      },
+      duplicateCheckKey: sourceRecord.sourceHashFingerprint,
+      normalizedPayload,
+      rawPayload,
+      warnings: readStringArray(normalizedPayload.warnings),
+    } satisfies Record<string, unknown>);
+
+  return {
+    importPreviewPayload: previewPayload,
+    normalizedPayload,
+    normalizationVersion: sourceRecord.sourceNormalizationVersion,
+    rawPayload,
+    sourceDescriptionUrl: sourceRecord.sourceDescriptionUrl,
+    sourceDetailUrl: sourceRecord.sourceDetailUrl,
+    sourceHashFingerprint: sourceRecord.sourceHashFingerprint,
+    sourceUiUrl: sourceRecord.sourceUiUrl,
+    warnings:
+      readStringArray(previewPayload.warnings) ||
+      readStringArray(normalizedPayload.warnings) ||
+      [],
+  };
+}
+
+function buildResultSummary(sourceRecord: SourceRecordPreviewRecord): SourceSearchResultSummary | null {
+  const rawPayload = readRecord(sourceRecord.sourceRawPayload);
+  const normalizedPayload = readRecord(sourceRecord.sourceNormalizedPayload);
+
+  if (!rawPayload || !normalizedPayload) {
+    return null;
+  }
+
+  const postedDate =
+    toIsoDate(readString(rawPayload.postedDate)) ??
+    toIsoDate(readString(normalizedPayload.postedDateRaw)) ??
+    "1970-01-01";
+  const responseDeadline =
+    toIsoDate(readString(rawPayload.responseDeadLine)) ??
+    toIsoDate(readString(normalizedPayload.responseDeadlineRaw));
+
+  return {
+    id: sourceRecord.id,
+    naicsCode:
+      readString(normalizedPayload.naicsCode) ??
+      readString(rawPayload.naicsCode),
+    noticeId:
+      readString(normalizedPayload.externalNoticeId) ??
+      sourceRecord.sourceRecordId,
+    organizationCode:
+      readString(rawPayload.organizationCode) ??
+      readString(normalizedPayload.agencyPathCode),
+    organizationName:
+      readString(rawPayload.organizationName) ??
+      readString(normalizedPayload.agencyOfficeName) ??
+      "Unknown organization",
+    placeOfPerformanceState:
+      readString(normalizedPayload.placeOfPerformanceStateCode) ??
+      readNestedString(rawPayload, ["placeOfPerformance", "state", "code"]),
+    placeOfPerformanceZip:
+      readString(normalizedPayload.placeOfPerformancePostalCode) ??
+      readNestedString(rawPayload, ["placeOfPerformance", "zip"]),
+    postedDate,
+    procurementTypeCode: readString(rawPayload.procurementTypeCode) ?? "",
+    procurementTypeLabel:
+      readString(normalizedPayload.procurementTypeLabel) ??
+      readString(rawPayload.type) ??
+      "Unknown",
+    responseDeadline,
+    setAsideDescription:
+      readString(normalizedPayload.setAsideDescription) ??
+      readString(rawPayload.typeOfSetAsideDescription),
+    solicitationNumber:
+      readString(normalizedPayload.solicitationNumber) ??
+      readString(rawPayload.solicitationNumber),
+    sourceSystem: sourceRecord.sourceSystem,
+    status:
+      readString(normalizedPayload.sourceStatus) ??
+      readString(rawPayload.status) ??
+      "unknown",
+    summary:
+      readString(normalizedPayload.sourceSummaryText) ??
+      readString(rawPayload.description) ??
+      "No summary returned.",
+    title:
+      readString(normalizedPayload.title) ??
+      readString(rawPayload.title) ??
+      "Untitled source result",
+    uiLink:
+      sourceRecord.sourceUiUrl ??
+      readString(normalizedPayload.uiLink) ??
+      "#",
+  };
 }
 
 function rankDuplicateCandidates({
@@ -701,7 +831,7 @@ function rankDuplicateCandidates({
   sourceRecords,
 }: {
   opportunities: OrganizationSourceImportRecord["opportunities"];
-  result: MockSamGovSearchResult;
+  result: SourceSearchResultSummary;
   sourceRecords: OrganizationSourceImportRecord["sourceRecords"];
 }) {
   const exactSourceOpportunityIds = new Set(
@@ -740,7 +870,7 @@ function buildDuplicateCandidate({
 }: {
   exactSourceMatch: boolean;
   opportunity: OrganizationSourceImportRecord["opportunities"][number];
-  result: MockSamGovSearchResult;
+  result: SourceSearchResultSummary;
 }) {
   if (exactSourceMatch) {
     return {
@@ -854,20 +984,17 @@ function buildOpportunityCreateInput({
   agencyId: string | null;
   occurredAt: Date;
   organizationId: string;
-  preview: MockSamGovImportPreview;
-  result: MockSamGovSearchResult;
+  preview: SourceImportPreview;
+  result: SourceSearchResultSummary;
   sourceRecordId: string;
 }): Prisma.OpportunityUncheckedCreateInput {
   return {
-    additionalInfoUrl: preview.sourceUiUrl
-      ? `${preview.sourceUiUrl}/resources`
-      : null,
+    additionalInfoUrl: readString(preview.normalizedPayload.additionalInfoUrl),
     apiSelfLink: preview.sourceDetailUrl,
     archiveDateRaw: readString(preview.rawPayload.archiveDate),
     archiveType: readString(preview.rawPayload.archiveType),
-    archivedAt:
-      result.status === "archived" ? parseNullableDate(result.postedDate) : null,
-    classificationCode: result.classificationCode,
+    archivedAt: parseNullableDate(readString(preview.rawPayload.archiveDate)),
+    classificationCode: readString(preview.normalizedPayload.classificationCode),
     createdAt: occurredAt,
     currentStageChangedAt: occurredAt,
     currentStageKey: "identified",
@@ -878,7 +1005,9 @@ function buildOpportunityCreateInput({
     isActiveSourceRecord: result.status === "active",
     isArchivedSourceRecord: result.status === "archived",
     leadAgencyId: agencyId,
-    naicsCode: result.naicsCode,
+    naicsCode:
+      readString(preview.normalizedPayload.naicsCode) ??
+      readString(preview.rawPayload.naicsCode),
     officeCity: readString(preview.normalizedPayload.officeCity),
     officeCountryCode: readString(preview.normalizedPayload.officeCountryCode),
     officePostalCode: readString(preview.normalizedPayload.officePostalCode),
@@ -912,13 +1041,15 @@ function buildOpportunityCreateInput({
     ),
     postedAt: parseNullableDate(result.postedDate),
     postedDateRaw: readString(preview.rawPayload.postedDate),
-    procurementBaseTypeLabel: result.procurementTypeLabel,
+    procurementBaseTypeLabel: readString(
+      preview.normalizedPayload.procurementBaseTypeLabel,
+    ),
     procurementTypeLabel: result.procurementTypeLabel,
     responseDeadlineAt: result.responseDeadline
       ? parseNullableDate(`${result.responseDeadline}T21:00:00.000Z`)
       : null,
     responseDeadlineRaw: readString(preview.rawPayload.responseDeadLine),
-    setAsideCode: result.setAsideCode,
+    setAsideCode: readString(preview.normalizedPayload.setAsideCode),
     setAsideDescription: result.setAsideDescription,
     solicitationNumber: result.solicitationNumber,
     sourceStatus: result.status,
@@ -937,7 +1068,7 @@ async function resolveAgencyId({
 }: {
   db: SourceImportTransactionClient;
   organizationId: string;
-  result: MockSamGovSearchResult;
+  result: SourceSearchResultSummary;
 }) {
   const existingAgency = await db.agency.findFirst({
     where: {
@@ -1002,20 +1133,53 @@ function parseNullableDate(value: string | null | undefined) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function toIsoDate(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, month, day, year] = match;
+  return `${year}-${month}-${day}`;
+}
+
 function readString(value: unknown) {
   return typeof value === "string" ? value : null;
 }
 
-function toNullableJson(value: Prisma.InputJsonValue | null | undefined) {
-  if (value === undefined) {
-    return undefined;
+function readRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readNestedString(value: unknown, path: string[]) {
+  let current: unknown = value;
+
+  for (const segment of path) {
+    const record = readRecord(current);
+    if (!record) {
+      return null;
+    }
+    current = record[segment];
   }
 
-  if (value === null) {
-    return Prisma.JsonNull;
-  }
+  return readString(current);
+}
 
-  return value;
+function readStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : null;
 }
 
 function asJsonValue(value: Record<string, unknown>) {

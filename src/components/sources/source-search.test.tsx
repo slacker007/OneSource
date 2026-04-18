@@ -98,7 +98,8 @@ const snapshot: SourceSearchSnapshot = {
   validationErrors: [],
   results: [
     {
-      id: "sam_result_2",
+      id: "source_army",
+      naicsCode: "541512",
       sourceSystem: "sam_gov",
       noticeId: "W91QUZ-26-R-1042",
       title: "Army Cloud Operations Recompete",
@@ -121,11 +122,11 @@ const snapshot: SourceSearchSnapshot = {
   totalCount: 1,
   pageResultCount: 1,
   executedAt: "2026-04-18T03:00:00.000Z",
-  executionMode: "mocked_sam_gov",
+  executionMode: "fixture_connector",
   executionMessage:
-    "The page translated the canonical query into sam.gov search parameters and executed a deterministic mocked response set so UI work can land before the live connector.",
+    "The page translated the canonical query into sam.gov search parameters and executed deterministic fixture responses through the reusable connector interface.",
   outboundRequest: {
-    endpoint: "https://api.sam.gov/opportunities/v2/search",
+    endpoint: "https://api.sam.gov/prod/opportunities/v2/search",
     queryParams: {
       postedFrom: "04/01/2026",
       postedTo: "04/30/2026",
@@ -138,7 +139,8 @@ const snapshot: SourceSearchSnapshot = {
       ncode: "541512",
     },
   },
-  resultCountLabel: "Showing 1-1 of 1 mocked external results",
+  searchExecutionId: "search_exec_123",
+  resultCountLabel: "Showing 1-1 of 1 external results",
 };
 
 const previewSnapshot: SourceImportPreviewSnapshot = {
@@ -244,7 +246,7 @@ describe("SourceSearch", () => {
           status: null,
         }}
         previewSnapshot={previewSnapshot}
-        returnPath="/sources?keywords=cloud+operations&preview=sam_result_2"
+        returnPath="/sources?keywords=cloud+operations&preview=source_army"
         snapshot={snapshot}
       />,
     );
@@ -258,6 +260,7 @@ describe("SourceSearch", () => {
     expect(
       screen.getByRole("heading", { name: /source-result preview/i }),
     ).toBeInTheDocument();
+    expect(screen.getAllByText(/fixture connector/i).length).toBeGreaterThan(0);
     expect(
       screen.getByRole("heading", { name: /spreadsheet import workspace/i }),
     ).toBeInTheDocument();

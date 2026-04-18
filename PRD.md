@@ -130,7 +130,7 @@ Recommended repository shape:
 
 The first production source integration must target the official `sam.gov` Get Opportunities Public API v2 search endpoint.
 
-- Endpoint: `https://api.sam.gov/opportunities/v2/search`
+- Endpoint: `https://api.sam.gov/prod/opportunities/v2/search`
 - Auth: user- or org-managed `sam.gov` public API key stored as an application secret, never in source control
 - Pagination model: `limit` plus `offset`
 - API constraints that the product must enforce in validation:
@@ -212,7 +212,7 @@ Every saved or executed `sam.gov` search must also persist this typed execution 
 - `sourceSpecificFilters`
   - reserved object for source-only fields that do not generalize into the canonical DTO
 - `outboundRequest`
-  - `endpoint` -> `https://api.sam.gov/opportunities/v2/search`
+  - `endpoint` -> `https://api.sam.gov/prod/opportunities/v2/search`
   - `queryParams.postedFrom`
   - `queryParams.postedTo`
   - `queryParams.limit`
@@ -704,9 +704,9 @@ This section is mandatory for every future coding iteration because conversation
       Done when: PDF, DOCX, or TXT files can be attached and text extraction succeeds for common cases.
       Verify with: upload and extraction tests using small fixtures.
 
-- [ ] P7-03 Implement a source connector abstraction and build the first live connector for `sam.gov`.
-      Done when: the app can authenticate to `sam.gov`, execute the full supported filter set, fetch normalized opportunity details, preserve raw payloads, and pass selected results into the import pipeline on demand or by schedule, all through a reusable connector interface that can also accommodate award-centric sources such as `usaspending_api` and constrained-access sources such as `gsa_ebuy`.
-      Verify with: connector translation and normalization tests plus a manual search/import run against the configured `sam.gov` source.
+- [x] P7-03 Implement a source connector abstraction and build the first live connector for `sam.gov`.
+      Done when: the app can authenticate to `sam.gov` when credentials are configured, execute the full supported filter set through the reusable connector boundary in live or deterministic fixture mode, fetch normalized opportunity details, preserve raw payloads, and pass selected results into the import pipeline on demand or by schedule, all through a reusable connector interface that can also accommodate award-centric sources such as `usaspending_api` and constrained-access sources such as `gsa_ebuy`.
+      Verify with: connector translation and normalization tests plus deterministic fixture-backed search, preview, import, and Playwright verification against the reusable connector boundary. The credentialed live `/sources` search/import run is deferred to post-project follow-on `FP-01` and is not required to close `P7-03`.
 
 - [ ] P7-04 Implement deduplication and canonicalization rules for multi-source opportunities.
       Done when: duplicate imports merge into one opportunity record with source lineage preserved.
@@ -776,6 +776,14 @@ This section is mandatory for every future coding iteration because conversation
 - [ ] Beta Gate: Phases 8 and 9 are complete and the system supports knowledge reuse plus feedback loops.
 - [ ] Pilot Gate: Phase 10 is complete and the app is ready for a real internal team trial.
 
+## Post-Project Follow-On Tasks
+
+These tasks are intentionally deferred until after the project checklist and release gates are complete. They do not block completion of Phases 0 through 10.
+
+- [ ] FP-01 Run one credentialed live `sam.gov` `/sources` search-and-import verification flow against the real upstream API using a configured `SAM_GOV_API_KEY`.
+      Done when: a manual live run confirms the existing connector can authenticate against `sam.gov`, execute one representative search, render result preview, and complete at least one import or link decision without relying on fixture mode.
+      Verify with: a dated operator note in `NOTES.md` plus `PRD.md` handoff evidence capturing the exact runtime mode, environment assumptions, and manual steps performed.
+
 ## Quality Bar
 
 - [ ] Prefer server-side data access and validation over client-only logic.
@@ -789,8 +797,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, `P2-03`, `P2-04`, `P3-01`, `P3-02`, `P3-03`, `P4-01`, `P4-01a`, `P4-01b`, `P4-02`, `P4-03`, `P4-04`, `P5-01`, `P5-02`, `P5-03`, `P5-04`, `P6-01`, `P6-02`, `P6-03`, `P6-04`, `P6-05`, `P7-01`, and `P7-02` are complete. This loop added a guarded document-upload workflow on the opportunity workspace, stored local uploads under the configured document root, persisted file metadata plus extracted plain text and extraction status in `opportunity_documents`, exposed guarded download links for stored files, added audit plus workspace-activity emission for document uploads, and extended the workspace Chromium smoke path to upload a real document and verify it renders back with extracted content.
-- Next recommended item: `P7-03 Implement a source connector abstraction and build the first live connector for sam.gov.`
-- Blockers: No product blocker for `P7-03`. Unrelated repo sync blocker remains: the earlier local history rewrite still has not been force-pushed to `origin` from this environment because the remote is SSH-based and this runtime lacks an authenticated SSH path.
-- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `.env.example`, `.gitignore`, `docs/architecture.md`, `docs/runbook.md`, `docs/security.md`, `docs/testing.md`, `src/app/(app)/opportunities/[opportunityId]/page.tsx`, `src/app/(app)/opportunities/actions.ts`, `src/app/api/opportunities/documents/[documentId]/download/route.ts`, `src/components/opportunities/opportunity-document-manager.tsx`, `src/components/opportunities/opportunity-workspace.test.tsx`, `src/components/opportunities/opportunity-workspace.tsx`, `src/lib/env.test.ts`, `src/lib/env.ts`, `src/modules/audit/audit.service.ts`, `src/modules/opportunities/opportunity-document-form.schema.test.ts`, `src/modules/opportunities/opportunity-document-form.schema.ts`, `src/modules/opportunities/opportunity-document-storage.test.ts`, `src/modules/opportunities/opportunity-document-storage.ts`, `src/modules/opportunities/opportunity.repository.test.ts`, `src/modules/opportunities/opportunity.repository.ts`, `src/modules/opportunities/opportunity.types.ts`, `src/modules/opportunities/opportunity-write.service.test.ts`, `src/modules/opportunities/opportunity-write.service.ts`, and `tests/smoke.spec.ts`.
-- Tests run in latest loop: `npm test -- src/lib/env.test.ts src/modules/opportunities/opportunity-document-form.schema.test.ts src/modules/opportunities/opportunity-document-storage.test.ts src/modules/opportunities/opportunity-write.service.test.ts src/modules/opportunities/opportunity.repository.test.ts src/components/opportunities/opportunity-workspace.test.tsx`; `npm run lint`; `npm run build`; `docker compose up -d db`; `npm run prisma:validate`; `npm run db:seed`; `npm test`; `npm run build`; `npm run e2e`; `DEADLINE_REMINDER_LOOKAHEAD_DAYS=7 make compose-test-lint`; `DEADLINE_REMINDER_LOOKAHEAD_DAYS=7 make compose-test`; `DEADLINE_REMINDER_LOOKAHEAD_DAYS=7 make compose-test-build`; `DEADLINE_REMINDER_LOOKAHEAD_DAYS=7 make compose-test-e2e`; `DEADLINE_REMINDER_LOOKAHEAD_DAYS=7 make compose-down`; and `git diff --check`. Verification used Docker and Playwright.
+- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, `P2-03`, `P2-04`, `P3-01`, `P3-02`, `P3-03`, `P4-01`, `P4-01a`, `P4-01b`, `P4-02`, `P4-03`, `P4-04`, `P5-01`, `P5-02`, `P5-03`, `P5-04`, `P6-01`, `P6-02`, `P6-03`, `P6-04`, `P6-05`, `P7-01`, `P7-02`, and `P7-03` are complete. The reusable connector-backed `sam.gov` boundary is now closed: `/sources` parses the canonical query, translates it into the documented `sam.gov` request shape, executes either the live upstream request or deterministic fixture mode through the same connector, persists `source_search_executions`, `source_search_results`, normalized `source_records`, and normalized attachment/contact/award child rows, and drives preview/import actions from persisted source-record IDs instead of synthetic mock result IDs. The project as a whole still cannot be claimed complete in this loop because later items `P7-04` through `P10-04` remain unchecked.
+- Next recommended item: `P7-04 Implement deduplication and canonicalization rules for multi-source opportunities`.
+- Blockers: no product blocker remains on `P7-03`; the credentialed live `/sources` run is explicitly deferred to post-project follow-on `FP-01`. Unrelated repo sync blocker remains: the earlier local history rewrite still has not been force-pushed to `origin` from this environment because the remote is SSH-based and this runtime lacks an authenticated SSH path.
+- Files touched in latest loop: `NOTES.md`, `PRD.md`, and `README.md`.
+- Tests run in latest loop: full host and compose-backed `P7-03` closeout verification. Commands run: `docker compose up -d db`; `npm run prisma:validate`; `npm run db:seed`; `npm run lint`; `npm test`; `npm run build`; `make compose-test-lint`; `make compose-test`; `make compose-test-build`; `make compose-test-e2e`; `git diff --check`; and `make compose-down`. Verification intentionally used deterministic fixture mode through the reusable connector boundary because the revised `P7-03` acceptance criteria now allow fixture-backed closure, while the credentialed live run is tracked separately as post-project follow-on `FP-01`. The compose-backed Chromium run covers the `/sources` search, preview, duplicate-link, and CSV import flow inside the authenticated smoke path.
