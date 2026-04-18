@@ -60,6 +60,7 @@ The current local credentials flow uses the shared development password document
 - `SAM_GOV_USE_FIXTURES` switches the connector into deterministic fixture mode for automated verification and should remain `false` in production-like environments.
 - `.env` is ignored by git; `.env.example` is the only committed env file.
 - Connector configs can store a `credentialReference` string, but the repo still stores only secret references such as `secret://sam-gov/public-api-key`, never raw connector credentials.
+- The new Phase 10 integration-boundary module ships dry-run CRM, document-repository, and communication adapters only; it prepares canonical payloads but does not yet persist external credentials or perform live outbound dispatch.
 - No production API keys, auth provider secrets, or session secrets are committed.
 
 ## Audit Model
@@ -88,6 +89,7 @@ Current audit producers are the bootstrap seed path, the shared opportunity writ
 - Fixture-backed connector mode is for deterministic local and CI-style verification only; it is not evidence that live upstream credentials, rate limits, or validation failure handling have been exercised in this environment.
 - No auth-event or permission-failure audit emission yet
 - Auth events and permission failures still do not emit audit rows, and many future user-facing mutations have not been wired to the audited write-service boundary yet
+- The new integration boundary proves contract shape only; no live external-system auth, outbound delivery, webhook verification, or callback-signature validation exists yet
 - No production-grade password reset, OAuth, MFA, or account-recovery workflow yet
 - No secret-vault integration behind connector credential references yet
 - Credentialed live `sam.gov` validation is intentionally deferred to post-project follow-on `FP-01`; its absence does not block current fixture-backed `P7-03` acceptance

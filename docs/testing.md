@@ -6,7 +6,7 @@ This document records the canonical verification workflows for the repo as of th
 
 ## Current Coverage
 
-- Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, deterministic scoring and recommendation formulas plus fallback scorecard mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, audited opportunity write flows, observed-outcome scoring recalibration logic, scheduled source-sync sweeps, queued document parsing retries, and persisted scorecard recalculation logic
+- Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, deterministic scoring and recommendation formulas plus fallback scorecard mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, audited opportunity write flows, observed-outcome scoring recalibration logic, scheduled source-sync sweeps, queued document parsing retries, persisted scorecard recalculation logic, and canonical CRM or document-repository or communication integration payload builders with dry-run adapter contracts
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
 - Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard stage-count, conversion-rate, pipeline-aging, and upcoming-deadline widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow plus bid-volume and effort-versus-outcome analytics panels, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, ranked knowledge suggestions, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus stored-file download visibility, live proposal tracking updates, a live stage transition, and live closeout recording on a seeded closed opportunity, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/knowledge` browse/create/filter flow, the `/sources` fixture-backed connector search flow plus preview-and-merge or preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with source-sync observability plus scoring-profile visibility, one live retry-queue action, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
@@ -155,6 +155,13 @@ For the current Phase 10 proposal slice, targeted verification should confirm:
 - the audited opportunity write service creates, updates, and deletes one proposal record per opportunity while syncing checklist-item rows and linked-document joins
 - the rendered workspace exposes proposal status, owner, compliance checklist, and linked-document management only when the current stage supports proposal execution or a proposal record already exists
 - the browser smoke flow can update the seeded proposal record and observe the saved status, owner, checklist, and linked-document state on the live route
+
+For the current Phase 10 integration-boundary slice, targeted verification should confirm:
+
+- the typed integration module prepares canonical CRM payloads from an opportunity workspace snapshot without leaking Prisma model shapes into adapter callers
+- the typed integration module prepares document-repository payloads from workspace documents plus proposal checklist state without requiring file-transfer logic inside the opportunity module
+- the typed integration module prepares communication-digest payloads that summarize score, proposal, overdue-task, and upcoming-milestone posture from one typed workspace snapshot
+- the default dry-run adapters exercise the CRM, document-repository, and communication contracts deterministically so future live adapters can be added behind the same interfaces
 
 For the current Phase 4 stage-transition slice, targeted verification should confirm:
 
