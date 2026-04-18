@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  getPersonalTaskBoardSnapshot,
   getOpportunityListSnapshot,
   getOpportunityWorkspaceSnapshot,
   getHomeDashboardSnapshot,
   listOpportunitySummaries,
   parseOpportunityListSearchParams,
+  type PersonalTaskBoardRecord,
+  type PersonalTaskBoardRepositoryClient,
   type OpportunityRepositoryClient,
   type OrganizationDashboardRecord,
   type OpportunityWorkspaceRecord,
@@ -237,6 +240,18 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
       id: "org_123",
       name: "Default Organization",
       slug: "default-org",
+      users: [
+        {
+          id: "user_admin",
+          name: "OneSource Admin",
+          email: "admin@onesource.local",
+        },
+        {
+          id: "user_taylor",
+          name: "Taylor Reed",
+          email: "taylor@example.com",
+        },
+      ],
     },
     title: "Enterprise Knowledge Management Support Services",
     description:
@@ -304,6 +319,7 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
           email: "admin@onesource.local",
         },
         assigneeUser: {
+          id: "user_taylor",
           name: "Taylor Reed",
           email: "taylor@example.com",
         },
@@ -435,12 +451,70 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
   };
 }
 
+function buildPersonalTaskBoardRecord(): PersonalTaskBoardRecord {
+  return {
+    id: "user_taylor",
+    name: "Taylor Reed",
+    email: "taylor@example.com",
+    organization: {
+      id: "org_123",
+      name: "Default Organization",
+      slug: "default-org",
+    },
+    assignedOpportunityTasks: [
+      {
+        ...buildOpportunityWorkspaceRecord().tasks[0],
+        opportunity: {
+          id: "opp_alpha",
+          title: "Enterprise Knowledge Management Support Services",
+          currentStageLabel: "Capture Active",
+        },
+      },
+      {
+        id: "task_2",
+        title: "Prepare customer questions draft",
+        description: null,
+        status: "COMPLETED",
+        priority: "MEDIUM",
+        dueAt: new Date("2026-04-18T16:00:00.000Z"),
+        startedAt: new Date("2026-04-17T16:00:00.000Z"),
+        completedAt: new Date("2026-04-18T15:30:00.000Z"),
+        createdByUser: {
+          name: "OneSource Admin",
+          email: "admin@onesource.local",
+        },
+        assigneeUserId: "user_taylor",
+        assigneeUser: {
+          id: "user_taylor",
+          name: "Taylor Reed",
+          email: "taylor@example.com",
+        },
+        opportunity: {
+          id: "opp_beta",
+          title: "Army Cloud Operations Recompete",
+          currentStageLabel: "Qualified",
+        },
+      },
+    ],
+  };
+}
+
 function createWorkspaceRepositoryClient(record: OpportunityWorkspaceRecord | null) {
   return {
     opportunity: {
       findFirst: vi.fn().mockResolvedValue(record),
     },
   } as unknown as OpportunityWorkspaceRepositoryClient;
+}
+
+function createPersonalTaskBoardRepositoryClient(
+  record: PersonalTaskBoardRecord | null,
+) {
+  return {
+    user: {
+      findFirst: vi.fn().mockResolvedValue(record),
+    },
+  } as unknown as PersonalTaskBoardRepositoryClient;
 }
 
 describe("opportunity.repository", () => {
@@ -549,6 +623,16 @@ describe("opportunity.repository", () => {
       organization: {
         slug: "default-org",
       },
+      taskAssigneeOptions: [
+        {
+          label: "OneSource Admin",
+          value: "user_admin",
+        },
+        {
+          label: "Taylor Reed",
+          value: "user_taylor",
+        },
+      ],
       opportunity: {
         title: "Enterprise Knowledge Management Support Services",
         officeLocation: "Nellis AFB, NV, 89191",
@@ -569,6 +653,7 @@ describe("opportunity.repository", () => {
       tasks: [
         {
           title: "Complete incumbent analysis brief",
+          assigneeUserId: "user_taylor",
           assigneeName: "Taylor Reed",
         },
       ],
@@ -592,6 +677,37 @@ describe("opportunity.repository", () => {
       stageTransitions: [
         {
           toStageLabel: "Capture Active",
+        },
+      ],
+    });
+  });
+
+  it("builds a personal assigned-task board snapshot with opportunity linkage", async () => {
+    const db = createPersonalTaskBoardRepositoryClient(
+      buildPersonalTaskBoardRecord(),
+    );
+
+    const snapshot = await getPersonalTaskBoardSnapshot({
+      db,
+      now: new Date("2026-04-21T00:00:00.000Z"),
+      userId: "user_taylor",
+    });
+
+    expect(snapshot).toMatchObject({
+      userDisplayName: "Taylor Reed",
+      assignedTaskCount: 2,
+      completedTaskCount: 1,
+      overdueTaskCount: 1,
+      tasks: [
+        {
+          title: "Complete incumbent analysis brief",
+          opportunityTitle: "Enterprise Knowledge Management Support Services",
+          opportunityStageLabel: "Capture Active",
+        },
+        {
+          title: "Prepare customer questions draft",
+          opportunityTitle: "Army Cloud Operations Recompete",
+          opportunityStageLabel: "Qualified",
         },
       ],
     });

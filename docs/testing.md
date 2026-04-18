@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 4 stage-transition baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 5 task-collaboration baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the seeded opportunity workspace route plus a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/sources` external-search flow with mocked connector responses plus preview-and-link import behavior, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the seeded opportunity workspace route plus live task creation and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue, the `/sources` external-search flow with mocked connector responses plus preview-and-link import behavior, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -45,6 +45,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - land back on the protected shell with the authenticated-session UI visible
 - navigate into `/opportunities`, apply real source and stage filters, and observe the URL plus result set update together
 - open a seeded opportunity workspace from `/opportunities`, verify the overview, scoring, tasks, documents, notes, and history sections render on the live app, then execute one guarded stage transition with recorded rationale
+- create a task from the workspace with assignee, due date, status, and priority, then confirm that task appears in the signed-in user’s `/tasks` personal queue
 - open `/opportunities/new`, restore a browser-local draft, create a tracked opportunity through the guarded form path, then edit that opportunity through the guarded update flow
 - navigate into `/sources`, submit a structured mocked `sam.gov` search, and observe the URL plus mocked result set update together
 - open a source-result preview, inspect duplicate detection, and either link the result into the existing tracked opportunity or confirm the already-linked state on reruns
@@ -56,7 +57,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 For the current audit slice, targeted unit verification should confirm:
 
 - the shared audit helper produces append-only `audit_logs` create payloads with actor, target, action, summary, metadata, and occurrence timestamp fields
-- the transactional opportunity write service emits audit rows for create, update, delete, import-decision, stage-transition, and bid-decision operations
+- the transactional opportunity write service emits audit rows for create, update, delete, task-create, task-update, task-delete, import-decision, stage-transition, and bid-decision operations
 - update audits persist field-diff metadata rather than only a generic action label
 
 For the current admin-console slice, targeted unit verification should confirm:
@@ -107,6 +108,14 @@ For the current Phase 4 stage-transition slice, targeted verification should con
 - the audited opportunity write service rejects blank-rationale or missing-requirement transitions before mutating persistence
 - valid stage transitions append both `opportunity_stage_transitions` and `opportunity_activity_events` rows while also emitting an audit log
 - the browser smoke flow can execute a live stage move from the workspace and observe both inline success feedback and updated timeline evidence
+
+For the current Phase 5 task slice, targeted verification should confirm:
+
+- the task form schema validates assignee, due date, status, priority, and title fields into a stable typed write payload
+- the typed opportunity repository exposes organization-scoped task-assignee options on the workspace snapshot and a signed-in-user personal task board with opportunity linkage
+- the audited opportunity write service creates, updates, and deletes tasks while appending both activity-feed and audit-log evidence
+- the rendered workspace exposes guarded task create, edit, and delete controls without leaving the opportunity route
+- the browser smoke flow can create a task from the workspace and observe it in `/tasks`
 
 When the changed area includes Prisma schema or seed logic, also run:
 

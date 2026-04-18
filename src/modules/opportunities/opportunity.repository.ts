@@ -6,6 +6,7 @@ import type {
   ContractVehicleSummary,
   DashboardDeadlineSummary,
   HomeDashboardSnapshot,
+  OpportunityTaskAssigneeOption,
   OpportunityWorkspaceActivity,
   OpportunityWorkspaceBidDecision,
   OpportunityWorkspaceDocument,
@@ -22,6 +23,8 @@ import type {
   OpportunityWorkspaceTask,
   OpportunityBidDecisionSummary,
   OpportunityMilestoneSummary,
+  PersonalTaskBoardItem,
+  PersonalTaskBoardSnapshot,
   OpportunityScoreSummary,
   OpportunityStageSummary,
   OpportunitySummary,
@@ -243,6 +246,19 @@ const opportunityWorkspaceArgs = {
         id: true,
         name: true,
         slug: true,
+        users: {
+          where: {
+            status: {
+              not: "DISABLED",
+            },
+          },
+          orderBy: [{ name: "asc" }, { email: "asc" }],
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     },
     leadAgency: {
@@ -302,6 +318,7 @@ const opportunityWorkspaceArgs = {
         },
         assigneeUser: {
           select: {
+            id: true,
             name: true,
             email: true,
           },
@@ -458,6 +475,55 @@ const opportunityWorkspaceArgs = {
   },
 };
 
+const personalTaskBoardArgs = {
+  select: {
+    id: true,
+    name: true,
+    email: true,
+    organization: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+      },
+    },
+    assignedOpportunityTasks: {
+      orderBy: [{ dueAt: "asc" }, { priority: "desc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        status: true,
+        priority: true,
+        dueAt: true,
+        startedAt: true,
+        completedAt: true,
+        assigneeUserId: true,
+        createdByUser: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+        assigneeUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        opportunity: {
+          select: {
+            id: true,
+            title: true,
+            currentStageLabel: true,
+          },
+        },
+      },
+    },
+  },
+};
+
 export type OpportunityRepositoryClient = {
   organization: {
     findUnique(args: {
@@ -478,6 +544,19 @@ export type OpportunityWorkspaceRepositoryClient = {
         };
       };
     } & typeof opportunityWorkspaceArgs): Promise<OpportunityWorkspaceRecord | null>;
+  };
+};
+
+export type PersonalTaskBoardRepositoryClient = {
+  user: {
+    findFirst(args: {
+      where: {
+        id: string;
+        organization: {
+          slug: string;
+        };
+      };
+    } & typeof personalTaskBoardArgs): Promise<PersonalTaskBoardRecord | null>;
   };
 };
 
@@ -575,6 +654,11 @@ export type OpportunityWorkspaceRecord = {
     id: string;
     name: string;
     slug: string;
+    users: Array<{
+      id: string;
+      name: string | null;
+      email: string;
+    }>;
   };
   title: string;
   description: string | null;
@@ -616,6 +700,7 @@ export type OpportunityWorkspaceRecord = {
       email: string;
     } | null;
     assigneeUser: {
+      id: string;
       name: string | null;
       email: string;
     } | null;
@@ -719,6 +804,24 @@ export type OpportunityWorkspaceRecord = {
       name: string | null;
       email: string;
     } | null;
+  }>;
+};
+
+export type PersonalTaskBoardRecord = {
+  id: string;
+  name: string | null;
+  email: string;
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  assignedOpportunityTasks: Array<OpportunityWorkspaceRecord["tasks"][number] & {
+    opportunity: {
+      id: string;
+      title: string;
+      currentStageLabel: string | null;
+    };
   }>;
 };
 
@@ -986,12 +1089,63 @@ export async function getOpportunityWorkspaceSnapshot({
     opportunity: mapOpportunityWorkspaceSummary(record),
     scorecard: mapWorkspaceScorecard(record.scorecards[0]),
     bidDecision: mapWorkspaceBidDecision(record.bidDecisions[0]),
+    taskAssigneeOptions: record.organization.users.map(mapTaskAssigneeOption),
     tasks: record.tasks.map(mapWorkspaceTask),
     milestones: record.milestones.map(mapWorkspaceMilestone),
     documents: record.documents.map(mapWorkspaceDocument),
     notes: record.notes.map(mapWorkspaceNote),
     activity: record.activityEvents.map(mapWorkspaceActivity),
     stageTransitions: record.stageTransitions.map(mapWorkspaceStageTransition),
+  };
+}
+
+export async function getPersonalTaskBoardSnapshot({
+  db,
+  userId,
+  organizationSlug = DEFAULT_ORGANIZATION_SLUG,
+  now = new Date(),
+}: {
+  db: PersonalTaskBoardRepositoryClient;
+  userId: string;
+  organizationSlug?: string;
+  now?: Date;
+}): Promise<PersonalTaskBoardSnapshot | null> {
+  const record = await loadPersonalTaskBoardRecord({
+    db,
+    organizationSlug,
+    userId,
+  });
+
+  if (!record) {
+    return null;
+  }
+
+  const tasks = record.assignedOpportunityTasks
+    .map((task) => mapPersonalTaskBoardItem(task))
+    .sort(comparePersonalTaskBoardItems);
+
+  return {
+    organization: {
+      id: record.organization.id,
+      name: record.organization.name,
+      slug: record.organization.slug,
+    },
+    userDisplayName:
+      formatPersonLabel({
+        name: record.name,
+        email: record.email,
+      }) ?? record.email,
+    assignedTaskCount: tasks.length,
+    completedTaskCount: tasks.filter((task) => task.status === "COMPLETED")
+      .length,
+    overdueTaskCount: tasks.filter(
+      (task) =>
+        task.status !== "COMPLETED" &&
+        task.status !== "CANCELLED" &&
+        Boolean(task.dueAt) &&
+        new Date(task.dueAt as string).getTime() < now.getTime(),
+    ).length,
+    tasks,
   };
 }
 
@@ -1028,6 +1182,26 @@ async function loadOpportunityWorkspaceRecord({
     },
     ...opportunityWorkspaceArgs,
   })) as OpportunityWorkspaceRecord | null;
+}
+
+async function loadPersonalTaskBoardRecord({
+  db,
+  userId,
+  organizationSlug,
+}: {
+  db: PersonalTaskBoardRepositoryClient;
+  userId: string;
+  organizationSlug: string;
+}): Promise<PersonalTaskBoardRecord | null> {
+  return (await db.user.findFirst({
+    where: {
+      id: userId,
+      organization: {
+        slug: organizationSlug,
+      },
+    },
+    ...personalTaskBoardArgs,
+  })) as PersonalTaskBoardRecord | null;
 }
 
 function mapConnectorSummary(
@@ -1241,8 +1415,29 @@ function mapWorkspaceTask(
     dueAt: toIsoString(task.dueAt),
     startedAt: toIsoString(task.startedAt),
     completedAt: toIsoString(task.completedAt),
+    assigneeUserId: task.assigneeUser?.id ?? null,
     assigneeName: formatPersonLabel(task.assigneeUser),
     createdByName: formatPersonLabel(task.createdByUser),
+  };
+}
+
+function mapTaskAssigneeOption(
+  user: OpportunityWorkspaceRecord["organization"]["users"][number],
+): OpportunityTaskAssigneeOption {
+  return {
+    value: user.id,
+    label: formatPersonLabel(user) ?? user.email,
+  };
+}
+
+function mapPersonalTaskBoardItem(
+  task: PersonalTaskBoardRecord["assignedOpportunityTasks"][number],
+): PersonalTaskBoardItem {
+  return {
+    ...mapWorkspaceTask(task),
+    opportunityId: task.opportunity.id,
+    opportunityTitle: task.opportunity.title,
+    opportunityStageLabel: task.opportunity.currentStageLabel ?? "Identified",
   };
 }
 
@@ -1698,6 +1893,43 @@ function compareTaskSummaries(
   }
 
   return left.title.localeCompare(right.title);
+}
+
+function comparePersonalTaskBoardItems(
+  left: PersonalTaskBoardItem,
+  right: PersonalTaskBoardItem,
+) {
+  const statusComparison =
+    getPersonalTaskStatusRank(left.status) - getPersonalTaskStatusRank(right.status);
+
+  if (statusComparison !== 0) {
+    return statusComparison;
+  }
+
+  const taskComparison = compareTaskSummaries(left, right);
+
+  if (taskComparison !== 0) {
+    return taskComparison;
+  }
+
+  return left.opportunityTitle.localeCompare(right.opportunityTitle);
+}
+
+function getPersonalTaskStatusRank(status: PersonalTaskBoardItem["status"]) {
+  switch (status) {
+    case "BLOCKED":
+      return 0;
+    case "IN_PROGRESS":
+      return 1;
+    case "NOT_STARTED":
+      return 2;
+    case "COMPLETED":
+      return 3;
+    case "CANCELLED":
+      return 4;
+    default:
+      return 5;
+  }
 }
 
 function compareMilestoneSummaries(

@@ -9,8 +9,16 @@ import {
   type OpportunityFormActionState,
 } from "@/modules/opportunities/opportunity-form.schema";
 import {
+  INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
+  validateOpportunityTaskFormSubmission,
+  type OpportunityTaskActionState,
+} from "@/modules/opportunities/opportunity-task-form.schema";
+import {
   createOpportunity,
+  createOpportunityTask,
+  deleteOpportunityTask,
   recordStageTransition,
+  updateOpportunityTask,
   updateOpportunity,
   type OpportunityWriteClient,
 } from "@/modules/opportunities/opportunity-write.service";
@@ -143,6 +151,123 @@ export async function transitionOpportunityStageAction(
   }
 }
 
+export async function createOpportunityTaskAction(
+  _previousState: OpportunityTaskActionState,
+  formData: FormData,
+): Promise<OpportunityTaskActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const validation = validateOpportunityTaskFormSubmission(formData);
+
+  if (!validation.success) {
+    return validation.state;
+  }
+
+  try {
+    await createOpportunityTask({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        opportunityId,
+        title: validation.submission.title,
+        description: validation.submission.description,
+        assigneeUserId: validation.submission.assigneeUserId,
+        dueAt: validation.submission.dueAt,
+        status: validation.submission.status,
+        priority: validation.submission.priority,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
+      formError:
+        error instanceof Error ? error.message : "The task could not be created.",
+    };
+  }
+
+  revalidateTaskSurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
+    successMessage: "Task created and added to the workspace.",
+  };
+}
+
+export async function updateOpportunityTaskAction(
+  _previousState: OpportunityTaskActionState,
+  formData: FormData,
+): Promise<OpportunityTaskActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const taskId = readRequiredString(formData.get("taskId"));
+  const validation = validateOpportunityTaskFormSubmission(formData);
+
+  if (!validation.success) {
+    return validation.state;
+  }
+
+  try {
+    await updateOpportunityTask({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        taskId,
+        title: validation.submission.title,
+        description: validation.submission.description,
+        assigneeUserId: validation.submission.assigneeUserId,
+        dueAt: validation.submission.dueAt,
+        status: validation.submission.status,
+        priority: validation.submission.priority,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
+      formError:
+        error instanceof Error ? error.message : "The task could not be updated.",
+    };
+  }
+
+  revalidateTaskSurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
+    successMessage: "Task changes saved.",
+  };
+}
+
+export async function deleteOpportunityTaskAction(
+  _previousState: OpportunityTaskActionState,
+  formData: FormData,
+): Promise<OpportunityTaskActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const taskId = readRequiredString(formData.get("taskId"));
+
+  try {
+    await deleteOpportunityTask({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        taskId,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
+      formError:
+        error instanceof Error ? error.message : "The task could not be deleted.",
+    };
+  }
+
+  revalidateTaskSurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
+    successMessage: "Task deleted.",
+  };
+}
+
 function buildOpportunityActor(user: {
   email?: string | null;
   id: string;
@@ -162,4 +287,11 @@ function readRequiredString(value: FormDataEntryValue | null) {
   }
 
   return value;
+}
+
+function revalidateTaskSurfaces(opportunityId: string) {
+  revalidatePath("/");
+  revalidatePath("/opportunities");
+  revalidatePath(`/opportunities/${opportunityId}`);
+  revalidatePath("/tasks");
 }

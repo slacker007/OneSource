@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { OpportunityWorkspace } from "./opportunity-workspace";
 import { INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE } from "@/modules/opportunities/opportunity-stage-policy";
+import { INITIAL_OPPORTUNITY_TASK_ACTION_STATE } from "@/modules/opportunities/opportunity-task-form.schema";
 import type { OpportunityWorkspaceSnapshot } from "@/modules/opportunities/opportunity.types";
 
 const snapshot: OpportunityWorkspaceSnapshot = {
@@ -124,6 +125,16 @@ const snapshot: OpportunityWorkspaceSnapshot = {
     decidedByName: "OneSource Admin",
     decidedAt: "2026-04-16T14:10:00.000Z",
   },
+  taskAssigneeOptions: [
+    {
+      label: "OneSource Admin",
+      value: "user_admin",
+    },
+    {
+      label: "Taylor Reed",
+      value: "user_taylor",
+    },
+  ],
   tasks: [
     {
       id: "task_1",
@@ -135,6 +146,7 @@ const snapshot: OpportunityWorkspaceSnapshot = {
       dueAt: "2026-04-20T17:00:00.000Z",
       startedAt: "2026-04-16T14:00:00.000Z",
       completedAt: null,
+      assigneeUserId: "user_taylor",
       assigneeName: "Taylor Reed",
       createdByName: "OneSource Admin",
     },
@@ -212,10 +224,13 @@ describe("OpportunityWorkspace", () => {
     render(
       <OpportunityWorkspace
         allowManagePipeline
+        createTaskAction={async () => INITIAL_OPPORTUNITY_TASK_ACTION_STATE}
+        deleteTaskAction={async () => INITIAL_OPPORTUNITY_TASK_ACTION_STATE}
         snapshot={snapshot}
         stageTransitionAction={async () =>
           INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE
         }
+        updateTaskAction={async () => INITIAL_OPPORTUNITY_TASK_ACTION_STATE}
       />,
     );
 
@@ -254,6 +269,12 @@ describe("OpportunityWorkspace", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /move to pursuit approved/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^create task$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^save task$/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /open source notice/i }),

@@ -1,9 +1,11 @@
 import Link from "next/link";
 
 import { OpportunityStageTransitionPanel } from "@/components/opportunities/opportunity-stage-transition-panel";
+import { OpportunityTaskManager } from "@/components/opportunities/opportunity-task-manager";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import type { OpportunityTaskActionState } from "@/modules/opportunities/opportunity-task-form.schema";
 import {
   buildOpportunityStageControlSnapshotFromWorkspace,
   type OpportunityStageTransitionActionState,
@@ -21,6 +23,18 @@ import type {
 type OpportunityWorkspaceProps = {
   snapshot: OpportunityWorkspaceSnapshot | null;
   allowManagePipeline?: boolean;
+  createTaskAction?: (
+    state: OpportunityTaskActionState,
+    formData: FormData,
+  ) => Promise<OpportunityTaskActionState>;
+  updateTaskAction?: (
+    state: OpportunityTaskActionState,
+    formData: FormData,
+  ) => Promise<OpportunityTaskActionState>;
+  deleteTaskAction?: (
+    state: OpportunityTaskActionState,
+    formData: FormData,
+  ) => Promise<OpportunityTaskActionState>;
   stageTransitionAction?: (
     state: OpportunityStageTransitionActionState,
     formData: FormData,
@@ -30,6 +44,9 @@ type OpportunityWorkspaceProps = {
 export function OpportunityWorkspace({
   snapshot,
   allowManagePipeline = false,
+  createTaskAction,
+  updateTaskAction,
+  deleteTaskAction,
   stageTransitionAction,
 }: OpportunityWorkspaceProps) {
   if (!snapshot) {
@@ -159,8 +176,14 @@ export function OpportunityWorkspace({
 
       <div className="grid gap-6 xl:grid-cols-2">
         <TasksSection
+          allowManagePipeline={allowManagePipeline}
+          createTaskAction={createTaskAction}
+          deleteTaskAction={deleteTaskAction}
           milestones={snapshot.milestones}
+          opportunityId={snapshot.opportunity.id}
+          taskAssigneeOptions={snapshot.taskAssigneeOptions}
           tasks={snapshot.tasks}
+          updateTaskAction={updateTaskAction}
         />
         <DocumentsSection documents={snapshot.documents} />
       </div>
@@ -373,11 +396,23 @@ function ScoringSection({
 }
 
 function TasksSection({
+  allowManagePipeline,
+  createTaskAction,
+  deleteTaskAction,
   milestones,
+  opportunityId,
+  taskAssigneeOptions,
   tasks,
+  updateTaskAction,
 }: {
+  allowManagePipeline: boolean;
+  createTaskAction?: OpportunityWorkspaceProps["createTaskAction"];
+  deleteTaskAction?: OpportunityWorkspaceProps["deleteTaskAction"];
   milestones: OpportunityWorkspaceMilestone[];
+  opportunityId: string;
+  taskAssigneeOptions: OpportunityWorkspaceSnapshot["taskAssigneeOptions"];
   tasks: OpportunityWorkspaceTask[];
+  updateTaskAction?: OpportunityWorkspaceProps["updateTaskAction"];
 }) {
   return (
     <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
@@ -393,48 +428,64 @@ function TasksSection({
         <Badge tone="warning">{tasks.length} open records</Badge>
       </div>
 
-      {tasks.length > 0 ? (
-        <div className="mt-6 space-y-4">
-          {tasks.map((task) => (
-            <div
-              className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(246,239,228,0.55)] px-5 py-5"
-              key={task.id}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-2">
-                  <h3 className="text-base font-semibold text-foreground">
-                    {task.title}
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge tone={priorityTone(task.priority)}>{task.priority}</Badge>
-                    <Badge tone="muted">{humanizeEnum(task.status)}</Badge>
+      <div className="mt-6">
+        {allowManagePipeline &&
+        createTaskAction &&
+        updateTaskAction &&
+        deleteTaskAction ? (
+          <OpportunityTaskManager
+            assigneeOptions={taskAssigneeOptions}
+            createAction={createTaskAction}
+            deleteAction={deleteTaskAction}
+            opportunityId={opportunityId}
+            tasks={tasks}
+            updateAction={updateTaskAction}
+          />
+        ) : tasks.length > 0 ? (
+          <div className="space-y-4">
+            {tasks.map((task) => (
+              <div
+                className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(246,239,228,0.55)] px-5 py-5"
+                key={task.id}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <h3 className="text-base font-semibold text-foreground">
+                      {task.title}
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge tone={priorityTone(task.priority)}>
+                        {humanizeEnum(task.priority)}
+                      </Badge>
+                      <Badge tone="muted">{humanizeEnum(task.status)}</Badge>
+                    </div>
                   </div>
+                  <p className="text-sm text-muted">
+                    {task.dueAt ? `Due ${formatDate(task.dueAt)}` : "No due date"}
+                  </p>
                 </div>
-                <p className="text-sm text-muted">
-                  {task.dueAt ? `Due ${formatDate(task.dueAt)}` : "No due date"}
+
+                {task.description ? (
+                  <p className="mt-3 text-sm leading-6 text-muted">
+                    {task.description}
+                  </p>
+                ) : null}
+
+                <p className="mt-3 text-sm text-muted">
+                  Owner: {task.assigneeName ?? "Unassigned"}
+                  {task.createdByName ? ` · Created by ${task.createdByName}` : ""}
                 </p>
               </div>
-
-              {task.description ? (
-                <p className="mt-3 text-sm leading-6 text-muted">
-                  {task.description}
-                </p>
-              ) : null}
-
-              <p className="mt-3 text-sm text-muted">
-                Owner: {task.assigneeName ?? "Unassigned"}
-                {task.createdByName ? ` · Created by ${task.createdByName}` : ""}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          className="mt-6"
-          message="Execution tasks will appear here once pipeline work starts."
-          title="No tasks yet"
-        />
-      )}
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            className="mt-6"
+            message="Execution tasks will appear here once pipeline work starts."
+            title="No tasks yet"
+          />
+        )}
+      </div>
 
       {milestones.length > 0 ? (
         <div className="mt-6 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,255,255,0.9)] px-5 py-5">

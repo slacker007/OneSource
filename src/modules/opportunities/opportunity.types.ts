@@ -193,6 +193,11 @@ export type OpportunityFormAgencyOption = {
   value: string;
 };
 
+export type OpportunityTaskAssigneeOption = {
+  label: string;
+  value: string;
+};
+
 export type OpportunityFormSnapshot = {
   agencyOptions: OpportunityFormAgencyOption[];
   currentStageKey: string;
@@ -207,6 +212,7 @@ export type OpportunityFormSnapshot = {
 };
 
 export type OpportunityWorkspaceTask = OpportunityTaskSummary & {
+  assigneeUserId: string | null;
   description: string | null;
   createdByName: string | null;
   startedAt: string | null;
@@ -312,12 +318,28 @@ export type OpportunityWorkspaceSnapshot = {
   opportunity: OpportunityWorkspaceOpportunitySummary;
   scorecard: OpportunityWorkspaceScorecard | null;
   bidDecision: OpportunityWorkspaceBidDecision | null;
+  taskAssigneeOptions: OpportunityTaskAssigneeOption[];
   tasks: OpportunityWorkspaceTask[];
   milestones: OpportunityWorkspaceMilestone[];
   documents: OpportunityWorkspaceDocument[];
   notes: OpportunityWorkspaceNote[];
   activity: OpportunityWorkspaceActivity[];
   stageTransitions: OpportunityWorkspaceStageTransition[];
+};
+
+export type PersonalTaskBoardItem = OpportunityWorkspaceTask & {
+  opportunityId: string;
+  opportunityTitle: string;
+  opportunityStageLabel: string;
+};
+
+export type PersonalTaskBoardSnapshot = {
+  organization: OrganizationSummary;
+  assignedTaskCount: number;
+  completedTaskCount: number;
+  overdueTaskCount: number;
+  userDisplayName: string;
+  tasks: PersonalTaskBoardItem[];
 };
 
 export type OpportunityStageSummary = {

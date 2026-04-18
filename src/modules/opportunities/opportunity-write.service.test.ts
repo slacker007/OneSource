@@ -5,11 +5,14 @@ import { AUDIT_ACTIONS } from "@/modules/audit/audit.service";
 import { OpportunityStageTransitionValidationError } from "@/modules/opportunities/opportunity-stage-policy";
 
 import {
+  createOpportunityTask,
   createOpportunity,
+  deleteOpportunityTask,
   deleteOpportunity,
   recordBidDecision,
   recordSourceImportDecision,
   recordStageTransition,
+  updateOpportunityTask,
   updateOpportunity,
   type OpportunityWriteClient,
   type OpportunityWriteTransactionClient,
@@ -30,6 +33,13 @@ function createMockWriteClient() {
     opportunityActivityEvent: {
       create: vi.fn(),
     },
+    opportunityTask: {
+      count: vi.fn(),
+      create: vi.fn(),
+      findFirstOrThrow: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
     opportunity: {
       create: vi.fn(),
       findFirstOrThrow: vi.fn(),
@@ -48,6 +58,9 @@ function createMockWriteClient() {
     },
     sourceImportDecision: {
       create: vi.fn(),
+    },
+    user: {
+      findFirst: vi.fn(),
     },
   } as unknown as OpportunityWriteTransactionClient;
 
@@ -227,6 +240,265 @@ describe("opportunity-write.service", () => {
         targetType: "opportunity",
         targetId: "opp_123",
         targetDisplay: "Data Platform Operations",
+        occurredAt,
+      }),
+    });
+  });
+
+  it("creates opportunity tasks and emits activity plus audit rows", async () => {
+    const { db, tx } = createMockWriteClient();
+    const occurredAt = new Date("2026-04-18T01:34:30.000Z");
+
+    vi.mocked(tx.opportunity.findFirstOrThrow).mockResolvedValue({
+      id: "opp_123",
+      organizationId: "org_123",
+      title: "Data Platform Operations",
+      description: null,
+      leadAgencyId: null,
+      responseDeadlineAt: null,
+      solicitationNumber: null,
+      naicsCode: null,
+      originSourceSystem: null,
+      currentStageKey: "capture_active",
+      currentStageLabel: "Capture Active",
+    });
+    vi.mocked(tx.user.findFirst).mockResolvedValue({
+      id: "user_456",
+    });
+    vi.mocked(tx.opportunityTask.count).mockResolvedValue(2);
+    vi.mocked(tx.opportunityTask.create).mockResolvedValue({
+      id: "task_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Confirm pricing assumptions",
+      description: "Coordinate with finance before executive review.",
+      status: "IN_PROGRESS",
+      priority: "CRITICAL",
+      dueAt: new Date("2026-04-24T12:00:00.000Z"),
+      startedAt: occurredAt,
+      completedAt: null,
+      sortOrder: 2,
+      assigneeUserId: "user_456",
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+      },
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_123",
+    });
+
+    await createOpportunityTask({
+      db,
+      input: {
+        actor,
+        opportunityId: "opp_123",
+        title: "  Confirm pricing assumptions  ",
+        description: " Coordinate with finance before executive review. ",
+        assigneeUserId: "user_456",
+        dueAt: new Date("2026-04-24T12:00:00.000Z"),
+        priority: "CRITICAL",
+        status: "IN_PROGRESS",
+        occurredAt,
+      },
+    });
+
+    expect(tx.opportunityTask.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          assigneeUserId: "user_456",
+          createdByUserId: "user_123",
+          priority: "CRITICAL",
+          sortOrder: 2,
+          startedAt: occurredAt,
+          status: "IN_PROGRESS",
+          title: "Confirm pricing assumptions",
+        }),
+      }),
+    );
+    expect(tx.opportunityActivityEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventType: "task_created",
+        relatedEntityId: "task_123",
+        title: "Task created: Confirm pricing assumptions",
+      }),
+      select: {
+        id: true,
+      },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityTaskCreate,
+        targetId: "task_123",
+        targetType: "opportunity_task",
+        occurredAt,
+      }),
+    });
+  });
+
+  it("updates opportunity tasks and records changed fields in audit metadata", async () => {
+    const { db, tx } = createMockWriteClient();
+    const occurredAt = new Date("2026-04-18T01:34:45.000Z");
+
+    vi.mocked(tx.opportunityTask.findFirstOrThrow).mockResolvedValue({
+      id: "task_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Confirm pricing assumptions",
+      description: "Coordinate with finance before executive review.",
+      status: "NOT_STARTED",
+      priority: "HIGH",
+      dueAt: new Date("2026-04-24T12:00:00.000Z"),
+      startedAt: null,
+      completedAt: null,
+      sortOrder: 2,
+      assigneeUserId: "user_456",
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+      },
+    });
+    vi.mocked(tx.user.findFirst).mockResolvedValue({
+      id: "user_789",
+    });
+    vi.mocked(tx.opportunityTask.update).mockResolvedValue({
+      id: "task_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Finalize pricing assumptions",
+      description: "Coordinate with finance and contracts before executive review.",
+      status: "COMPLETED",
+      priority: "CRITICAL",
+      dueAt: new Date("2026-04-25T12:00:00.000Z"),
+      startedAt: occurredAt,
+      completedAt: occurredAt,
+      sortOrder: 2,
+      assigneeUserId: "user_789",
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+      },
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_456",
+    });
+
+    await updateOpportunityTask({
+      db,
+      input: {
+        actor,
+        taskId: "task_123",
+        title: "Finalize pricing assumptions",
+        description: "Coordinate with finance and contracts before executive review.",
+        assigneeUserId: "user_789",
+        dueAt: new Date("2026-04-25T12:00:00.000Z"),
+        priority: "CRITICAL",
+        status: "COMPLETED",
+        occurredAt,
+      },
+    });
+
+    expect(tx.opportunityTask.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          assigneeUserId: "user_789",
+          completedAt: occurredAt,
+          priority: "CRITICAL",
+          startedAt: occurredAt,
+          status: "COMPLETED",
+          title: "Finalize pricing assumptions",
+        }),
+      }),
+    );
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityTaskUpdate,
+        metadata: expect.objectContaining({
+          changedFields: expect.objectContaining({
+            assigneeUserId: {
+              from: "user_456",
+              to: "user_789",
+            },
+            status: {
+              from: "NOT_STARTED",
+              to: "COMPLETED",
+            },
+            title: {
+              from: "Confirm pricing assumptions",
+              to: "Finalize pricing assumptions",
+            },
+          }),
+        }),
+        targetId: "task_123",
+      }),
+    });
+  });
+
+  it("deletes opportunity tasks and emits a delete audit row", async () => {
+    const { db, tx } = createMockWriteClient();
+    const occurredAt = new Date("2026-04-18T01:34:55.000Z");
+
+    vi.mocked(tx.opportunityTask.findFirstOrThrow).mockResolvedValue({
+      id: "task_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Finalize pricing assumptions",
+      description: "Coordinate with finance and contracts before executive review.",
+      status: "COMPLETED",
+      priority: "CRITICAL",
+      dueAt: new Date("2026-04-25T12:00:00.000Z"),
+      startedAt: new Date("2026-04-18T01:34:45.000Z"),
+      completedAt: new Date("2026-04-18T01:34:55.000Z"),
+      sortOrder: 2,
+      assigneeUserId: "user_789",
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+      },
+    });
+    vi.mocked(tx.opportunityTask.delete).mockResolvedValue({
+      id: "task_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Finalize pricing assumptions",
+      description: "Coordinate with finance and contracts before executive review.",
+      status: "COMPLETED",
+      priority: "CRITICAL",
+      dueAt: new Date("2026-04-25T12:00:00.000Z"),
+      startedAt: new Date("2026-04-18T01:34:45.000Z"),
+      completedAt: new Date("2026-04-18T01:34:55.000Z"),
+      sortOrder: 2,
+      assigneeUserId: "user_789",
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+      },
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_789",
+    });
+
+    await deleteOpportunityTask({
+      db,
+      input: {
+        actor,
+        taskId: "task_123",
+        occurredAt,
+      },
+    });
+
+    expect(tx.opportunityTask.delete).toHaveBeenCalledWith({
+      where: {
+        id: "task_123",
+      },
+      select: expect.any(Object),
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityTaskDelete,
+        targetDisplay: "Finalize pricing assumptions",
+        targetId: "task_123",
+        targetType: "opportunity_task",
         occurredAt,
       }),
     });

@@ -6,7 +6,12 @@ import {
   getOpportunityWorkspaceSnapshot,
   type OpportunityWorkspaceRepositoryClient,
 } from "@/modules/opportunities/opportunity.repository";
-import { transitionOpportunityStageAction } from "../actions";
+import {
+  createOpportunityTaskAction,
+  deleteOpportunityTaskAction,
+  transitionOpportunityStageAction,
+  updateOpportunityTaskAction,
+} from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +37,11 @@ export default async function OpportunityWorkspacePage({
         session.user.roleKeys,
         "manage_pipeline",
       )}
+      createTaskAction={createOpportunityTaskAction}
+      deleteTaskAction={deleteOpportunityTaskAction}
       stageTransitionAction={transitionOpportunityStageAction}
       snapshot={snapshot}
+      updateTaskAction={updateOpportunityTaskAction}
     />
   );
 }

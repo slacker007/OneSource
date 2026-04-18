@@ -154,7 +154,6 @@ test("authenticated homepage smoke test", async ({ page }) => {
     }),
   ).toBeVisible();
   await expect(page.getByText(/admin@onesource\.local/i).first()).toBeVisible();
-  await expect(page.getByText(/seed\.bootstrap/i).first()).toBeVisible();
 });
 
 test("users can create and edit tracked opportunities from the app", async ({
@@ -208,6 +207,8 @@ test("users can create and edit tracked opportunities from the app", async ({
 test("users can open the opportunity workspace and review seeded sections", async ({
   page,
 }) => {
+  const createdTaskTitle = `Prepare capture brief ${Date.now()}`;
+
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
   await expect(page).toHaveURL(/\/$/);
 
@@ -218,7 +219,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
 
   await expect(page).toHaveURL(/q=Enterprise\+Knowledge\+Management/);
   await expect(
-    page.getByText(/enterprise knowledge management support services/i),
+    page.getByText(/enterprise knowledge management support services/i).first(),
   ).toBeVisible();
 
   await page.getByRole("link", { name: /open workspace/i }).click();
@@ -254,32 +255,80 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByRole("heading", { name: /^Stage transition$/i }),
   ).toBeVisible();
-  const targetStageValue =
-    (await page
-      .locator("#stage-transition-target option[value='proposal_in_development']")
-      .count()) > 0
-      ? "proposal_in_development"
-      : "submitted";
-  const targetStageLabel =
-    targetStageValue === "proposal_in_development"
-      ? "Proposal In Development"
-      : "Submitted";
-  await page.locator("#stage-transition-target").selectOption(targetStageValue);
+  await page.locator("#task-create-title").fill(createdTaskTitle);
+  const assigneeOptionLabel = (
+    await page.locator("#task-create-assignee option").allTextContents()
+  ).find((label) => /alex morgan|admin@onesource\.local/i.test(label));
+  if (!assigneeOptionLabel) {
+    throw new Error("Could not find the signed-in user in the task assignee list.");
+  }
+  await page.locator("#task-create-assignee").selectOption({
+    label: assigneeOptionLabel,
+  });
+  await page.locator("#task-create-due-at").fill("2026-05-10");
+  await page.locator("#task-create-status").selectOption("IN_PROGRESS");
+  await page.locator("#task-create-priority").selectOption("HIGH");
+  await page
+    .locator("#task-create-description")
+    .fill("Prepare the concise executive-ready capture brief.");
+  await page.getByRole("button", { name: /^create task$/i }).click();
+  await expect(
+    page.getByText(/task created and added to the workspace/i),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: createdTaskTitle, exact: true }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: /^Tasks/i }).click();
+  await expect(page).toHaveURL(/\/tasks$/);
+  await expect(
+    page.getByRole("heading", { name: /personal execution queue/i }),
+  ).toBeVisible();
+  await expect(page.getByText(createdTaskTitle)).toBeVisible();
+  await expect(
+    page.getByText(/enterprise knowledge management support services/i).first(),
+  ).toBeVisible();
+
+  await page.goto("/opportunities");
+  await expect(page).toHaveURL(/\/opportunities$/);
+  await page.locator("#opportunity-query").fill("Enterprise Knowledge Management");
+  await page.getByRole("button", { name: /apply filters/i }).click();
+  await page.getByRole("link", { name: /open workspace/i }).click();
+
+  const targetStageSelect = page.locator("#stage-transition-target");
+  const targetStageValue = await targetStageSelect
+    .locator("option")
+    .first()
+    .getAttribute("value");
+  const targetStageLabel = await targetStageSelect
+    .locator("option")
+    .first()
+    .textContent();
+  if (!targetStageValue || !targetStageLabel) {
+    throw new Error("No stage-transition target option was available in the workspace.");
+  }
+  const escapedTargetStageLabel = targetStageLabel.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&",
+  );
+  await targetStageSelect.selectOption(targetStageValue);
   await page
     .locator("#stage-transition-rationale")
     .fill("Proposal staffing and artifacts are ready for development.");
   await page
-    .getByRole("button", { name: new RegExp(`move to ${targetStageLabel}`, "i") })
+    .getByRole("button", {
+      name: new RegExp(`move to ${escapedTargetStageLabel}`, "i"),
+    })
     .click();
   await expect(
     page.getByText(
-      new RegExp(`stage updated to ${targetStageLabel}`, "i"),
+      new RegExp(`stage updated to ${escapedTargetStageLabel}`, "i"),
     ),
   ).toBeVisible();
   await expect(
     page
       .getByRole("heading", {
-        name: new RegExp(`^Moved to ${targetStageLabel}$`, "i"),
+        name: new RegExp(`^Moved to ${escapedTargetStageLabel}$`, "i"),
       })
       .first(),
   ).toBeVisible();

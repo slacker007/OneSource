@@ -2,6 +2,8 @@ import {
   AuditActorType,
   Prisma,
   type BidDecisionOutcome,
+  type OpportunityTaskPriority,
+  type OpportunityTaskStatus,
   type SourceExecutionActorType,
   type SourceImportDecisionMode,
   type SourceImportDecisionStatus,
@@ -56,6 +58,29 @@ type BidDecisionRecord = {
   recommendationOutcome: BidDecisionOutcome | null;
   finalOutcome: BidDecisionOutcome | null;
   decidedAt: Date | null;
+};
+
+type OpportunityTaskAuditRecord = {
+  id: string;
+  organizationId: string;
+  opportunityId: string;
+  title: string;
+  description: string | null;
+  status: OpportunityTaskStatus;
+  priority: OpportunityTaskPriority;
+  dueAt: Date | null;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  sortOrder: number;
+  assigneeUserId: string | null;
+  opportunity: {
+    id: string;
+    title: string;
+  };
+};
+
+type TaskAssigneeLookupRecord = {
+  id: string;
 };
 
 type OpportunityStageValidationRecord = OpportunityWriteRecord & {
@@ -184,6 +209,27 @@ const stageTransitionAuditSelect = {
   toStageLabel: true,
 } as const;
 
+const opportunityTaskAuditSelect = {
+  id: true,
+  organizationId: true,
+  opportunityId: true,
+  title: true,
+  description: true,
+  status: true,
+  priority: true,
+  dueAt: true,
+  startedAt: true,
+  completedAt: true,
+  sortOrder: true,
+  assigneeUserId: true,
+  opportunity: {
+    select: {
+      id: true,
+      title: true,
+    },
+  },
+} as const;
+
 export type OpportunityWriteTransactionClient = AuditLogWriter & {
   opportunityActivityEvent: {
     create(args: {
@@ -192,6 +238,38 @@ export type OpportunityWriteTransactionClient = AuditLogWriter & {
         id: true;
       };
     }): Promise<OpportunityActivityEventRecord>;
+  };
+  opportunityTask: {
+    count(args: {
+      where: {
+        opportunityId: string;
+        organizationId: string;
+      };
+    }): Promise<number>;
+    create(args: {
+      data: Prisma.OpportunityTaskUncheckedCreateInput;
+      select: typeof opportunityTaskAuditSelect;
+    }): Promise<OpportunityTaskAuditRecord>;
+    findFirstOrThrow(args: {
+      where: {
+        id: string;
+        organizationId: string;
+      };
+      select: typeof opportunityTaskAuditSelect;
+    }): Promise<OpportunityTaskAuditRecord>;
+    update(args: {
+      where: {
+        id: string;
+      };
+      data: Prisma.OpportunityTaskUncheckedUpdateInput;
+      select: typeof opportunityTaskAuditSelect;
+    }): Promise<OpportunityTaskAuditRecord>;
+    delete(args: {
+      where: {
+        id: string;
+      };
+      select: typeof opportunityTaskAuditSelect;
+    }): Promise<OpportunityTaskAuditRecord>;
   };
   opportunity: {
     create(args: {
@@ -261,6 +339,17 @@ export type OpportunityWriteTransactionClient = AuditLogWriter & {
       select: typeof sourceImportDecisionAuditSelect;
     }): Promise<SourceImportDecisionRecord>;
   };
+  user: {
+    findFirst(args: {
+      where: {
+        id: string;
+        organizationId: string;
+      };
+      select: {
+        id: true;
+      };
+    }): Promise<TaskAssigneeLookupRecord | null>;
+  };
 };
 
 export type OpportunityWriteClient = OpportunityWriteTransactionClient & {
@@ -302,6 +391,38 @@ export type UpdateOpportunityInput = {
 export type DeleteOpportunityInput = {
   actor: OpportunityWriteActor;
   opportunityId: string;
+  occurredAt?: Date;
+};
+
+export type CreateOpportunityTaskInput = {
+  actor: OpportunityWriteActor;
+  opportunityId: string;
+  title: string;
+  description?: string | null;
+  assigneeUserId?: string | null;
+  dueAt?: Date | null;
+  status?: OpportunityTaskStatus;
+  priority?: OpportunityTaskPriority;
+  metadata?: Prisma.InputJsonValue | null;
+  occurredAt?: Date;
+};
+
+export type UpdateOpportunityTaskInput = {
+  actor: OpportunityWriteActor;
+  taskId: string;
+  title?: string;
+  description?: string | null;
+  assigneeUserId?: string | null;
+  dueAt?: Date | null;
+  status?: OpportunityTaskStatus;
+  priority?: OpportunityTaskPriority;
+  metadata?: Prisma.InputJsonValue | null;
+  occurredAt?: Date;
+};
+
+export type DeleteOpportunityTaskInput = {
+  actor: OpportunityWriteActor;
+  taskId: string;
   occurredAt?: Date;
 };
 
@@ -554,6 +675,322 @@ export async function deleteOpportunity({
     });
 
     return deletedOpportunity;
+  });
+}
+
+export async function createOpportunityTask({
+  db,
+  input,
+}: {
+  db: OpportunityWriteClient;
+  input: CreateOpportunityTaskInput;
+}) {
+  return db.$transaction(async (tx) => {
+    const opportunity = await tx.opportunity.findFirstOrThrow({
+      where: {
+        id: input.opportunityId,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityAuditSelect,
+    });
+    const occurredAt = input.occurredAt ?? new Date();
+    const status = input.status ?? "NOT_STARTED";
+    const priority = input.priority ?? "MEDIUM";
+    const assigneeUserId = await resolveTaskAssigneeUserId({
+      tx,
+      organizationId: input.actor.organizationId,
+      userId: input.assigneeUserId,
+    });
+    const sortOrder = await tx.opportunityTask.count({
+      where: {
+        opportunityId: opportunity.id,
+        organizationId: opportunity.organizationId,
+      },
+    });
+    const lifecycleDates = buildTaskLifecycleDates({
+      status,
+      occurredAt,
+      existingStartedAt: null,
+      existingCompletedAt: null,
+    });
+
+    const task = await tx.opportunityTask.create({
+      data: {
+        organizationId: opportunity.organizationId,
+        opportunityId: opportunity.id,
+        createdByUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        assigneeUserId,
+        title: normalizeRequiredText(input.title, "Task title"),
+        description: normalizeOptionalText(input.description),
+        status,
+        priority,
+        dueAt: input.dueAt ?? null,
+        startedAt: lifecycleDates.startedAt,
+        completedAt: lifecycleDates.completedAt,
+        sortOrder,
+        metadata: toOptionalJson(input.metadata),
+      },
+      select: opportunityTaskAuditSelect,
+    });
+
+    await tx.opportunityActivityEvent.create({
+      data: {
+        actorIdentifier: input.actor.identifier ?? null,
+        actorType: input.actor.type,
+        actorUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        description: task.description,
+        eventType: "task_created",
+        metadata: {
+          assigneeUserId: task.assigneeUserId,
+          dueAt: serializeAuditValue(task.dueAt),
+          priority: task.priority,
+          status: task.status,
+        },
+        occurredAt,
+        opportunityId: opportunity.id,
+        organizationId: opportunity.organizationId,
+        relatedEntityId: task.id,
+        relatedEntityType: "task",
+        title: `Task created: ${task.title}`,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await recordAuditEvent({
+      db: tx,
+      event: {
+        organizationId: opportunity.organizationId,
+        actor: input.actor,
+        action: AUDIT_ACTIONS.opportunityTaskCreate,
+        target: {
+          type: "opportunity_task",
+          id: task.id,
+          display: task.title,
+        },
+        summary: `Created task ${task.title} on ${opportunity.title}.`,
+        metadata: {
+          opportunityId: opportunity.id,
+          opportunityTitle: opportunity.title,
+          assigneeUserId: task.assigneeUserId,
+          dueAt: serializeAuditValue(task.dueAt),
+          priority: task.priority,
+          status: task.status,
+        },
+        occurredAt,
+      },
+    });
+
+    return task;
+  });
+}
+
+export async function updateOpportunityTask({
+  db,
+  input,
+}: {
+  db: OpportunityWriteClient;
+  input: UpdateOpportunityTaskInput;
+}) {
+  return db.$transaction(async (tx) => {
+    const existingTask = await tx.opportunityTask.findFirstOrThrow({
+      where: {
+        id: input.taskId,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityTaskAuditSelect,
+    });
+
+    const nextStatus = input.status ?? existingTask.status;
+    const assigneeUserId =
+      input.assigneeUserId === undefined
+        ? existingTask.assigneeUserId
+        : await resolveTaskAssigneeUserId({
+            tx,
+            organizationId: input.actor.organizationId,
+            userId: input.assigneeUserId,
+          });
+    const occurredAt = input.occurredAt ?? new Date();
+    const lifecycleDates = buildTaskLifecycleDates({
+      status: nextStatus,
+      occurredAt,
+      existingStartedAt: existingTask.startedAt,
+      existingCompletedAt: existingTask.completedAt,
+    });
+    const nextValues = {
+      title:
+        input.title === undefined
+          ? existingTask.title
+          : normalizeRequiredText(input.title, "Task title"),
+      description:
+        input.description === undefined
+          ? existingTask.description
+          : normalizeOptionalText(input.description),
+      assigneeUserId,
+      dueAt: input.dueAt === undefined ? existingTask.dueAt : input.dueAt,
+      status: nextStatus,
+      priority: input.priority ?? existingTask.priority,
+      startedAt: lifecycleDates.startedAt,
+      completedAt: lifecycleDates.completedAt,
+      metadata: toOptionalJson(input.metadata),
+    };
+    const changedFields = {
+      title: buildFieldChange(existingTask.title, nextValues.title),
+      description: buildFieldChange(
+        existingTask.description,
+        nextValues.description,
+      ),
+      assigneeUserId: buildFieldChange(
+        existingTask.assigneeUserId,
+        nextValues.assigneeUserId,
+      ),
+      dueAt: buildFieldChange(existingTask.dueAt, nextValues.dueAt),
+      status: buildFieldChange(existingTask.status, nextValues.status),
+      priority: buildFieldChange(existingTask.priority, nextValues.priority),
+      startedAt: buildFieldChange(existingTask.startedAt, nextValues.startedAt),
+      completedAt: buildFieldChange(
+        existingTask.completedAt,
+        nextValues.completedAt,
+      ),
+    };
+    const auditChanges = Object.fromEntries(
+      Object.entries(changedFields).filter(([, value]) => value !== null),
+    );
+
+    const task = await tx.opportunityTask.update({
+      where: {
+        id: existingTask.id,
+      },
+      data: nextValues,
+      select: opportunityTaskAuditSelect,
+    });
+
+    if (Object.keys(auditChanges).length > 0) {
+      await tx.opportunityActivityEvent.create({
+        data: {
+          actorIdentifier: input.actor.identifier ?? null,
+          actorType: input.actor.type,
+          actorUserId:
+            input.actor.type === AuditActorType.USER
+              ? input.actor.userId ?? null
+              : null,
+          description: `Status ${existingTask.status} -> ${task.status}.`,
+          eventType: "task_updated",
+          metadata: {
+            changedFields: auditChanges,
+          },
+          occurredAt,
+          opportunityId: task.opportunity.id,
+          organizationId: task.organizationId,
+          relatedEntityId: task.id,
+          relatedEntityType: "task",
+          title: `Task updated: ${task.title}`,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      await recordAuditEvent({
+        db: tx,
+        event: {
+          organizationId: task.organizationId,
+          actor: input.actor,
+          action: AUDIT_ACTIONS.opportunityTaskUpdate,
+          target: {
+            type: "opportunity_task",
+            id: task.id,
+            display: task.title,
+          },
+          summary: `Updated task ${task.title} on ${task.opportunity.title}.`,
+          metadata: {
+            changedFields: auditChanges,
+            opportunityId: task.opportunity.id,
+            opportunityTitle: task.opportunity.title,
+          },
+          occurredAt,
+        },
+      });
+    }
+
+    return task;
+  });
+}
+
+export async function deleteOpportunityTask({
+  db,
+  input,
+}: {
+  db: OpportunityWriteClient;
+  input: DeleteOpportunityTaskInput;
+}) {
+  return db.$transaction(async (tx) => {
+    const existingTask = await tx.opportunityTask.findFirstOrThrow({
+      where: {
+        id: input.taskId,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityTaskAuditSelect,
+    });
+    const occurredAt = input.occurredAt ?? new Date();
+    const deletedTask = await tx.opportunityTask.delete({
+      where: {
+        id: existingTask.id,
+      },
+      select: opportunityTaskAuditSelect,
+    });
+
+    await tx.opportunityActivityEvent.create({
+      data: {
+        actorIdentifier: input.actor.identifier ?? null,
+        actorType: input.actor.type,
+        actorUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        description: deletedTask.description,
+        eventType: "task_deleted",
+        metadata: {
+          assigneeUserId: deletedTask.assigneeUserId,
+          dueAt: serializeAuditValue(deletedTask.dueAt),
+          priority: deletedTask.priority,
+          status: deletedTask.status,
+        },
+        occurredAt,
+        opportunityId: deletedTask.opportunity.id,
+        organizationId: deletedTask.organizationId,
+        relatedEntityId: deletedTask.id,
+        relatedEntityType: "task",
+        title: `Task deleted: ${deletedTask.title}`,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await recordAuditEvent({
+      db: tx,
+      event: {
+        organizationId: deletedTask.organizationId,
+        actor: input.actor,
+        action: AUDIT_ACTIONS.opportunityTaskDelete,
+        target: {
+          type: "opportunity_task",
+          id: deletedTask.id,
+          display: deletedTask.title,
+        },
+        summary: `Deleted task ${deletedTask.title} from ${deletedTask.opportunity.title}.`,
+        metadata: {
+          opportunityId: deletedTask.opportunity.id,
+          opportunityTitle: deletedTask.opportunity.title,
+          assigneeUserId: deletedTask.assigneeUserId,
+        },
+        occurredAt,
+      },
+    });
+
+    return deletedTask;
   });
 }
 
@@ -842,6 +1279,59 @@ function normalizeOptionalText(value: string | null | undefined) {
   const normalizedValue = value.trim();
 
   return normalizedValue.length === 0 ? null : normalizedValue;
+}
+
+async function resolveTaskAssigneeUserId({
+  tx,
+  organizationId,
+  userId,
+}: {
+  tx: OpportunityWriteTransactionClient;
+  organizationId: string;
+  userId: string | null | undefined;
+}) {
+  const normalizedUserId = normalizeOptionalText(userId);
+
+  if (!normalizedUserId) {
+    return null;
+  }
+
+  const assignee = await tx.user.findFirst({
+    where: {
+      id: normalizedUserId,
+      organizationId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!assignee) {
+    throw new Error("The selected task assignee is not available in this workspace.");
+  }
+
+  return assignee.id;
+}
+
+function buildTaskLifecycleDates({
+  status,
+  occurredAt,
+  existingStartedAt,
+  existingCompletedAt,
+}: {
+  status: OpportunityTaskStatus;
+  occurredAt: Date;
+  existingStartedAt: Date | null;
+  existingCompletedAt: Date | null;
+}) {
+  const shouldRetainStartedAt =
+    status === "IN_PROGRESS" || status === "BLOCKED" || status === "COMPLETED";
+
+  return {
+    startedAt: shouldRetainStartedAt ? existingStartedAt ?? occurredAt : null,
+    completedAt:
+      status === "COMPLETED" ? existingCompletedAt ?? occurredAt : null,
+  };
 }
 
 function buildOpportunityStageValidationContext(
