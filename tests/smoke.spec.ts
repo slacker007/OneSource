@@ -109,6 +109,26 @@ test("authenticated homepage smoke test", async ({ page }) => {
   await expect(
     page.getByText(/title: cloud operations/i),
   ).toBeVisible();
+  await page.getByRole("link", { name: /preview result/i }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: /source-result preview/i,
+    }),
+  ).toBeVisible();
+  const linkButton = page.getByRole("button", {
+    name: /link to selected opportunity/i,
+  });
+  if (await linkButton.isVisible()) {
+    await expect(
+      page.getByText(/strong duplicate/i).first(),
+    ).toBeVisible();
+    await linkButton.click();
+  }
+  await expect(
+    page.getByText(
+      /this source notice is already linked to the tracked opportunity army cloud operations recompete/i,
+    ),
+  ).toBeVisible();
   await page.getByRole("link", { name: /^Analytics/i }).click();
   await expect(page).toHaveURL(/\/analytics$/);
   await expect(

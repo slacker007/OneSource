@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { SourceSearch } from "./source-search";
+import type { SourceImportPreviewSnapshot } from "@/modules/source-integrations/source-import.service";
 import type { SourceSearchSnapshot } from "@/modules/source-integrations/source-search.service";
 
 const snapshot: SourceSearchSnapshot = {
@@ -139,9 +140,70 @@ const snapshot: SourceSearchSnapshot = {
   resultCountLabel: "Showing 1-1 of 1 mocked external results",
 };
 
+const previewSnapshot: SourceImportPreviewSnapshot = {
+  connector: {
+    id: "connector_sam",
+    sourceDisplayName: "SAM.gov",
+  },
+  alreadyTrackedOpportunity: null,
+  duplicateCandidates: [
+    {
+      opportunityId: "opp_army",
+      title: "Army Cloud Operations Recompete",
+      currentStageLabel: "Qualified",
+      originSourceSystem: "manual_entry",
+      matchKind: "strong_candidate",
+      matchReasons: [
+        "Opportunity title matches exactly.",
+        "Agency organization code matches.",
+        "NAICS code matches.",
+      ],
+      matchScore: 87,
+    },
+  ],
+  importPreview: {
+    rawPayload: {
+      noticeId: "W91QUZ-26-R-1042",
+      title: "Army Cloud Operations Recompete",
+    },
+    normalizedPayload: {
+      externalNoticeId: "W91QUZ-26-R-1042",
+      title: "Army Cloud Operations Recompete",
+    },
+    normalizationVersion: "mock-sam-gov.v1",
+    importPreviewPayload: {
+      canonicalOpportunity: {
+        title: "Army Cloud Operations Recompete",
+      },
+    },
+    sourceDescriptionUrl: "https://sam.gov/opp/W91QUZ-26-R-1042/view",
+    sourceDetailUrl: "https://api.sam.gov/prod/opportunities/v2/W91QUZ-26-R-1042",
+    sourceHashFingerprint:
+      "sam_gov:W91QUZ-26-R-1042:2026-04-08:541512:peo-enterprise-information-systems",
+    sourceUiUrl: "https://sam.gov/opp/W91QUZ-26-R-1042/view",
+    warnings: [
+      "Mock preview uses deterministic detail payloads until the live sam.gov detail adapter lands.",
+    ],
+  },
+  result: snapshot.results[0],
+  suggestedTargetOpportunityId: "opp_army",
+};
+
 describe("SourceSearch", () => {
-  it("renders the real external-search surface with translated request details", () => {
-    render(<SourceSearch snapshot={snapshot} />);
+  it("renders the preview panel with duplicate detection and import actions", () => {
+    render(
+      <SourceSearch
+        importAction={vi.fn(async () => undefined)}
+        importFeedback={{
+          error: null,
+          opportunityId: null,
+          status: null,
+        }}
+        previewSnapshot={previewSnapshot}
+        returnPath="/sources?keywords=cloud+operations&preview=sam_result_2"
+        snapshot={snapshot}
+      />,
+    );
 
     expect(
       screen.getByRole("heading", { name: /external source search/i }),
@@ -150,17 +212,31 @@ describe("SourceSearch", () => {
       screen.getByRole("table", { name: /external source search results/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/army cloud operations recompete/i),
+      screen.getByRole("heading", { name: /source-result preview/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/title: cloud operations/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /preview in p4-01b/i }),
-    ).toBeDisabled();
+      screen.getByText(/^duplicate candidates$/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /create tracked opportunity/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /link to selected opportunity/i }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/87 \/ 100/i)).toHaveLength(2);
   });
 
   it("renders validation guidance when the query is invalid", () => {
     render(
       <SourceSearch
+        importAction={vi.fn(async () => undefined)}
+        importFeedback={{
+          error: null,
+          opportunityId: null,
+          status: null,
+        }}
+        previewSnapshot={null}
+        returnPath="/sources"
         snapshot={{
           ...snapshot,
           executionMode: "invalid_query",

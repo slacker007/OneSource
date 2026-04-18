@@ -238,10 +238,22 @@ type OrganizationSourceSearchRecord = {
   sourceConnectorConfigs: SourceSearchConnectorSummary[];
 };
 
-type MockSamGovSearchResult = SourceSearchResultSummary & {
+export type MockSamGovSearchResult = SourceSearchResultSummary & {
   classificationCode: string | null;
   naicsCode: string | null;
   setAsideCode: string | null;
+};
+
+export type MockSamGovImportPreview = {
+  importPreviewPayload: Record<string, unknown>;
+  normalizedPayload: Record<string, unknown>;
+  normalizationVersion: string;
+  rawPayload: Record<string, unknown>;
+  sourceDescriptionUrl: string | null;
+  sourceDetailUrl: string | null;
+  sourceHashFingerprint: string;
+  sourceUiUrl: string;
+  warnings: string[];
 };
 
 const SAM_GOV_MOCK_RESULTS: MockSamGovSearchResult[] = [
@@ -338,6 +350,67 @@ const SAM_GOV_MOCK_RESULTS: MockSamGovSearchResult[] = [
     uiLink: "https://sam.gov/opp/N00189-26-R-0088/view",
   },
 ];
+
+const SAM_GOV_MOCK_NORMALIZATION_VERSION = "mock-sam-gov.v1";
+
+const SAM_GOV_DETAIL_OVERRIDES = {
+  sam_result_1: {
+    departmentName: "Department of the Air Force",
+    subtierName: "Air Combat Command",
+    officeCity: "Nellis AFB",
+    officeName: "99th Contracting Squadron",
+    resourceLinks: [
+      "https://sam.gov/opp/FA4861-26-R-0001/documents/performance-work-statement.pdf",
+      "https://sam.gov/opp/FA4861-26-R-0001/documents/questions-and-answers.xlsx",
+    ],
+    streetAddress: "4700 Grissom Ave",
+    streetAddress2: "Suite 100",
+  },
+  sam_result_2: {
+    departmentName: "Department of the Army",
+    subtierName: "PEO Enterprise Information Systems",
+    officeCity: "Fort Belvoir",
+    officeName: "Army Contracting Command",
+    resourceLinks: [
+      "https://sam.gov/opp/W91QUZ-26-R-1042/documents/draft-pws.pdf",
+    ],
+    streetAddress: "9800 Savage Road",
+    streetAddress2: null,
+  },
+  sam_result_3: {
+    departmentName: "Department of Veterans Affairs",
+    subtierName: "Technology Acquisition Center",
+    officeCity: "Austin",
+    officeName: "Department of Veterans Affairs",
+    resourceLinks: [
+      "https://sam.gov/opp/36C10B26Q0142/documents/performance-workbook.pdf",
+    ],
+    streetAddress: "6801 Metropolis Drive",
+    streetAddress2: null,
+  },
+  sam_result_4: {
+    departmentName: "Department of the Navy",
+    subtierName: "NAVSUP",
+    officeCity: "Norfolk",
+    officeName: "NAVSUP Fleet Logistics Center Norfolk",
+    resourceLinks: [
+      "https://sam.gov/opp/N00189-26-R-0088/documents/bridge-overview.pdf",
+    ],
+    streetAddress: "1968 Gilbert Street",
+    streetAddress2: null,
+  },
+} as const satisfies Record<
+  MockSamGovSearchResult["id"],
+  {
+    departmentName: string;
+    subtierName: string;
+    officeCity: string;
+    officeName: string;
+    resourceLinks: string[];
+    streetAddress: string;
+    streetAddress2: string | null;
+  }
+>;
 
 export function parseSourceSearchParams(
   searchParams: Record<string, string | string[] | undefined> | undefined,
@@ -547,6 +620,199 @@ export function executeMockSamGovSearch(query: CanonicalSourceSearchQuery) {
     outboundRequest,
     results: pagedResults,
     totalCount: filteredResults.length,
+  };
+}
+
+export function getMockSamGovSearchResultById(resultId: string) {
+  return SAM_GOV_MOCK_RESULTS.find((result) => result.id === resultId) ?? null;
+}
+
+export function buildMockSamGovImportPreview(
+  resultId: string,
+): MockSamGovImportPreview | null {
+  const result = getMockSamGovSearchResultById(resultId);
+
+  if (!result) {
+    return null;
+  }
+
+  const detail =
+    SAM_GOV_DETAIL_OVERRIDES[
+      result.id as keyof typeof SAM_GOV_DETAIL_OVERRIDES
+    ];
+  const postedDateRaw = formatDateForSamGov(result.postedDate);
+  const responseDeadlineRaw = result.responseDeadline
+    ? formatDateForSamGov(result.responseDeadline)
+    : null;
+  const pointOfContact = [
+    {
+      additionalInfo: {
+        content:
+          "Use the public opportunity page for amendments and procurement updates.",
+      },
+      email: buildMockContactEmail(result.organizationCode),
+      fullName: buildMockContactName(result.organizationName),
+      phone: buildMockContactPhone(result.noticeId),
+      title: "Contracting Officer",
+      type: "primary",
+    },
+  ];
+
+  const rawPayload = {
+    active: result.status === "active" ? "Yes" : "No",
+    additionalInfoLink: `${result.uiLink}/resources`,
+    archiveDate: result.status === "archived" ? postedDateRaw : null,
+    archiveType: result.status === "archived" ? "Archived Opportunity" : null,
+    baseType: result.procurementTypeLabel,
+    classificationCode: result.classificationCode,
+    department: detail.departmentName,
+    description: result.summary,
+    fullParentPathCode: result.organizationCode,
+    fullParentPathName: `${detail.departmentName} > ${detail.subtierName} > ${result.organizationName}`,
+    links: {
+      self: {
+        href: buildMockSamGovDetailUrl(result.noticeId),
+      },
+    },
+    naicsCode: result.naicsCode,
+    noticeId: result.noticeId,
+    office: detail.officeName,
+    officeAddress: {
+      city: detail.officeCity,
+      countryCode: "USA",
+      state: result.placeOfPerformanceState,
+      zip: result.placeOfPerformanceZip,
+    },
+    organizationCode: result.organizationCode,
+    organizationName: result.organizationName,
+    organizationType: "OFFICE",
+    placeOfPerformance: {
+      city: {
+        code: null,
+        name: detail.officeCity,
+      },
+      country: {
+        code: "USA",
+      },
+      state: {
+        code: result.placeOfPerformanceState,
+        name: getStateName(result.placeOfPerformanceState),
+      },
+      streetAddress: detail.streetAddress,
+      streetAddress2: detail.streetAddress2,
+      zip: result.placeOfPerformanceZip,
+    },
+    pointOfContact,
+    postedDate: postedDateRaw,
+    resourceLinks: detail.resourceLinks,
+    responseDeadLine: responseDeadlineRaw,
+    solicitationNumber: result.solicitationNumber,
+    status: result.status,
+    subTier: detail.subtierName,
+    title: result.title,
+    type: result.procurementTypeLabel,
+    typeOfSetAside: result.setAsideCode,
+    typeOfSetAsideDescription: result.setAsideDescription,
+    uiLink: result.uiLink,
+  } satisfies Record<string, unknown>;
+
+  const sourceHashFingerprint = buildMockSourceFingerprint(result);
+  const normalizedPayload = {
+    additionalInfoUrl: `${result.uiLink}/resources`,
+    agencyDepartmentName: detail.departmentName,
+    agencyOfficeName: result.organizationName,
+    agencyPathCode: result.organizationCode,
+    agencyPathName: `${detail.departmentName} > ${detail.subtierName} > ${result.organizationName}`,
+    agencySubtierName: detail.subtierName,
+    apiSelfLink: buildMockSamGovDetailUrl(result.noticeId),
+    archiveDateRaw: rawPayload.archiveDate,
+    archiveType: rawPayload.archiveType,
+    archivedAt:
+      result.status === "archived"
+        ? toIsoDateTime(result.postedDate, "T00:00:00.000Z")
+        : null,
+    canonicalFingerprint: sourceHashFingerprint,
+    classificationCode: result.classificationCode,
+    contacts: pointOfContact.map((contact) => ({
+      additionalInfoText: contact.additionalInfo.content,
+      contactType: contact.type,
+      email: contact.email,
+      fullName: contact.fullName,
+      phone: contact.phone,
+      title: contact.title,
+    })),
+    externalNoticeId: result.noticeId,
+    isActiveSourceRecord: result.status === "active",
+    isArchivedSourceRecord: result.status === "archived",
+    naicsCode: result.naicsCode,
+    normalizationVersion: SAM_GOV_MOCK_NORMALIZATION_VERSION,
+    normalizedAt: new Date().toISOString(),
+    officeCity: detail.officeCity,
+    officeCountryCode: "USA",
+    officePostalCode: result.placeOfPerformanceZip,
+    officeState: result.placeOfPerformanceState,
+    organizationType: "OFFICE",
+    placeOfPerformanceCityCode: null,
+    placeOfPerformanceCityName: detail.officeCity,
+    placeOfPerformanceCountryCode: "USA",
+    placeOfPerformancePostalCode: result.placeOfPerformanceZip,
+    placeOfPerformanceStateCode: result.placeOfPerformanceState,
+    placeOfPerformanceStateName: getStateName(result.placeOfPerformanceState),
+    placeOfPerformanceStreet1: detail.streetAddress,
+    placeOfPerformanceStreet2: detail.streetAddress2,
+    postedAt: toIsoDateTime(result.postedDate, "T00:00:00.000Z"),
+    postedDateRaw,
+    procurementBaseTypeLabel: result.procurementTypeLabel,
+    procurementTypeLabel: result.procurementTypeLabel,
+    resourceLinks: detail.resourceLinks.map((url) => ({
+      displayLabel: buildResourceLabel(url),
+      linkType: "resource_link",
+      url,
+    })),
+    responseDeadlineAt: result.responseDeadline
+      ? toIsoDateTime(result.responseDeadline, "T21:00:00.000Z")
+      : null,
+    responseDeadlineRaw,
+    setAsideCode: result.setAsideCode,
+    setAsideDescription: result.setAsideDescription,
+    solicitationNumber: result.solicitationNumber,
+    sourceRecordId: result.noticeId,
+    sourceStatus: result.status,
+    sourceSummaryText: result.summary,
+    sourceSummaryUrl: result.uiLink,
+    sourceSystem: result.sourceSystem,
+    title: result.title,
+    uiLink: result.uiLink,
+  } satisfies Record<string, unknown>;
+
+  return {
+    importPreviewPayload: {
+      canonicalOpportunity: {
+        currentStageKey: "identified",
+        currentStageLabel: "Identified",
+        externalNoticeId: result.noticeId,
+        leadAgency: result.organizationName,
+        originSourceSystem: result.sourceSystem,
+        title: result.title,
+      },
+      duplicateCheckKey: sourceHashFingerprint,
+      rawPayload,
+      warnings: [
+        "Mock preview uses deterministic detail payloads until the live sam.gov detail adapter lands.",
+        "Response deadlines are normalized from date-only mock fixtures and do not yet include upstream time-zone precision.",
+      ],
+    },
+    normalizedPayload,
+    normalizationVersion: SAM_GOV_MOCK_NORMALIZATION_VERSION,
+    rawPayload,
+    sourceDescriptionUrl: result.uiLink,
+    sourceDetailUrl: buildMockSamGovDetailUrl(result.noticeId),
+    sourceHashFingerprint,
+    sourceUiUrl: result.uiLink,
+    warnings: [
+      "Mock preview uses deterministic detail payloads until the live sam.gov detail adapter lands.",
+      "Response deadlines are normalized from date-only mock fixtures and do not yet include upstream time-zone precision.",
+    ],
   };
 }
 
@@ -987,6 +1253,70 @@ function formatDateForSamGov(isoDate: string) {
   const [year, month, day] = isoDate.split("-");
   return `${month}/${day}/${year}`;
 }
+
+function buildMockSamGovDetailUrl(noticeId: string) {
+  return `https://api.sam.gov/prod/opportunities/v2/${noticeId}`;
+}
+
+function buildMockSourceFingerprint(result: MockSamGovSearchResult) {
+  return [
+    result.sourceSystem,
+    result.noticeId,
+    result.postedDate,
+    result.naicsCode ?? "none",
+    slugifyFingerprintSegment(result.organizationName),
+  ].join(":");
+}
+
+function slugifyFingerprintSegment(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function buildMockContactEmail(organizationCode: string | null) {
+  const prefix =
+    organizationCode?.toLowerCase().replace(/[^a-z0-9]+/g, "") ?? "contracting";
+
+  return `${prefix}@agency.example.gov`;
+}
+
+function buildMockContactName(organizationName: string) {
+  const firstWord = organizationName.split(/\s+/)[0] ?? "Program";
+  return `${firstWord} Contracting Lead`;
+}
+
+function buildMockContactPhone(noticeId: string) {
+  const digits = noticeId.replace(/\D/g, "").slice(-4).padStart(4, "0");
+  return `555-010-${digits}`;
+}
+
+function toIsoDateTime(isoDate: string, timeSuffix: string) {
+  return `${isoDate}${timeSuffix}`;
+}
+
+function buildResourceLabel(url: string) {
+  const lastSegment = url.split("/").filter(Boolean).at(-1) ?? "resource";
+  return lastSegment
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getStateName(stateCode: string | null) {
+  if (!stateCode) {
+    return null;
+  }
+
+  return STATE_NAME_BY_CODE[stateCode] ?? stateCode;
+}
+
+const STATE_NAME_BY_CODE: Record<string, string> = {
+  NV: "Nevada",
+  TX: "Texas",
+  VA: "Virginia",
+};
 
 function assignIfPresent<
   Key extends keyof SamGovOutboundRequest["queryParams"],

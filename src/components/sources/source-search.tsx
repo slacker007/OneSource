@@ -8,15 +8,33 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type {
+  SourceImportDuplicateCandidate,
+  SourceImportPreviewSnapshot,
+} from "@/modules/source-integrations/source-import.service";
+import type {
   CanonicalSourceSearchQuery,
   SourceSearchSnapshot,
 } from "@/modules/source-integrations/source-search.service";
 
 type SourceSearchProps = {
+  importAction: (formData: FormData) => Promise<void>;
+  importFeedback: {
+    error: string | null;
+    opportunityId: string | null;
+    status: string | null;
+  };
+  previewSnapshot: SourceImportPreviewSnapshot | null;
+  returnPath: string;
   snapshot: SourceSearchSnapshot | null;
 };
 
-export function SourceSearch({ snapshot }: SourceSearchProps) {
+export function SourceSearch({
+  importAction,
+  importFeedback,
+  previewSnapshot,
+  returnPath,
+  snapshot,
+}: SourceSearchProps) {
   if (!snapshot) {
     return (
       <section className="space-y-4">
@@ -36,6 +54,8 @@ export function SourceSearch({ snapshot }: SourceSearchProps) {
     (connector) => connector.supportsSearch,
   );
   const emptyState = buildResultEmptyState(snapshot);
+  const sanitizedReturnPath = stripTransientImportParams(returnPath);
+  const importFeedbackBanner = buildImportFeedbackBanner(importFeedback);
 
   return (
     <section className="space-y-6">
@@ -53,8 +73,9 @@ export function SourceSearch({ snapshot }: SourceSearchProps) {
             <p className="text-muted max-w-3xl text-sm leading-7">
               Search configured opportunity sources with a typed canonical query,
               then translate that query into the explicit `sam.gov` request
-              shape. This slice keeps execution mocked so the UI, validation,
-              and connector boundaries are real before the live adapter lands.
+              shape. This slice now adds preview, duplicate review, and
+              server-side pull-into-pipeline actions while the live connector
+              remains mocked.
             </p>
           </div>
 
@@ -80,6 +101,8 @@ export function SourceSearch({ snapshot }: SourceSearchProps) {
           </div>
         </div>
       </header>
+
+      {importFeedbackBanner}
 
       {(snapshot.validationErrors.length > 0 ||
         snapshot.executionMode === "unsupported_connector") && (
@@ -513,14 +536,15 @@ export function SourceSearch({ snapshot }: SourceSearchProps) {
                 key: "actions",
                 header: "Actions",
                 className: "min-w-[12rem]",
-                cell: () => (
-                  <button
-                    className="border-border text-muted inline-flex min-h-11 w-full items-center justify-center rounded-full border bg-[rgba(15,28,31,0.03)] px-4 py-2 text-sm font-medium"
-                    disabled
-                    type="button"
+                cell: (result) => (
+                  <Link
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.06)] px-4 py-2 text-sm font-medium text-[rgb(19,78,68)]"
+                    href={buildPreviewHref(sanitizedReturnPath, result.id)}
                   >
-                    Preview in P4-01b
-                  </button>
+                    {previewSnapshot?.result.id === result.id
+                      ? "Preview open"
+                      : "Preview result"}
+                  </Link>
                 ),
               },
             ]}
@@ -531,6 +555,25 @@ export function SourceSearch({ snapshot }: SourceSearchProps) {
         </section>
 
         <section className="space-y-4">
+          {previewSnapshot ? (
+            <PreviewPanel
+              importAction={importAction}
+              previewSnapshot={previewSnapshot}
+              returnPath={buildPreviewHref(
+                sanitizedReturnPath,
+                previewSnapshot.result.id,
+              )}
+              searchExecutedAt={snapshot.executedAt}
+              searchQuery={snapshot.query}
+            />
+          ) : (
+            <EmptyState
+              className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]"
+              message="Select any result row to review raw payloads, normalized fields, duplicate candidates, and pull actions before the opportunity enters the tracked pipeline."
+              title="Result preview and import actions"
+            />
+          )}
+
           <div className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]">
             <p className="text-muted text-xs tracking-[0.22em] uppercase">
               Execution summary
@@ -613,6 +656,295 @@ export function SourceSearch({ snapshot }: SourceSearchProps) {
   );
 }
 
+function PreviewPanel({
+  importAction,
+  previewSnapshot,
+  returnPath,
+  searchExecutedAt,
+  searchQuery,
+}: {
+  importAction: (formData: FormData) => Promise<void>;
+  previewSnapshot: SourceImportPreviewSnapshot;
+  returnPath: string;
+  searchExecutedAt: string | null;
+  searchQuery: CanonicalSourceSearchQuery | null;
+}) {
+  const { alreadyTrackedOpportunity, connector, duplicateCandidates, importPreview, result } =
+    previewSnapshot;
+  const linkableCandidates = duplicateCandidates.filter(
+    (candidate) => candidate.matchKind !== "exact_source",
+  );
+
+  return (
+    <div className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <p className="text-muted text-xs tracking-[0.22em] uppercase">
+            Preview and import
+          </p>
+          <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
+            Source-result preview
+          </h2>
+          <p className="text-muted text-sm leading-6">
+            Review the mocked raw payload beside the normalized canonical
+            fields, then either create a tracked opportunity or link the source
+            result to an existing record.
+          </p>
+        </div>
+
+        <Link
+          className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+          href={clearPreviewHref(returnPath)}
+        >
+          Close preview
+        </Link>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Badge>{result.noticeId}</Badge>
+        <Badge tone="muted">{result.procurementTypeLabel}</Badge>
+        <Badge tone="warning">{result.status}</Badge>
+        <Badge tone="muted">{connector?.sourceDisplayName ?? "Connector unknown"}</Badge>
+      </div>
+
+      <h3 className="mt-4 text-lg font-semibold text-foreground">{result.title}</h3>
+      <p className="text-muted mt-2 text-sm leading-6">{result.summary}</p>
+
+      {alreadyTrackedOpportunity ? (
+        <div className="mt-5 rounded-[24px] border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.07)] px-4 py-4">
+          <p className="text-sm font-semibold text-[rgb(16,66,57)]">
+            This source notice is already linked to the tracked opportunity{" "}
+            {alreadyTrackedOpportunity.title}.
+          </p>
+          <p className="mt-2 text-sm text-[rgb(16,66,57)]">
+            Stage: {alreadyTrackedOpportunity.currentStageLabel ?? "Unstaged"}.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="mt-5 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4">
+        <p className="text-sm font-semibold text-foreground">
+          Duplicate candidates
+        </p>
+        {duplicateCandidates.length > 0 ? (
+          <div className="mt-4 space-y-3">
+            {duplicateCandidates.map((candidate) => (
+              <DuplicateCandidateCard
+                candidate={candidate}
+                key={candidate.opportunityId}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted mt-2 text-sm leading-6">
+            No likely duplicate opportunity crossed the current match threshold.
+            Creating a new tracked opportunity is currently the clean path.
+          </p>
+        )}
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+        <JsonPreviewCard
+          payload={importPreview.rawPayload}
+          title="Raw payload"
+        />
+        <JsonPreviewCard
+          payload={importPreview.normalizedPayload}
+          title="Normalized payload"
+        />
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-[rgba(188,112,35,0.18)] bg-[rgba(188,112,35,0.08)] px-4 py-4">
+        <p className="text-sm font-semibold text-[rgb(128,76,31)]">
+          Preview warnings
+        </p>
+        <ul className="mt-3 space-y-2 text-sm leading-6 text-[rgb(128,76,31)]">
+          {importPreview.warnings.map((warning) => (
+            <li key={warning}>• {warning}</li>
+          ))}
+        </ul>
+      </div>
+
+      {!alreadyTrackedOpportunity ? (
+        <div className="mt-5 space-y-4">
+          <form action={importAction} className="space-y-3 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4">
+            <input name="mode" type="hidden" value="CREATE_OPPORTUNITY" />
+            <input name="resultId" type="hidden" value={result.id} />
+            <input name="returnPath" type="hidden" value={returnPath} />
+            <input
+              name="searchExecutedAt"
+              type="hidden"
+              value={searchExecutedAt ?? ""}
+            />
+            <input
+              name="searchQuery"
+              type="hidden"
+              value={JSON.stringify(searchQuery)}
+            />
+            <p className="text-sm font-semibold text-foreground">
+              Create a new tracked opportunity
+            </p>
+            <p className="text-muted text-sm leading-6">
+              Use this when the source result is net new or the duplicate
+              candidates do not represent the same pursuit.
+            </p>
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
+              type="submit"
+            >
+              Create tracked opportunity
+            </button>
+          </form>
+
+          {linkableCandidates.length > 0 ? (
+            <form
+              action={importAction}
+              className="space-y-4 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4"
+            >
+              <input name="mode" type="hidden" value="LINK_TO_EXISTING" />
+              <input name="resultId" type="hidden" value={result.id} />
+              <input name="returnPath" type="hidden" value={returnPath} />
+              <input
+                name="searchExecutedAt"
+                type="hidden"
+                value={searchExecutedAt ?? ""}
+              />
+              <input
+                name="searchQuery"
+                type="hidden"
+                value={JSON.stringify(searchQuery)}
+              />
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Link to an existing tracked opportunity
+                </p>
+                <p className="text-muted mt-1 text-sm leading-6">
+                  Use the duplicate analysis to attach this source result to an
+                  already-tracked pursuit instead of creating a second canonical
+                  record.
+                </p>
+              </div>
+
+              <fieldset className="space-y-3">
+                <legend className="sr-only">Duplicate opportunity choices</legend>
+                {linkableCandidates.map((candidate, index) => (
+                  <label
+                    className="flex gap-3 rounded-[20px] border border-[rgba(15,28,31,0.08)] bg-white px-4 py-3"
+                    htmlFor={`target-${candidate.opportunityId}`}
+                    key={candidate.opportunityId}
+                  >
+                    <input
+                      defaultChecked={index === 0}
+                      id={`target-${candidate.opportunityId}`}
+                      name="targetOpportunityId"
+                      type="radio"
+                      value={candidate.opportunityId}
+                    />
+                    <span className="space-y-2">
+                      <span className="block font-medium text-foreground">
+                        {candidate.title}
+                      </span>
+                      <span className="flex flex-wrap gap-2">
+                        <Badge tone="muted">
+                          {formatMatchLabel(candidate.matchKind)}
+                        </Badge>
+                        <Badge>{candidate.matchScore} / 100</Badge>
+                        <Badge tone="warning">
+                          {candidate.currentStageLabel ?? "Unstaged"}
+                        </Badge>
+                      </span>
+                      <span className="block text-xs leading-5 text-muted">
+                        {candidate.matchReasons.join(" ")}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.08)] px-4 py-2 text-sm font-medium text-[rgb(19,78,68)]"
+                type="submit"
+              >
+                Link to selected opportunity
+              </button>
+            </form>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DuplicateCandidateCard({
+  candidate,
+}: {
+  candidate: SourceImportDuplicateCandidate;
+}) {
+  return (
+    <div className="rounded-[20px] border border-[rgba(15,28,31,0.08)] bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="font-medium text-foreground">{candidate.title}</p>
+        <Badge tone="muted">{formatMatchLabel(candidate.matchKind)}</Badge>
+        <Badge>{candidate.matchScore} / 100</Badge>
+      </div>
+      <p className="text-muted mt-2 text-sm">
+        Stage: {candidate.currentStageLabel ?? "Unstaged"} · Origin:{" "}
+        {candidate.originSourceSystem ?? "unknown"}
+      </p>
+      <ul className="mt-3 space-y-1 text-sm leading-6 text-foreground">
+        {candidate.matchReasons.map((reason) => (
+          <li key={reason}>• {reason}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function JsonPreviewCard({
+  payload,
+  title,
+}: {
+  payload: Record<string, unknown>;
+  title: string;
+}) {
+  return (
+    <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4">
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      <pre className="mt-3 overflow-x-auto rounded-[18px] bg-[rgb(15,28,31)] p-4 text-xs leading-6 text-[rgb(233,244,241)]">
+        {JSON.stringify(payload, null, 2)}
+      </pre>
+    </div>
+  );
+}
+
+function buildImportFeedbackBanner(importFeedback: SourceSearchProps["importFeedback"]) {
+  if (importFeedback.error) {
+    return (
+      <ErrorState
+        message={importFeedback.error}
+        title="Source import could not be applied"
+      />
+    );
+  }
+
+  if (!importFeedback.status) {
+    return null;
+  }
+
+  const statusMessage = formatImportStatus(importFeedback.status);
+
+  return (
+    <div className="rounded-[24px] border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.07)] px-5 py-4">
+      <p className="text-sm font-semibold text-[rgb(16,66,57)]">
+        {statusMessage}
+      </p>
+      <p className="mt-2 text-sm text-[rgb(16,66,57)]">
+        Opportunity reference: {importFeedback.opportunityId ?? "Unavailable"}.
+      </p>
+    </div>
+  );
+}
+
 function buildResultEmptyState(snapshot: SourceSearchSnapshot) {
   if (snapshot.executionMode === "invalid_query") {
     return (
@@ -678,9 +1010,43 @@ function buildActiveFilterBadges(query: CanonicalSourceSearchQuery) {
   return badges;
 }
 
-function formatExecutionMode(
-  mode: SourceSearchSnapshot["executionMode"],
-) {
+function buildPreviewHref(returnPath: string, resultId: string) {
+  const [pathname, existingQuery = ""] = returnPath.split("?");
+  const params = new URLSearchParams(existingQuery);
+
+  params.set("preview", resultId);
+  params.delete("importStatus");
+  params.delete("importError");
+  params.delete("opportunityId");
+
+  const queryString = params.toString();
+  return queryString ? `${pathname}?${queryString}` : pathname;
+}
+
+function clearPreviewHref(returnPath: string) {
+  const [pathname, existingQuery = ""] = returnPath.split("?");
+  const params = new URLSearchParams(existingQuery);
+
+  params.delete("preview");
+  params.delete("importStatus");
+  params.delete("importError");
+  params.delete("opportunityId");
+
+  const queryString = params.toString();
+  return queryString ? `${pathname}?${queryString}` : pathname;
+}
+
+function stripTransientImportParams(returnPath: string) {
+  return clearPreviewHref(buildPreviewHref(returnPath, getPreviewId(returnPath) ?? ""));
+}
+
+function getPreviewId(returnPath: string) {
+  const [, existingQuery = ""] = returnPath.split("?");
+  const params = new URLSearchParams(existingQuery);
+  return params.get("preview");
+}
+
+function formatExecutionMode(mode: SourceSearchSnapshot["executionMode"]) {
   switch (mode) {
     case "mocked_sam_gov":
       return "Mocked search";
@@ -693,23 +1059,49 @@ function formatExecutionMode(
   }
 }
 
+function formatImportStatus(status: string) {
+  switch (status) {
+    case "created":
+      return "Created a tracked opportunity from the selected external result.";
+    case "linked":
+      return "Linked the selected external result to an existing tracked opportunity.";
+    case "already_tracked":
+      return "This external result was already linked to a tracked opportunity.";
+    default:
+      return "Source import updated.";
+  }
+}
+
+function formatMatchLabel(matchKind: SourceImportDuplicateCandidate["matchKind"]) {
+  switch (matchKind) {
+    case "exact_source":
+      return "Exact source match";
+    case "strong_candidate":
+      return "Strong duplicate";
+    case "possible_candidate":
+      return "Possible duplicate";
+    default:
+      return "Candidate";
+  }
+}
+
 function formatShortDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
     timeZone: "UTC",
+    year: "numeric",
   }).format(new Date(`${value}T00:00:00.000Z`));
 }
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en-US", {
-    month: "short",
     day: "numeric",
-    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    month: "short",
     timeZone: "UTC",
+    year: "numeric",
   }).format(new Date(value));
 }
 
