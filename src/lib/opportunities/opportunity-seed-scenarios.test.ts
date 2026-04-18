@@ -31,6 +31,60 @@ describe("buildOpportunitySeedScenario", () => {
     );
   });
 
+  it("provides a structured organization scoring profile for later deterministic scoring", () => {
+    const scenario = buildOpportunitySeedScenario();
+
+    expect(scenario.organizationScoringProfile).toMatchObject({
+      activeScoringModelKey: "default_capture_v1",
+      activeScoringModelVersion: "2026-04-18",
+      targetNaicsCodes: expect.arrayContaining(["541512", "541519"]),
+      priorityAgencyKeys: expect.arrayContaining([
+        "air-force-acc-99-cons",
+        "army-peo-eis",
+      ]),
+      relationshipAgencyKeys: expect.arrayContaining([
+        "army-peo-eis",
+        "va-technology-acquisition-center",
+      ]),
+    });
+
+    expect(scenario.organizationScoringProfile.capabilities).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "cloud-platform-engineering",
+          category: "cloud_operations",
+        }),
+        expect.objectContaining({
+          key: "zero-trust-cyber-operations",
+          category: "cybersecurity",
+        }),
+      ]),
+    );
+    expect(scenario.organizationScoringProfile.certifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "iso-27001",
+          code: "ISO-27001",
+        }),
+      ]),
+    );
+    expect(scenario.organizationScoringProfile.selectedVehicleKeys).toEqual(
+      expect.arrayContaining(["oasis-plus-unrestricted", "gsa-mas-it"]),
+    );
+    expect(scenario.organizationScoringProfile.scoringCriteria).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "capability_fit",
+          weight: "30.00",
+        }),
+        expect.objectContaining({
+          key: "risk",
+          weight: "10.00",
+        }),
+      ]),
+    );
+  });
+
   it("provides one imported opportunity with agency, vehicle, competitor, search, sync, and promotion lineage", () => {
     const scenario = buildOpportunitySeedScenario();
 

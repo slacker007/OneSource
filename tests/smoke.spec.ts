@@ -149,6 +149,17 @@ test("authenticated homepage smoke test", async ({ page }) => {
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
+      name: /organization scoring profile/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", {
+      name: /weighted scoring criteria/i,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(/default_capture_v1/i)).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
       name: /assigned roles/i,
     }),
   ).toBeVisible();

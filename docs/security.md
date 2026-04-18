@@ -9,6 +9,7 @@ This document records the current security posture that exists in the repo today
 The current repo includes the first live authentication, authorization, audit-emission, and admin-visibility slices on top of the earlier auth and audit persistence baseline plus the connector-metadata and workspace-persistence baselines. Security-relevant implementation present today:
 
 - Prisma-managed tables for organizations, users, roles, accounts, sessions, verification tokens, and audit logs
+- Prisma-managed organization scoring-input tables for organization profiles, capabilities, certifications, selected profile vehicles, and weighted scoring criteria
 - Prisma-managed opportunity lineage tables for agencies, vehicles, opportunities, competitors, connector configs, saved searches, search executions, sync runs, retained source records, source child records, and import decisions
 - Prisma-managed workspace tables for tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, and activity events
 - Auth.js credentials-provider sign-in backed by seeded local users
@@ -17,7 +18,7 @@ The current repo includes the first live authentication, authorization, audit-em
 - shared role-to-permission policy helpers that can run in both server and client code
 - server-side protected-route gating in the `(app)` route group
 - server-side permission guards for restricted routes and mutating surfaces such as `/settings`, `/sources`, `/opportunities/new`, and `/opportunities/[opportunityId]/edit`, with a public permission-denied route
-- a read-only admin console that lets admins inspect current role assignments and recent audit events without touching the database directly
+- a read-only admin console that lets admins inspect current role assignments, recent audit events, and the seeded organization scoring profile without touching the database directly
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
 - shared audited opportunity write services for create, update, delete, import-decision, stage-transition, and bid-decision flows

@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 5 collaboration and reminder baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 6 scoring-input baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live task creation, live milestone creation, guarded note creation, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` external-search flow with mocked connector responses plus preview-and-link import behavior, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live task creation, live milestone creation, guarded note creation, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` external-search flow with mocked connector responses plus preview-and-link import behavior, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with scoring-profile visibility, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -54,7 +54,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - open a source-result preview, inspect duplicate detection, and either link the result into the existing tracked opportunity or confirm the already-linked state on reruns
 - navigate from the desktop shell into another primary section with the top-bar search placeholder still visible
 - open the small-screen drawer and navigate into another primary section successfully
-- allow the admin user through the restricted `/settings` route and render both assigned-role visibility plus recent audit activity
+- allow the admin user through the restricted `/settings` route and render the seeded organization scoring profile plus assigned-role visibility and recent audit activity
 - redirect the seeded viewer user from `/settings` to `/forbidden`
 
 For the current audit slice, targeted unit verification should confirm:
@@ -68,6 +68,12 @@ For the current admin-console slice, targeted unit verification should confirm:
 - the admin repository maps organization-scoped users with assigned roles into typed read models
 - the admin repository maps recent audit rows into stable display fields without exposing raw Prisma records to the page
 - the admin console component renders both populated and missing-organization states
+
+For the current Phase 6 scoring-input slice, targeted verification should confirm:
+
+- the deterministic seed scenario exposes one organization scoring profile with capabilities, certifications, selected vehicles, target agencies, target NAICS codes, and weighted criteria
+- the admin repository maps the organization scoring profile into typed display fields without leaking raw Prisma payloads into the page layer
+- the admin console renders the scoring-profile sections and weighted-criteria table on the guarded `/settings` route
 
 For the current Phase 3 dashboard slice, targeted unit verification should confirm:
 

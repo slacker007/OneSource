@@ -785,6 +785,137 @@ async function main() {
     vehiclesByKey.set(vehicle.key, persistedVehicle);
   }
 
+  const scoringProfile = scenario.organizationScoringProfile;
+  const priorityAgencyIds = scoringProfile.priorityAgencyKeys.map((agencyKey) => {
+    const agency = agenciesByKey.get(agencyKey);
+
+    if (!agency) {
+      throw new Error(`Missing seeded priority agency for key ${agencyKey}`);
+    }
+
+    return agency.id;
+  });
+  const relationshipAgencyIds = scoringProfile.relationshipAgencyKeys.map(
+    (agencyKey) => {
+      const agency = agenciesByKey.get(agencyKey);
+
+      if (!agency) {
+        throw new Error(`Missing seeded relationship agency for key ${agencyKey}`);
+      }
+
+      return agency.id;
+    },
+  );
+
+  const organizationProfile = await prisma.organizationProfile.upsert({
+    where: {
+      organizationId: organization.id,
+    },
+    update: {
+      overview: scoringProfile.overview,
+      strategicFocus: scoringProfile.strategicFocus,
+      targetNaicsCodes: scoringProfile.targetNaicsCodes,
+      priorityAgencyIds,
+      relationshipAgencyIds,
+      activeScoringModelKey: scoringProfile.activeScoringModelKey,
+      activeScoringModelVersion: scoringProfile.activeScoringModelVersion,
+    },
+    create: {
+      organizationId: organization.id,
+      overview: scoringProfile.overview,
+      strategicFocus: scoringProfile.strategicFocus,
+      targetNaicsCodes: scoringProfile.targetNaicsCodes,
+      priorityAgencyIds,
+      relationshipAgencyIds,
+      activeScoringModelKey: scoringProfile.activeScoringModelKey,
+      activeScoringModelVersion: scoringProfile.activeScoringModelVersion,
+    },
+  });
+
+  await prisma.organizationCapability.deleteMany({
+    where: {
+      organizationProfileId: organizationProfile.id,
+    },
+  });
+  await prisma.organizationCertification.deleteMany({
+    where: {
+      organizationProfileId: organizationProfile.id,
+    },
+  });
+  await prisma.organizationProfileVehicle.deleteMany({
+    where: {
+      organizationProfileId: organizationProfile.id,
+    },
+  });
+  await prisma.organizationScoringCriterion.deleteMany({
+    where: {
+      organizationProfileId: organizationProfile.id,
+    },
+  });
+
+  await prisma.organizationCapability.createMany({
+    data: scoringProfile.capabilities.map((capability, index) => ({
+      organizationId: organization.id,
+      organizationProfileId: organizationProfile.id,
+      capabilityKey: capability.key,
+      capabilityLabel: capability.label,
+      capabilityCategory: capability.category ?? null,
+      capabilityKeywords: capability.keywords,
+      description: capability.description ?? null,
+      sortOrder: index,
+      isActive: true,
+    })),
+  });
+
+  await prisma.organizationCertification.createMany({
+    data: scoringProfile.certifications.map((certification, index) => ({
+      organizationId: organization.id,
+      organizationProfileId: organizationProfile.id,
+      certificationKey: certification.key,
+      certificationLabel: certification.label,
+      certificationCode: certification.code ?? null,
+      issuingBody: certification.issuingBody ?? null,
+      description: certification.description ?? null,
+      sortOrder: index,
+      isActive: true,
+    })),
+  });
+
+  for (const [index, vehicleKey] of scoringProfile.selectedVehicleKeys.entries()) {
+    const vehicle = vehiclesByKey.get(vehicleKey);
+
+    if (!vehicle) {
+      throw new Error(`Missing seeded scoring vehicle for key ${vehicleKey}`);
+    }
+
+    await prisma.organizationProfileVehicle.create({
+      data: {
+        organizationProfileId: organizationProfile.id,
+        organizationId: organization.id,
+        vehicleId: vehicle.id,
+        isPreferred: index === 0,
+        usageNotes:
+          index === 0
+            ? "Default preferred vehicle for high-fit pursuits."
+            : "Retained as active vehicle coverage for scoring and down-select.",
+        sortOrder: index,
+      },
+    });
+  }
+
+  await prisma.organizationScoringCriterion.createMany({
+    data: scoringProfile.scoringCriteria.map((criterion, index) => ({
+      organizationId: organization.id,
+      organizationProfileId: organizationProfile.id,
+      factorKey: criterion.key,
+      factorLabel: criterion.label,
+      description: criterion.description ?? null,
+      weight: criterion.weight,
+      sortOrder: index,
+      isActive: true,
+    })),
+  });
+
   const competitorsByKey = new Map();
 
   for (const competitor of scenario.competitors) {
@@ -1396,6 +1527,14 @@ async function main() {
         seededTeamMemberEmails: scenario.teamMembers.map((member) => member.email),
         seededAgencyCount: scenario.agencies.length,
         seededOpportunityCount: 1 + scenario.manualOpportunities.length,
+        seededProfileCapabilityCount:
+          scenario.organizationScoringProfile.capabilities.length,
+        seededProfileCertificationCount:
+          scenario.organizationScoringProfile.certifications.length,
+        seededProfileVehicleCount:
+          scenario.organizationScoringProfile.selectedVehicleKeys.length,
+        seededScoringCriterionCount:
+          scenario.organizationScoringProfile.scoringCriteria.length,
         seededOpportunityTitles: [
           importedOpportunity.title,
           ...scenario.manualOpportunities.map(

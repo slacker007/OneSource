@@ -168,6 +168,157 @@ const CONTRACT_VEHICLES = [
   },
 ];
 
+const ORGANIZATION_SCORING_PROFILE = {
+  overview:
+    "Mid-sized federal integrator focused on cloud modernization, cyber operations, data platforms, and workflow automation for defense and civilian mission owners.",
+  strategicFocus:
+    "Prioritize Air Force, Army, and VA digital-transformation pursuits where incumbent risk is manageable, contract-vehicle access already exists, and the team can shape requirements before proposal release.",
+  targetNaicsCodes: ["541512", "541519", "518210", "541611"],
+  priorityAgencyKeys: [
+    "air-force-acc-99-cons",
+    "army-peo-eis",
+    "va-technology-acquisition-center",
+  ],
+  relationshipAgencyKeys: [
+    "army-peo-eis",
+    "va-technology-acquisition-center",
+  ],
+  activeScoringModelKey: "default_capture_v1",
+  activeScoringModelVersion: "2026-04-18",
+  capabilities: [
+    {
+      key: "cloud-platform-engineering",
+      label: "Cloud platform engineering",
+      category: "cloud_operations",
+      keywords: [
+        "cloud operations",
+        "platform engineering",
+        "aws",
+        "azure",
+        "container platform",
+      ],
+      description:
+        "Design, migration, and operations support for secure federal cloud environments.",
+    },
+    {
+      key: "data-ai-modernization",
+      label: "Data and AI modernization",
+      category: "data_ai",
+      keywords: [
+        "data platform",
+        "knowledge management",
+        "analytics",
+        "automation",
+        "artificial intelligence",
+      ],
+      description:
+        "Mission data pipelines, search, analytics, and workflow automation across legacy environments.",
+    },
+    {
+      key: "zero-trust-cyber-operations",
+      label: "Zero-trust cyber operations",
+      category: "cybersecurity",
+      keywords: [
+        "zero trust",
+        "security operations",
+        "identity",
+        "compliance",
+        "continuous monitoring",
+      ],
+      description:
+        "Cyber defense, identity modernization, and continuous-monitoring support for regulated programs.",
+    },
+    {
+      key: "enterprise-service-delivery",
+      label: "Enterprise service delivery",
+      category: "service_management",
+      keywords: [
+        "service desk",
+        "it service management",
+        "workflow automation",
+        "process improvement",
+      ],
+      description:
+        "Operational transition, service management, and delivery-governance support for enterprise programs.",
+    },
+  ],
+  certifications: [
+    {
+      key: "iso-27001",
+      label: "ISO/IEC 27001",
+      code: "ISO-27001",
+      issuingBody: "International Organization for Standardization",
+      description:
+        "Information-security management baseline used in customer trust and risk reviews.",
+    },
+    {
+      key: "iso-20000",
+      label: "ISO/IEC 20000",
+      code: "ISO-20000",
+      issuingBody: "International Organization for Standardization",
+      description:
+        "Service-management certification aligned to managed operations and transition work.",
+    },
+    {
+      key: "cmmi-svc-level-3",
+      label: "CMMI Services Level 3",
+      code: "CMMI-SVC-3",
+      issuingBody: "ISACA",
+      description:
+        "Process-maturity evidence used in proposal qualification and execution-risk reviews.",
+    },
+  ],
+  selectedVehicleKeys: [
+    "oasis-plus-unrestricted",
+    "gsa-mas-it",
+    "seaport-nxg",
+  ],
+  scoringCriteria: [
+    {
+      key: "capability_fit",
+      label: "Capability fit",
+      weight: "30.00",
+      description:
+        "Measures how closely the opportunity scope matches the organization capability inventory.",
+    },
+    {
+      key: "strategic_alignment",
+      label: "Strategic alignment",
+      weight: "20.00",
+      description:
+        "Rewards opportunities aligned to target agencies, NAICS codes, and stated growth priorities.",
+    },
+    {
+      key: "vehicle_access",
+      label: "Vehicle access",
+      weight: "15.00",
+      description:
+        "Scores the ability to pursue on an existing preferred vehicle without a partner dependency.",
+    },
+    {
+      key: "relationship_strength",
+      label: "Relationship strength",
+      weight: "15.00",
+      description:
+        "Reflects current account familiarity and seeded customer relationship coverage for the agency.",
+    },
+    {
+      key: "schedule_realism",
+      label: "Schedule realism",
+      weight: "10.00",
+      description:
+        "Assesses whether the timeline supports a credible capture and proposal response path.",
+    },
+    {
+      key: "risk",
+      label: "Risk",
+      weight: "10.00",
+      description:
+        "Represents risk posture after considering incumbent pressure, ambiguity, and delivery complexity.",
+    },
+  ],
+};
+
 const COMPETITORS = [
   {
     key: "vector-analytics",
@@ -2371,6 +2522,7 @@ export function buildOpportunitySeedScenario() {
       NAVY_AGENCY,
     ],
     vehicles: CONTRACT_VEHICLES,
+    organizationScoringProfile: ORGANIZATION_SCORING_PROFILE,
     competitors: COMPETITORS,
     sourceSavedSearch: SAM_GOV_SOURCE_SEARCH,
     sourceSearchExecution: {

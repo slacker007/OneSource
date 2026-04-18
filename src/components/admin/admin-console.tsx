@@ -46,16 +46,18 @@ export function AdminConsole({ sessionUser, snapshot }: AdminConsoleProps) {
           Admin console
         </h1>
         <p className="text-muted max-w-3xl text-sm leading-7">
-          Review assigned roles and recent audit activity for{" "}
+          Review assigned roles, recent audit activity, and the current seeded
+          scoring inputs for{" "}
           <span className="text-foreground font-medium">
             {snapshot.organizationName}
           </span>
           . This surface now reuses the shared badge, table, empty-state, and
-          error-state primitives established in `P3-02`.
+          error-state primitives established in `P3-02` while exposing the
+          structured organization profile needed for deterministic scoring.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <SummaryCard
           label="Active admin"
           value={viewerLabel}
@@ -76,9 +78,268 @@ export function AdminConsole({ sessionUser, snapshot }: AdminConsoleProps) {
           value={String(snapshot.totalAuditLogCount)}
           supportingText="Append-only records in the audit log"
         />
+        <SummaryCard
+          label="Capabilities"
+          value={String(snapshot.scoringProfile?.capabilities.length ?? 0)}
+          supportingText="Seeded profile capabilities"
+        />
+        <SummaryCard
+          label="Criteria"
+          value={String(snapshot.scoringProfile?.scoringCriteria.length ?? 0)}
+          supportingText="Weighted scoring factors"
+        />
       </div>
 
       <div className="grid gap-6">
+        <section
+          aria-labelledby="scoring-profile-heading"
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <p className="text-muted text-xs tracking-[0.24em] uppercase">
+              Scoring inputs
+            </p>
+            <h2
+              className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
+              id="scoring-profile-heading"
+            >
+              Organization scoring profile
+            </h2>
+            <p className="text-muted text-sm leading-6">
+              `P6-01` seeds the structured scoring inputs here so later scoring
+              and decision-support slices can consume durable profile data
+              instead of hard-coded assumptions.
+            </p>
+          </div>
+
+          {snapshot.scoringProfile ? (
+            <div className="space-y-6">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <article className="border-border rounded-[24px] border bg-white p-5">
+                  <p className="text-muted text-xs tracking-[0.22em] uppercase">
+                    Overview
+                  </p>
+                  <p className="text-muted mt-3 text-sm leading-7">
+                    {snapshot.scoringProfile.overview ??
+                      "No organization overview has been recorded yet."}
+                  </p>
+                </article>
+
+                <article className="border-border rounded-[24px] border bg-white p-5">
+                  <p className="text-muted text-xs tracking-[0.22em] uppercase">
+                    Strategic focus
+                  </p>
+                  <p className="text-muted mt-3 text-sm leading-7">
+                    {snapshot.scoringProfile.strategicFocus ??
+                      "No strategic focus statement has been recorded yet."}
+                  </p>
+                </article>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <ProfileBadgeGroup
+                  badges={snapshot.scoringProfile.targetNaicsCodes}
+                  emptyLabel="No target NAICS codes configured"
+                  title={`Model ${snapshot.scoringProfile.activeScoringModelKey} / ${snapshot.scoringProfile.activeScoringModelVersion}`}
+                />
+                <ProfileBadgeGroup
+                  badges={snapshot.scoringProfile.priorityAgencies.map(
+                    (agency) => agency.label,
+                  )}
+                  emptyLabel="No priority agencies configured"
+                  title="Priority agencies"
+                />
+                <ProfileBadgeGroup
+                  badges={snapshot.scoringProfile.relationshipAgencies.map(
+                    (agency) => agency.label,
+                  )}
+                  emptyLabel="No relationship agencies configured"
+                  title="Relationship coverage"
+                />
+                <ProfileBadgeGroup
+                  badges={snapshot.scoringProfile.selectedVehicles
+                    .filter((vehicle) => vehicle.isPreferred)
+                    .map((vehicle) => vehicle.code)}
+                  emptyLabel="No preferred vehicles configured"
+                  title="Preferred vehicles"
+                />
+              </div>
+
+              <DataTable
+                ariaLabel="Organization capabilities"
+                columns={[
+                  {
+                    key: "capability",
+                    header: "Capability",
+                    cell: (capability) => (
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {capability.label}
+                        </p>
+                        <p className="text-muted text-xs">{capability.key}</p>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "category",
+                    header: "Category",
+                    cell: (capability) => (
+                      <Badge tone="muted">
+                        {capability.category
+                          ? formatEnumLabel(capability.category)
+                          : "Uncategorized"}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: "keywords",
+                    header: "Keywords",
+                    cell: (capability) => (
+                      <div className="flex flex-wrap gap-2">
+                        {capability.keywords.map((keyword) => (
+                          <Badge key={`${capability.id}-${keyword}`} tone="muted">
+                            {keyword}
+                          </Badge>
+                        ))}
+                      </div>
+                    ),
+                  },
+                ]}
+                emptyState={
+                  <EmptyState
+                    message="Seed or configure organization capabilities before deterministic scoring is enabled."
+                    title="No capabilities are configured yet"
+                  />
+                }
+                getRowKey={(capability) => capability.id}
+                rows={snapshot.scoringProfile.capabilities}
+              />
+
+              <div className="grid gap-6 xl:grid-cols-2">
+                <DataTable
+                  ariaLabel="Organization certifications"
+                  columns={[
+                    {
+                      key: "certification",
+                      header: "Certification",
+                      cell: (certification) => (
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {certification.label}
+                          </p>
+                          <p className="text-muted text-xs">
+                            {certification.code ?? certification.key}
+                          </p>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: "issuer",
+                      header: "Issuer",
+                      cell: (certification) =>
+                        certification.issuingBody ?? "Not specified",
+                    },
+                  ]}
+                  emptyState={
+                    <EmptyState
+                      message="Certifications will appear here once the scoring profile records them."
+                      title="No certifications are configured yet"
+                    />
+                  }
+                  getRowKey={(certification) => certification.id}
+                  rows={snapshot.scoringProfile.certifications}
+                />
+
+                <DataTable
+                  ariaLabel="Organization scoring vehicles"
+                  columns={[
+                    {
+                      key: "vehicle",
+                      header: "Vehicle",
+                      cell: (vehicle) => (
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {vehicle.name}
+                          </p>
+                          <p className="text-muted text-xs">{vehicle.code}</p>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: "access",
+                      header: "Access",
+                      cell: (vehicle) => (
+                        <div className="flex flex-wrap gap-2">
+                          <Badge tone={vehicle.isPreferred ? "accent" : "muted"}>
+                            {vehicle.isPreferred ? "Preferred" : "Active"}
+                          </Badge>
+                          {vehicle.vehicleType ? (
+                            <Badge tone="muted">
+                              {formatEnumLabel(vehicle.vehicleType)}
+                            </Badge>
+                          ) : null}
+                        </div>
+                      ),
+                    },
+                  ]}
+                  emptyState={
+                    <EmptyState
+                      message="Vehicle access records will appear here once the organization profile selects them."
+                      title="No profile vehicles are configured yet"
+                    />
+                  }
+                  getRowKey={(vehicle) => vehicle.id}
+                  rows={snapshot.scoringProfile.selectedVehicles}
+                />
+              </div>
+
+              <DataTable
+                ariaLabel="Weighted scoring criteria"
+                columns={[
+                  {
+                    key: "criterion",
+                    header: "Criterion",
+                    cell: (criterion) => (
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {criterion.label}
+                        </p>
+                        <p className="text-muted text-xs">{criterion.key}</p>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "weight",
+                    header: "Weight",
+                    cell: (criterion) => (
+                      <Badge tone="accent">{criterion.weight}</Badge>
+                    ),
+                  },
+                  {
+                    key: "description",
+                    header: "Purpose",
+                    cell: (criterion) =>
+                      criterion.description ?? "No description provided.",
+                  },
+                ]}
+                emptyState={
+                  <EmptyState
+                    message="Weighted criteria will appear here once the scoring profile is seeded or configured."
+                    title="No scoring criteria are configured yet"
+                  />
+                }
+                getRowKey={(criterion) => criterion.id}
+                rows={snapshot.scoringProfile.scoringCriteria}
+              />
+            </div>
+          ) : (
+            <EmptyState
+              message="Run the canonical seed path to create the default organization scoring profile before enabling deterministic scoring."
+              title="No organization scoring profile is available yet"
+            />
+          )}
+        </section>
+
         <section aria-labelledby="assigned-roles-heading" className="space-y-4">
           <div className="space-y-2">
             <p className="text-muted text-xs tracking-[0.24em] uppercase">
@@ -265,6 +526,33 @@ function SummaryCard({
       <p className="text-muted text-xs tracking-[0.22em] uppercase">{label}</p>
       <p className="text-foreground mt-3 text-lg font-semibold">{value}</p>
       <p className="text-muted mt-2 text-sm leading-6">{supportingText}</p>
+    </article>
+  );
+}
+
+function ProfileBadgeGroup({
+  badges,
+  emptyLabel,
+  title,
+}: {
+  badges: string[];
+  emptyLabel: string;
+  title: string;
+}) {
+  return (
+    <article className="border-border rounded-[24px] border bg-white p-5">
+      <p className="text-muted text-xs tracking-[0.22em] uppercase">{title}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {badges.length > 0 ? (
+          badges.map((badge) => (
+            <Badge key={`${title}-${badge}`} tone="muted">
+              {badge}
+            </Badge>
+          ))
+        ) : (
+          <Badge tone="warning">{emptyLabel}</Badge>
+        )}
+      </div>
     </article>
   );
 }

@@ -18,6 +18,69 @@ describe("AdminConsole", () => {
           totalUserCount: 2,
           adminUserCount: 1,
           totalAuditLogCount: 9,
+          scoringProfile: {
+            overview:
+              "Mid-sized federal integrator focused on cloud modernization and cyber operations.",
+            strategicFocus:
+              "Prioritize Air Force, Army, and VA digital-transformation pursuits.",
+            targetNaicsCodes: ["541512", "541519"],
+            activeScoringModelKey: "default_capture_v1",
+            activeScoringModelVersion: "2026-04-18",
+            priorityAgencies: [
+              {
+                id: "agency_air_force",
+                label: "99th Contracting Squadron (FA4861)",
+              },
+            ],
+            relationshipAgencies: [
+              {
+                id: "agency_army",
+                label: "PEO Enterprise Information Systems (W91QUZ)",
+              },
+            ],
+            capabilities: [
+              {
+                id: "cap_cloud",
+                key: "cloud-platform-engineering",
+                label: "Cloud platform engineering",
+                category: "cloud_operations",
+                keywords: ["cloud operations", "platform engineering"],
+                description: "Cloud modernization delivery support.",
+              },
+            ],
+            certifications: [
+              {
+                id: "cert_iso",
+                key: "iso-27001",
+                label: "ISO/IEC 27001",
+                code: "ISO-27001",
+                issuingBody: "ISO",
+                description: "Information-security management baseline.",
+              },
+            ],
+            selectedVehicles: [
+              {
+                id: "vehicle_oasis",
+                code: "OASIS-PLUS-UNR",
+                name: "OASIS+ Unrestricted",
+                vehicleType: "IDIQ",
+                awardingAgency: "GSA",
+                isPreferred: true,
+                usageNotes: "Default preferred vehicle for high-fit pursuits.",
+              },
+            ],
+            scoringCriteria: [
+              {
+                id: "criterion_capability_fit",
+                key: "capability_fit",
+                label: "Capability fit",
+                description:
+                  "Measures capability match against the opportunity.",
+                weight: "30.00",
+                isActive: true,
+              },
+            ],
+          },
           users: [
             {
               id: "user_admin",
@@ -71,6 +134,9 @@ describe("AdminConsole", () => {
       screen.getByRole("heading", { name: /admin console/i }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", { name: /organization scoring profile/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("heading", { name: /assigned roles/i }),
     ).toBeInTheDocument();
     expect(
@@ -82,7 +148,16 @@ describe("AdminConsole", () => {
     expect(
       screen.getByRole("table", { name: /recent audit activity/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: /organization capabilities/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: /weighted scoring criteria/i }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText(/admin@onesource\.local/i)).toHaveLength(2);
+    expect(screen.getByText(/default_capture_v1/i)).toBeInTheDocument();
+    expect(screen.getByText(/cloud platform engineering/i)).toBeInTheDocument();
+    expect(screen.getByText(/30\.00/i)).toBeInTheDocument();
     expect(screen.getByText(/no roles assigned/i)).toBeInTheDocument();
     expect(screen.getByText("seed.bootstrap")).toBeInTheDocument();
   });
@@ -116,6 +191,7 @@ describe("AdminConsole", () => {
           totalUserCount: 0,
           adminUserCount: 0,
           totalAuditLogCount: 0,
+          scoringProfile: null,
           users: [],
           recentAuditEvents: [],
         }}
@@ -126,6 +202,9 @@ describe("AdminConsole", () => {
 
     expect(
       screen.getByText(/no organization users are available yet/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no organization scoring profile is available yet/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/no audit events are available yet/i),

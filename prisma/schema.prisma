@@ -156,33 +156,38 @@ enum BidDecisionOutcome {
 }
 
 model Organization {
-  id                     String                       @id @default(cuid()) @map("id")
-  name                   String                       @map("name")
-  slug                   String                       @unique @map("slug")
-  status                 OrganizationStatus           @default(ACTIVE) @map("status")
-  createdAt              DateTime                     @default(now()) @map("created_at")
-  updatedAt              DateTime                     @updatedAt @map("updated_at")
-  users                  User[]
-  roles                  Role[]
-  auditLogs              AuditLog[]
-  agencies               Agency[]
-  contractVehicles       ContractVehicle[]
-  opportunities          Opportunity[]
-  sourceConnectorConfigs SourceConnectorConfig[]
-  sourceSavedSearches    SourceSavedSearch[]
-  sourceSearchExecutions SourceSearchExecution[]
-  sourceSyncRuns         SourceSyncRun[]
-  sourceRecords          SourceRecord[]
-  sourceImportDecisions  SourceImportDecision[]
-  competitors            Competitor[]
-  opportunityTasks       OpportunityTask[]
-  opportunityMilestones  OpportunityMilestone[]
-  opportunityNotes       OpportunityNote[]
-  opportunityActivity    OpportunityActivityEvent[]
-  opportunityDocuments   OpportunityDocument[]
-  opportunityTransitions OpportunityStageTransition[]
-  opportunityScorecards  OpportunityScorecard[]
-  bidDecisions           BidDecision[]
+  id                          String                         @id @default(cuid()) @map("id")
+  name                        String                         @map("name")
+  slug                        String                         @unique @map("slug")
+  status                      OrganizationStatus             @default(ACTIVE) @map("status")
+  createdAt                   DateTime                       @default(now()) @map("created_at")
+  updatedAt                   DateTime                       @updatedAt @map("updated_at")
+  organizationProfile         OrganizationProfile?
+  organizationCapabilities    OrganizationCapability[]
+  organizationCertifications  OrganizationCertification[]
+  organizationProfileVehicles OrganizationProfileVehicle[]
+  organizationScoringCriteria OrganizationScoringCriterion[]
+  users                       User[]
+  roles                       Role[]
+  auditLogs                   AuditLog[]
+  agencies                    Agency[]
+  contractVehicles            ContractVehicle[]
+  opportunities               Opportunity[]
+  sourceConnectorConfigs      SourceConnectorConfig[]
+  sourceSavedSearches         SourceSavedSearch[]
+  sourceSearchExecutions      SourceSearchExecution[]
+  sourceSyncRuns              SourceSyncRun[]
+  sourceRecords               SourceRecord[]
+  sourceImportDecisions       SourceImportDecision[]
+  competitors                 Competitor[]
+  opportunityTasks            OpportunityTask[]
+  opportunityMilestones       OpportunityMilestone[]
+  opportunityNotes            OpportunityNote[]
+  opportunityActivity         OpportunityActivityEvent[]
+  opportunityDocuments        OpportunityDocument[]
+  opportunityTransitions      OpportunityStageTransition[]
+  opportunityScorecards       OpportunityScorecard[]
+  bidDecisions                BidDecision[]
 
   @@map("organizations")
 }
@@ -345,21 +350,126 @@ model Agency {
 }
 
 model ContractVehicle {
-  id             String               @id @default(cuid()) @map("id")
-  organizationId String               @map("organization_id")
-  code           String               @map("code")
-  name           String               @map("name")
-  vehicleType    String?              @map("vehicle_type")
-  awardingAgency String?              @map("awarding_agency")
-  notes          String?              @map("notes")
-  createdAt      DateTime             @default(now()) @map("created_at")
-  updatedAt      DateTime             @updatedAt @map("updated_at")
-  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  opportunities  OpportunityVehicle[]
+  id                            String                       @id @default(cuid()) @map("id")
+  organizationId                String                       @map("organization_id")
+  code                          String                       @map("code")
+  name                          String                       @map("name")
+  vehicleType                   String?                      @map("vehicle_type")
+  awardingAgency                String?                      @map("awarding_agency")
+  notes                         String?                      @map("notes")
+  createdAt                     DateTime                     @default(now()) @map("created_at")
+  updatedAt                     DateTime                     @updatedAt @map("updated_at")
+  organization                  Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organizationProfileSelections OrganizationProfileVehicle[]
+  opportunities                 OpportunityVehicle[]
 
   @@unique([organizationId, code], map: "contract_vehicles_organization_id_code_key")
   @@index([organizationId, name], map: "contract_vehicles_organization_id_name_idx")
   @@map("contract_vehicles")
+}
+
+model OrganizationProfile {
+  id                        String                         @id @default(cuid()) @map("id")
+  organizationId            String                         @unique(map: "organization_profiles_organization_id_key") @map("organization_id")
+  overview                  String?                        @map("overview") @db.Text
+  strategicFocus            String?                        @map("strategic_focus") @db.Text
+  targetNaicsCodes          String[]                       @default([]) @map("target_naics_codes")
+  priorityAgencyIds         String[]                       @default([]) @map("priority_agency_ids")
+  relationshipAgencyIds     String[]                       @default([]) @map("relationship_agency_ids")
+  activeScoringModelKey     String                         @map("active_scoring_model_key")
+  activeScoringModelVersion String                         @map("active_scoring_model_version")
+  createdAt                 DateTime                       @default(now()) @map("created_at")
+  updatedAt                 DateTime                       @updatedAt @map("updated_at")
+  organization              Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  capabilities              OrganizationCapability[]
+  certifications            OrganizationCertification[]
+  selectedVehicles          OrganizationProfileVehicle[]
+  scoringCriteria           OrganizationScoringCriterion[]
+
+  @@map("organization_profiles")
+}
+
+model OrganizationCapability {
+  id                    String              @id @default(cuid()) @map("id")
+  organizationId        String              @map("organization_id")
+  organizationProfileId String              @map("organization_profile_id")
+  capabilityKey         String              @map("capability_key")
+  capabilityLabel       String              @map("capability_label")
+  capabilityCategory    String?             @map("capability_category")
+  capabilityKeywords    String[]            @default([]) @map("capability_keywords")
+  description           String?             @map("description") @db.Text
+  sortOrder             Int                 @default(0) @map("sort_order")
+  isActive              Boolean             @default(true) @map("is_active")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organizationProfile   OrganizationProfile @relation(fields: [organizationProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationProfileId, capabilityKey], map: "org_capabilities_profile_id_capability_key_key")
+  @@index([organizationId, isActive], map: "org_capabilities_org_id_is_active_idx")
+  @@index([organizationProfileId, sortOrder], map: "org_capabilities_profile_id_sort_order_idx")
+  @@map("organization_capabilities")
+}
+
+model OrganizationCertification {
+  id                    String              @id @default(cuid()) @map("id")
+  organizationId        String              @map("organization_id")
+  organizationProfileId String              @map("organization_profile_id")
+  certificationKey      String              @map("certification_key")
+  certificationLabel    String              @map("certification_label")
+  certificationCode     String?             @map("certification_code")
+  issuingBody           String?             @map("issuing_body")
+  description           String?             @map("description") @db.Text
+  sortOrder             Int                 @default(0) @map("sort_order")
+  isActive              Boolean             @default(true) @map("is_active")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organizationProfile   OrganizationProfile @relation(fields: [organizationProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationProfileId, certificationKey], map: "org_certifications_profile_id_certification_key_key")
+  @@index([organizationId, isActive], map: "org_certifications_org_id_is_active_idx")
+  @@index([organizationProfileId, sortOrder], map: "org_certifications_profile_id_sort_order_idx")
+  @@map("organization_certifications")
+}
+
+model OrganizationProfileVehicle {
+  organizationProfileId String              @map("organization_profile_id")
+  organizationId        String              @map("organization_id")
+  vehicleId             String              @map("vehicle_id")
+  isPreferred           Boolean             @default(false) @map("is_preferred")
+  usageNotes            String?             @map("usage_notes") @db.Text
+  sortOrder             Int                 @default(0) @map("sort_order")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  organizationProfile   OrganizationProfile @relation(fields: [organizationProfileId], references: [id], onDelete: Cascade)
+  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  vehicle               ContractVehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@id([organizationProfileId, vehicleId])
+  @@index([organizationId, vehicleId], map: "org_profile_vehicles_org_id_vehicle_id_idx")
+  @@index([organizationProfileId, sortOrder], map: "org_profile_vehicles_profile_id_sort_order_idx")
+  @@map("organization_profile_vehicles")
+}
+
+model OrganizationScoringCriterion {
+  id                    String              @id @default(cuid()) @map("id")
+  organizationId        String              @map("organization_id")
+  organizationProfileId String              @map("organization_profile_id")
+  factorKey             String              @map("factor_key")
+  factorLabel           String              @map("factor_label")
+  description           String?             @map("description") @db.Text
+  weight                Decimal             @map("weight") @db.Decimal(5, 2)
+  sortOrder             Int                 @default(0) @map("sort_order")
+  isActive              Boolean             @default(true) @map("is_active")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organizationProfile   OrganizationProfile @relation(fields: [organizationProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationProfileId, factorKey], map: "org_scoring_criteria_profile_id_factor_key_key")
+  @@index([organizationId, isActive], map: "org_scoring_criteria_org_id_is_active_idx")
+  @@index([organizationProfileId, sortOrder], map: "org_scoring_criteria_profile_id_sort_order_idx")
+  @@map("organization_scoring_criteria")
 }
 
 model Opportunity {
