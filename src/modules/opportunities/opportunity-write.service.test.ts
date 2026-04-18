@@ -2,6 +2,7 @@ import { AuditActorType } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 
 import { AUDIT_ACTIONS } from "@/modules/audit/audit.service";
+import { OpportunityStageTransitionValidationError } from "@/modules/opportunities/opportunity-stage-policy";
 
 import {
   createOpportunity,
@@ -24,6 +25,9 @@ const actor = {
 function createMockWriteClient() {
   const tx = {
     auditLog: {
+      create: vi.fn(),
+    },
+    opportunityActivityEvent: {
       create: vi.fn(),
     },
     opportunity: {
@@ -237,32 +241,41 @@ describe("opportunity-write.service", () => {
       organizationId: "org_123",
       title: "Data Platform Operations",
       description: null,
-      leadAgencyId: null,
-      responseDeadlineAt: null,
-      solicitationNumber: null,
-      naicsCode: null,
+      leadAgencyId: "agency_123",
+      responseDeadlineAt: new Date("2026-05-20T17:00:00.000Z"),
+      solicitationNumber: "SOL-1",
+      naicsCode: "541512",
       originSourceSystem: null,
       currentStageKey: "identified",
       currentStageLabel: "Identified",
+      bidDecisions: [],
+      documents: [],
+      milestones: [],
+      notes: [],
+      scorecards: [],
+      tasks: [],
     });
     vi.mocked(tx.opportunity.update).mockResolvedValue({
       id: "opp_123",
       organizationId: "org_123",
       title: "Data Platform Operations",
       description: null,
-      leadAgencyId: null,
-      responseDeadlineAt: null,
-      solicitationNumber: null,
-      naicsCode: null,
+      leadAgencyId: "agency_123",
+      responseDeadlineAt: new Date("2026-05-20T17:00:00.000Z"),
+      solicitationNumber: "SOL-1",
+      naicsCode: "541512",
       originSourceSystem: null,
-      currentStageKey: "capture_active",
-      currentStageLabel: "Capture Active",
+      currentStageKey: "qualified",
+      currentStageLabel: "Qualified",
     });
     vi.mocked(tx.opportunityStageTransition.create).mockResolvedValue({
       id: "transition_123",
       transitionedAt,
-      toStageKey: "capture_active",
-      toStageLabel: "Capture Active",
+      toStageKey: "qualified",
+      toStageLabel: "Qualified",
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_123",
     });
 
     await recordStageTransition({
@@ -270,7 +283,7 @@ describe("opportunity-write.service", () => {
       input: {
         actor,
         opportunityId: "opp_123",
-        toStageKey: "capture_active",
+        toStageKey: "qualified",
         rationale: "Qualified after incumbent check.",
         transitionedAt,
       },
@@ -280,22 +293,117 @@ describe("opportunity-write.service", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           fromStageKey: "identified",
-          toStageKey: "capture_active",
+          toStageKey: "qualified",
           transitionedAt,
         }),
       }),
     );
+    expect(tx.opportunityActivityEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        description: "Qualified after incumbent check.",
+        eventType: "stage_transition",
+        opportunityId: "opp_123",
+        relatedEntityId: "transition_123",
+        relatedEntityType: "stage_transition",
+        title: "Moved to Qualified",
+      }),
+      select: {
+        id: true,
+      },
+    });
     expect(tx.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         action: AUDIT_ACTIONS.opportunityStageTransition,
         metadata: expect.objectContaining({
           transitionId: "transition_123",
           fromStageKey: "identified",
-          toStageKey: "capture_active",
+          toStageKey: "qualified",
         }),
         occurredAt: transitionedAt,
       }),
     });
+  });
+
+  it("blocks invalid stage transitions when required fields are missing", async () => {
+    const { db, tx } = createMockWriteClient();
+
+    vi.mocked(tx.opportunity.findFirstOrThrow).mockResolvedValue({
+      id: "opp_123",
+      organizationId: "org_123",
+      title: "Data Platform Operations",
+      description: null,
+      leadAgencyId: null,
+      responseDeadlineAt: null,
+      solicitationNumber: null,
+      naicsCode: null,
+      originSourceSystem: null,
+      currentStageKey: "identified",
+      currentStageLabel: "Identified",
+      bidDecisions: [],
+      documents: [],
+      milestones: [],
+      notes: [],
+      scorecards: [],
+      tasks: [],
+    });
+
+    await expect(
+      recordStageTransition({
+        db,
+        input: {
+          actor,
+          opportunityId: "opp_123",
+          toStageKey: "qualified",
+          rationale: "Ready to qualify.",
+        },
+      }),
+    ).rejects.toBeInstanceOf(OpportunityStageTransitionValidationError);
+
+    expect(tx.opportunity.update).not.toHaveBeenCalled();
+    expect(tx.opportunityStageTransition.create).not.toHaveBeenCalled();
+    expect(tx.opportunityActivityEvent.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("blocks stage transitions when the rationale is blank", async () => {
+    const { db, tx } = createMockWriteClient();
+
+    vi.mocked(tx.opportunity.findFirstOrThrow).mockResolvedValue({
+      id: "opp_123",
+      organizationId: "org_123",
+      title: "Data Platform Operations",
+      description: null,
+      leadAgencyId: "agency_123",
+      responseDeadlineAt: new Date("2026-05-20T17:00:00.000Z"),
+      solicitationNumber: "SOL-1",
+      naicsCode: "541512",
+      originSourceSystem: null,
+      currentStageKey: "identified",
+      currentStageLabel: "Identified",
+      bidDecisions: [],
+      documents: [],
+      milestones: [],
+      notes: [],
+      scorecards: [],
+      tasks: [],
+    });
+
+    await expect(
+      recordStageTransition({
+        db,
+        input: {
+          actor,
+          opportunityId: "opp_123",
+          toStageKey: "qualified",
+          rationale: "   ",
+        },
+      }),
+    ).rejects.toBeInstanceOf(OpportunityStageTransitionValidationError);
+
+    expect(tx.opportunity.update).not.toHaveBeenCalled();
+    expect(tx.opportunityStageTransition.create).not.toHaveBeenCalled();
+    expect(tx.opportunityActivityEvent.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("records bid decisions and emits an opportunity decision audit row", async () => {

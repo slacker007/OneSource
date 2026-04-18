@@ -251,6 +251,38 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     page.getByRole("heading", { name: /^Capture Summary$/i }),
   ).toBeVisible();
   await expect(page.getByText(/bid decision recorded as go/i)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Stage transition$/i }),
+  ).toBeVisible();
+  const targetStageValue =
+    (await page
+      .locator("#stage-transition-target option[value='proposal_in_development']")
+      .count()) > 0
+      ? "proposal_in_development"
+      : "submitted";
+  const targetStageLabel =
+    targetStageValue === "proposal_in_development"
+      ? "Proposal In Development"
+      : "Submitted";
+  await page.locator("#stage-transition-target").selectOption(targetStageValue);
+  await page
+    .locator("#stage-transition-rationale")
+    .fill("Proposal staffing and artifacts are ready for development.");
+  await page
+    .getByRole("button", { name: new RegExp(`move to ${targetStageLabel}`, "i") })
+    .click();
+  await expect(
+    page.getByText(
+      new RegExp(`stage updated to ${targetStageLabel}`, "i"),
+    ),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", {
+        name: new RegExp(`^Moved to ${targetStageLabel}$`, "i"),
+      })
+      .first(),
+  ).toBeVisible();
 });
 
 test.describe("mobile navigation", () => {

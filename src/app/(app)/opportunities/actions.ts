@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requireAppPermission } from "@/lib/auth/authorization";
 import { prisma } from "@/lib/prisma";
 import {
@@ -9,9 +10,15 @@ import {
 } from "@/modules/opportunities/opportunity-form.schema";
 import {
   createOpportunity,
+  recordStageTransition,
   updateOpportunity,
   type OpportunityWriteClient,
 } from "@/modules/opportunities/opportunity-write.service";
+import {
+  INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE,
+  OpportunityStageTransitionValidationError,
+  type OpportunityStageTransitionActionState,
+} from "@/modules/opportunities/opportunity-stage-policy";
 import { redirect } from "next/navigation";
 
 export async function createOpportunityAction(
@@ -93,6 +100,47 @@ export async function updateOpportunityAction(
   }
 
   redirect(`/opportunities/${opportunityId}/edit?updated=1`);
+}
+
+export async function transitionOpportunityStageAction(
+  _previousState: OpportunityStageTransitionActionState,
+  formData: FormData,
+): Promise<OpportunityStageTransitionActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const toStageKey = readRequiredString(formData.get("toStageKey"));
+  const rationale = String(formData.get("rationale") ?? "");
+
+  try {
+    const result = await recordStageTransition({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        opportunityId,
+        rationale,
+        toStageKey,
+      },
+    });
+
+    revalidatePath(`/opportunities/${opportunityId}`);
+
+    return {
+      ...INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE,
+      successMessage: `Stage updated to ${result.transition.toStageLabel ?? result.transition.toStageKey}.`,
+    };
+  } catch (error) {
+    const formError =
+      error instanceof OpportunityStageTransitionValidationError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : "The opportunity stage could not be updated.";
+
+    return {
+      ...INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE,
+      formError,
+    };
+  }
 }
 
 function buildOpportunityActor(user: {

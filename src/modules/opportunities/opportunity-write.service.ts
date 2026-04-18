@@ -13,6 +13,10 @@ import {
   type AuditActorContext,
   type AuditLogWriter,
 } from "@/modules/audit/audit.service";
+import {
+  validateOpportunityStageTransition,
+  type OpportunityStageValidationContext,
+} from "@/modules/opportunities/opportunity-stage-policy";
 
 type OpportunityWriteRecord = {
   id: string;
@@ -42,12 +46,37 @@ type StageTransitionRecord = {
   toStageLabel: string | null;
 };
 
+type OpportunityActivityEventRecord = {
+  id: string;
+};
+
 type BidDecisionRecord = {
   id: string;
   decisionTypeKey: string | null;
   recommendationOutcome: BidDecisionOutcome | null;
   finalOutcome: BidDecisionOutcome | null;
   decidedAt: Date | null;
+};
+
+type OpportunityStageValidationRecord = OpportunityWriteRecord & {
+  bidDecisions: Array<{
+    finalOutcome: BidDecisionOutcome | null;
+  }>;
+  documents: Array<{
+    id: string;
+  }>;
+  milestones: Array<{
+    id: string;
+  }>;
+  notes: Array<{
+    id: string;
+  }>;
+  scorecards: Array<{
+    id: string;
+  }>;
+  tasks: Array<{
+    id: string;
+  }>;
 };
 
 type SourceImportDecisionRecord = {
@@ -89,6 +118,55 @@ const bidDecisionAuditSelect = {
   decidedAt: true,
 } as const;
 
+const opportunityStageValidationSelect = {
+  ...opportunityAuditSelect,
+  bidDecisions: {
+    where: {
+      isCurrent: true,
+    },
+    orderBy: {
+      decidedAt: "desc",
+    },
+    take: 1,
+    select: {
+      finalOutcome: true,
+    },
+  },
+  documents: {
+    take: 1,
+    select: {
+      id: true,
+    },
+  },
+  milestones: {
+    take: 1,
+    select: {
+      id: true,
+    },
+  },
+  notes: {
+    take: 1,
+    select: {
+      id: true,
+    },
+  },
+  scorecards: {
+    where: {
+      isCurrent: true,
+    },
+    take: 1,
+    select: {
+      id: true,
+    },
+  },
+  tasks: {
+    take: 1,
+    select: {
+      id: true,
+    },
+  },
+} as const;
+
 const sourceImportDecisionAuditSelect = {
   id: true,
   organizationId: true,
@@ -107,6 +185,14 @@ const stageTransitionAuditSelect = {
 } as const;
 
 export type OpportunityWriteTransactionClient = AuditLogWriter & {
+  opportunityActivityEvent: {
+    create(args: {
+      data: Prisma.OpportunityActivityEventUncheckedCreateInput;
+      select: {
+        id: true;
+      };
+    }): Promise<OpportunityActivityEventRecord>;
+  };
   opportunity: {
     create(args: {
       data: Prisma.OpportunityUncheckedCreateInput;
@@ -119,6 +205,13 @@ export type OpportunityWriteTransactionClient = AuditLogWriter & {
       };
       select: typeof opportunityAuditSelect;
     }): Promise<OpportunityWriteRecord>;
+    findFirstOrThrow(args: {
+      where: {
+        id: string;
+        organizationId: string;
+      };
+      select: typeof opportunityStageValidationSelect;
+    }): Promise<OpportunityStageValidationRecord>;
     update(args: {
       where: {
         id: string;
@@ -477,13 +570,19 @@ export async function recordStageTransition({
         id: input.opportunityId,
         organizationId: input.actor.organizationId,
       },
-      select: opportunityAuditSelect,
+      select: opportunityStageValidationSelect,
     });
 
     const transitionedAt = input.transitionedAt ?? new Date();
-    const toStageKey = normalizeRequiredText(input.toStageKey, "Stage key");
-    const toStageLabel =
-      normalizeOptionalText(input.toStageLabel) ?? humanizeStageKey(toStageKey);
+    const validation = validateOpportunityStageTransition({
+      context: buildOpportunityStageValidationContext(
+        existingOpportunity as OpportunityStageValidationRecord,
+      ),
+      rationale: input.rationale,
+      toStageKey: normalizeRequiredText(input.toStageKey, "Stage key"),
+    });
+    const toStageKey = validation.toStageKey;
+    const toStageLabel = validation.toStageLabel;
 
     const updatedOpportunity = await tx.opportunity.update({
       where: {
@@ -507,12 +606,39 @@ export async function recordStageTransition({
         fromStageLabel: existingOpportunity.currentStageLabel,
         toStageKey,
         toStageLabel,
-        rationale: normalizeOptionalText(input.rationale),
-        requiredFieldsSnapshot: toOptionalJson(input.requiredFieldsSnapshot),
+        rationale: validation.rationale,
+        requiredFieldsSnapshot: validation.requiredFieldsSnapshot,
         metadata: toOptionalJson(input.metadata),
         transitionedAt,
       },
       select: stageTransitionAuditSelect,
+    });
+
+    await tx.opportunityActivityEvent.create({
+      data: {
+        actorIdentifier: input.actor.identifier ?? null,
+        actorType: input.actor.type,
+        actorUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        description: validation.rationale,
+        eventType: "stage_transition",
+        metadata: {
+          fromStageKey: validation.fromStageKey,
+          fromStageLabel: validation.fromStageLabel,
+          requiredFieldsSnapshot: validation.requiredFieldsSnapshot,
+          toStageKey: transition.toStageKey,
+          toStageLabel: transition.toStageLabel,
+        },
+        occurredAt: transitionedAt,
+        opportunityId: updatedOpportunity.id,
+        organizationId: updatedOpportunity.organizationId,
+        relatedEntityId: transition.id,
+        relatedEntityType: "stage_transition",
+        title: `Moved to ${transition.toStageLabel ?? transition.toStageKey}`,
+      },
+      select: {
+        id: true,
+      },
     });
 
     await recordAuditEvent({
@@ -533,7 +659,8 @@ export async function recordStageTransition({
           fromStageLabel: existingOpportunity.currentStageLabel,
           toStageKey: transition.toStageKey,
           toStageLabel: transition.toStageLabel,
-          rationale: normalizeOptionalText(input.rationale),
+          rationale: validation.rationale,
+          requiredFieldsSnapshot: validation.requiredFieldsSnapshot,
         },
         occurredAt: transitionedAt,
       },
@@ -715,6 +842,27 @@ function normalizeOptionalText(value: string | null | undefined) {
   const normalizedValue = value.trim();
 
   return normalizedValue.length === 0 ? null : normalizedValue;
+}
+
+function buildOpportunityStageValidationContext(
+  opportunity: OpportunityStageValidationRecord,
+): OpportunityStageValidationContext {
+  return {
+    bidDecisionCount: opportunity.bidDecisions.length,
+    currentBidDecisionFinalOutcome:
+      opportunity.bidDecisions[0]?.finalOutcome ?? null,
+    currentStageKey: opportunity.currentStageKey,
+    currentStageLabel: opportunity.currentStageLabel,
+    documentCount: opportunity.documents.length,
+    leadAgencyId: opportunity.leadAgencyId,
+    milestoneCount: opportunity.milestones.length,
+    naicsCode: opportunity.naicsCode,
+    noteCount: opportunity.notes.length,
+    responseDeadlineAt: opportunity.responseDeadlineAt?.toISOString() ?? null,
+    scorecardCount: opportunity.scorecards.length,
+    solicitationNumber: opportunity.solicitationNumber,
+    taskCount: opportunity.tasks.length,
+  };
 }
 
 function humanizeStageKey(stageKey: string | null) {

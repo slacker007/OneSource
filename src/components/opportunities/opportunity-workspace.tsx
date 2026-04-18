@@ -1,8 +1,13 @@
 import Link from "next/link";
 
+import { OpportunityStageTransitionPanel } from "@/components/opportunities/opportunity-stage-transition-panel";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import {
+  buildOpportunityStageControlSnapshotFromWorkspace,
+  type OpportunityStageTransitionActionState,
+} from "@/modules/opportunities/opportunity-stage-policy";
 import type {
   OpportunityWorkspaceActivity,
   OpportunityWorkspaceDocument,
@@ -16,11 +21,16 @@ import type {
 type OpportunityWorkspaceProps = {
   snapshot: OpportunityWorkspaceSnapshot | null;
   allowManagePipeline?: boolean;
+  stageTransitionAction?: (
+    state: OpportunityStageTransitionActionState,
+    formData: FormData,
+  ) => Promise<OpportunityStageTransitionActionState>;
 };
 
 export function OpportunityWorkspace({
   snapshot,
   allowManagePipeline = false,
+  stageTransitionAction,
 }: OpportunityWorkspaceProps) {
   if (!snapshot) {
     return (
@@ -43,6 +53,9 @@ export function OpportunityWorkspace({
     snapshot.bidDecision?.finalOutcome ??
     snapshot.scorecard?.recommendationOutcome ??
     "Pending";
+  const stageControlSnapshot = buildOpportunityStageControlSnapshotFromWorkspace(
+    snapshot,
+  );
 
   return (
     <section className="space-y-6">
@@ -130,6 +143,14 @@ export function OpportunityWorkspace({
           />
         </div>
       </header>
+
+      {allowManagePipeline && stageTransitionAction ? (
+        <OpportunityStageTransitionPanel
+          action={stageTransitionAction}
+          opportunityId={snapshot.opportunity.id}
+          snapshot={stageControlSnapshot}
+        />
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <OverviewSection snapshot={snapshot} />

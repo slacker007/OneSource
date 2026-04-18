@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { OpportunityWorkspace } from "./opportunity-workspace";
+import { INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE } from "@/modules/opportunities/opportunity-stage-policy";
 import type { OpportunityWorkspaceSnapshot } from "@/modules/opportunities/opportunity.types";
 
 const snapshot: OpportunityWorkspaceSnapshot = {
@@ -208,7 +209,15 @@ const snapshot: OpportunityWorkspaceSnapshot = {
 
 describe("OpportunityWorkspace", () => {
   it("renders the workspace sections and seeded execution context", () => {
-    render(<OpportunityWorkspace allowManagePipeline snapshot={snapshot} />);
+    render(
+      <OpportunityWorkspace
+        allowManagePipeline
+        snapshot={snapshot}
+        stageTransitionAction={async () =>
+          INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE
+        }
+      />,
+    );
 
     expect(
       screen.getByRole("heading", {
@@ -233,6 +242,18 @@ describe("OpportunityWorkspace", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(/bid decision recorded as go/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /^Stage transition$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: /move to/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: /recorded rationale/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /move to pursuit approved/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /open source notice/i }),
