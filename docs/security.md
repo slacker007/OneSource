@@ -6,7 +6,7 @@ This document records the current security posture that exists in the repo today
 
 ## Current Baseline
 
-The current repo includes the first live authentication and authorization slices on top of the earlier auth and audit persistence baseline plus the connector-metadata and workspace-persistence baselines. Security-relevant implementation present today:
+The current repo includes the first live authentication, authorization, and audit-emission slices on top of the earlier auth and audit persistence baseline plus the connector-metadata and workspace-persistence baselines. Security-relevant implementation present today:
 
 - Prisma-managed tables for organizations, users, roles, accounts, sessions, verification tokens, and audit logs
 - Prisma-managed opportunity lineage tables for agencies, vehicles, opportunities, competitors, connector configs, saved searches, search executions, sync runs, retained source records, source child records, and import decisions
@@ -19,6 +19,7 @@ The current repo includes the first live authentication and authorization slices
 - server-side permission guards for restricted routes such as `/settings`, with a public permission-denied route
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
+- shared audited opportunity write services for create, update, delete, import-decision, stage-transition, and bid-decision flows
 - boot-time environment validation for `DATABASE_URL`, `AUTH_SECRET`, and `NEXTAUTH_URL`
 - compose-managed PostgreSQL for local development
 
@@ -65,12 +66,13 @@ The `audit_logs` table is the durable sink for future security-relevant activity
 - optional IP address and user-agent capture
 - immutable occurrence timestamp
 
-The only current producer is the bootstrap seed path. Future loops must add audit writes for auth events, permission failures, imports, edits, stage transitions, and decisions.
+Current audit producers are the bootstrap seed path and the shared opportunity write service under `src/modules/opportunities/opportunity-write.service.ts`. That write boundary emits structured audit rows for representative create, update, delete, import-decision, stage-transition, and bid-decision flows.
 
 ## Current Risks And Pending Work
 
 - Only the initial role-based authorization slice exists today. The app shell requires authentication and `/settings` requires the admin role, but most business workflows still need per-action permission enforcement.
-- No route-level or action-level audit emission yet
+- No auth-event or permission-failure audit emission yet
+- No user-facing mutation routes call the audited write-service boundary yet
 - No production-grade password reset, OAuth, MFA, or account-recovery workflow yet
 - No secret-vault integration behind connector credential references yet
 - No authorization guardrails around specific retained source records, workspace notes, documents, or future mutating actions yet

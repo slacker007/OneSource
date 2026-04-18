@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, and the first live Phase 2 authentication plus authorization slices on top of the Prisma baseline.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, and the first live Phase 2 authentication, authorization, and auditability slices on top of the Prisma baseline.
 
 ## Current System Shape
 
-OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, Prisma ORM, and Auth.js. The app exposes a protected authenticated shell under the `(app)` route group, a public sign-in route, a server-guarded restricted settings route, a public permission-denied route, an Auth.js route handler, and a health-check route, then runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, the connector metadata plus promotion-decision entities, and the execution-side workspace records needed for later capture workflows.
+OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, Prisma ORM, and Auth.js. The app exposes a protected authenticated shell under the `(app)` route group, a public sign-in route, a server-guarded restricted settings route, a public permission-denied route, an Auth.js route handler, and a health-check route, then runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, the connector metadata plus promotion-decision entities, and the execution-side workspace records needed for later capture workflows. The first transactional write boundary for the opportunity domain now lives under `src/modules/opportunities` and emits append-only audit rows through a shared module-local audit service.
 
 Current runtime components:
 
@@ -22,6 +22,7 @@ The compose images install dependencies inside Docker rather than copying a host
 - `src/app`: App Router routes, layout, global styles, and route handlers
 - `src/components`: shared UI components and component tests
 - `src/lib`: runtime helpers such as environment parsing, Prisma client construction, and database health checks
+- `src/modules/audit`: typed audit-log helpers, stable action names, and append-only audit payload shaping
 - `src/modules/opportunities`: shared DTOs and typed repository functions for opportunity-centric read models
 - `prisma`: schema, generated migrations, and seed scripts
 - `scripts`: operational helper scripts including the placeholder worker
@@ -55,6 +56,7 @@ Current boundaries are intentionally simple but no longer purely route-plus-lib:
 - Route rendering stays in `src/app`.
 - Shared presentation logic lives in `src/components`.
 - Cross-route runtime helpers live in `src/lib`.
+- Shared audit helpers live in `src/modules/audit`.
 - Typed entity DTOs and repository functions now live in `src/modules/opportunities`.
 - Background-process behavior lives in `scripts`.
 
@@ -143,9 +145,10 @@ Docker dependency installation defaults to online `npm ci`. Optional local fallb
 
 Current automated coverage consists of:
 
-- Vitest unit tests for the homepage shell, env parsing, password verification, credential authentication, Auth.js JWT/session callbacks, and the centralized permission matrix
+- Vitest unit tests for the homepage shell, env parsing, password verification, credential authentication, Auth.js JWT/session callbacks, the centralized permission matrix, and the shared audit-log helper
 - Vitest unit coverage for the canonical system role catalog
 - Vitest coverage for the typed opportunity repository DTO mapping and dashboard query contract
+- Vitest coverage for the transactional opportunity write service that emits audit rows for create, update, delete, import-decision, stage-transition, and bid-decision flows
 - Playwright Chromium smoke coverage for protected-route redirect, sign-in, admin access to the restricted settings route, and viewer denial on direct settings navigation
 - Prisma schema validation, migration, and seed verification against PostgreSQL
 - compose-backed lint, build, unit-test, and browser-test workflows documented in `docs/testing.md`
@@ -157,7 +160,7 @@ No live connector exists yet. The product architecture now persists source-agnos
 ## Known Gaps
 
 - Only one restricted surface currently uses role-based permission enforcement; most business workflows still need per-action authorization
-- No audit event emitters on business workflows yet beyond the seed bootstrap record
+- The opportunity write service now emits audit rows for representative business writes, but no user-facing route handlers or auth events call that boundary yet
 - No executable connector service layer yet despite the new connector metadata baseline
 - No production job runner beyond the placeholder worker heartbeat
 

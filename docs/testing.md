@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 2 auth and authz baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 2 auth, authz, and audit baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
-- Unit tests: Vitest with Testing Library for UI, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, and permission-policy coverage
+- Unit tests: Vitest with Testing Library for UI, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, permission-policy coverage, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
 - Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, authenticated-shell access, admin access to `/settings`, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
@@ -45,6 +45,12 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - land back on the protected shell with the authenticated-session UI visible
 - allow the admin user through the restricted `/settings` route
 - redirect the seeded viewer user from `/settings` to `/forbidden`
+
+For the current audit slice, targeted unit verification should confirm:
+
+- the shared audit helper produces append-only `audit_logs` create payloads with actor, target, action, summary, metadata, and occurrence timestamp fields
+- the transactional opportunity write service emits audit rows for create, update, delete, import-decision, stage-transition, and bid-decision operations
+- update audits persist field-diff metadata rather than only a generic action label
 
 When the changed area includes Prisma schema or seed logic, also run:
 

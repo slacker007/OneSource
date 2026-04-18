@@ -606,7 +606,7 @@ This section is mandatory for every future coding iteration because conversation
       Done when: restricted actions are blocked even if triggered outside the UI.
       Verify with: permission tests for at least admin, executive, BD, and viewer.
 
-- [ ] P2-03 Implement audit event creation for create, update, delete, import, stage transition, and decision actions.
+- [x] P2-03 Implement audit event creation for create, update, delete, import, stage transition, and decision actions.
       Done when: important state changes emit structured audit rows with actor, target, action, and timestamp.
       Verify with: tests covering at least three audit-producing flows.
 
@@ -789,8 +789,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, and `P2-02` are complete. This loop completed the first live authorization slice: a centralized permission policy now maps roles to capabilities, the `(app)` route group reuses a shared auth guard, the authenticated shell renders a client-safe permission snapshot, and the `/settings` surface is blocked server-side for non-admin users with a `/forbidden` redirect.
-- Next recommended item: `P2-03 Implement audit event creation for create, update, delete, import, stage transition, and decision actions.`
-- Blockers: No product blocker for `P2-03`. Unrelated repo sync blocker remains: the earlier local history rewrite still has not been force-pushed to `origin` from this environment because the remote is SSH-based and this runtime lacks an authenticated SSH path.
-- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/runbook.md`, `docs/security.md`, `docs/testing.md`, `prisma/opportunity-seed-scenarios.mjs`, `src/app/(app)/layout.tsx`, `src/app/(app)/page.tsx`, `src/app/(app)/settings/page.tsx`, `src/app/forbidden/page.tsx`, `src/components/auth/access-overview.tsx`, `src/components/home/app-shell-preview.tsx`, `src/components/home/app-shell-preview.test.tsx`, `src/lib/auth/authorization.ts`, `src/lib/auth/local-demo-auth.mjs`, `src/lib/auth/permissions.ts`, `src/lib/auth/permissions.test.ts`, `src/lib/auth/system-roles.ts`, `src/lib/opportunities/opportunity-seed-scenarios.test.ts`, and `tests/smoke.spec.ts`.
-- Tests run in latest loop: `npm run lint`; `npm run prisma:validate`; `docker compose up -d db`; `npm run db:seed`; `npm test`; `npm run build`; `npm run e2e`; `make compose-test-lint`; `make compose-test`; `make compose-test-build`; `make compose-test-e2e`; `make compose-down`; and `git diff --check`. Verification used Docker and Playwright.
+- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, and `P2-03` are complete. This loop added a reusable audit module plus a transactional opportunity write-service boundary that emits structured audit rows for create, update, delete, import-decision, stage-transition, and bid-decision flows.
+- Next recommended item: `P2-04 Add a simple admin page for user role visibility and audit-log inspection.`
+- Blockers: No product blocker for `P2-04`. Unrelated repo sync blocker remains: the earlier local history rewrite still has not been force-pushed to `origin` from this environment because the remote is SSH-based and this runtime lacks an authenticated SSH path.
+- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/security.md`, `docs/testing.md`, `src/modules/audit/audit.service.ts`, `src/modules/audit/audit.service.test.ts`, `src/modules/opportunities/opportunity-write.service.ts`, and `src/modules/opportunities/opportunity-write.service.test.ts`.
+- Tests run in latest loop: `npm test -- src/modules/audit/audit.service.test.ts src/modules/opportunities/opportunity-write.service.test.ts`; `npm run prisma:validate`; `docker compose up -d db`; `npm run db:seed`; `npm run lint`; `npm test`; `npm run build`; `npm run e2e`; `make compose-test-lint`; `make compose-test`; `make compose-test-build`; `make compose-test-e2e`; `make compose-down`; and `git diff --check`. Verification used Docker and Playwright.
