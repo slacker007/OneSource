@@ -17,6 +17,7 @@ fs.rmSync(buildRoot, { force: true, recursive: true });
 fs.mkdirSync(path.join(buildRoot, "client"), { recursive: true });
 
 fs.cpSync(sourceClientRoot, path.join(buildRoot, "client"), {
+  dereference: true,
   recursive: true,
 });
 

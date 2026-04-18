@@ -878,7 +878,7 @@ const OPPORTUNITY_WORKSPACE = {
         "Summarize incumbent strengths, likely discriminators, and contract history before the internal capture stand-up.",
       status: "IN_PROGRESS",
       priority: "HIGH",
-      dueAt: "2026-04-20T17:00:00.000Z",
+      dueAt: "2026-04-16T17:00:00.000Z",
       startedAt: "2026-04-16T14:00:00.000Z",
       completedAt: null,
       sortOrder: 0,

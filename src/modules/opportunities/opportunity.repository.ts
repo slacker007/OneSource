@@ -156,6 +156,8 @@ const organizationDashboardArgs = {
             status: true,
             priority: true,
             dueAt: true,
+            deadlineReminderState: true,
+            deadlineReminderUpdatedAt: true,
             assigneeUser: {
               select: {
                 id: true,
@@ -178,6 +180,8 @@ const organizationDashboardArgs = {
             title: true,
             status: true,
             targetDate: true,
+            deadlineReminderState: true,
+            deadlineReminderUpdatedAt: true,
           },
         },
         scorecards: {
@@ -310,6 +314,8 @@ const opportunityWorkspaceArgs = {
         dueAt: true,
         startedAt: true,
         completedAt: true,
+        deadlineReminderState: true,
+        deadlineReminderUpdatedAt: true,
         createdByUser: {
           select: {
             name: true,
@@ -335,6 +341,8 @@ const opportunityWorkspaceArgs = {
         status: true,
         targetDate: true,
         completedAt: true,
+        deadlineReminderState: true,
+        deadlineReminderUpdatedAt: true,
       },
     },
     notes: {
@@ -498,6 +506,8 @@ const personalTaskBoardArgs = {
         dueAt: true,
         startedAt: true,
         completedAt: true,
+        deadlineReminderState: true,
+        deadlineReminderUpdatedAt: true,
         assigneeUserId: true,
         createdByUser: {
           select: {
@@ -613,6 +623,8 @@ type OrganizationDashboardOpportunityRecord = {
     status: OpportunityTaskSummary["status"];
     priority: OpportunityTaskSummary["priority"];
     dueAt: Date | null;
+    deadlineReminderState: OpportunityTaskSummary["deadlineReminderState"];
+    deadlineReminderUpdatedAt: Date | null;
     assigneeUser: {
       id: string;
       name: string | null;
@@ -624,6 +636,8 @@ type OrganizationDashboardOpportunityRecord = {
     title: string;
     status: OpportunityMilestoneSummary["status"];
     targetDate: Date;
+    deadlineReminderState: OpportunityMilestoneSummary["deadlineReminderState"];
+    deadlineReminderUpdatedAt: Date | null;
   }>;
   scorecards: Array<{
     totalScore: { toString(): string } | null;
@@ -695,6 +709,8 @@ export type OpportunityWorkspaceRecord = {
     dueAt: Date | null;
     startedAt: Date | null;
     completedAt: Date | null;
+    deadlineReminderState: OpportunityTaskSummary["deadlineReminderState"];
+    deadlineReminderUpdatedAt: Date | null;
     createdByUser: {
       name: string | null;
       email: string;
@@ -713,6 +729,8 @@ export type OpportunityWorkspaceRecord = {
     status: OpportunityMilestoneSummary["status"];
     targetDate: Date;
     completedAt: Date | null;
+    deadlineReminderState: OpportunityMilestoneSummary["deadlineReminderState"];
+    deadlineReminderUpdatedAt: Date | null;
   }>;
   notes: Array<{
     id: string;
@@ -1103,12 +1121,10 @@ export async function getPersonalTaskBoardSnapshot({
   db,
   userId,
   organizationSlug = DEFAULT_ORGANIZATION_SLUG,
-  now = new Date(),
 }: {
   db: PersonalTaskBoardRepositoryClient;
   userId: string;
   organizationSlug?: string;
-  now?: Date;
 }): Promise<PersonalTaskBoardSnapshot | null> {
   const record = await loadPersonalTaskBoardRecord({
     db,
@@ -1139,11 +1155,7 @@ export async function getPersonalTaskBoardSnapshot({
     completedTaskCount: tasks.filter((task) => task.status === "COMPLETED")
       .length,
     overdueTaskCount: tasks.filter(
-      (task) =>
-        task.status !== "COMPLETED" &&
-        task.status !== "CANCELLED" &&
-        Boolean(task.dueAt) &&
-        new Date(task.dueAt as string).getTime() < now.getTime(),
+      (task) => task.deadlineReminderState === "OVERDUE",
     ).length,
     tasks,
   };
@@ -1266,6 +1278,8 @@ function mapTaskSummary(
     status: task.status,
     priority: task.priority,
     dueAt: toIsoString(task.dueAt),
+    deadlineReminderState: task.deadlineReminderState,
+    deadlineReminderUpdatedAt: toIsoString(task.deadlineReminderUpdatedAt),
     assigneeName: task.assigneeUser?.name ?? task.assigneeUser?.email ?? null,
   };
 }
@@ -1278,6 +1292,8 @@ function mapMilestoneSummary(
     title: milestone.title,
     status: milestone.status,
     targetDate: milestone.targetDate.toISOString(),
+    deadlineReminderState: milestone.deadlineReminderState,
+    deadlineReminderUpdatedAt: toIsoString(milestone.deadlineReminderUpdatedAt),
   };
 }
 
@@ -1374,6 +1390,8 @@ function mapOpportunityWorkspaceSummary(
       status: task.status,
       priority: task.priority,
       dueAt: toIsoString(task.dueAt),
+      deadlineReminderState: task.deadlineReminderState,
+      deadlineReminderUpdatedAt: toIsoString(task.deadlineReminderUpdatedAt),
       assigneeName: formatPersonLabel(task.assigneeUser),
     })),
     milestones: opportunity.milestones.map((milestone) => ({
@@ -1381,6 +1399,8 @@ function mapOpportunityWorkspaceSummary(
       title: milestone.title,
       status: milestone.status,
       targetDate: milestone.targetDate.toISOString(),
+      deadlineReminderState: milestone.deadlineReminderState,
+      deadlineReminderUpdatedAt: toIsoString(milestone.deadlineReminderUpdatedAt),
     })),
     description: opportunity.description,
     externalNoticeId: opportunity.externalNoticeId,
@@ -1415,6 +1435,8 @@ function mapWorkspaceTask(
     dueAt: toIsoString(task.dueAt),
     startedAt: toIsoString(task.startedAt),
     completedAt: toIsoString(task.completedAt),
+    deadlineReminderState: task.deadlineReminderState,
+    deadlineReminderUpdatedAt: toIsoString(task.deadlineReminderUpdatedAt),
     assigneeUserId: task.assigneeUser?.id ?? null,
     assigneeName: formatPersonLabel(task.assigneeUser),
     createdByName: formatPersonLabel(task.createdByUser),
@@ -1452,6 +1474,8 @@ function mapWorkspaceMilestone(
     status: milestone.status,
     targetDate: milestone.targetDate.toISOString(),
     completedAt: toIsoString(milestone.completedAt),
+    deadlineReminderState: milestone.deadlineReminderState,
+    deadlineReminderUpdatedAt: toIsoString(milestone.deadlineReminderUpdatedAt),
   };
 }
 
@@ -1605,8 +1629,16 @@ function buildStageSummaries(
 }
 
 function requiresAttention(opportunity: OpportunitySummary) {
-  return opportunity.tasks.some(
-    (task) => task.priority === "CRITICAL" || task.status === "BLOCKED",
+  return (
+    opportunity.tasks.some(
+      (task) =>
+        task.priority === "CRITICAL" ||
+        task.status === "BLOCKED" ||
+        task.deadlineReminderState === "OVERDUE",
+    ) ||
+    opportunity.milestones.some(
+      (milestone) => milestone.deadlineReminderState === "OVERDUE",
+    )
   );
 }
 

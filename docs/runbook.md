@@ -8,7 +8,7 @@ This runbook captures the real operational procedures for the current repo basel
 
 - `web`: Next.js production server on port `3000`
 - `db`: PostgreSQL 16 on port `5432`
-- `worker`: placeholder background process with database heartbeat logging
+- `worker`: background process that scans task and milestone deadlines, persists reminder state, and writes structured summary logs
 - `test`: profile-gated compose runner for lint, build, and unit tests
 - `playwright`: profile-gated Chromium browser test runner
 
@@ -96,7 +96,7 @@ Apply the current seed defaults:
 npm run db:seed
 ```
 
-The current seed is idempotent enough for local development. It upserts the default organization, system roles, and seven realistic local users; persists five agencies, five contract vehicles, and five competitors; creates connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; seeds four additional manual opportunities across `qualified`, `proposal_in_development`, `submitted`, and `no_bid`; seeds realistic workspace data with varied tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, and activity events; then appends one bootstrap audit-log record.
+The current seed is idempotent enough for local development. It upserts the default organization, system roles, and seven realistic local users; persists five agencies, five contract vehicles, and five competitors; creates connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; seeds four additional manual opportunities across `qualified`, `proposal_in_development`, `submitted`, and `no_bid`; seeds realistic workspace data with varied tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, and activity events; then runs the same deadline-reminder sweep used by the worker so the app opens with truthful overdue and upcoming reminder state before appending the bootstrap audit-log record.
 
 The same seed also writes deterministic local password hashes for all seven users so the credentials-provider sign-in flow works immediately in development. Use the admin email `admin@onesource.local` or the viewer email `avery.stone@onesource.local` plus the shared local development password documented in [src/lib/auth/local-demo-auth.mjs](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/local-demo-auth.mjs:1) for smoke verification only.
 
@@ -121,6 +121,17 @@ Worker logs are structured JSON with:
 - `level`
 - `message`
 - optional `detail`
+
+The reminder sweep summary currently includes:
+
+- `scannedTaskCount`
+- `scannedMilestoneCount`
+- `taskReminderUpdates`
+- `milestoneReminderUpdates`
+- `upcomingTaskCount`
+- `overdueTaskCount`
+- `upcomingMilestoneCount`
+- `overdueMilestoneCount`
 
 ## Compose Test Workflows
 
@@ -149,6 +160,8 @@ make compose-test-e2e
 ```
 
 The Playwright container waits for the `web` health check before running tests.
+
+If the local `.env` predates the reminder worker slice and does not include `DEADLINE_REMINDER_LOOKAHEAD_DAYS`, either refresh `.env` from `.env.example` or prefix the compose command with `DEADLINE_REMINDER_LOOKAHEAD_DAYS=7`.
 
 ## Auth And Authz Smoke Check
 
@@ -200,12 +213,13 @@ Symptoms:
 
 - `web` exits during startup
 - error references `DATABASE_URL`, `AUTH_SECRET`, `NEXTAUTH_URL`, or `WORKER_POLL_INTERVAL_MS`
+- error references `DEADLINE_REMINDER_LOOKAHEAD_DAYS`
 
 Recovery:
 
 1. Check `.env` against `.env.example`.
 2. Ensure `DATABASE_URL` uses `postgres://` or `postgresql://`.
-3. Ensure `AUTH_SECRET` is at least 32 characters and `NEXTAUTH_URL` is an absolute URL.
+3. Ensure `AUTH_SECRET` is at least 32 characters, `NEXTAUTH_URL` is an absolute URL, and `DEADLINE_REMINDER_LOOKAHEAD_DAYS` is a positive integer.
 4. Restart the stack with `make compose-up`.
 
 ### Database Unhealthy
@@ -214,7 +228,7 @@ Symptoms:
 
 - `docker compose ps` shows `db` unhealthy
 - `/api/health` returns `503`
-- worker logs report heartbeat failures
+- worker logs report deadline reminder sweep failures
 
 Recovery:
 

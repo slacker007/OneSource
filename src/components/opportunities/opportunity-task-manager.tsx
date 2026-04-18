@@ -257,6 +257,11 @@ function EditableTaskCard({
           <div className="flex flex-wrap gap-2">
             <Badge tone={priorityTone(task.priority)}>{humanizeEnum(task.priority)}</Badge>
             <Badge tone="muted">{humanizeEnum(task.status)}</Badge>
+            {task.deadlineReminderState !== "NONE" ? (
+              <Badge tone={deadlineReminderTone(task.deadlineReminderState)}>
+                {deadlineReminderLabel(task.deadlineReminderState)}
+              </Badge>
+            ) : null}
           </div>
         </div>
         <p className="text-sm text-muted">
@@ -456,6 +461,18 @@ function priorityTone(priority: OpportunityWorkspaceTask["priority"]) {
     default:
       return "muted" as const;
   }
+}
+
+function deadlineReminderTone(
+  state: OpportunityWorkspaceTask["deadlineReminderState"],
+) {
+  return state === "OVERDUE" ? ("warning" as const) : ("accent" as const);
+}
+
+function deadlineReminderLabel(
+  state: OpportunityWorkspaceTask["deadlineReminderState"],
+) {
+  return state === "OVERDUE" ? "Overdue" : "Upcoming deadline";
 }
 
 function formatDate(value: string) {

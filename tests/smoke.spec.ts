@@ -251,8 +251,12 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(page.getByRole("heading", { name: /^Notes$/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /^History$/i })).toBeVisible();
   await expect(
-    page.getByText(/complete incumbent analysis brief/i),
+    page.getByRole("heading", {
+      name: /^complete incumbent analysis brief$/i,
+    }),
   ).toBeVisible();
+  await expect(page.getByText(/^overdue$/i).first()).toBeVisible();
+  await expect(page.getByText(/upcoming deadline/i).first()).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /^Performance Work Statement$/i }),
   ).toBeVisible();
@@ -329,6 +333,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByText(/enterprise knowledge management support services/i).first(),
   ).toBeVisible();
+  await expect(page.getByText(/^overdue$/i).first()).toBeVisible();
   await page.getByRole("link", { name: /^Dashboard/i }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(

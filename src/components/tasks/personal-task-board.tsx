@@ -75,6 +75,11 @@ export function PersonalTaskBoard({ snapshot }: PersonalTaskBoardProps) {
                     </Badge>
                     <Badge tone="muted">{humanizeEnum(task.status)}</Badge>
                     <Badge tone="warning">{task.opportunityStageLabel}</Badge>
+                    {task.deadlineReminderState !== "NONE" ? (
+                      <Badge tone={deadlineReminderTone(task.deadlineReminderState)}>
+                        {deadlineReminderLabel(task.deadlineReminderState)}
+                      </Badge>
+                    ) : null}
                   </div>
                   <h2 className="text-xl font-semibold text-foreground">{task.title}</h2>
                   <p className="text-sm text-muted">
@@ -145,6 +150,18 @@ function priorityTone(priority: PersonalTaskBoardSnapshot["tasks"][number]["prio
     default:
       return "muted" as const;
   }
+}
+
+function deadlineReminderTone(
+  state: PersonalTaskBoardSnapshot["tasks"][number]["deadlineReminderState"],
+) {
+  return state === "OVERDUE" ? ("warning" as const) : ("accent" as const);
+}
+
+function deadlineReminderLabel(
+  state: PersonalTaskBoardSnapshot["tasks"][number]["deadlineReminderState"],
+) {
+  return state === "OVERDUE" ? "Overdue" : "Upcoming deadline";
 }
 
 function formatDate(value: string) {

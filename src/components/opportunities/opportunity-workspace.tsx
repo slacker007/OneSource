@@ -828,9 +828,22 @@ function MilestoneCard({
               : ""}
           </p>
         </div>
-        <Badge tone={milestoneTone(milestone.status)}>
-          {humanizeEnum(milestone.status)}
-        </Badge>
+        <div className="flex flex-wrap gap-2">
+          <Badge tone={milestoneTone(milestone.status)}>
+            {humanizeEnum(milestone.status)}
+          </Badge>
+          {milestone.deadlineReminderState !== "NONE" ? (
+            <Badge
+              tone={
+                milestone.deadlineReminderState === "OVERDUE" ? "warning" : "accent"
+              }
+            >
+              {milestone.deadlineReminderState === "OVERDUE"
+                ? "Overdue"
+                : "Upcoming deadline"}
+            </Badge>
+          ) : null}
+        </div>
       </div>
       {milestone.description ? (
         <p className="mt-2 text-sm leading-6 text-muted">{milestone.description}</p>

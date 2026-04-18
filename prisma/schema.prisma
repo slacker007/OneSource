@@ -123,6 +123,12 @@ enum OpportunityMilestoneStatus {
   CANCELLED
 }
 
+enum DeadlineReminderState {
+  NONE
+  UPCOMING
+  OVERDUE
+}
+
 enum OpportunityDocumentSourceType {
   MANUAL_UPLOAD
   SOURCE_ATTACHMENT
@@ -730,26 +736,28 @@ model SourceRecordAward {
 }
 
 model OpportunityTask {
-  id              String                  @id @default(cuid()) @map("id")
-  organizationId  String                  @map("organization_id")
-  opportunityId   String                  @map("opportunity_id")
-  createdByUserId String?                 @map("created_by_user_id")
-  assigneeUserId  String?                 @map("assignee_user_id")
-  title           String                  @map("title")
-  description     String?                 @map("description") @db.Text
-  status          OpportunityTaskStatus   @default(NOT_STARTED) @map("status")
-  priority        OpportunityTaskPriority @default(MEDIUM) @map("priority")
-  dueAt           DateTime?               @map("due_at")
-  startedAt       DateTime?               @map("started_at")
-  completedAt     DateTime?               @map("completed_at")
-  sortOrder       Int                     @default(0) @map("sort_order")
-  metadata        Json?                   @map("metadata")
-  createdAt       DateTime                @default(now()) @map("created_at")
-  updatedAt       DateTime                @updatedAt @map("updated_at")
-  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  opportunity     Opportunity             @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
-  createdByUser   User?                   @relation("OpportunityTaskCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  assigneeUser    User?                   @relation("OpportunityTaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  id                        String                  @id @default(cuid()) @map("id")
+  organizationId            String                  @map("organization_id")
+  opportunityId             String                  @map("opportunity_id")
+  createdByUserId           String?                 @map("created_by_user_id")
+  assigneeUserId            String?                 @map("assignee_user_id")
+  title                     String                  @map("title")
+  description               String?                 @map("description") @db.Text
+  status                    OpportunityTaskStatus   @default(NOT_STARTED) @map("status")
+  priority                  OpportunityTaskPriority @default(MEDIUM) @map("priority")
+  dueAt                     DateTime?               @map("due_at")
+  startedAt                 DateTime?               @map("started_at")
+  completedAt               DateTime?               @map("completed_at")
+  deadlineReminderState     DeadlineReminderState   @default(NONE) @map("deadline_reminder_state")
+  deadlineReminderUpdatedAt DateTime?               @map("deadline_reminder_updated_at")
+  sortOrder                 Int                     @default(0) @map("sort_order")
+  metadata                  Json?                   @map("metadata")
+  createdAt                 DateTime                @default(now()) @map("created_at")
+  updatedAt                 DateTime                @updatedAt @map("updated_at")
+  organization              Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity               Opportunity             @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  createdByUser             User?                   @relation("OpportunityTaskCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  assigneeUser              User?                   @relation("OpportunityTaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, status, dueAt], map: "opportunity_tasks_org_status_due_at_idx")
   @@index([opportunityId, dueAt], map: "opportunity_tasks_opportunity_id_due_at_idx")
@@ -759,23 +767,25 @@ model OpportunityTask {
 }
 
 model OpportunityMilestone {
-  id               String                     @id @default(cuid()) @map("id")
-  organizationId   String                     @map("organization_id")
-  opportunityId    String                     @map("opportunity_id")
-  createdByUserId  String?                    @map("created_by_user_id")
-  title            String                     @map("title")
-  description      String?                    @map("description") @db.Text
-  milestoneTypeKey String?                    @map("milestone_type_key")
-  status           OpportunityMilestoneStatus @default(PLANNED) @map("status")
-  targetDate       DateTime                   @map("target_date")
-  completedAt      DateTime?                  @map("completed_at")
-  sortOrder        Int                        @default(0) @map("sort_order")
-  metadata         Json?                      @map("metadata")
-  createdAt        DateTime                   @default(now()) @map("created_at")
-  updatedAt        DateTime                   @updatedAt @map("updated_at")
-  organization     Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  opportunity      Opportunity                @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
-  createdByUser    User?                      @relation("OpportunityMilestoneCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  id                        String                     @id @default(cuid()) @map("id")
+  organizationId            String                     @map("organization_id")
+  opportunityId             String                     @map("opportunity_id")
+  createdByUserId           String?                    @map("created_by_user_id")
+  title                     String                     @map("title")
+  description               String?                    @map("description") @db.Text
+  milestoneTypeKey          String?                    @map("milestone_type_key")
+  status                    OpportunityMilestoneStatus @default(PLANNED) @map("status")
+  targetDate                DateTime                   @map("target_date")
+  completedAt               DateTime?                  @map("completed_at")
+  deadlineReminderState     DeadlineReminderState      @default(NONE) @map("deadline_reminder_state")
+  deadlineReminderUpdatedAt DateTime?                  @map("deadline_reminder_updated_at")
+  sortOrder                 Int                        @default(0) @map("sort_order")
+  metadata                  Json?                      @map("metadata")
+  createdAt                 DateTime                   @default(now()) @map("created_at")
+  updatedAt                 DateTime                   @updatedAt @map("updated_at")
+  organization              Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity               Opportunity                @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  createdByUser             User?                      @relation("OpportunityMilestoneCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, targetDate], map: "opportunity_milestones_org_target_date_idx")
   @@index([opportunityId, targetDate], map: "opportunity_milestones_opportunity_id_target_date_idx")

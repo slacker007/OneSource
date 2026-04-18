@@ -77,7 +77,9 @@ const snapshot: OpportunityWorkspaceSnapshot = {
         title: "Complete incumbent analysis brief",
         status: "IN_PROGRESS",
         priority: "HIGH",
-        dueAt: "2026-04-20T17:00:00.000Z",
+        dueAt: "2026-04-16T17:00:00.000Z",
+        deadlineReminderState: "OVERDUE",
+        deadlineReminderUpdatedAt: "2026-04-18T08:00:00.000Z",
         assigneeName: "Taylor Reed",
       },
     ],
@@ -87,6 +89,8 @@ const snapshot: OpportunityWorkspaceSnapshot = {
         title: "Customer questions due",
         status: "PLANNED",
         targetDate: "2026-04-18T23:59:00.000Z",
+        deadlineReminderState: "UPCOMING",
+        deadlineReminderUpdatedAt: "2026-04-18T08:00:00.000Z",
       },
     ],
   },
@@ -145,9 +149,11 @@ const snapshot: OpportunityWorkspaceSnapshot = {
         "Summarize incumbent strengths, likely discriminators, and contract history.",
       status: "IN_PROGRESS",
       priority: "HIGH",
-      dueAt: "2026-04-20T17:00:00.000Z",
+      dueAt: "2026-04-16T17:00:00.000Z",
       startedAt: "2026-04-16T14:00:00.000Z",
       completedAt: null,
+      deadlineReminderState: "OVERDUE",
+      deadlineReminderUpdatedAt: "2026-04-18T08:00:00.000Z",
       assigneeUserId: "user_taylor",
       assigneeName: "Taylor Reed",
       createdByName: "OneSource Admin",
@@ -162,6 +168,8 @@ const snapshot: OpportunityWorkspaceSnapshot = {
       status: "PLANNED",
       targetDate: "2026-04-18T23:59:00.000Z",
       completedAt: null,
+      deadlineReminderState: "UPCOMING",
+      deadlineReminderUpdatedAt: "2026-04-18T08:00:00.000Z",
     },
   ],
   documents: [
@@ -257,6 +265,8 @@ describe("OpportunityWorkspace", () => {
     expect(screen.getByRole("heading", { name: /^Documents$/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Notes$/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^History$/i })).toBeInTheDocument();
+    expect(screen.getByText(/^overdue$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/upcoming deadline/i).length).toBeGreaterThan(0);
     expect(
       screen.getByText(/complete incumbent analysis brief/i),
     ).toBeInTheDocument();

@@ -6,13 +6,13 @@ This document records the truthful system architecture that exists in the repo t
 
 ## Current System Shape
 
-OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, Prisma ORM, and Auth.js. The app exposes a protected authenticated shell under the `(app)` route group with a shared desktop sidebar, sticky top bar, read-only global search affordance, and reusable mobile drawer navigation; a public sign-in route; a real opportunity list page at `/opportunities`; a real opportunity workspace page at `/opportunities/[opportunityId]`; guarded create and edit pages at `/opportunities/new` and `/opportunities/[opportunityId]/edit`; a real external source search page at `/sources`; a real personal execution queue at `/tasks`; a protected placeholder route for `/analytics`; a server-guarded admin console at `/settings` that now uses shared badge and table primitives; a public permission-denied route; an Auth.js route handler; and a health-check route, then runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, the connector metadata plus promotion-decision entities, and the execution-side workspace records needed for later capture workflows. Typed read and write boundaries now live under `src/modules/opportunities`, `src/modules/source-integrations`, and `src/modules/admin`; the `/sources` route uses a guarded import-action path that persists source records and import decisions through the same modular-monolith boundary, the workspace route renders one organization-scoped pursuit snapshot through the typed repository plus a stage-policy-derived control panel and task-plus-milestone-plus-note management forms, the `/tasks` route renders a user-scoped assigned-task board through the same repository module, and the opportunity, task, milestone, and note form submissions post through guarded server actions that delegate to the audited write service instead of touching Prisma directly from UI code.
+OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, Prisma ORM, and Auth.js. The app exposes a protected authenticated shell under the `(app)` route group with a shared desktop sidebar, sticky top bar, read-only global search affordance, and reusable mobile drawer navigation; a public sign-in route; a real opportunity list page at `/opportunities`; a real opportunity workspace page at `/opportunities/[opportunityId]`; guarded create and edit pages at `/opportunities/new` and `/opportunities/[opportunityId]/edit`; a real external source search page at `/sources`; a real personal execution queue at `/tasks`; a protected placeholder route for `/analytics`; a server-guarded admin console at `/settings` that now uses shared badge and table primitives; a public permission-denied route; an Auth.js route handler; and a health-check route, then runs alongside PostgreSQL and a real deadline-reminder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, the connector metadata plus promotion-decision entities, the execution-side workspace records needed for later capture workflows, and explicit deadline-reminder state on tasks plus milestones. Typed read and write boundaries now live under `src/modules/opportunities`, `src/modules/source-integrations`, and `src/modules/admin`; the `/sources` route uses a guarded import-action path that persists source records and import decisions through the same modular-monolith boundary, the workspace route renders one organization-scoped pursuit snapshot through the typed repository plus a stage-policy-derived control panel and task-plus-milestone-plus-note management forms, the `/tasks` route renders a user-scoped assigned-task board through the same repository module, and the opportunity, task, milestone, and note form submissions post through guarded server actions that delegate to the audited write service instead of touching Prisma directly from UI code.
 
 Current runtime components:
 
 - `web`: Next.js application container serving the App Router UI and API routes
-- `db`: PostgreSQL 16 container used by the health check and worker heartbeat
-- `worker`: placeholder Node.js process that validates env, connects to PostgreSQL, and emits structured heartbeat logs
+- `db`: PostgreSQL 16 container used by the health check and reminder worker
+- `worker`: Node.js process that validates env, sweeps task and milestone reminders on an interval, persists reminder state, and emits structured summary logs
 - `playwright`: profile-gated Chromium test container used only for compose-backed browser verification
 
 The compose images install dependencies inside Docker rather than copying a host `node_modules` tree. By default the dependency stage runs `npm ci`, but it will switch to optional local offline archives under `vendor/` when those files have been generated for an environment that cannot reach the npm registry from containers. A repo-local `Makefile` now wraps Docker and compose entrypoints so those archives are prepared before builds start.
@@ -27,7 +27,7 @@ The compose images install dependencies inside Docker rather than copying a host
 - `src/modules/opportunities`: shared DTOs, typed repository functions for opportunity-centric dashboard, list, form, and workspace read models, stage-policy rules, and audited write services
 - `src/modules/source-integrations`: typed external-search parsing, connector capability metadata, mocked `sam.gov` request translation and result execution, duplicate detection, and preview/import application services
 - `prisma`: schema, generated migrations, and seed scripts
-- `scripts`: operational helper scripts including the placeholder worker
+- `scripts`: operational helper scripts including the deadline-reminder worker
 - `tests`: Playwright smoke coverage
 - `docs`: durable architecture, runbook, testing, and research notes
 
@@ -49,7 +49,7 @@ The compose images install dependencies inside Docker rather than copying a host
 12. The protected `/sources` route renders [SourceSearch](/Users/maverick/Documents/RalphLoops/OneSource/src/components/sources/source-search.tsx:1) from [src/app/(app)/sources/page.tsx](</Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/sources/page.tsx:1>), which parses URL search params through [src/modules/source-integrations/source-search.service.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/modules/source-integrations/source-search.service.ts:1), validates the canonical external-search query, translates it into explicit `sam.gov` request parameters, and executes deterministic mocked connector results so the route is real before the live adapter lands.
 13. When a preview is selected on `/sources`, the page also loads [src/modules/source-integrations/source-import.service.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/modules/source-integrations/source-import.service.ts:1) to build deterministic mocked raw-versus-normalized payloads, rank duplicate opportunities against seeded tracked records, and expose the guarded create-versus-link import decisions.
 14. Form submissions from the preview panel post to [src/app/(app)/sources/actions.ts](</Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/sources/actions.ts:1>), which requires `manage_source_searches`, persists `source_records` plus `source_import_decisions`, emits audit rows and opportunity activity events, and then redirects back into the preview state so the UI reflects the new canonical linkage.
-15. The protected `/tasks` route renders [PersonalTaskBoard](/Users/maverick/Documents/RalphLoops/OneSource/src/components/tasks/personal-task-board.tsx:1) from [src/app/(app)/tasks/page.tsx](</Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/tasks/page.tsx:1>), which loads the signed-in user’s assigned tasks with opportunity linkage through [src/modules/opportunities/opportunity.repository.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/modules/opportunities/opportunity.repository.ts:1), while `/analytics` still renders [SectionPlaceholder](/Users/maverick/Documents/RalphLoops/OneSource/src/components/layout/section-placeholder.tsx:1) for a later slice.
+15. The protected `/tasks` route renders [PersonalTaskBoard](/Users/maverick/Documents/RalphLoops/OneSource/src/components/tasks/personal-task-board.tsx:1) from [src/app/(app)/tasks/page.tsx](</Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/tasks/page.tsx:1>), which loads the signed-in user’s assigned tasks with opportunity linkage and persisted deadline-reminder state through [src/modules/opportunities/opportunity.repository.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/modules/opportunities/opportunity.repository.ts:1), while `/analytics` still renders [SectionPlaceholder](/Users/maverick/Documents/RalphLoops/OneSource/src/components/layout/section-placeholder.tsx:1) for a later slice.
 16. The Auth.js route at [src/app/api/auth/[...nextauth]/route.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/app/api/auth/[...nextauth]/route.ts:1) uses [src/lib/auth/auth-options.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/auth-options.ts:1) to issue JWT-backed sessions enriched with `organizationId` and `roleKeys`.
 17. The guarded settings route at [src/app/(app)/settings/page.tsx](</Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/settings/page.tsx:1>) calls [requireAppPermission](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/authorization.ts:1), loads organization-scoped admin data through [src/modules/admin/admin.repository.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/modules/admin/admin.repository.ts:1), and renders [AdminConsole](/Users/maverick/Documents/RalphLoops/OneSource/src/components/admin/admin-console.tsx:1) through the shared table, badge, empty-state, and error-state primitives.
 18. Non-admin users who navigate directly to `/settings` are redirected to `/forbidden`.
@@ -58,9 +58,10 @@ The compose images install dependencies inside Docker rather than copying a host
 ### Worker
 
 1. `docker compose` starts `scripts/worker.mjs`.
-2. The worker validates `DATABASE_URL` plus `WORKER_POLL_INTERVAL_MS`.
-3. On each polling interval it opens a PostgreSQL connection, executes `select 1 as heartbeat`, and logs a structured JSON heartbeat.
-4. `SIGINT` and `SIGTERM` trigger a clean shutdown loop exit.
+2. The worker validates `DATABASE_URL`, `WORKER_POLL_INTERVAL_MS`, and `DEADLINE_REMINDER_LOOKAHEAD_DAYS`.
+3. On each polling interval it runs [scripts/deadline-reminder-job.mjs](/Users/maverick/Documents/RalphLoops/OneSource/scripts/deadline-reminder-job.mjs:1), which scans active tasks plus milestones, classifies each deadline as `NONE`, `UPCOMING`, or `OVERDUE`, persists state transitions, and appends both activity-feed and audit-log evidence for reminder changes.
+4. Each sweep emits structured JSON summary logs with scanned and updated counts so operators can tell whether reminder work is running.
+5. `SIGINT` and `SIGTERM` trigger a clean shutdown loop exit.
 
 ## Module Boundaries
 
@@ -105,8 +106,8 @@ Prisma now owns the initial database schema and migration history. The Phase 1 b
 - `source_record_attachments`, `source_record_contacts`, and `source_record_awards`: normalized child entities for source-specific linked artifacts, contacts, and award enrichment
 - `source_import_decisions`: auditable promotion decisions that either create a new opportunity or link a source record to an existing opportunity
 - `source_search_results` and `source_sync_run_records`: lineage joins that record which search execution and sync run observed a retained source record
-- `opportunity_tasks`: execution work items with assignee, status, priority, due dates, and metadata
-- `opportunity_milestones`: key capture dates and checkpoints with status and target dates
+- `opportunity_tasks`: execution work items with assignee, status, priority, due dates, persisted deadline-reminder state, and metadata
+- `opportunity_milestones`: key capture dates and checkpoints with status, target dates, and persisted deadline-reminder state
 - `opportunity_notes`: pinned and unpinned workspace notes with author attribution
 - `opportunity_documents`: linked or uploaded document metadata plus extracted text storage
 - `opportunity_stage_transitions`: append-oriented stage-change history with rationale and required-field snapshots
@@ -141,6 +142,7 @@ Current seed defaults:
 - four additional manual opportunities distributed across `qualified`, `proposal_in_development`, `submitted`, and `no_bid` pipeline states
 - seeded workspaces that now cover blocked, in-progress, completed, and cancelled-style execution patterns plus `GO`, `DEFER`, and `NO_GO` scoring or bid-decision outcomes
 - one bootstrap audit-log event recording the seed action
+- one seeded overdue active task plus one seeded upcoming milestone reminder after the reminder sweep runs
 
 ## Container And Environment Strategy
 
@@ -155,6 +157,7 @@ Environment configuration is injected through `.env` / compose variables and val
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `WORKER_POLL_INTERVAL_MS`
+- `DEADLINE_REMINDER_LOOKAHEAD_DAYS`
 
 Docker dependency installation defaults to online `npm ci`. Optional local fallback archives can be generated through `make docker-artifacts` when a specific environment needs offline container inputs, but those tarballs are intentionally ignored and are not durable repo inputs.
 
@@ -167,7 +170,7 @@ Current automated coverage consists of:
 - Vitest coverage for the admin repository DTO mapping and organization-scoped audit preview contract
 - Vitest coverage for the typed opportunity repository DTO mapping and seeded dashboard query contract
 - Vitest coverage for the stage-policy boundary plus the transactional opportunity write service that emits audit rows and activity events for create, update, delete, import-decision, stage-transition, and bid-decision flows
-- Playwright Chromium smoke coverage for protected-route redirect, sign-in, the `/opportunities` filter flow, the seeded `/opportunities/[opportunityId]` workspace route plus live task creation, live milestone creation, guarded note creation, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/sources` mocked external-search plus preview/link import flow, desktop shell navigation, small-screen drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct settings navigation
+- Playwright Chromium smoke coverage for protected-route redirect, sign-in, the `/opportunities` filter flow, the seeded `/opportunities/[opportunityId]` workspace route plus live overdue and upcoming reminder badges, live task creation, live milestone creation, guarded note creation, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` queue with persisted reminder state, the `/sources` mocked external-search plus preview/link import flow, desktop shell navigation, small-screen drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct settings navigation
 - Prisma schema validation, migration, and seed verification against PostgreSQL
 - compose-backed lint, build, unit-test, and browser-test workflows documented in `docs/testing.md`
 
@@ -181,6 +184,6 @@ No live connector exists yet. The product architecture now persists source-agnos
 - Only a subset of business workflows currently use role-based permission enforcement; `manage_pipeline`, `manage_source_searches`, and `manage_workspace_settings` now guard the current mutating or restricted surfaces, but finer-grained record-level authorization is still future work
 - The opportunity write service now emits audit rows for representative business writes and is exercised by the tracked-opportunity forms plus source-import actions, but auth events and later workspace mutations still need to call that boundary consistently
 - No executable connector service layer yet despite the new connector metadata baseline
-- No production job runner beyond the placeholder worker heartbeat
+- No queue-backed job orchestration beyond the current interval-based reminder worker
 
 These gaps are expected at the current phase and should be resolved through the sequenced PRD checklist rather than ad hoc refactors.

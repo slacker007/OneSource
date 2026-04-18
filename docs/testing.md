@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 5 task, milestone, and note collaboration baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 5 collaboration and reminder baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the seeded opportunity workspace route plus live task creation, live milestone creation, guarded note creation, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue, the `/sources` external-search flow with mocked connector responses plus preview-and-link import behavior, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live task creation, live milestone creation, guarded note creation, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` external-search flow with mocked connector responses plus preview-and-link import behavior, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -46,6 +46,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - navigate into `/opportunities`, apply real source and stage filters, and observe the URL plus result set update together
 - open a seeded opportunity workspace from `/opportunities`, verify the overview, scoring, tasks, documents, notes, and history sections render on the live app, then execute one guarded stage transition with recorded rationale
 - create a task from the workspace with assignee, due date, status, and priority, then confirm that task appears in the signed-in user’s `/tasks` personal queue
+- render one seeded overdue task badge plus one seeded upcoming milestone badge before any new writes are made, proving the background worker and seed path persisted reminder state
 - create a milestone from the workspace with title, type, target date, and status, then confirm that milestone appears on the dashboard deadline surface
 - create a note from the workspace with title, pinned state, and body content, then confirm that note appears in the notes section and history feed
 - open `/opportunities/new`, restore a browser-local draft, create a tracked opportunity through the guarded form path, then edit that opportunity through the guarded update flow
@@ -133,6 +134,13 @@ For the current Phase 5 note slice, targeted verification should confirm:
 - the rendered workspace exposes a guarded note-create form without leaving the opportunity route
 - the browser smoke flow can create a note from the workspace and observe it in both the notes section and history feed
 
+For the current Phase 5 reminder slice, targeted verification should confirm:
+
+- the reminder job classifies active task and milestone deadlines into `NONE`, `UPCOMING`, and `OVERDUE` states from an explicit `now` reference and lookahead window
+- the reminder job persists state transitions while appending both workspace activity events and audit-log rows
+- the typed opportunity repository maps persisted reminder state into the workspace, dashboard attention logic, and personal task board without leaking raw Prisma payloads into the page layer
+- the browser smoke flow can observe seeded reminder badges in both the workspace and `/tasks` queue without client polling logic
+
 When the changed area includes Prisma schema or seed logic, also run:
 
 ```bash
@@ -194,6 +202,7 @@ make compose-test-e2e
 ```
 
 The Playwright workflow automatically starts PostgreSQL and the web app, waits for the app health check, then runs Chromium from the dedicated Playwright container.
+If the local `.env` is missing `DEADLINE_REMINDER_LOOKAHEAD_DAYS`, prefix the compose command with `DEADLINE_REMINDER_LOOKAHEAD_DAYS=7`.
 
 ## Runtime Support Commands
 

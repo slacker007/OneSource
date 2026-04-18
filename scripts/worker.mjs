@@ -1,8 +1,14 @@
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 
-import { Client } from "pg";
 import { z } from "zod";
+
+import { PrismaClient } from "@prisma/client";
+
+import {
+  DEFAULT_DEADLINE_REMINDER_LOOKAHEAD_DAYS,
+  runDeadlineReminderSweep,
+} from "./deadline-reminder-job.mjs";
 
 const workerEnvSchema = z.object({
   DATABASE_URL: z
@@ -17,10 +23,22 @@ const workerEnvSchema = z.object({
       }
     }, "DATABASE_URL must be a valid postgres connection string."),
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(30000),
+  DEADLINE_REMINDER_LOOKAHEAD_DAYS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(DEFAULT_DEADLINE_REMINDER_LOOKAHEAD_DAYS),
 });
 
 const env = workerEnvSchema.parse(process.env);
 let keepRunning = true;
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: env.DATABASE_URL,
+    },
+  },
+});
 
 function log(level, message, detail) {
   const payload = {
@@ -40,21 +58,12 @@ function log(level, message, detail) {
   console.log(line);
 }
 
-async function runHeartbeat() {
-  const client = new Client({
-    connectionString: env.DATABASE_URL,
+async function runDeadlineSweep() {
+  return runDeadlineReminderSweep({
+    db: prisma,
+    lookaheadDays: env.DEADLINE_REMINDER_LOOKAHEAD_DAYS,
+    log: ({ level, message, detail }) => log(level ?? "info", message, detail),
   });
-
-  try {
-    await client.connect();
-    await client.query("select 1 as heartbeat");
-    log(
-      "info",
-      "Background worker heartbeat completed. Placeholder worker is ready for future job runners.",
-    );
-  } finally {
-    await client.end().catch(() => undefined);
-  }
 }
 
 process.on("SIGINT", () => {
@@ -65,15 +74,15 @@ process.on("SIGTERM", () => {
   keepRunning = false;
 });
 
-log("info", "Starting placeholder background worker for Phase 0.");
+log("info", "Starting deadline reminder worker.");
 
 while (keepRunning) {
   try {
-    await runHeartbeat();
+    await runDeadlineSweep();
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown worker failure";
-    log("error", "Background worker heartbeat failed.", { message });
+    log("error", "Deadline reminder worker iteration failed.", { message });
   }
 
   if (!keepRunning) {
@@ -82,5 +91,7 @@ while (keepRunning) {
 
   await delay(env.WORKER_POLL_INTERVAL_MS);
 }
+
+await prisma.$disconnect().catch(() => undefined);
 
 log("info", "Worker shutdown complete.");

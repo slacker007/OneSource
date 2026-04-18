@@ -240,6 +240,11 @@ function EditableMilestoneCard({
             {milestone.milestoneTypeKey ? (
               <Badge tone="muted">{humanizeEnum(milestone.milestoneTypeKey)}</Badge>
             ) : null}
+            {milestone.deadlineReminderState !== "NONE" ? (
+              <Badge tone={deadlineReminderTone(milestone.deadlineReminderState)}>
+                {deadlineReminderLabel(milestone.deadlineReminderState)}
+              </Badge>
+            ) : null}
           </div>
         </div>
         <p className="text-sm text-muted">
@@ -424,6 +429,18 @@ function milestoneTone(status: OpportunityWorkspaceMilestone["status"]) {
     default:
       return "muted" as const;
   }
+}
+
+function deadlineReminderTone(
+  state: OpportunityWorkspaceMilestone["deadlineReminderState"],
+) {
+  return state === "OVERDUE" ? ("warning" as const) : ("accent" as const);
+}
+
+function deadlineReminderLabel(
+  state: OpportunityWorkspaceMilestone["deadlineReminderState"],
+) {
+  return state === "OVERDUE" ? "Overdue" : "Upcoming deadline";
 }
 
 function formatDate(value: string) {

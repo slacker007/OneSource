@@ -21,7 +21,9 @@ const snapshot: PersonalTaskBoardSnapshot = {
       description: "Summarize incumbent strengths before capture stand-up.",
       status: "IN_PROGRESS",
       priority: "HIGH",
-      dueAt: "2026-04-20T17:00:00.000Z",
+      dueAt: "2026-04-16T17:00:00.000Z",
+      deadlineReminderState: "OVERDUE",
+      deadlineReminderUpdatedAt: "2026-04-18T08:00:00.000Z",
       startedAt: "2026-04-16T14:00:00.000Z",
       completedAt: null,
       assigneeUserId: "user_taylor",
@@ -38,6 +40,8 @@ const snapshot: PersonalTaskBoardSnapshot = {
       status: "COMPLETED",
       priority: "MEDIUM",
       dueAt: "2026-04-18T16:00:00.000Z",
+      deadlineReminderState: "NONE",
+      deadlineReminderUpdatedAt: null,
       startedAt: "2026-04-17T16:00:00.000Z",
       completedAt: "2026-04-18T15:30:00.000Z",
       assigneeUserId: "user_taylor",
@@ -60,6 +64,7 @@ describe("PersonalTaskBoard", () => {
     expect(screen.getAllByText(/taylor reed/i)[0]).toBeInTheDocument();
     expect(screen.getByText(/enterprise knowledge management support services/i)).toBeInTheDocument();
     expect(screen.getByText(/army cloud operations recompete/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/^overdue$/i).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /open workspace/i })).toHaveLength(2);
   });
 });

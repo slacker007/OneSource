@@ -100,7 +100,9 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
             title: "Confirm incumbent teaming posture",
             status: "BLOCKED",
             priority: "CRITICAL",
-            dueAt: new Date("2026-04-20T16:00:00.000Z"),
+            dueAt: new Date("2026-04-16T16:00:00.000Z"),
+            deadlineReminderState: "OVERDUE",
+            deadlineReminderUpdatedAt: new Date("2026-04-18T08:00:00.000Z"),
             assigneeUser: {
               id: "user_1",
               name: "Alex Morgan",
@@ -113,6 +115,8 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
             status: "IN_PROGRESS",
             priority: "HIGH",
             dueAt: new Date("2026-04-22T16:00:00.000Z"),
+            deadlineReminderState: "UPCOMING",
+            deadlineReminderUpdatedAt: new Date("2026-04-18T08:00:00.000Z"),
             assigneeUser: {
               id: "user_2",
               name: null,
@@ -126,6 +130,8 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
             title: "Go/No-Go Board",
             status: "AT_RISK",
             targetDate: new Date("2026-04-24T15:00:00.000Z"),
+            deadlineReminderState: "UPCOMING",
+            deadlineReminderUpdatedAt: new Date("2026-04-18T08:00:00.000Z"),
           },
         ],
         scorecards: [
@@ -189,6 +195,8 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
             status: "IN_PROGRESS",
             priority: "HIGH",
             dueAt: new Date("2026-04-22T18:00:00.000Z"),
+            deadlineReminderState: "UPCOMING",
+            deadlineReminderUpdatedAt: new Date("2026-04-18T08:00:00.000Z"),
             assigneeUser: {
               id: "user_3",
               name: "Casey Brooks",
@@ -202,6 +210,8 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
             title: "Proposal submitted",
             status: "COMPLETED",
             targetDate: new Date("2026-04-18T21:00:00.000Z"),
+            deadlineReminderState: "NONE",
+            deadlineReminderUpdatedAt: null,
           },
         ],
         scorecards: [
@@ -311,9 +321,11 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
         description: "Summarize incumbent strengths before capture stand-up.",
         status: "IN_PROGRESS",
         priority: "HIGH",
-        dueAt: new Date("2026-04-20T17:00:00.000Z"),
+        dueAt: new Date("2026-04-16T17:00:00.000Z"),
         startedAt: new Date("2026-04-16T14:00:00.000Z"),
         completedAt: null,
+        deadlineReminderState: "OVERDUE",
+        deadlineReminderUpdatedAt: new Date("2026-04-18T08:00:00.000Z"),
         createdByUser: {
           name: "OneSource Admin",
           email: "admin@onesource.local",
@@ -334,6 +346,8 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
         status: "PLANNED",
         targetDate: new Date("2026-04-18T23:59:00.000Z"),
         completedAt: null,
+        deadlineReminderState: "UPCOMING",
+        deadlineReminderUpdatedAt: new Date("2026-04-18T08:00:00.000Z"),
       },
     ],
     notes: [
@@ -479,6 +493,8 @@ function buildPersonalTaskBoardRecord(): PersonalTaskBoardRecord {
         dueAt: new Date("2026-04-18T16:00:00.000Z"),
         startedAt: new Date("2026-04-17T16:00:00.000Z"),
         completedAt: new Date("2026-04-18T15:30:00.000Z"),
+        deadlineReminderState: "NONE",
+        deadlineReminderUpdatedAt: null,
         createdByUser: {
           name: "OneSource Admin",
           email: "admin@onesource.local",
@@ -539,6 +555,7 @@ describe("opportunity.repository", () => {
     expect(summaries[0].tasks[0]).toMatchObject({
       title: "Confirm incumbent teaming posture",
       assigneeName: "Alex Morgan",
+      deadlineReminderState: "OVERDUE",
       priority: "CRITICAL",
     });
     expect(summaries[1].currentStageLabel).toBe("Unstaged");
@@ -655,6 +672,7 @@ describe("opportunity.repository", () => {
           title: "Complete incumbent analysis brief",
           assigneeUserId: "user_taylor",
           assigneeName: "Taylor Reed",
+          deadlineReminderState: "OVERDUE",
         },
       ],
       documents: [
@@ -689,7 +707,6 @@ describe("opportunity.repository", () => {
 
     const snapshot = await getPersonalTaskBoardSnapshot({
       db,
-      now: new Date("2026-04-21T00:00:00.000Z"),
       userId: "user_taylor",
     });
 
@@ -701,11 +718,13 @@ describe("opportunity.repository", () => {
       tasks: [
         {
           title: "Complete incumbent analysis brief",
+          deadlineReminderState: "OVERDUE",
           opportunityTitle: "Enterprise Knowledge Management Support Services",
           opportunityStageLabel: "Capture Active",
         },
         {
           title: "Prepare customer questions draft",
+          deadlineReminderState: "NONE",
           opportunityTitle: "Army Cloud Operations Recompete",
           opportunityStageLabel: "Qualified",
         },

@@ -16,6 +16,8 @@ export type OpportunityMilestoneStatus =
   | "MISSED"
   | "CANCELLED";
 
+export type DeadlineReminderState = "NONE" | "UPCOMING" | "OVERDUE";
+
 export type SourceConnectorAuthType =
   | "API_KEY"
   | "OAUTH"
@@ -68,6 +70,8 @@ export type OpportunityTaskSummary = {
   status: OpportunityTaskStatus;
   priority: OpportunityTaskPriority;
   dueAt: string | null;
+  deadlineReminderState: DeadlineReminderState;
+  deadlineReminderUpdatedAt: string | null;
   assigneeName: string | null;
 };
 
@@ -76,6 +80,8 @@ export type OpportunityMilestoneSummary = {
   title: string;
   status: OpportunityMilestoneStatus;
   targetDate: string;
+  deadlineReminderState: DeadlineReminderState;
+  deadlineReminderUpdatedAt: string | null;
 };
 
 export type OpportunityScoreSummary = {
