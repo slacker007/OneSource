@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, the first live Phase 2 authentication, authorization, auditability, and admin-visibility slices, the first three Phase 3 UI slices, the full current Phase 4 opportunity-management baseline, the first three Phase 5 collaboration slices, the full current Phase 6 scoring-and-decision-support baseline, the full current Phase 7 intake baseline, the first three Phase 8 knowledge-system slices, the full current Phase 9 analytics-and-feedback baseline, and the first two Phase 10 proposal-and-integration slices on top of the Prisma baseline.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, the first live Phase 2 authentication, authorization, auditability, and admin-visibility slices, the first three Phase 3 UI slices, the full current Phase 4 opportunity-management baseline, the first three Phase 5 collaboration slices, the full current Phase 6 scoring-and-decision-support baseline, the full current Phase 7 intake baseline, the first three Phase 8 knowledge-system slices, the full current Phase 9 analytics-and-feedback baseline, and the full Phase 10 proposal, integration, observability, and launch-hardening baseline on top of the Prisma foundation.
 
 ## Current System Shape
 
@@ -215,10 +215,8 @@ The first executable connector now exists behind a source-agnostic integration b
 
 ## Known Gaps
 
-- The shared app shell, reusable UI-pattern kit, seeded dashboard landing page with pipeline-health analytics, real opportunity list, real opportunity workspace, proposal tracking, real decision console plus portfolio decision analytics, closeout capture for closed pursuits, task CRUD, milestone CRUD, guarded note creation, guarded document upload, real personal `/tasks` queue, real external-search page, the structured `/knowledge` library, in-workspace knowledge suggestions, the admin recalibration workflow, and the cross-system integration boundary now exist, but the remaining operational-hardening slices still need to land
-- Only a subset of business workflows currently use role-based permission enforcement; `manage_pipeline`, `manage_source_searches`, and `manage_workspace_settings` now guard the current mutating or restricted surfaces, but finer-grained record-level authorization is still future work
-- The opportunity write service now emits audit rows for representative business writes and is exercised by the tracked-opportunity forms plus source-import actions, but auth events and later workspace mutations still need to call that boundary consistently
-- Scheduled ingestion now exists for due `sam.gov` saved searches and the guarded admin console now exposes source-sync observability plus retry queueing, but non-`sam.gov` connector execution and deeper operational telemetry remain future work
-- The worker now handles reminders, source sync, document parsing retries, and scorecard recalculation, but queue isolation, backpressure controls, and richer job observability remain future work
-
-These gaps are expected at the current phase and should be resolved through the sequenced PRD checklist rather than ad hoc refactors.
+- The project checklist is complete, but `FP-01` still remains for one credentialed live `sam.gov` validation run with a real API key.
+- Only a subset of business workflows currently use role-based permission enforcement; `manage_pipeline`, `manage_source_searches`, and `manage_workspace_settings` now guard the current mutating or restricted surfaces, but finer-grained record-level authorization is still future work.
+- The opportunity write service now emits audit rows for representative business writes and is exercised by the tracked-opportunity forms plus source-import actions, but auth events and permission failures still need dedicated audit emission.
+- Scheduled ingestion now exists for due `sam.gov` saved searches and the guarded admin console now exposes source-sync observability plus retry queueing, but non-`sam.gov` connector execution and deeper operational telemetry remain future work.
+- The worker now handles reminders, source sync, document parsing retries, and scorecard recalculation, but queue isolation, backpressure controls, and richer job observability remain future enhancements.

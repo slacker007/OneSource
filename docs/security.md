@@ -80,6 +80,23 @@ The `audit_logs` table is the durable sink for future security-relevant activity
 
 Current audit producers are the bootstrap seed path, the shared opportunity write service under `src/modules/opportunities/opportunity-write.service.ts`, and the source-import canonicalization flow under `src/modules/source-integrations/source-import.service.ts`. Those boundaries emit structured audit rows for representative create, update, delete, import-decision, stage-transition, bid-decision, and canonical merge refresh flows.
 
+## Reviewed Permission Surfaces
+
+The current launch-hardening review revalidated these server-enforced permission boundaries:
+
+- `view_dashboard`
+  - required for the authenticated shell home route, opportunity workspace reads, personal task board access, and document download API access
+- `view_decision_support`
+  - required for `/analytics`
+- `manage_source_searches`
+  - required for `/sources` import and CSV-ingest actions plus saved-search retry operations
+- `manage_pipeline`
+  - required for tracked-opportunity create or edit routes, opportunity workspace mutations, and knowledge create or edit actions
+- `manage_workspace_settings`
+  - required for `/settings` and its recalibration or retry actions
+
+Current review result: the repo’s major restricted routes still gate server-side on shared permission helpers rather than client-only affordances, and viewer denial on `/settings` remains covered by browser verification.
+
 ## Current Risks And Pending Work
 
 - Only the initial role-based authorization slice exists today. The app shell requires authentication, `/analytics` requires `view_decision_support`, `/settings` requires the admin role, source-search and CSV import actions require `manage_source_searches`, and the tracked-opportunity create/edit flows require `manage_pipeline`, but most business workflows still need finer-grained per-action and per-record enforcement.

@@ -123,6 +123,22 @@ The current seed is idempotent enough for local development. It upserts the defa
 
 The same seed also writes deterministic local password hashes for all seven users so the credentials-provider sign-in flow works immediately in development. Use the admin email `admin@onesource.local` or the viewer email `avery.stone@onesource.local` plus the shared local development password documented in [src/lib/auth/local-demo-auth.mjs](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/local-demo-auth.mjs:1) for smoke verification only.
 
+## Disposable Local Reset And Reseed
+
+When the local stack needs to return to the deterministic baseline, use this exact recovery flow:
+
+```bash
+docker compose down -v --remove-orphans
+rm -rf .docker/postgres-data .data/opportunity-documents
+mkdir -p .docker/postgres-data .data/opportunity-documents
+make compose-up-detached
+npx prisma migrate deploy
+npm run db:seed
+curl http://127.0.0.1:3000/api/health
+```
+
+Use this flow before browser reruns when the shared seed has been heavily mutated, and use it immediately if PostgreSQL starts surfacing `XX000 unexpected data beyond EOF` corruption faults on this machine.
+
 ## Document Storage
 
 - Opportunity document uploads are stored on local disk beneath `DOCUMENT_UPLOAD_DIR`, which defaults to `.data/opportunity-documents`.
@@ -261,10 +277,10 @@ To verify the protected-route auth and authz slices manually after the stack is 
 4. Confirm the protected shell renders, the sign-out control is visible, and the admin-console link is shown.
 5. Open `/settings` and confirm the admin console renders for the admin user with the `Source sync observability`, `Organization scoring profile`, `Assigned roles`, and `Recent audit activity` sections visible.
 6. To recalibrate scoring, stay on `/settings`, review the `Scoring recalibration` section, then either submit `Apply observed-outcome suggestions` or enter manual thresholds and factor weights before saving. A successful save should show a new scoring-model version and a recalculated-scorecard notice.
-7. If host-started Playwright browser runs surface PostgreSQL `XX000 unexpected data beyond EOF` errors on this machine, prefer the compose-managed `make compose-test-e2e` path after a fresh `docker compose down -v`, `npx prisma migrate deploy`, and `npm run db:seed` cycle because the compose app and browser flow remain the canonical verification baseline.
-6. In the `Source sync observability` section, confirm the seeded `SAM.gov` rate-limited connector row, recent sync failure row, and failed import review row are all visible.
-7. Use one `Retry sync` control and confirm the page reloads with the queued success notice: `The saved search retry has been queued for the next sync sweep.`
-8. Sign out, sign back in as `avery.stone@onesource.local`, navigate directly to `/settings`, and confirm the app redirects to `/forbidden`.
+7. If host-started or compose-managed Playwright browser runs surface PostgreSQL `XX000 unexpected data beyond EOF` errors on this machine, repeat the `Disposable Local Reset And Reseed` flow before retrying because the current verified local stack still uses the bind-mounted `./.docker/postgres-data` directory.
+8. In the `Source sync observability` section, confirm the seeded `SAM.gov` rate-limited connector row, recent sync failure row, and failed import review row are all visible.
+9. Use one `Retry sync` control and confirm the page reloads with the queued success notice: `The saved search retry has been queued for the next sync sweep.`
+10. Sign out, sign back in as `avery.stone@onesource.local`, navigate directly to `/settings`, and confirm the app redirects to `/forbidden`.
 
 ## Host Verification Commands
 
@@ -285,6 +301,19 @@ To target an already-running app instance:
 ```bash
 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e
 ```
+
+## Pilot Deployment
+
+For the current repo, deployment readiness means a compose-managed internal pilot rather than a hosted multi-environment platform rollout.
+
+1. Prepare env vars and writable persistence paths.
+2. Start the stack with `make compose-up-detached`.
+3. Apply `npx prisma migrate deploy`.
+4. Seed only when intentionally bootstrapping a disposable or demo environment.
+5. Validate `curl http://127.0.0.1:3000/api/health`.
+6. Run `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e` or the canonical `make compose-test-e2e`.
+
+See [docs/deployment.md](/Users/maverick/Documents/RalphLoops/OneSource/docs/deployment.md) for the durable deployment checklist and rollback guidance.
 
 ## Shutdown
 
@@ -329,7 +358,7 @@ Recovery:
 
 1. Inspect database logs with `docker compose logs db`.
 2. Confirm `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` match the composed `DATABASE_URL`.
-3. If the local data directory is intentionally disposable and corrupted, remove `./.docker/postgres-data` and rebuild the stack.
+3. If the local data directory is intentionally disposable and corrupted, run the `Disposable Local Reset And Reseed` flow above.
 
 ### Background Job Warnings Or Failures
 

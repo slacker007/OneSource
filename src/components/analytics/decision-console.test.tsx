@@ -213,4 +213,39 @@ describe("DecisionConsole", () => {
       screen.getAllByRole("link", { name: /open workspace/i })[0],
     ).toHaveAttribute("href", "/opportunities/opp_alpha");
   });
+
+  it("renders a truthful empty state when no pursuits match the current view", () => {
+    render(
+      <DecisionConsole
+        snapshot={{
+          ...snapshot,
+          comparedOpportunityCount: 0,
+          goOpportunityCount: 0,
+          urgentOpportunityCount: 0,
+          rankedOpportunities: [],
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/no pursuits to compare/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /the current ranking lens and scope did not return any opportunities/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders an error state when the decision snapshot is unavailable", () => {
+    render(<DecisionConsole snapshot={null} />);
+
+    expect(
+      screen.getByRole("heading", { name: /decision console/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/decision data is unavailable/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /the decision-support console could not load an organization-scoped snapshot/i,
+      ),
+    ).toBeInTheDocument();
+  });
 });

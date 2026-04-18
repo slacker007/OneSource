@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 10 proposal-tracking baseline on top of the completed Phase 9 analytics-and-feedback work. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the completed Phase 10 launch-hardening baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
@@ -171,6 +171,13 @@ For the current Phase 10 runtime-hardening slice, targeted verification should c
 - the shared route-level error-boundary component renders a consistent retry surface for both the public app tree and the authenticated workspace tree
 - manual error-path validation covers at least `curl http://127.0.0.1:3000/api/health` for the healthy case and `curl -i http://127.0.0.1:3000/api/opportunities/documents/not-a-real-id/download` for the unauthenticated JSON failure path
 
+For the current Phase 10 launch-hardening slice, targeted verification should confirm:
+
+- the permission matrix remains explicit for admin, executive, business-development, capture-manager, proposal-manager, contributor, and viewer roles
+- the reviewed routed surfaces keep their truthful empty and error states for the personal task board, decision console, and knowledge library
+- the documented disposable local reset flow restores PostgreSQL, local document storage, migrations, seed data, and `/api/health`
+- the compose-managed browser regression path still passes after the reset-and-reseed flow
+
 For the current Phase 4 stage-transition slice, targeted verification should confirm:
 
 - the stage-policy module exposes only adjacent pipeline transitions and marks blocked moves when required records are missing
@@ -251,6 +258,19 @@ To point Playwright at an already-running host or compose stack:
 
 ```bash
 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e
+```
+
+For launch-hardening recovery and pilot-readiness checks, the canonical disposable local reset flow is:
+
+```bash
+docker compose down -v --remove-orphans
+rm -rf .docker/postgres-data .data/opportunity-documents
+mkdir -p .docker/postgres-data .data/opportunity-documents
+make compose-up-detached
+npx prisma migrate deploy
+npm run db:seed
+curl http://127.0.0.1:3000/api/health
+make compose-test-e2e
 ```
 
 If host-side `npm run e2e` fails before tests start because the Next.js dev server reports a Turbopack checksum or cache-corruption panic, clear the generated `.next` directory and rerun the same Playwright command:

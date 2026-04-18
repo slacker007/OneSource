@@ -126,4 +126,47 @@ describe("KnowledgeLibrary", () => {
     expect(screen.getAllByText(/army peo eis/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/oasis-plus-unr/i).length).toBeGreaterThan(0);
   });
+
+  it("renders a truthful empty state when filters exclude every asset", () => {
+    render(
+      <KnowledgeLibrary
+        allowManageKnowledge
+        notice={null}
+        snapshot={{
+          ...snapshot,
+          results: [],
+          totalCount: 0,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(/no knowledge assets match the current view/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /create a reusable knowledge asset or clear the filters to restore the full library/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders an error state when the knowledge snapshot is unavailable", () => {
+    render(
+      <KnowledgeLibrary
+        allowManageKnowledge
+        notice={null}
+        snapshot={null}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /knowledge library/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/knowledge data is unavailable/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /the knowledge library could not load an organization-scoped snapshot/i,
+      ),
+    ).toBeInTheDocument();
+  });
 });

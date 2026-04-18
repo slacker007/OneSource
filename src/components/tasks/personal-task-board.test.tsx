@@ -67,4 +67,41 @@ describe("PersonalTaskBoard", () => {
     expect(screen.getAllByText(/^overdue$/i).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /open workspace/i })).toHaveLength(2);
   });
+
+  it("renders a truthful empty state when no assigned tasks remain", () => {
+    render(
+      <PersonalTaskBoard
+        snapshot={{
+          ...snapshot,
+          assignedTaskCount: 0,
+          overdueTaskCount: 0,
+          tasks: [],
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /personal execution queue/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/no assigned tasks/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /assigned tasks will appear here once work is delegated from opportunity workspaces/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders an error state when the task snapshot is unavailable", () => {
+    render(<PersonalTaskBoard snapshot={null} />);
+
+    expect(
+      screen.getByRole("heading", { name: /execution queue/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/task board is unavailable/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /the assigned-task view could not be loaded for the current workspace/i,
+      ),
+    ).toBeInTheDocument();
+  });
 });
