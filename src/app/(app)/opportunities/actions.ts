@@ -14,6 +14,11 @@ import {
   type OpportunityMilestoneActionState,
 } from "@/modules/opportunities/opportunity-milestone-form.schema";
 import {
+  INITIAL_OPPORTUNITY_NOTE_ACTION_STATE,
+  validateOpportunityNoteFormSubmission,
+  type OpportunityNoteActionState,
+} from "@/modules/opportunities/opportunity-note-form.schema";
+import {
   INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
   validateOpportunityTaskFormSubmission,
   type OpportunityTaskActionState,
@@ -21,6 +26,7 @@ import {
 import {
   createOpportunity,
   createOpportunityMilestone,
+  createOpportunityNote,
   createOpportunityTask,
   deleteOpportunityMilestone,
   deleteOpportunityTask,
@@ -241,6 +247,45 @@ export async function createOpportunityMilestoneAction(
   return {
     ...INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE,
     successMessage: "Milestone created and added to the workspace.",
+  };
+}
+
+export async function createOpportunityNoteAction(
+  _previousState: OpportunityNoteActionState,
+  formData: FormData,
+): Promise<OpportunityNoteActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const validation = validateOpportunityNoteFormSubmission(formData);
+
+  if (!validation.success) {
+    return validation.state;
+  }
+
+  try {
+    await createOpportunityNote({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        opportunityId,
+        title: validation.submission.title,
+        body: validation.submission.body,
+        isPinned: validation.submission.isPinned,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_NOTE_ACTION_STATE,
+      formError:
+        error instanceof Error ? error.message : "The note could not be created.",
+    };
+  }
+
+  revalidateOpportunitySurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_NOTE_ACTION_STATE,
+    successMessage: "Note saved to the workspace history.",
   };
 }
 

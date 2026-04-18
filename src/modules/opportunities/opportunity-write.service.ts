@@ -97,6 +97,20 @@ type OpportunityMilestoneAuditRecord = {
   };
 };
 
+type OpportunityNoteAuditRecord = {
+  id: string;
+  organizationId: string;
+  opportunityId: string;
+  title: string | null;
+  body: string;
+  contentFormat: string;
+  isPinned: boolean;
+  opportunity: {
+    id: string;
+    title: string;
+  };
+};
+
 type TaskAssigneeLookupRecord = {
   id: string;
 };
@@ -267,6 +281,22 @@ const opportunityMilestoneAuditSelect = {
   },
 } as const;
 
+const opportunityNoteAuditSelect = {
+  id: true,
+  organizationId: true,
+  opportunityId: true,
+  title: true,
+  body: true,
+  contentFormat: true,
+  isPinned: true,
+  opportunity: {
+    select: {
+      id: true,
+      title: true,
+    },
+  },
+} as const;
+
 export type OpportunityWriteTransactionClient = AuditLogWriter & {
   opportunityActivityEvent: {
     create(args: {
@@ -339,6 +369,12 @@ export type OpportunityWriteTransactionClient = AuditLogWriter & {
       };
       select: typeof opportunityMilestoneAuditSelect;
     }): Promise<OpportunityMilestoneAuditRecord>;
+  };
+  opportunityNote: {
+    create(args: {
+      data: Prisma.OpportunityNoteUncheckedCreateInput;
+      select: typeof opportunityNoteAuditSelect;
+    }): Promise<OpportunityNoteAuditRecord>;
   };
   opportunity: {
     create(args: {
@@ -522,6 +558,16 @@ export type UpdateOpportunityMilestoneInput = {
 export type DeleteOpportunityMilestoneInput = {
   actor: OpportunityWriteActor;
   milestoneId: string;
+  occurredAt?: Date;
+};
+
+export type CreateOpportunityNoteInput = {
+  actor: OpportunityWriteActor;
+  opportunityId: string;
+  title?: string | null;
+  body: string;
+  isPinned?: boolean;
+  contentFormat?: string | null;
   occurredAt?: Date;
 };
 
@@ -1191,6 +1237,88 @@ export async function createOpportunityMilestone({
     });
 
     return milestone;
+  });
+}
+
+export async function createOpportunityNote({
+  db,
+  input,
+}: {
+  db: OpportunityWriteClient;
+  input: CreateOpportunityNoteInput;
+}) {
+  return db.$transaction(async (tx) => {
+    const opportunity = await tx.opportunity.findFirstOrThrow({
+      where: {
+        id: input.opportunityId,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityAuditSelect,
+    });
+    const occurredAt = input.occurredAt ?? new Date();
+    const title = normalizeOptionalText(input.title);
+    const note = await tx.opportunityNote.create({
+      data: {
+        organizationId: opportunity.organizationId,
+        opportunityId: opportunity.id,
+        authorUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        title,
+        body: normalizeRequiredText(input.body, "Note details"),
+        contentFormat: normalizeOptionalText(input.contentFormat) ?? "markdown",
+        isPinned: input.isPinned ?? false,
+      },
+      select: opportunityNoteAuditSelect,
+    });
+
+    await tx.opportunityActivityEvent.create({
+      data: {
+        actorIdentifier: input.actor.identifier ?? null,
+        actorType: input.actor.type,
+        actorUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        description: note.body,
+        eventType: "note_added",
+        metadata: {
+          contentFormat: note.contentFormat,
+          isPinned: note.isPinned,
+          noteTitle: note.title,
+        },
+        occurredAt,
+        opportunityId: opportunity.id,
+        organizationId: opportunity.organizationId,
+        relatedEntityId: note.id,
+        relatedEntityType: "note",
+        title: `Note added: ${note.title ?? "Untitled note"}`,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await recordAuditEvent({
+      db: tx,
+      event: {
+        organizationId: opportunity.organizationId,
+        actor: input.actor,
+        action: AUDIT_ACTIONS.opportunityNoteCreate,
+        target: {
+          type: "opportunity_note",
+          id: note.id,
+          display: note.title ?? "Untitled note",
+        },
+        summary: `Added note ${note.title ?? "Untitled note"} to ${opportunity.title}.`,
+        metadata: {
+          contentFormat: note.contentFormat,
+          isPinned: note.isPinned,
+          opportunityId: opportunity.id,
+          opportunityTitle: opportunity.title,
+        },
+        occurredAt,
+      },
+    });
+
+    return note;
   });
 }
 

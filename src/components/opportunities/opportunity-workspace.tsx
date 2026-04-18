@@ -1,12 +1,14 @@
 import Link from "next/link";
 
 import { OpportunityMilestoneManager } from "@/components/opportunities/opportunity-milestone-manager";
+import { OpportunityNoteManager } from "@/components/opportunities/opportunity-note-manager";
 import { OpportunityStageTransitionPanel } from "@/components/opportunities/opportunity-stage-transition-panel";
 import { OpportunityTaskManager } from "@/components/opportunities/opportunity-task-manager";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import type { OpportunityMilestoneActionState } from "@/modules/opportunities/opportunity-milestone-form.schema";
+import type { OpportunityNoteActionState } from "@/modules/opportunities/opportunity-note-form.schema";
 import type { OpportunityTaskActionState } from "@/modules/opportunities/opportunity-task-form.schema";
 import {
   buildOpportunityStageControlSnapshotFromWorkspace,
@@ -29,6 +31,10 @@ type OpportunityWorkspaceProps = {
     state: OpportunityMilestoneActionState,
     formData: FormData,
   ) => Promise<OpportunityMilestoneActionState>;
+  createNoteAction?: (
+    state: OpportunityNoteActionState,
+    formData: FormData,
+  ) => Promise<OpportunityNoteActionState>;
   createTaskAction?: (
     state: OpportunityTaskActionState,
     formData: FormData,
@@ -59,6 +65,7 @@ export function OpportunityWorkspace({
   snapshot,
   allowManagePipeline = false,
   createMilestoneAction,
+  createNoteAction,
   createTaskAction,
   updateMilestoneAction,
   updateTaskAction,
@@ -209,7 +216,12 @@ export function OpportunityWorkspace({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <NotesSection notes={snapshot.notes} />
+        <NotesSection
+          allowManagePipeline={allowManagePipeline}
+          createNoteAction={createNoteAction}
+          notes={snapshot.notes}
+          opportunityId={snapshot.opportunity.id}
+        />
         <HistorySection
           activity={snapshot.activity}
           stageTransitions={snapshot.stageTransitions}
@@ -639,9 +651,18 @@ function DocumentsSection({
 }
 
 function NotesSection({
+  allowManagePipeline,
+  createNoteAction,
   notes,
+  opportunityId,
 }: {
+  allowManagePipeline: boolean;
+  createNoteAction?: (
+    state: OpportunityNoteActionState,
+    formData: FormData,
+  ) => Promise<OpportunityNoteActionState>;
   notes: OpportunityWorkspaceNote[];
+  opportunityId: string;
 }) {
   return (
     <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
@@ -654,6 +675,13 @@ function NotesSection({
         </div>
         <Badge tone="muted">{notes.length}</Badge>
       </div>
+
+      {allowManagePipeline && createNoteAction ? (
+        <OpportunityNoteManager
+          createAction={createNoteAction}
+          opportunityId={opportunityId}
+        />
+      ) : null}
 
       {notes.length > 0 ? (
         <div className="mt-6 space-y-4">
@@ -672,9 +700,13 @@ function NotesSection({
                     {note.title ?? "Untitled note"}
                   </h3>
                 </div>
-                <p className="text-sm text-muted">
-                  {note.authorName ?? "Unknown author"} · {formatDate(note.updatedAt)}
-                </p>
+                <div className="space-y-1 text-right text-sm text-muted">
+                  <p>{note.authorName ?? "Unknown author"}</p>
+                  <p>Created {formatDate(note.createdAt)}</p>
+                  {note.updatedAt !== note.createdAt ? (
+                    <p>Updated {formatDate(note.updatedAt)}</p>
+                  ) : null}
+                </div>
               </div>
 
               <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-6 text-muted">

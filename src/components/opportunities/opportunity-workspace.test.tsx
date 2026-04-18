@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { OpportunityWorkspace } from "./opportunity-workspace";
 import { INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE } from "@/modules/opportunities/opportunity-milestone-form.schema";
+import { INITIAL_OPPORTUNITY_NOTE_ACTION_STATE } from "@/modules/opportunities/opportunity-note-form.schema";
 import { INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE } from "@/modules/opportunities/opportunity-stage-policy";
 import { INITIAL_OPPORTUNITY_TASK_ACTION_STATE } from "@/modules/opportunities/opportunity-task-form.schema";
 import type { OpportunityWorkspaceSnapshot } from "@/modules/opportunities/opportunity.types";
@@ -228,6 +229,7 @@ describe("OpportunityWorkspace", () => {
         createMilestoneAction={async () =>
           INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE
         }
+        createNoteAction={async () => INITIAL_OPPORTUNITY_NOTE_ACTION_STATE}
         createTaskAction={async () => INITIAL_OPPORTUNITY_TASK_ACTION_STATE}
         deleteMilestoneAction={async () =>
           INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE
@@ -289,8 +291,15 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("button", { name: /^create milestone$/i }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^add note$/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^save milestone$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: /^details$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: /^pin note$/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByDisplayValue(/customer questions due/i),

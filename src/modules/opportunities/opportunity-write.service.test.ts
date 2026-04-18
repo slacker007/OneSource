@@ -6,6 +6,7 @@ import { OpportunityStageTransitionValidationError } from "@/modules/opportuniti
 
 import {
   createOpportunityMilestone,
+  createOpportunityNote,
   createOpportunityTask,
   createOpportunity,
   deleteOpportunityMilestone,
@@ -49,6 +50,9 @@ function createMockWriteClient() {
       findFirstOrThrow: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+    },
+    opportunityNote: {
+      create: vi.fn(),
     },
     opportunity: {
       create: vi.fn(),
@@ -593,6 +597,99 @@ describe("opportunity-write.service", () => {
         targetId: "milestone_123",
         targetType: "opportunity_milestone",
         occurredAt,
+      }),
+    });
+  });
+
+  it("creates opportunity notes and emits activity plus audit rows", async () => {
+    const { db, tx } = createMockWriteClient();
+    const occurredAt = new Date("2026-04-18T06:10:00.000Z");
+
+    vi.mocked(tx.opportunity.findFirstOrThrow).mockResolvedValue({
+      id: "opp_123",
+      organizationId: "org_123",
+      title: "Enterprise Knowledge Management Support Services",
+      description: null,
+      leadAgencyId: null,
+      responseDeadlineAt: null,
+      solicitationNumber: null,
+      naicsCode: null,
+      originSourceSystem: "sam_gov",
+      currentStageKey: "capture_active",
+      currentStageLabel: "Capture Active",
+    });
+    vi.mocked(tx.opportunityNote.create).mockResolvedValue({
+      id: "note_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Capture summary",
+      body: "Customer history is favorable and vehicle access is already confirmed.",
+      contentFormat: "markdown",
+      isPinned: true,
+      opportunity: {
+        id: "opp_123",
+        title: "Enterprise Knowledge Management Support Services",
+      },
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_note_123",
+    });
+
+    await createOpportunityNote({
+      db,
+      input: {
+        actor,
+        opportunityId: "opp_123",
+        title: "  Capture summary  ",
+        body: "  Customer history is favorable and vehicle access is already confirmed.  ",
+        isPinned: true,
+        occurredAt,
+      },
+    });
+
+    expect(tx.opportunityNote.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        authorUserId: "user_123",
+        body:
+          "Customer history is favorable and vehicle access is already confirmed.",
+        contentFormat: "markdown",
+        isPinned: true,
+        opportunityId: "opp_123",
+        organizationId: "org_123",
+        title: "Capture summary",
+      }),
+      select: expect.any(Object),
+    });
+    expect(tx.opportunityActivityEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        actorUserId: "user_123",
+        description:
+          "Customer history is favorable and vehicle access is already confirmed.",
+        eventType: "note_added",
+        occurredAt,
+        opportunityId: "opp_123",
+        organizationId: "org_123",
+        relatedEntityId: "note_123",
+        relatedEntityType: "note",
+        title: "Note added: Capture summary",
+      }),
+      select: {
+        id: true,
+      },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityNoteCreate,
+        metadata: expect.objectContaining({
+          contentFormat: "markdown",
+          isPinned: true,
+          opportunityId: "opp_123",
+          opportunityTitle: "Enterprise Knowledge Management Support Services",
+        }),
+        occurredAt,
+        targetDisplay: "Capture summary",
+        targetId: "note_123",
+        targetType: "opportunity_note",
       }),
     });
   });

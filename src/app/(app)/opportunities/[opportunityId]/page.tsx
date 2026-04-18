@@ -8,6 +8,7 @@ import {
 } from "@/modules/opportunities/opportunity.repository";
 import {
   createOpportunityMilestoneAction,
+  createOpportunityNoteAction,
   createOpportunityTaskAction,
   deleteOpportunityMilestoneAction,
   deleteOpportunityTaskAction,
@@ -41,6 +42,7 @@ export default async function OpportunityWorkspacePage({
         "manage_pipeline",
       )}
       createMilestoneAction={createOpportunityMilestoneAction}
+      createNoteAction={createOpportunityNoteAction}
       createTaskAction={createOpportunityTaskAction}
       deleteMilestoneAction={deleteOpportunityMilestoneAction}
       deleteTaskAction={deleteOpportunityTaskAction}

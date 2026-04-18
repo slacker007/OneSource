@@ -213,6 +213,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
 }) => {
   const createdTaskTitle = `Prepare capture brief ${Date.now()}`;
   const createdMilestoneTitle = `Executive checkpoint ${Date.now()}`;
+  const createdNoteTitle = `Capture note ${Date.now()}`;
   const createdMilestoneDate = new Date();
   createdMilestoneDate.setUTCDate(createdMilestoneDate.getUTCDate() + 7);
 
@@ -302,6 +303,21 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     page
       .getByRole("heading", { name: createdMilestoneTitle, exact: true })
       .first(),
+  ).toBeVisible();
+  await page.locator("#note-create-title").fill(createdNoteTitle);
+  await page.locator("#note-create-pinned").selectOption("true");
+  await page
+    .locator("#note-create-body")
+    .fill("Customer signals remain positive and the capture plan should stay pinned for the team.");
+  await page.getByRole("button", { name: /^add note$/i }).click();
+  await expect(
+    page.getByText(/note saved to the workspace history/i),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: createdNoteTitle, exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: new RegExp(`^Note added: ${createdNoteTitle}$`, "i") }),
   ).toBeVisible();
 
   await page.getByRole("link", { name: /^Tasks/i }).click();
