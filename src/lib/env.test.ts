@@ -10,6 +10,7 @@ describe("parseServerEnv", () => {
       NEXTAUTH_URL: "http://127.0.0.1:3000",
     });
 
+    expect(env.DOCUMENT_UPLOAD_DIR).toBe(".data/opportunity-documents");
     expect(env.NODE_ENV).toBe("development");
     expect(env.WORKER_POLL_INTERVAL_MS).toBe(30000);
   });

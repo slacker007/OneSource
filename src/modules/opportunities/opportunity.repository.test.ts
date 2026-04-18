@@ -508,6 +508,7 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
         sourceType: "SOURCE_ATTACHMENT",
         sourceUrl:
           "https://sam.gov/opp/FA4861-26-R-0001/documents/performance-work-statement.pdf",
+        storagePath: null,
         originalFileName: "performance-work-statement.pdf",
         mimeType: "application/pdf",
         fileSizeBytes: 245760,
@@ -892,6 +893,7 @@ describe("opportunity.repository", () => {
       ],
       documents: [
         {
+          downloadUrl: null,
           title: "Performance Work Statement",
           extractionStatus: "SUCCEEDED",
         },

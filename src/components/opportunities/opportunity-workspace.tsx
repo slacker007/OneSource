@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { OpportunityBidDecisionManager } from "@/components/opportunities/opportunity-bid-decision-manager";
+import { OpportunityDocumentManager } from "@/components/opportunities/opportunity-document-manager";
 import { OpportunityMilestoneManager } from "@/components/opportunities/opportunity-milestone-manager";
 import { OpportunityNoteManager } from "@/components/opportunities/opportunity-note-manager";
 import { OpportunityStageTransitionPanel } from "@/components/opportunities/opportunity-stage-transition-panel";
@@ -9,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import type { OpportunityBidDecisionActionState } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
+import type { OpportunityDocumentActionState } from "@/modules/opportunities/opportunity-document-form.schema";
 import type { OpportunityMilestoneActionState } from "@/modules/opportunities/opportunity-milestone-form.schema";
 import type { OpportunityNoteActionState } from "@/modules/opportunities/opportunity-note-form.schema";
 import type { OpportunityTaskActionState } from "@/modules/opportunities/opportunity-task-form.schema";
@@ -38,6 +40,10 @@ type OpportunityWorkspaceProps = {
     state: OpportunityMilestoneActionState,
     formData: FormData,
   ) => Promise<OpportunityMilestoneActionState>;
+  createDocumentAction?: (
+    state: OpportunityDocumentActionState,
+    formData: FormData,
+  ) => Promise<OpportunityDocumentActionState>;
   createNoteAction?: (
     state: OpportunityNoteActionState,
     formData: FormData,
@@ -73,6 +79,7 @@ export function OpportunityWorkspace({
   allowManagePipeline = false,
   recordBidDecisionAction,
   createMilestoneAction,
+  createDocumentAction,
   createNoteAction,
   createTaskAction,
   updateMilestoneAction,
@@ -226,7 +233,12 @@ export function OpportunityWorkspace({
           updateMilestoneAction={updateMilestoneAction}
           updateTaskAction={updateTaskAction}
         />
-        <DocumentsSection documents={snapshot.documents} />
+        <DocumentsSection
+          allowManagePipeline={allowManagePipeline}
+          createDocumentAction={createDocumentAction}
+          documents={snapshot.documents}
+          opportunityId={snapshot.opportunity.id}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -653,9 +665,18 @@ function TasksSection({
 }
 
 function DocumentsSection({
+  allowManagePipeline,
+  createDocumentAction,
   documents,
+  opportunityId,
 }: {
+  allowManagePipeline: boolean;
+  createDocumentAction?: (
+    state: OpportunityDocumentActionState,
+    formData: FormData,
+  ) => Promise<OpportunityDocumentActionState>;
   documents: OpportunityWorkspaceDocument[];
+  opportunityId: string;
 }) {
   return (
     <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
@@ -670,6 +691,13 @@ function DocumentsSection({
         </div>
         <Badge tone="muted">{documents.length}</Badge>
       </div>
+
+      {allowManagePipeline && createDocumentAction ? (
+        <OpportunityDocumentManager
+          createAction={createDocumentAction}
+          opportunityId={opportunityId}
+        />
+      ) : null}
 
       {documents.length > 0 ? (
         <div className="mt-6 space-y-4">
@@ -708,6 +736,9 @@ function DocumentsSection({
                 {document.fileSizeBytes
                   ? ` · ${formatFileSize(document.fileSizeBytes)}`
                   : ""}
+                {document.uploadedByName
+                  ? ` · Uploaded by ${document.uploadedByName}`
+                  : ""}
               </p>
 
               {document.extractedText ? (
@@ -716,16 +747,26 @@ function DocumentsSection({
                 </p>
               ) : null}
 
-              {document.sourceUrl ? (
-                <Link
-                  className="mt-3 inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-                  href={document.sourceUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  Open document source
-                </Link>
-              ) : null}
+              <div className="mt-3 flex flex-wrap gap-4">
+                {document.downloadUrl ? (
+                  <Link
+                    className="inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+                    href={document.downloadUrl}
+                  >
+                    Download stored file
+                  </Link>
+                ) : null}
+                {document.sourceUrl ? (
+                  <Link
+                    className="inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+                    href={document.sourceUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Open document source
+                  </Link>
+                ) : null}
+              </div>
             </div>
           ))}
         </div>

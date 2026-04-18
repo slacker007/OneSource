@@ -269,6 +269,7 @@ export type OpportunityWorkspaceDocument = {
   title: string;
   documentType: string | null;
   sourceType: string;
+  downloadUrl: string | null;
   sourceUrl: string | null;
   originalFileName: string | null;
   mimeType: string | null;

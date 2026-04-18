@@ -272,6 +272,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   const createdTaskTitle = `Prepare capture brief ${Date.now()}`;
   const createdMilestoneTitle = `Executive checkpoint ${Date.now()}`;
   const createdNoteTitle = `Capture note ${Date.now()}`;
+  const createdDocumentTitle = `Capture Artifact ${Date.now()}`;
   const decisionRationale = `Leadership confirmed pursuit priority and staffing alignment ${Date.now()}.`;
   const createdMilestoneDate = new Date();
   createdMilestoneDate.setUTCDate(createdMilestoneDate.getUTCDate() + 7);
@@ -322,6 +323,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(page.getByText(/upcoming deadline/i).first()).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /^Performance Work Statement$/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /download stored file/i }).first(),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /^Capture Summary$/i }),
@@ -412,6 +416,29 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: new RegExp(`^Note added: ${createdNoteTitle}$`, "i") }),
+  ).toBeVisible();
+  await page.locator("#document-create-title").fill(createdDocumentTitle);
+  await page.locator("#document-create-type").selectOption("capture_plan");
+  await page.getByLabel(/^file$/i).setInputFiles({
+    buffer: Buffer.from(
+      "Capture plan summary\n- Confirm teaming path\n- Prepare executive review package",
+      "utf8",
+    ),
+    mimeType: "text/plain",
+    name: "capture-plan.txt",
+  });
+  await page.getByRole("button", { name: /^upload document$/i }).click();
+  await expect(
+    page.getByText(/document uploaded\. the workspace now shows the stored metadata and extraction status/i),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: createdDocumentTitle, exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /download stored file/i }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/capture plan summary/i).first(),
   ).toBeVisible();
 
   await page.getByRole("link", { name: /^Tasks/i }).click();

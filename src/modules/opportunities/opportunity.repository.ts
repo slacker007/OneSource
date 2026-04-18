@@ -6,6 +6,7 @@ import {
   type OrganizationScoringProfileInput,
   SCORING_FACTOR_KEYS,
 } from "./opportunity-scoring";
+import { buildOpportunityDocumentDownloadPath } from "./opportunity-document-storage";
 import type {
   AgencySummary,
   DecisionConsoleItem,
@@ -473,6 +474,7 @@ const opportunityWorkspaceArgs = {
         documentType: true,
         sourceType: true,
         sourceUrl: true,
+        storagePath: true,
         originalFileName: true,
         mimeType: true,
         fileSizeBytes: true,
@@ -915,6 +917,7 @@ export type OpportunityWorkspaceRecord = {
     documentType: string | null;
     sourceType: string;
     sourceUrl: string | null;
+    storagePath: string | null;
     originalFileName: string | null;
     mimeType: string | null;
     fileSizeBytes: number | null;
@@ -2177,6 +2180,9 @@ function mapWorkspaceDocument(
     title: document.title,
     documentType: document.documentType,
     sourceType: document.sourceType,
+    downloadUrl: document.storagePath
+      ? buildOpportunityDocumentDownloadPath(document.id)
+      : null,
     sourceUrl: document.sourceUrl,
     originalFileName: document.originalFileName,
     mimeType: document.mimeType,

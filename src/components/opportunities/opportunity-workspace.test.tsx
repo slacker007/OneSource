@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { OpportunityWorkspace } from "./opportunity-workspace";
 import { INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
+import { INITIAL_OPPORTUNITY_DOCUMENT_ACTION_STATE } from "@/modules/opportunities/opportunity-document-form.schema";
 import { INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE } from "@/modules/opportunities/opportunity-milestone-form.schema";
 import { INITIAL_OPPORTUNITY_NOTE_ACTION_STATE } from "@/modules/opportunities/opportunity-note-form.schema";
 import { INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE } from "@/modules/opportunities/opportunity-stage-policy";
@@ -212,6 +213,7 @@ const snapshot: OpportunityWorkspaceSnapshot = {
       id: "doc_1",
       title: "Performance Work Statement",
       documentType: "statement_of_work",
+      downloadUrl: "/api/opportunities/documents/doc_1/download",
       sourceType: "SOURCE_ATTACHMENT",
       sourceUrl:
         "https://sam.gov/opp/FA4861-26-R-0001/documents/performance-work-statement.pdf",
@@ -271,6 +273,9 @@ describe("OpportunityWorkspace", () => {
         allowManagePipeline
         recordBidDecisionAction={async () =>
           INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE
+        }
+        createDocumentAction={async () =>
+          INITIAL_OPPORTUNITY_DOCUMENT_ACTION_STATE
         }
         createMilestoneAction={async () =>
           INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE
@@ -359,6 +364,9 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("button", { name: /^create milestone$/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^upload document$/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^add note$/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^save milestone$/i }),
@@ -378,5 +386,8 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("link", { name: /edit details/i }),
     ).toHaveAttribute("href", "/opportunities/opp_123/edit");
+    expect(
+      screen.getByRole("link", { name: /download stored file/i }),
+    ).toHaveAttribute("href", "/api/opportunities/documents/doc_1/download");
   });
 });

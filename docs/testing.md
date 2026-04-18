@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 7 CSV-intake baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 7 CSV-intake and document-upload baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, deterministic scoring and recommendation formulas plus fallback scorecard mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` mocked external-search flow plus preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with scoring-profile visibility, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus stored-file download visibility, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` mocked external-search flow plus preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with scoring-profile visibility, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -51,6 +51,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - render one seeded overdue task badge plus one seeded upcoming milestone badge before any new writes are made, proving the background worker and seed path persisted reminder state
 - create a milestone from the workspace with title, type, target date, and status, then confirm that milestone appears on the dashboard deadline surface
 - create a note from the workspace with title, pinned state, and body content, then confirm that note appears in the notes section and history feed
+- upload a text document from the workspace, confirm the success state and extracted-text snippet render, and confirm a stored-file download link is visible on the resulting document card
 - open `/opportunities/new`, restore a browser-local draft, create a tracked opportunity through the guarded form path, then edit that opportunity through the guarded update flow
 - navigate into `/sources`, submit a structured mocked `sam.gov` search, and observe the URL plus mocked result set update together
 - open a source-result preview, inspect duplicate detection, and either link the result into the existing tracked opportunity or confirm the already-linked state on reruns
@@ -64,6 +65,7 @@ For the current audit slice, targeted unit verification should confirm:
 
 - the shared audit helper produces append-only `audit_logs` create payloads with actor, target, action, summary, metadata, and occurrence timestamp fields
 - the transactional opportunity write service emits audit rows for create, update, delete, task-create, task-update, task-delete, import-decision, stage-transition, and bid-decision operations
+- the transactional opportunity write service emits audit rows plus workspace activity for document uploads, including stored metadata and extraction status
 - update audits persist field-diff metadata rather than only a generic action label
 
 For the current admin-console slice, targeted unit verification should confirm:
@@ -116,6 +118,7 @@ For the current Phase 4 opportunity-form slice, targeted unit verification shoul
 For the current Phase 4 opportunity-workspace slice, targeted verification should confirm:
 
 - the typed opportunity repository loads one organization-scoped opportunity workspace with overview, scoring, tasks, documents, notes, activity, and stage-transition data without leaking raw Prisma payloads into the page layer
+- the typed opportunity repository maps stored-file download URLs only when a document has a local storage path
 - the rendered opportunity workspace shows the six primary sections from one server-rendered snapshot and degrades truthfully when the opportunity cannot be loaded
 - the browser smoke flow can open a seeded workspace from the opportunity list and observe representative seeded data in each major section
 

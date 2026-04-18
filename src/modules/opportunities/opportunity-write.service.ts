@@ -111,6 +111,30 @@ type OpportunityNoteAuditRecord = {
   };
 };
 
+type OpportunityDocumentAuditRecord = {
+  id: string;
+  organizationId: string;
+  opportunityId: string;
+  title: string;
+  documentType: string | null;
+  sourceType: string;
+  sourceUrl: string | null;
+  originalFileName: string | null;
+  storageProvider: string | null;
+  storagePath: string | null;
+  mimeType: string | null;
+  fileSizeBytes: number | null;
+  checksumSha256: string | null;
+  extractionStatus: string;
+  extractedAt: Date | null;
+  extractedText: string | null;
+  metadata: Prisma.JsonValue | null;
+  opportunity: {
+    id: string;
+    title: string;
+  };
+};
+
 type TaskAssigneeLookupRecord = {
   id: string;
 };
@@ -297,6 +321,32 @@ const opportunityNoteAuditSelect = {
   },
 } as const;
 
+const opportunityDocumentAuditSelect = {
+  id: true,
+  organizationId: true,
+  opportunityId: true,
+  title: true,
+  documentType: true,
+  sourceType: true,
+  sourceUrl: true,
+  originalFileName: true,
+  storageProvider: true,
+  storagePath: true,
+  mimeType: true,
+  fileSizeBytes: true,
+  checksumSha256: true,
+  extractionStatus: true,
+  extractedAt: true,
+  extractedText: true,
+  metadata: true,
+  opportunity: {
+    select: {
+      id: true,
+      title: true,
+    },
+  },
+} as const;
+
 export type OpportunityWriteTransactionClient = AuditLogWriter & {
   opportunityActivityEvent: {
     create(args: {
@@ -375,6 +425,12 @@ export type OpportunityWriteTransactionClient = AuditLogWriter & {
       data: Prisma.OpportunityNoteUncheckedCreateInput;
       select: typeof opportunityNoteAuditSelect;
     }): Promise<OpportunityNoteAuditRecord>;
+  };
+  opportunityDocument: {
+    create(args: {
+      data: Prisma.OpportunityDocumentUncheckedCreateInput;
+      select: typeof opportunityDocumentAuditSelect;
+    }): Promise<OpportunityDocumentAuditRecord>;
   };
   opportunity: {
     create(args: {
@@ -568,6 +624,27 @@ export type CreateOpportunityNoteInput = {
   body: string;
   isPinned?: boolean;
   contentFormat?: string | null;
+  occurredAt?: Date;
+};
+
+export type CreateOpportunityDocumentInput = {
+  actor: OpportunityWriteActor;
+  opportunityId: string;
+  title?: string | null;
+  documentType?: string | null;
+  sourceType?: "MANUAL_UPLOAD" | "SOURCE_ATTACHMENT" | "GENERATED" | "EXTERNAL_LINK";
+  sourceUrl?: string | null;
+  sourceRecordId?: string | null;
+  originalFileName?: string | null;
+  storageProvider?: string | null;
+  storagePath?: string | null;
+  mimeType?: string | null;
+  fileSizeBytes?: number | null;
+  checksumSha256?: string | null;
+  extractedText?: string | null;
+  extractionStatus?: "NOT_REQUESTED" | "PENDING" | "SUCCEEDED" | "FAILED";
+  extractedAt?: Date | null;
+  metadata?: Prisma.InputJsonValue | null;
   occurredAt?: Date;
 };
 
@@ -1321,6 +1398,113 @@ export async function createOpportunityNote({
     });
 
     return note;
+  });
+}
+
+export async function createOpportunityDocument({
+  db,
+  input,
+}: {
+  db: OpportunityWriteClient;
+  input: CreateOpportunityDocumentInput;
+}) {
+  return db.$transaction(async (tx) => {
+    const opportunity = await tx.opportunity.findFirstOrThrow({
+      where: {
+        id: input.opportunityId,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityAuditSelect,
+    });
+    const occurredAt = input.occurredAt ?? new Date();
+    const title =
+      normalizeOptionalText(input.title) ??
+      normalizeOptionalText(input.originalFileName) ??
+      "Uploaded document";
+    const document = await tx.opportunityDocument.create({
+      data: {
+        organizationId: opportunity.organizationId,
+        opportunityId: opportunity.id,
+        uploadedByUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        sourceRecordId: input.sourceRecordId ?? null,
+        title,
+        documentType: normalizeOptionalText(input.documentType),
+        sourceType: input.sourceType ?? "MANUAL_UPLOAD",
+        sourceUrl: normalizeOptionalText(input.sourceUrl),
+        originalFileName: normalizeOptionalText(input.originalFileName),
+        storageProvider: normalizeOptionalText(input.storageProvider),
+        storagePath: normalizeOptionalText(input.storagePath),
+        mimeType: normalizeOptionalText(input.mimeType),
+        fileSizeBytes: input.fileSizeBytes ?? null,
+        checksumSha256: normalizeOptionalText(input.checksumSha256),
+        extractedText: normalizeOptionalText(input.extractedText),
+        extractionStatus: input.extractionStatus ?? "NOT_REQUESTED",
+        extractedAt: input.extractedAt ?? null,
+        metadata: toOptionalJson(input.metadata),
+      },
+      select: opportunityDocumentAuditSelect,
+    });
+
+    await tx.opportunityActivityEvent.create({
+      data: {
+        actorIdentifier: input.actor.identifier ?? null,
+        actorType: input.actor.type,
+        actorUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        description:
+          document.extractedText ??
+          `Stored ${document.originalFileName ?? document.title} in the workspace document library.`,
+        eventType: "document_uploaded",
+        metadata: {
+          checksumSha256: document.checksumSha256,
+          documentType: document.documentType,
+          extractionStatus: document.extractionStatus,
+          fileSizeBytes: document.fileSizeBytes,
+          mimeType: document.mimeType,
+          originalFileName: document.originalFileName,
+          sourceType: document.sourceType,
+          storageProvider: document.storageProvider,
+        },
+        occurredAt,
+        opportunityId: opportunity.id,
+        organizationId: opportunity.organizationId,
+        relatedEntityId: document.id,
+        relatedEntityType: "document",
+        title: `Document uploaded: ${document.title}`,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await recordAuditEvent({
+      db: tx,
+      event: {
+        organizationId: opportunity.organizationId,
+        actor: input.actor,
+        action: AUDIT_ACTIONS.opportunityDocumentCreate,
+        target: {
+          type: "opportunity_document",
+          id: document.id,
+          display: document.title,
+        },
+        summary: `Uploaded document ${document.title} to ${opportunity.title}.`,
+        metadata: {
+          checksumSha256: document.checksumSha256,
+          documentType: document.documentType,
+          extractionStatus: document.extractionStatus,
+          opportunityId: opportunity.id,
+          opportunityTitle: opportunity.title,
+          originalFileName: document.originalFileName,
+          sourceType: document.sourceType,
+          storagePath: document.storagePath,
+        },
+        occurredAt,
+      },
+    });
+
+    return document;
   });
 }
 

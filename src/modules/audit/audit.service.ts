@@ -10,6 +10,7 @@ export const AUDIT_ACTIONS = {
   opportunityMilestoneCreate: "opportunity.milestone.create",
   opportunityMilestoneUpdate: "opportunity.milestone.update",
   opportunityMilestoneDelete: "opportunity.milestone.delete",
+  opportunityDocumentCreate: "opportunity.document.create",
   opportunityNoteCreate: "opportunity.note.create",
   opportunityStageTransition: "opportunity.stage_transition",
   opportunityDecisionRecord: "opportunity.decision.record",

@@ -51,6 +51,7 @@ The current local credentials flow uses the shared development password document
 - `DATABASE_URL` is required and loaded from `.env` through `prisma.config.ts` and the runtime env parser.
 - `AUTH_SECRET` is required and is used by Auth.js to sign and verify session tokens.
 - `NEXTAUTH_URL` is required and must be an absolute base URL so Auth.js redirect handling stays deterministic.
+- `DOCUMENT_UPLOAD_DIR` controls where guarded local opportunity-document uploads are stored on disk. The default development value is `.data/opportunity-documents`.
 - `.env` is ignored by git; `.env.example` is the only committed env file.
 - Connector configs can store a `credentialReference` string, but the repo still stores only secret references such as `secret://sam-gov/public-api-key`, never raw connector credentials.
 - No production API keys, auth provider secrets, or session secrets are committed.
@@ -75,6 +76,8 @@ Current audit producers are the bootstrap seed path and the shared opportunity w
 
 - Only the initial role-based authorization slice exists today. The app shell requires authentication, `/analytics` requires `view_decision_support`, `/settings` requires the admin role, source-search and CSV import actions require `manage_source_searches`, and the tracked-opportunity create/edit flows require `manage_pipeline`, but most business workflows still need finer-grained per-action and per-record enforcement.
 - CSV import rows are treated as untrusted input. The browser preview is advisory only; the server action rebuilds the preview from uploaded CSV text, revalidates mapped fields, and rechecks duplicates before importing ready rows into the pipeline.
+- Document uploads are treated as untrusted input. The server action revalidates the file metadata, bounds file size, writes under the configured storage root, and only exposes downloads back through an authenticated organization-scoped route.
+- Plain-text extraction currently runs only for UTF-8 text-like uploads. Binary formats are retained with explicit `NOT_REQUESTED` extraction status so later retry jobs can process them without fabricating content.
 - The current admin console is read-only and meant for visibility, not user-role mutation or audit remediation workflows yet.
 - No auth-event or permission-failure audit emission yet
 - Auth events and permission failures still do not emit audit rows, and many future user-facing mutations have not been wired to the audited write-service boundary yet

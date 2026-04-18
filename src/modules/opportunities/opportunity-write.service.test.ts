@@ -5,6 +5,7 @@ import { AUDIT_ACTIONS } from "@/modules/audit/audit.service";
 import { OpportunityStageTransitionValidationError } from "@/modules/opportunities/opportunity-stage-policy";
 
 import {
+  createOpportunityDocument,
   createOpportunityMilestone,
   createOpportunityNote,
   createOpportunityTask,
@@ -52,6 +53,9 @@ function createMockWriteClient() {
       delete: vi.fn(),
     },
     opportunityNote: {
+      create: vi.fn(),
+    },
+    opportunityDocument: {
       create: vi.fn(),
     },
     opportunity: {
@@ -345,6 +349,112 @@ describe("opportunity-write.service", () => {
         action: AUDIT_ACTIONS.opportunityTaskCreate,
         targetId: "task_123",
         targetType: "opportunity_task",
+        occurredAt,
+      }),
+    });
+  });
+
+  it("creates opportunity documents and emits activity plus audit rows", async () => {
+    const { db, tx } = createMockWriteClient();
+    const occurredAt = new Date("2026-04-18T01:34:40.000Z");
+
+    vi.mocked(tx.opportunity.findFirstOrThrow).mockResolvedValue({
+      id: "opp_123",
+      organizationId: "org_123",
+      title: "Data Platform Operations",
+      description: null,
+      leadAgencyId: null,
+      responseDeadlineAt: null,
+      solicitationNumber: null,
+      naicsCode: null,
+      originSourceSystem: null,
+      currentStageKey: "capture_active",
+      currentStageLabel: "Capture Active",
+    });
+    vi.mocked(tx.opportunityDocument.create).mockResolvedValue({
+      id: "doc_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Capture Plan",
+      documentType: "capture_plan",
+      sourceType: "MANUAL_UPLOAD",
+      sourceUrl: null,
+      originalFileName: "capture-plan.txt",
+      storageProvider: "local_disk",
+      storagePath: "opportunities/opp_123/capture-plan.txt",
+      mimeType: "text/plain",
+      fileSizeBytes: 128,
+      checksumSha256:
+        "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+      extractionStatus: "SUCCEEDED",
+      extractedAt: occurredAt,
+      extractedText: "Capture scope and timeline.",
+      metadata: {
+        extractionMethod: "utf8_text_decode",
+      },
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+      },
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_234",
+    });
+
+    await createOpportunityDocument({
+      db,
+      input: {
+        actor,
+        opportunityId: "opp_123",
+        title: "  Capture Plan  ",
+        documentType: "capture_plan",
+        originalFileName: "capture-plan.txt",
+        storageProvider: "local_disk",
+        storagePath: "opportunities/opp_123/capture-plan.txt",
+        mimeType: "text/plain",
+        fileSizeBytes: 128,
+        checksumSha256:
+          "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+        extractedText: "Capture scope and timeline.",
+        extractionStatus: "SUCCEEDED",
+        extractedAt: occurredAt,
+        metadata: {
+          extractionMethod: "utf8_text_decode",
+        },
+        occurredAt,
+      },
+    });
+
+    expect(tx.opportunityDocument.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          checksumSha256:
+            "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+          documentType: "capture_plan",
+          extractionStatus: "SUCCEEDED",
+          originalFileName: "capture-plan.txt",
+          sourceType: "MANUAL_UPLOAD",
+          storagePath: "opportunities/opp_123/capture-plan.txt",
+          title: "Capture Plan",
+          uploadedByUserId: "user_123",
+        }),
+      }),
+    );
+    expect(tx.opportunityActivityEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventType: "document_uploaded",
+        relatedEntityId: "doc_123",
+        title: "Document uploaded: Capture Plan",
+      }),
+      select: {
+        id: true,
+      },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityDocumentCreate,
+        targetId: "doc_123",
+        targetType: "opportunity_document",
         occurredAt,
       }),
     });

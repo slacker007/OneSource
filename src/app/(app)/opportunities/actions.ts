@@ -10,6 +10,11 @@ import {
   type OpportunityBidDecisionActionState,
 } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
 import {
+  INITIAL_OPPORTUNITY_DOCUMENT_ACTION_STATE,
+  validateOpportunityDocumentFormSubmission,
+  type OpportunityDocumentActionState,
+} from "@/modules/opportunities/opportunity-document-form.schema";
+import {
   INITIAL_OPPORTUNITY_FORM_ACTION_STATE,
   validateOpportunityFormSubmission,
   type OpportunityFormActionState,
@@ -30,6 +35,7 @@ import {
   type OpportunityTaskActionState,
 } from "@/modules/opportunities/opportunity-task-form.schema";
 import {
+  createOpportunityDocument,
   createOpportunity,
   createOpportunityMilestone,
   createOpportunityNote,
@@ -43,6 +49,7 @@ import {
   updateOpportunity,
   type OpportunityWriteClient,
 } from "@/modules/opportunities/opportunity-write.service";
+import { persistOpportunityDocumentUpload } from "@/modules/opportunities/opportunity-document-storage";
 import {
   INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE,
   OpportunityStageTransitionValidationError,
@@ -341,6 +348,62 @@ export async function createOpportunityNoteAction(
   return {
     ...INITIAL_OPPORTUNITY_NOTE_ACTION_STATE,
     successMessage: "Note saved to the workspace history.",
+  };
+}
+
+export async function createOpportunityDocumentAction(
+  _previousState: OpportunityDocumentActionState,
+  formData: FormData,
+): Promise<OpportunityDocumentActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const validation = validateOpportunityDocumentFormSubmission(formData);
+
+  if (!validation.success) {
+    return validation.state;
+  }
+
+  try {
+    const upload = await persistOpportunityDocumentUpload({
+      file: validation.submission.file,
+      opportunityId,
+    });
+
+    await createOpportunityDocument({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        opportunityId,
+        title: validation.submission.title,
+        documentType: validation.submission.documentType,
+        originalFileName: upload.originalFileName,
+        storageProvider: "local_disk",
+        storagePath: upload.storagePath,
+        mimeType: upload.mimeType,
+        fileSizeBytes: upload.fileSizeBytes,
+        checksumSha256: upload.checksumSha256,
+        extractedText: upload.extractedText,
+        extractionStatus: upload.extractionStatus,
+        extractedAt: upload.extractedAt,
+        metadata: upload.metadata,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_DOCUMENT_ACTION_STATE,
+      formError:
+        error instanceof Error
+          ? error.message
+          : "The document could not be uploaded.",
+    };
+  }
+
+  revalidateOpportunitySurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_DOCUMENT_ACTION_STATE,
+    successMessage:
+      "Document uploaded. The workspace now shows the stored metadata and extraction status.",
   };
 }
 

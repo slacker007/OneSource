@@ -7,6 +7,7 @@ import {
   type OpportunityWorkspaceRepositoryClient,
 } from "@/modules/opportunities/opportunity.repository";
 import {
+  createOpportunityDocumentAction,
   createOpportunityMilestoneAction,
   createOpportunityNoteAction,
   createOpportunityTaskAction,
@@ -42,6 +43,7 @@ export default async function OpportunityWorkspacePage({
         session.user.roleKeys,
         "manage_pipeline",
       )}
+      createDocumentAction={createOpportunityDocumentAction}
       createMilestoneAction={createOpportunityMilestoneAction}
       createNoteAction={createOpportunityNoteAction}
       createTaskAction={createOpportunityTaskAction}
