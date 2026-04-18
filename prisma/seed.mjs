@@ -12,6 +12,25 @@ import { runDeadlineReminderSweep } from "../scripts/deadline-reminder-job.mjs";
 
 const prisma = new PrismaClient();
 
+const PROPOSAL_CHECKLIST_TEMPLATE = [
+  {
+    key: "requirement_matrix_reviewed",
+    label: "Requirement matrix reviewed",
+  },
+  {
+    key: "section_owners_assigned",
+    label: "Section owners assigned",
+  },
+  {
+    key: "pricing_package_aligned",
+    label: "Pricing package aligned",
+  },
+  {
+    key: "final_compliance_review_complete",
+    label: "Final compliance review complete",
+  },
+];
+
 async function upsertSearchExecution({
   organizationId,
   savedSearchId,
@@ -395,6 +414,9 @@ async function syncOpportunityWorkspace({
   await prisma.opportunityStageTransition.deleteMany({
     where: { opportunityId },
   });
+  await prisma.opportunityProposal.deleteMany({
+    where: { opportunityId },
+  });
   await prisma.opportunityDocument.deleteMany({
     where: { opportunityId },
   });
@@ -509,6 +531,70 @@ async function syncOpportunityWorkspace({
     });
 
     relatedEntityIdsByRef.set(document.key, createdDocument.id);
+  }
+
+  if (workspace.proposal) {
+    const ownerUser = workspace.proposal.ownerUserKey
+      ? (usersByKey.get(workspace.proposal.ownerUserKey) ?? null)
+      : null;
+
+    if (workspace.proposal.ownerUserKey && !ownerUser) {
+      throw new Error(
+        `Missing seeded proposal owner ${workspace.proposal.ownerUserKey}`,
+      );
+    }
+
+    const linkedDocumentIds = workspace.proposal.linkedDocumentRefs.map(
+      (documentRef) => {
+        const linkedDocumentId = relatedEntityIdsByRef.get(documentRef);
+
+        if (!linkedDocumentId) {
+          throw new Error(
+            `Missing seeded proposal document reference ${documentRef}`,
+          );
+        }
+
+        return linkedDocumentId;
+      },
+    );
+
+    const createdProposal = await prisma.opportunityProposal.create({
+      data: {
+        organizationId,
+        opportunityId,
+        ownerUserId: ownerUser?.id ?? null,
+        createdByUserId: userId,
+        updatedByUserId: userId,
+        status: workspace.proposal.status,
+        submittedAt:
+          workspace.proposal.status === "SUBMITTED"
+            ? new Date(workspace.bidDecision.decidedAt)
+            : null,
+        checklistItems: {
+          create: PROPOSAL_CHECKLIST_TEMPLATE.map((item, index) => ({
+            organizationId,
+            checklistKey: item.key,
+            checklistLabel: item.label,
+            isComplete: workspace.proposal.completedChecklistKeys.includes(
+              item.key,
+            ),
+            completedAt: workspace.proposal.completedChecklistKeys.includes(
+              item.key,
+            )
+              ? new Date("2026-04-16T10:00:00.000Z")
+              : null,
+            sortOrder: index,
+          })),
+        },
+        linkedDocuments: {
+          create: linkedDocumentIds.map((documentId) => ({
+            documentId,
+          })),
+        },
+      },
+    });
+
+    relatedEntityIdsByRef.set(workspace.proposal.key, createdProposal.id);
   }
 
   for (const transition of workspace.stageTransitions) {

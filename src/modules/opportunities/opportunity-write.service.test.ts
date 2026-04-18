@@ -10,6 +10,7 @@ import {
   createOpportunityNote,
   createOpportunityTask,
   createOpportunity,
+  deleteOpportunityProposal,
   deleteOpportunityMilestone,
   deleteOpportunityTask,
   deleteOpportunity,
@@ -17,6 +18,7 @@ import {
   recordOpportunityCloseout,
   recordSourceImportDecision,
   recordStageTransition,
+  upsertOpportunityProposal,
   updateOpportunityMilestone,
   updateOpportunityTask,
   updateOpportunity,
@@ -58,6 +60,22 @@ function createMockWriteClient() {
     },
     opportunityDocument: {
       create: vi.fn(),
+      findMany: vi.fn(),
+    },
+    opportunityProposal: {
+      create: vi.fn(),
+      findFirst: vi.fn(),
+      findFirstOrThrow: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    opportunityProposalChecklistItem: {
+      deleteMany: vi.fn(),
+      createMany: vi.fn(),
+    },
+    opportunityProposalDocument: {
+      deleteMany: vi.fn(),
+      createMany: vi.fn(),
     },
     opportunity: {
       create: vi.fn(),
@@ -463,6 +481,437 @@ describe("opportunity-write.service", () => {
         action: AUDIT_ACTIONS.opportunityDocumentCreate,
         targetId: "doc_123",
         targetType: "opportunity_document",
+        occurredAt,
+      }),
+    });
+  });
+
+  it("creates proposal records and emits activity plus audit rows", async () => {
+    const { db, tx } = createMockWriteClient();
+    const occurredAt = new Date("2026-04-18T01:34:42.000Z");
+
+    vi.mocked(tx.opportunity.findFirstOrThrow).mockResolvedValue({
+      id: "opp_123",
+      organizationId: "org_123",
+      title: "Data Platform Operations",
+      description: null,
+      leadAgencyId: null,
+      responseDeadlineAt: null,
+      solicitationNumber: null,
+      naicsCode: null,
+      originSourceSystem: null,
+      currentStageKey: "proposal_in_development",
+      currentStageLabel: "Proposal In Development",
+    });
+    vi.mocked(tx.user.findFirst).mockResolvedValue({
+      id: "user_owner",
+    });
+    vi.mocked(tx.opportunityDocument.findMany).mockResolvedValue([
+      {
+        id: "doc_123",
+        title: "Storyboard v2",
+      },
+    ]);
+    vi.mocked(tx.opportunityProposal.findFirst).mockResolvedValue(null);
+    vi.mocked(tx.opportunityProposal.create).mockResolvedValue({
+      id: "proposal_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      status: "IN_PROGRESS",
+      ownerUserId: "user_owner",
+      submittedAt: null,
+      createdAt: occurredAt,
+      updatedAt: occurredAt,
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+        currentStageKey: "proposal_in_development",
+        currentStageLabel: "Proposal In Development",
+      },
+      ownerUser: {
+        id: "user_owner",
+        name: "Morgan Patel",
+        email: "morgan@example.com",
+      },
+      checklistItems: [],
+      linkedDocuments: [],
+    });
+    vi.mocked(tx.opportunityProposal.findFirstOrThrow).mockResolvedValue({
+      id: "proposal_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      status: "IN_PROGRESS",
+      ownerUserId: "user_owner",
+      submittedAt: null,
+      createdAt: occurredAt,
+      updatedAt: occurredAt,
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+        currentStageKey: "proposal_in_development",
+        currentStageLabel: "Proposal In Development",
+      },
+      ownerUser: {
+        id: "user_owner",
+        name: "Morgan Patel",
+        email: "morgan@example.com",
+      },
+      checklistItems: [
+        {
+          id: "proposal_check_1",
+          checklistKey: "requirement_matrix_reviewed",
+          checklistLabel: "Requirement matrix reviewed",
+          isComplete: true,
+          completedAt: occurredAt,
+          sortOrder: 0,
+        },
+        {
+          id: "proposal_check_2",
+          checklistKey: "section_owners_assigned",
+          checklistLabel: "Section owners assigned",
+          isComplete: false,
+          completedAt: null,
+          sortOrder: 1,
+        },
+      ],
+      linkedDocuments: [
+        {
+          document: {
+            id: "doc_123",
+            title: "Storyboard v2",
+          },
+        },
+      ],
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_345",
+    });
+
+    await upsertOpportunityProposal({
+      db,
+      input: {
+        actor,
+        opportunityId: "opp_123",
+        status: "IN_PROGRESS",
+        ownerUserId: "user_owner",
+        completedChecklistKeys: ["requirement_matrix_reviewed"],
+        linkedDocumentIds: ["doc_123"],
+        occurredAt,
+      },
+    });
+
+    expect(tx.opportunityProposal.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          createdByUserId: "user_123",
+          ownerUserId: "user_owner",
+          status: "IN_PROGRESS",
+        }),
+      }),
+    );
+    expect(tx.opportunityProposalChecklistItem.createMany).toHaveBeenCalledWith({
+      data: expect.arrayContaining([
+        expect.objectContaining({
+          checklistKey: "requirement_matrix_reviewed",
+          isComplete: true,
+        }),
+      ]),
+    });
+    expect(tx.opportunityProposalDocument.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          proposalId: "proposal_123",
+          documentId: "doc_123",
+        },
+      ],
+    });
+    expect(tx.opportunityActivityEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventType: "proposal_record_created",
+        relatedEntityId: "proposal_123",
+        title: "Proposal record started: In Progress",
+      }),
+      select: {
+        id: true,
+      },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityProposalCreate,
+        targetId: "proposal_123",
+        targetType: "opportunity_proposal",
+        occurredAt,
+      }),
+    });
+  });
+
+  it("updates proposal records and records changed fields in audit metadata", async () => {
+    const { db, tx } = createMockWriteClient();
+    const occurredAt = new Date("2026-04-18T01:34:43.000Z");
+
+    vi.mocked(tx.opportunity.findFirstOrThrow).mockResolvedValue({
+      id: "opp_123",
+      organizationId: "org_123",
+      title: "Data Platform Operations",
+      description: null,
+      leadAgencyId: null,
+      responseDeadlineAt: null,
+      solicitationNumber: null,
+      naicsCode: null,
+      originSourceSystem: null,
+      currentStageKey: "proposal_in_development",
+      currentStageLabel: "Proposal In Development",
+    });
+    vi.mocked(tx.user.findFirst).mockResolvedValue({
+      id: "user_owner_next",
+    });
+    vi.mocked(tx.opportunityDocument.findMany).mockResolvedValue([
+      {
+        id: "doc_456",
+        title: "Final proposal package",
+      },
+    ]);
+    vi.mocked(tx.opportunityProposal.findFirst).mockResolvedValue({
+      id: "proposal_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      status: "IN_PROGRESS",
+      ownerUserId: "user_owner",
+      submittedAt: null,
+      createdAt: new Date("2026-04-16T10:00:00.000Z"),
+      updatedAt: new Date("2026-04-17T10:00:00.000Z"),
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+        currentStageKey: "proposal_in_development",
+        currentStageLabel: "Proposal In Development",
+      },
+      ownerUser: {
+        id: "user_owner",
+        name: "Morgan Patel",
+        email: "morgan@example.com",
+      },
+      checklistItems: [
+        {
+          id: "proposal_check_1",
+          checklistKey: "requirement_matrix_reviewed",
+          checklistLabel: "Requirement matrix reviewed",
+          isComplete: true,
+          completedAt: new Date("2026-04-16T15:00:00.000Z"),
+          sortOrder: 0,
+        },
+      ],
+      linkedDocuments: [
+        {
+          document: {
+            id: "doc_123",
+            title: "Storyboard v2",
+          },
+        },
+      ],
+    });
+    vi.mocked(tx.opportunityProposal.update).mockResolvedValue({
+      id: "proposal_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      status: "SUBMITTED",
+      ownerUserId: "user_owner_next",
+      submittedAt: occurredAt,
+      createdAt: new Date("2026-04-16T10:00:00.000Z"),
+      updatedAt: occurredAt,
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+        currentStageKey: "proposal_in_development",
+        currentStageLabel: "Proposal In Development",
+      },
+      ownerUser: {
+        id: "user_owner_next",
+        name: "Casey Brooks",
+        email: "casey@example.com",
+      },
+      checklistItems: [
+        {
+          id: "proposal_check_1",
+          checklistKey: "requirement_matrix_reviewed",
+          checklistLabel: "Requirement matrix reviewed",
+          isComplete: true,
+          completedAt: new Date("2026-04-16T15:00:00.000Z"),
+          sortOrder: 0,
+        },
+      ],
+      linkedDocuments: [],
+    });
+    vi.mocked(tx.opportunityProposal.findFirstOrThrow).mockResolvedValue({
+      id: "proposal_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      status: "SUBMITTED",
+      ownerUserId: "user_owner_next",
+      submittedAt: occurredAt,
+      createdAt: new Date("2026-04-16T10:00:00.000Z"),
+      updatedAt: occurredAt,
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+        currentStageKey: "proposal_in_development",
+        currentStageLabel: "Proposal In Development",
+      },
+      ownerUser: {
+        id: "user_owner_next",
+        name: "Casey Brooks",
+        email: "casey@example.com",
+      },
+      checklistItems: [
+        {
+          id: "proposal_check_1",
+          checklistKey: "requirement_matrix_reviewed",
+          checklistLabel: "Requirement matrix reviewed",
+          isComplete: true,
+          completedAt: new Date("2026-04-16T15:00:00.000Z"),
+          sortOrder: 0,
+        },
+        {
+          id: "proposal_check_2",
+          checklistKey: "final_compliance_review_complete",
+          checklistLabel: "Final compliance review complete",
+          isComplete: true,
+          completedAt: occurredAt,
+          sortOrder: 1,
+        },
+      ],
+      linkedDocuments: [
+        {
+          document: {
+            id: "doc_456",
+            title: "Final proposal package",
+          },
+        },
+      ],
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_456",
+    });
+
+    await upsertOpportunityProposal({
+      db,
+      input: {
+        actor,
+        opportunityId: "opp_123",
+        status: "SUBMITTED",
+        ownerUserId: "user_owner_next",
+        completedChecklistKeys: [
+          "requirement_matrix_reviewed",
+          "final_compliance_review_complete",
+        ],
+        linkedDocumentIds: ["doc_456"],
+        occurredAt,
+      },
+    });
+
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityProposalUpdate,
+        targetId: "proposal_123",
+        metadata: expect.objectContaining({
+          changedFields: expect.objectContaining({
+            status: {
+              from: "IN_PROGRESS",
+              to: "SUBMITTED",
+            },
+            ownerUserId: {
+              from: "user_owner",
+              to: "user_owner_next",
+            },
+            linkedDocumentIds: {
+              from: ["doc_123"],
+              to: ["doc_456"],
+            },
+          }),
+        }),
+        occurredAt,
+      }),
+    });
+  });
+
+  it("deletes proposal records and emits a delete audit row", async () => {
+    const { db, tx } = createMockWriteClient();
+    const occurredAt = new Date("2026-04-18T01:34:44.000Z");
+
+    vi.mocked(tx.opportunityProposal.findFirstOrThrow).mockResolvedValue({
+      id: "proposal_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      status: "IN_REVIEW",
+      ownerUserId: "user_owner",
+      submittedAt: null,
+      createdAt: new Date("2026-04-16T10:00:00.000Z"),
+      updatedAt: new Date("2026-04-17T10:00:00.000Z"),
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+        currentStageKey: "proposal_in_development",
+        currentStageLabel: "Proposal In Development",
+      },
+      ownerUser: {
+        id: "user_owner",
+        name: "Morgan Patel",
+        email: "morgan@example.com",
+      },
+      checklistItems: [],
+      linkedDocuments: [],
+    });
+    vi.mocked(tx.opportunityProposal.delete).mockResolvedValue({
+      id: "proposal_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      status: "IN_REVIEW",
+      ownerUserId: "user_owner",
+      submittedAt: null,
+      createdAt: new Date("2026-04-16T10:00:00.000Z"),
+      updatedAt: new Date("2026-04-17T10:00:00.000Z"),
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+        currentStageKey: "proposal_in_development",
+        currentStageLabel: "Proposal In Development",
+      },
+      ownerUser: {
+        id: "user_owner",
+        name: "Morgan Patel",
+        email: "morgan@example.com",
+      },
+      checklistItems: [],
+      linkedDocuments: [],
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_567",
+    });
+
+    await deleteOpportunityProposal({
+      db,
+      input: {
+        actor,
+        proposalId: "proposal_123",
+        occurredAt,
+      },
+    });
+
+    expect(tx.opportunityActivityEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventType: "proposal_record_deleted",
+        relatedEntityId: "proposal_123",
+        title: "Proposal record removed",
+      }),
+      select: {
+        id: true,
+      },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityProposalDelete,
+        targetId: "proposal_123",
+        targetType: "opportunity_proposal",
         occurredAt,
       }),
     });

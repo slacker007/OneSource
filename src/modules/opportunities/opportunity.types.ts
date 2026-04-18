@@ -1,3 +1,8 @@
+import type {
+  OpportunityProposalChecklistKey,
+  OpportunityProposalStatus,
+} from "./opportunity-proposal";
+
 export type BidDecisionOutcome = "GO" | "NO_GO" | "DEFER";
 
 export type OpportunityTaskStatus =
@@ -371,6 +376,36 @@ export type OpportunityWorkspaceCloseout = {
   recordedByName: string | null;
 };
 
+export type OpportunityWorkspaceProposalChecklistItem = {
+  id: string;
+  checklistKey: OpportunityProposalChecklistKey;
+  checklistLabel: string;
+  isComplete: boolean;
+  completedAt: string | null;
+};
+
+export type OpportunityWorkspaceProposalLinkedDocument = {
+  id: string;
+  title: string;
+  documentType: string | null;
+  downloadUrl: string | null;
+};
+
+export type OpportunityWorkspaceProposal = {
+  id: string;
+  status: OpportunityProposalStatus;
+  statusLabel: string;
+  ownerUserId: string | null;
+  ownerName: string | null;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  completedChecklistCount: number;
+  totalChecklistCount: number;
+  checklistItems: OpportunityWorkspaceProposalChecklistItem[];
+  linkedDocuments: OpportunityWorkspaceProposalLinkedDocument[];
+};
+
 export type OpportunityWorkspaceSnapshot = {
   organization: OrganizationSummary;
   opportunity: OpportunityWorkspaceOpportunitySummary;
@@ -380,6 +415,7 @@ export type OpportunityWorkspaceSnapshot = {
   taskAssigneeOptions: OpportunityTaskAssigneeOption[];
   competitorOptions: OpportunityCompetitorOption[];
   closeout: OpportunityWorkspaceCloseout | null;
+  proposal: OpportunityWorkspaceProposal | null;
   tasks: OpportunityWorkspaceTask[];
   milestones: OpportunityWorkspaceMilestone[];
   documents: OpportunityWorkspaceDocument[];

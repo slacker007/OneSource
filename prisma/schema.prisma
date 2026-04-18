@@ -143,6 +143,13 @@ enum OpportunityDocumentExtractionStatus {
   FAILED
 }
 
+enum OpportunityProposalStatus {
+  PLANNING
+  IN_PROGRESS
+  IN_REVIEW
+  SUBMITTED
+}
+
 enum OpportunityStageTransitionTrigger {
   MANUAL
   SYSTEM
@@ -199,6 +206,8 @@ model Organization {
   opportunityNotes            OpportunityNote[]
   opportunityActivity         OpportunityActivityEvent[]
   opportunityDocuments        OpportunityDocument[]
+  opportunityProposals        OpportunityProposal[]
+  proposalChecklistItems      OpportunityProposalChecklistItem[]
   opportunityTransitions      OpportunityStageTransition[]
   opportunityScorecards       OpportunityScorecard[]
   bidDecisions                BidDecision[]
@@ -238,6 +247,9 @@ model User {
   authoredOpportunityNotes        OpportunityNote[]            @relation("OpportunityNoteAuthor")
   opportunityActivityEvents       OpportunityActivityEvent[]   @relation("OpportunityActivityActor")
   uploadedOpportunityDocuments    OpportunityDocument[]        @relation("OpportunityDocumentUploader")
+  ownedOpportunityProposals       OpportunityProposal[]        @relation("OpportunityProposalOwner")
+  createdOpportunityProposals     OpportunityProposal[]        @relation("OpportunityProposalCreator")
+  updatedOpportunityProposals     OpportunityProposal[]        @relation("OpportunityProposalUpdater")
   opportunityStageTransitions     OpportunityStageTransition[] @relation("OpportunityStageTransitionActor")
   calculatedOpportunityScorecards OpportunityScorecard[]       @relation("OpportunityScorecardCalculator")
   recommendedBidDecisions         BidDecision[]                @relation("BidDecisionRecommender")
@@ -557,6 +569,7 @@ model Opportunity {
   notes                         OpportunityNote[]
   activityEvents                OpportunityActivityEvent[]
   documents                     OpportunityDocument[]
+  proposalRecord                OpportunityProposal?
   stageTransitions              OpportunityStageTransition[]
   scorecards                    OpportunityScorecard[]
   bidDecisions                  BidDecision[]
@@ -1003,12 +1016,68 @@ model OpportunityDocument {
   opportunity      Opportunity                         @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   sourceRecord     SourceRecord?                       @relation(fields: [sourceRecordId], references: [id], onDelete: SetNull)
   uploadedByUser   User?                               @relation("OpportunityDocumentUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  proposalLinks    OpportunityProposalDocument[]
 
   @@index([organizationId, createdAt], map: "opportunity_documents_org_created_at_idx")
   @@index([opportunityId, createdAt], map: "opportunity_documents_opportunity_id_created_at_idx")
   @@index([sourceRecordId], map: "opportunity_documents_source_record_id_idx")
   @@index([uploadedByUserId], map: "opportunity_documents_uploaded_by_user_id_idx")
   @@map("opportunity_documents")
+}
+
+model OpportunityProposal {
+  id              String                    @id @default(cuid()) @map("id")
+  organizationId  String                    @map("organization_id")
+  opportunityId   String                    @unique(map: "opportunity_proposals_opportunity_id_key") @map("opportunity_id")
+  ownerUserId     String?                   @map("owner_user_id")
+  createdByUserId String?                   @map("created_by_user_id")
+  updatedByUserId String?                   @map("updated_by_user_id")
+  status          OpportunityProposalStatus @default(PLANNING) @map("status")
+  submittedAt     DateTime?                 @map("submitted_at")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @updatedAt @map("updated_at")
+  organization    Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity     Opportunity               @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  ownerUser       User?                     @relation("OpportunityProposalOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  createdByUser   User?                     @relation("OpportunityProposalCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser   User?                     @relation("OpportunityProposalUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  checklistItems  OpportunityProposalChecklistItem[]
+  linkedDocuments OpportunityProposalDocument[]
+
+  @@index([organizationId, status], map: "opportunity_proposals_org_id_status_idx")
+  @@index([ownerUserId], map: "opportunity_proposals_owner_user_id_idx")
+  @@map("opportunity_proposals")
+}
+
+model OpportunityProposalChecklistItem {
+  id             String              @id @default(cuid()) @map("id")
+  organizationId String              @map("organization_id")
+  proposalId     String              @map("proposal_id")
+  checklistKey   String              @map("checklist_key")
+  checklistLabel String              @map("checklist_label")
+  isComplete     Boolean             @default(false) @map("is_complete")
+  completedAt    DateTime?           @map("completed_at")
+  sortOrder      Int                 @default(0) @map("sort_order")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  proposal       OpportunityProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, checklistKey], map: "proposal_checklist_items_proposal_id_checklist_key_key")
+  @@index([organizationId, proposalId], map: "proposal_checklist_items_org_id_proposal_id_idx")
+  @@map("opportunity_proposal_checklist_items")
+}
+
+model OpportunityProposalDocument {
+  proposalId String              @map("proposal_id")
+  documentId String              @map("document_id")
+  linkedAt   DateTime            @default(now()) @map("linked_at")
+  proposal   OpportunityProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  document   OpportunityDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([proposalId, documentId])
+  @@index([documentId], map: "proposal_documents_document_id_idx")
+  @@map("opportunity_proposal_documents")
 }
 
 model KnowledgeAsset {

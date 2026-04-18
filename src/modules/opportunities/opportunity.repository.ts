@@ -5,6 +5,10 @@ import {
   type OpportunityStageKey,
 } from "./opportunity-stage-policy";
 import {
+  getOpportunityProposalStatusLabel,
+  type OpportunityProposalChecklistKey,
+} from "./opportunity-proposal";
+import {
   calculateOpportunityScore,
   type CalculatedOpportunityScorecard,
   type OrganizationScoringProfileInput,
@@ -42,6 +46,7 @@ import type {
   OpportunityListSort,
   OpportunityWorkspaceMilestone,
   OpportunityWorkspaceNote,
+  OpportunityWorkspaceProposal,
   OpportunityWorkspaceScoreFactor,
   OpportunityWorkspaceScorecard,
   OpportunityWorkspaceSnapshot,
@@ -649,6 +654,49 @@ const opportunityWorkspaceArgs = {
         },
       },
     },
+    proposalRecord: {
+      select: {
+        id: true,
+        status: true,
+        ownerUserId: true,
+        submittedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        ownerUser: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+        checklistItems: {
+          orderBy: [{ sortOrder: "asc" }, { checklistLabel: "asc" }],
+          select: {
+            id: true,
+            checklistKey: true,
+            checklistLabel: true,
+            isComplete: true,
+            completedAt: true,
+          },
+        },
+        linkedDocuments: {
+          orderBy: {
+            document: {
+              title: "asc",
+            },
+          },
+          select: {
+            document: {
+              select: {
+                id: true,
+                title: true,
+                documentType: true,
+                storagePath: true,
+              },
+            },
+          },
+        },
+      },
+    },
     activityEvents: {
       orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
       take: 12,
@@ -1169,6 +1217,33 @@ export type OpportunityWorkspaceRecord = {
       email: string;
     } | null;
   }>;
+  proposalRecord: {
+    id: string;
+    status: OpportunityWorkspaceProposal["status"];
+    ownerUserId: string | null;
+    submittedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    ownerUser: {
+      name: string | null;
+      email: string;
+    } | null;
+    checklistItems: Array<{
+      id: string;
+      checklistKey: string;
+      checklistLabel: string;
+      isComplete: boolean;
+      completedAt: Date | null;
+    }>;
+    linkedDocuments: Array<{
+      document: {
+        id: string;
+        title: string;
+        documentType: string | null;
+        storagePath: string | null;
+      };
+    }>;
+  } | null;
   activityEvents: Array<{
     id: string;
     eventType: string;
@@ -1695,6 +1770,7 @@ export async function getOpportunityWorkspaceSnapshot({
     taskAssigneeOptions: record.organization.users.map(mapTaskAssigneeOption),
     competitorOptions: record.organization.competitors.map(mapCompetitorOption),
     closeout: mapWorkspaceCloseout(currentCloseout),
+    proposal: mapWorkspaceProposal(record.proposalRecord),
     tasks: record.tasks.map(mapWorkspaceTask),
     milestones: record.milestones.map(mapWorkspaceMilestone),
     documents: record.documents.map(mapWorkspaceDocument),
@@ -2528,6 +2604,46 @@ function mapWorkspaceCloseout(
     lessonsLearned: closeout.lessonsLearned,
     recordedAt: closeout.recordedAt.toISOString(),
     recordedByName: formatPersonLabel(closeout.recordedByUser),
+  };
+}
+
+function mapWorkspaceProposal(
+  proposal:
+    | OpportunityWorkspaceRecord["proposalRecord"]
+    | null
+    | undefined,
+): OpportunityWorkspaceProposal | null {
+  if (!proposal) {
+    return null;
+  }
+
+  return {
+    id: proposal.id,
+    status: proposal.status,
+    statusLabel: getOpportunityProposalStatusLabel(proposal.status),
+    ownerUserId: proposal.ownerUserId,
+    ownerName: formatPersonLabel(proposal.ownerUser),
+    submittedAt: toIsoString(proposal.submittedAt),
+    createdAt: proposal.createdAt.toISOString(),
+    updatedAt: proposal.updatedAt.toISOString(),
+    completedChecklistCount: proposal.checklistItems.filter((item) => item.isComplete)
+      .length,
+    totalChecklistCount: proposal.checklistItems.length,
+    checklistItems: proposal.checklistItems.map((item) => ({
+      id: item.id,
+      checklistKey: item.checklistKey as OpportunityProposalChecklistKey,
+      checklistLabel: item.checklistLabel,
+      isComplete: item.isComplete,
+      completedAt: toIsoString(item.completedAt),
+    })),
+    linkedDocuments: proposal.linkedDocuments.map((link) => ({
+      id: link.document.id,
+      title: link.document.title,
+      documentType: link.document.documentType,
+      downloadUrl: link.document.storagePath
+        ? buildOpportunityDocumentDownloadPath(link.document.id)
+        : null,
+    })),
   };
 }
 

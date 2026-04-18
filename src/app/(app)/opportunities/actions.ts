@@ -35,6 +35,11 @@ import {
   type OpportunityNoteActionState,
 } from "@/modules/opportunities/opportunity-note-form.schema";
 import {
+  INITIAL_OPPORTUNITY_PROPOSAL_ACTION_STATE,
+  validateOpportunityProposalFormSubmission,
+  type OpportunityProposalActionState,
+} from "@/modules/opportunities/opportunity-proposal-form.schema";
+import {
   INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
   validateOpportunityTaskFormSubmission,
   type OpportunityTaskActionState,
@@ -44,12 +49,14 @@ import {
   createOpportunity,
   createOpportunityMilestone,
   createOpportunityNote,
+  deleteOpportunityProposal,
   createOpportunityTask,
   deleteOpportunityMilestone,
   deleteOpportunityTask,
   recordBidDecision,
   recordOpportunityCloseout,
   recordStageTransition,
+  upsertOpportunityProposal,
   updateOpportunityMilestone,
   updateOpportunityTask,
   updateOpportunity,
@@ -451,6 +458,82 @@ export async function createOpportunityDocumentAction(
     ...INITIAL_OPPORTUNITY_DOCUMENT_ACTION_STATE,
     successMessage:
       "Document uploaded. The workspace now shows the stored metadata and queued extraction status.",
+  };
+}
+
+export async function saveOpportunityProposalAction(
+  _previousState: OpportunityProposalActionState,
+  formData: FormData,
+): Promise<OpportunityProposalActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const validation = validateOpportunityProposalFormSubmission(formData);
+
+  if (!validation.success) {
+    return validation.state;
+  }
+
+  try {
+    await upsertOpportunityProposal({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        opportunityId,
+        status: validation.submission.status,
+        ownerUserId: validation.submission.ownerUserId,
+        completedChecklistKeys: validation.submission.completedChecklistKeys,
+        linkedDocumentIds: validation.submission.linkedDocumentIds,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_PROPOSAL_ACTION_STATE,
+      formError:
+        error instanceof Error
+          ? error.message
+          : "The proposal record could not be saved.",
+    };
+  }
+
+  revalidateOpportunitySurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_PROPOSAL_ACTION_STATE,
+    successMessage: "Proposal tracking saved to the workspace.",
+  };
+}
+
+export async function deleteOpportunityProposalAction(
+  _previousState: OpportunityProposalActionState,
+  formData: FormData,
+): Promise<OpportunityProposalActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const proposalId = readRequiredString(formData.get("proposalId"));
+
+  try {
+    await deleteOpportunityProposal({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        proposalId,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_PROPOSAL_ACTION_STATE,
+      formError:
+        error instanceof Error
+          ? error.message
+          : "The proposal record could not be deleted.",
+    };
+  }
+
+  revalidateOpportunitySurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_PROPOSAL_ACTION_STATE,
+    successMessage: "Proposal record removed from the workspace.",
   };
 }
 

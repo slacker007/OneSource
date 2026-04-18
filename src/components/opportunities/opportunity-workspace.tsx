@@ -5,6 +5,7 @@ import { OpportunityCloseoutManager } from "@/components/opportunities/opportuni
 import { OpportunityDocumentManager } from "@/components/opportunities/opportunity-document-manager";
 import { OpportunityMilestoneManager } from "@/components/opportunities/opportunity-milestone-manager";
 import { OpportunityNoteManager } from "@/components/opportunities/opportunity-note-manager";
+import { OpportunityProposalManager } from "@/components/opportunities/opportunity-proposal-manager";
 import { OpportunityStageTransitionPanel } from "@/components/opportunities/opportunity-stage-transition-panel";
 import { OpportunityTaskManager } from "@/components/opportunities/opportunity-task-manager";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,9 @@ import type { OpportunityCloseoutActionState } from "@/modules/opportunities/opp
 import type { OpportunityDocumentActionState } from "@/modules/opportunities/opportunity-document-form.schema";
 import type { OpportunityMilestoneActionState } from "@/modules/opportunities/opportunity-milestone-form.schema";
 import type { OpportunityNoteActionState } from "@/modules/opportunities/opportunity-note-form.schema";
+import type { OpportunityProposalActionState } from "@/modules/opportunities/opportunity-proposal-form.schema";
 import type { OpportunityTaskActionState } from "@/modules/opportunities/opportunity-task-form.schema";
+import { canTrackProposalForStage } from "@/modules/opportunities/opportunity-proposal";
 import {
   buildOpportunityStageControlSnapshotFromWorkspace,
   type OpportunityStageTransitionActionState,
@@ -28,8 +31,10 @@ import type {
   OpportunityWorkspaceKnowledgeSuggestion,
   OpportunityWorkspaceMilestone,
   OpportunityWorkspaceNote,
+  OpportunityWorkspaceProposal,
   OpportunityWorkspaceSnapshot,
   OpportunityWorkspaceStageTransition,
+  OpportunityTaskAssigneeOption,
   OpportunityWorkspaceTask,
 } from "@/modules/opportunities/opportunity.types";
 
@@ -56,6 +61,10 @@ type OpportunityWorkspaceProps = {
     state: OpportunityNoteActionState,
     formData: FormData,
   ) => Promise<OpportunityNoteActionState>;
+  deleteProposalAction?: (
+    state: OpportunityProposalActionState,
+    formData: FormData,
+  ) => Promise<OpportunityProposalActionState>;
   createTaskAction?: (
     state: OpportunityTaskActionState,
     formData: FormData,
@@ -72,6 +81,10 @@ type OpportunityWorkspaceProps = {
     state: OpportunityMilestoneActionState,
     formData: FormData,
   ) => Promise<OpportunityMilestoneActionState>;
+  saveProposalAction?: (
+    state: OpportunityProposalActionState,
+    formData: FormData,
+  ) => Promise<OpportunityProposalActionState>;
   deleteTaskAction?: (
     state: OpportunityTaskActionState,
     formData: FormData,
@@ -90,8 +103,10 @@ export function OpportunityWorkspace({
   createMilestoneAction,
   createDocumentAction,
   createNoteAction,
+  deleteProposalAction,
   createTaskAction,
   updateMilestoneAction,
+  saveProposalAction,
   updateTaskAction,
   deleteMilestoneAction,
   deleteTaskAction,
@@ -227,6 +242,21 @@ export function OpportunityWorkspace({
           snapshot={snapshot}
         />
       </div>
+
+      {snapshot.proposal ||
+      canTrackProposalForStage(snapshot.opportunity.currentStageKey) ? (
+        <ProposalSection
+          allowManagePipeline={allowManagePipeline}
+          deleteProposalAction={deleteProposalAction}
+          documents={snapshot.documents}
+          ownerOptions={snapshot.taskAssigneeOptions}
+          opportunityId={snapshot.opportunity.id}
+          proposal={snapshot.proposal}
+          saveProposalAction={saveProposalAction}
+          stageKey={snapshot.opportunity.currentStageKey}
+          stageLabel={snapshot.opportunity.currentStageLabel}
+        />
+      ) : null}
 
       {isClosedOpportunityStage(snapshot.opportunity.currentStageKey) ||
       snapshot.closeout ? (
@@ -692,6 +722,189 @@ function ScoringSection({
           title="No scoring context yet"
         />
       )}
+    </article>
+  );
+}
+
+function ProposalSection({
+  allowManagePipeline,
+  deleteProposalAction,
+  documents,
+  opportunityId,
+  ownerOptions,
+  proposal,
+  saveProposalAction,
+  stageKey,
+  stageLabel,
+}: {
+  allowManagePipeline: boolean;
+  deleteProposalAction?: (
+    state: OpportunityProposalActionState,
+    formData: FormData,
+  ) => Promise<OpportunityProposalActionState>;
+  documents: OpportunityWorkspaceDocument[];
+  opportunityId: string;
+  ownerOptions: OpportunityTaskAssigneeOption[];
+  proposal: OpportunityWorkspaceProposal | null;
+  saveProposalAction?: (
+    state: OpportunityProposalActionState,
+    formData: FormData,
+  ) => Promise<OpportunityProposalActionState>;
+  stageKey: string | null;
+  stageLabel: string;
+}) {
+  return (
+    <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-muted text-xs tracking-[0.24em] uppercase">
+            Proposal
+          </p>
+          <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+            Proposal tracking
+          </h2>
+          <p className="text-muted mt-2 max-w-3xl text-sm leading-6">
+            Keep proposal ownership, readiness, and linked artifacts visible in
+            the pursuit workspace without introducing a separate authoring tool.
+          </p>
+        </div>
+
+        {proposal ? (
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="accent">{proposal.statusLabel}</Badge>
+            <Badge tone="muted">
+              {proposal.completedChecklistCount}/{proposal.totalChecklistCount} checklist
+            </Badge>
+            {proposal.ownerName ? <Badge>{proposal.ownerName}</Badge> : null}
+          </div>
+        ) : (
+          <Badge tone="warning">Proposal record not started</Badge>
+        )}
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard
+          label="Proposal status"
+          supportingText="Workspace-level response posture."
+          value={proposal?.statusLabel ?? "Not started"}
+        />
+        <SummaryCard
+          label="Owner"
+          supportingText="Current proposal lead."
+          value={proposal?.ownerName ?? "Unassigned"}
+        />
+        <SummaryCard
+          label="Checklist"
+          supportingText="Compliance checkpoints complete."
+          value={
+            proposal
+              ? `${proposal.completedChecklistCount}/${proposal.totalChecklistCount}`
+              : "0/4"
+          }
+        />
+        <SummaryCard
+          label="Linked docs"
+          supportingText="Artifacts tied to the active response."
+          value={String(proposal?.linkedDocuments.length ?? 0)}
+        />
+      </div>
+
+      {proposal ? (
+        <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <section className="space-y-3">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                Current checklist
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                Completed checkpoints retain timestamps so the workspace shows
+                when the team considered the response package ready.
+              </p>
+            </div>
+            <div className="space-y-3">
+              {proposal.checklistItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-[rgba(244,248,246,0.72)] px-4 py-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-foreground">
+                      {item.checklistLabel}
+                    </p>
+                    <Badge tone={item.isComplete ? "accent" : "warning"}>
+                      {item.isComplete ? "Complete" : "Open"}
+                    </Badge>
+                  </div>
+                  <p className="text-muted mt-2 text-xs">
+                    {item.completedAt
+                      ? `Completed ${formatDate(item.completedAt)}`
+                      : "Not completed yet"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                Linked proposal artifacts
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                Documents linked here define the working response package and
+                final submission set.
+              </p>
+            </div>
+            {proposal.linkedDocuments.length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {proposal.linkedDocuments.map((document) => (
+                  <article
+                    key={document.id}
+                    className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-[rgba(244,248,246,0.72)] px-4 py-4"
+                  >
+                    <h4 className="text-sm font-semibold text-foreground">
+                      {document.title}
+                    </h4>
+                    <p className="text-muted mt-2 text-xs">
+                      {document.documentType
+                        ? humanizeEnum(document.documentType)
+                        : "General workspace artifact"}
+                    </p>
+                    {document.downloadUrl ? (
+                      <Link
+                        className="mt-3 inline-flex text-sm font-medium text-[rgb(19,78,68)] hover:text-[rgb(16,66,57)]"
+                        href={document.downloadUrl}
+                      >
+                        Download linked artifact
+                      </Link>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                message="No workspace documents are linked to this proposal record yet."
+                title="No linked proposal artifacts"
+              />
+            )}
+          </section>
+        </div>
+      ) : null}
+
+      {allowManagePipeline && saveProposalAction ? (
+        <div className="mt-6">
+          <OpportunityProposalManager
+            currentProposal={proposal}
+            currentStageKey={stageKey}
+            currentStageLabel={stageLabel}
+            deleteAction={deleteProposalAction}
+            documents={documents}
+            opportunityId={opportunityId}
+            ownerOptions={ownerOptions}
+            saveAction={saveProposalAction}
+          />
+        </div>
+      ) : null}
     </article>
   );
 }

@@ -683,6 +683,58 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
         },
       },
     ],
+    proposalRecord: {
+      id: "proposal_1",
+      status: "IN_PROGRESS",
+      ownerUserId: "user_admin",
+      submittedAt: null,
+      createdAt: new Date("2026-04-16T10:00:00.000Z"),
+      updatedAt: new Date("2026-04-18T04:00:00.000Z"),
+      ownerUser: {
+        name: "OneSource Admin",
+        email: "admin@onesource.local",
+      },
+      checklistItems: [
+        {
+          id: "proposal_check_1",
+          checklistKey: "requirement_matrix_reviewed",
+          checklistLabel: "Requirement matrix reviewed",
+          isComplete: true,
+          completedAt: new Date("2026-04-16T15:00:00.000Z"),
+        },
+        {
+          id: "proposal_check_2",
+          checklistKey: "section_owners_assigned",
+          checklistLabel: "Section owners assigned",
+          isComplete: true,
+          completedAt: new Date("2026-04-16T16:00:00.000Z"),
+        },
+        {
+          id: "proposal_check_3",
+          checklistKey: "pricing_package_aligned",
+          checklistLabel: "Pricing package aligned",
+          isComplete: false,
+          completedAt: null,
+        },
+        {
+          id: "proposal_check_4",
+          checklistKey: "final_compliance_review_complete",
+          checklistLabel: "Final compliance review complete",
+          isComplete: false,
+          completedAt: null,
+        },
+      ],
+      linkedDocuments: [
+        {
+          document: {
+            id: "doc_1",
+            title: "Performance Work Statement",
+            documentType: "statement_of_work",
+            storagePath: null,
+          },
+        },
+      ],
+    },
     activityEvents: [
       {
         id: "activity_1",
@@ -1150,6 +1202,21 @@ describe("opportunity.repository", () => {
         },
       ],
       closeout: null,
+      proposal: {
+        id: "proposal_1",
+        status: "IN_PROGRESS",
+        statusLabel: "In Progress",
+        ownerUserId: "user_admin",
+        ownerName: "OneSource Admin",
+        completedChecklistCount: 2,
+        totalChecklistCount: 4,
+        linkedDocuments: [
+          {
+            id: "doc_1",
+            title: "Performance Work Statement",
+          },
+        ],
+      },
       opportunity: {
         title: "Enterprise Knowledge Management Support Services",
         procurementTypeLabel: "Solicitation",

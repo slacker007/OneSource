@@ -785,6 +785,63 @@ test("users can record closeout notes on a closed opportunity workspace", async 
   ).toBeVisible();
 });
 
+test("users can update proposal tracking on an active proposal workspace", async ({
+  page,
+}) => {
+  await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
+  await expect(page).toHaveURL(/\/$/);
+
+  await page.goto("/opportunities");
+  await expect(page).toHaveURL(/\/opportunities$/);
+  await page.locator("#opportunity-query").fill("VA Claims Intake Automation");
+  await page.getByRole("button", { name: /apply filters/i }).click();
+
+  const vaOpportunityCard = page
+    .locator("article, tr")
+    .filter({
+      hasText: /va claims intake automation bpa/i,
+    })
+    .first();
+  await vaOpportunityCard
+    .getByRole("link", { name: /open workspace/i })
+    .click();
+
+  await expect(
+    page.locator("main h1").filter({
+      hasText: "VA Claims Intake Automation BPA",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Proposal tracking$/i }),
+  ).toBeVisible();
+  await expect(page.locator("#proposal-status")).toHaveValue("IN_PROGRESS");
+
+  await page.locator("#proposal-status").selectOption("SUBMITTED");
+  await page.locator("#proposal-owner").selectOption({ label: "Casey Brooks" });
+  await page
+    .getByRole("checkbox", { name: /final compliance review complete/i })
+    .check();
+  await page
+    .getByRole("checkbox", { name: /compliance matrix qualification brief/i })
+    .check();
+  await page.getByRole("button", { name: /^save proposal$/i }).click();
+
+  await expect(
+    page.getByText(/proposal tracking saved to the workspace/i),
+  ).toBeVisible();
+  await expect(page.locator("#proposal-status")).toHaveValue("SUBMITTED");
+  await expect(
+    page.locator("#proposal-owner option:checked"),
+  ).toHaveText(/casey brooks/i);
+  await expect(
+    page.getByRole("checkbox", { name: /final compliance review complete/i }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: /compliance matrix qualification brief/i }),
+  ).toBeChecked();
+  await expect(page.getByText(/casey brooks/i).first()).toBeVisible();
+});
+
 test.describe("mobile navigation", () => {
   test.use({
     viewport: {

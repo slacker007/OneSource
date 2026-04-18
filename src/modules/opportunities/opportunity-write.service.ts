@@ -20,6 +20,12 @@ import {
   validateOpportunityStageTransition,
   type OpportunityStageValidationContext,
 } from "@/modules/opportunities/opportunity-stage-policy";
+import {
+  OPPORTUNITY_PROPOSAL_CHECKLIST_ITEMS,
+  canTrackProposalForStage,
+  type OpportunityProposalChecklistKey,
+  type OpportunityProposalStatus,
+} from "@/modules/opportunities/opportunity-proposal";
 
 type OpportunityWriteRecord = {
   id: string;
@@ -144,6 +150,42 @@ type OpportunityDocumentAuditRecord = {
     id: string;
     title: string;
   };
+};
+
+type OpportunityProposalAuditRecord = {
+  id: string;
+  organizationId: string;
+  opportunityId: string;
+  status: OpportunityProposalStatus;
+  ownerUserId: string | null;
+  submittedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  opportunity: {
+    id: string;
+    title: string;
+    currentStageKey: string | null;
+    currentStageLabel: string | null;
+  };
+  ownerUser: {
+    id: string;
+    name: string | null;
+    email: string;
+  } | null;
+  checklistItems: Array<{
+    id: string;
+    checklistKey: string;
+    checklistLabel: string;
+    isComplete: boolean;
+    completedAt: Date | null;
+    sortOrder: number;
+  }>;
+  linkedDocuments: Array<{
+    document: {
+      id: string;
+      title: string;
+    };
+  }>;
 };
 
 type TaskAssigneeLookupRecord = {
@@ -371,6 +413,58 @@ const opportunityDocumentAuditSelect = {
   },
 } as const;
 
+const opportunityProposalAuditSelect = {
+  id: true,
+  organizationId: true,
+  opportunityId: true,
+  status: true,
+  ownerUserId: true,
+  submittedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  opportunity: {
+    select: {
+      id: true,
+      title: true,
+      currentStageKey: true,
+      currentStageLabel: true,
+    },
+  },
+  ownerUser: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+  },
+  checklistItems: {
+    orderBy: [{ sortOrder: "asc" }, { checklistLabel: "asc" }],
+    select: {
+      id: true,
+      checklistKey: true,
+      checklistLabel: true,
+      isComplete: true,
+      completedAt: true,
+      sortOrder: true,
+    },
+  },
+  linkedDocuments: {
+    orderBy: {
+      document: {
+        title: "asc",
+      },
+    },
+    select: {
+      document: {
+        select: {
+          id: true,
+          title: true,
+        },
+      },
+    },
+  },
+} as const;
+
 export type OpportunityWriteTransactionClient = AuditLogWriter & {
   opportunityActivityEvent: {
     create(args: {
@@ -455,6 +549,72 @@ export type OpportunityWriteTransactionClient = AuditLogWriter & {
       data: Prisma.OpportunityDocumentUncheckedCreateInput;
       select: typeof opportunityDocumentAuditSelect;
     }): Promise<OpportunityDocumentAuditRecord>;
+    findMany(args: {
+      where: {
+        id?: {
+          in: string[];
+        };
+        opportunityId: string;
+        organizationId: string;
+      };
+      select: {
+        id: true;
+        title: true;
+      };
+    }): Promise<Array<{ id: string; title: string }>>;
+  };
+  opportunityProposal: {
+    create(args: {
+      data: Prisma.OpportunityProposalUncheckedCreateInput;
+      select: typeof opportunityProposalAuditSelect;
+    }): Promise<OpportunityProposalAuditRecord>;
+    findFirst(args: {
+      where: {
+        opportunityId: string;
+        organizationId: string;
+      };
+      select: typeof opportunityProposalAuditSelect;
+    }): Promise<OpportunityProposalAuditRecord | null>;
+    findFirstOrThrow(args: {
+      where: {
+        id: string;
+        organizationId: string;
+      };
+      select: typeof opportunityProposalAuditSelect;
+    }): Promise<OpportunityProposalAuditRecord>;
+    update(args: {
+      where: {
+        id: string;
+      };
+      data: Prisma.OpportunityProposalUncheckedUpdateInput;
+      select: typeof opportunityProposalAuditSelect;
+    }): Promise<OpportunityProposalAuditRecord>;
+    delete(args: {
+      where: {
+        id: string;
+      };
+      select: typeof opportunityProposalAuditSelect;
+    }): Promise<OpportunityProposalAuditRecord>;
+  };
+  opportunityProposalChecklistItem: {
+    deleteMany(args: {
+      where: {
+        proposalId: string;
+      };
+    }): Promise<{ count: number }>;
+    createMany(args: {
+      data: Prisma.OpportunityProposalChecklistItemUncheckedCreateInput[];
+    }): Promise<{ count: number }>;
+  };
+  opportunityProposalDocument: {
+    deleteMany(args: {
+      where: {
+        proposalId: string;
+      };
+    }): Promise<{ count: number }>;
+    createMany(args: {
+      data: Prisma.OpportunityProposalDocumentUncheckedCreateInput[];
+    }): Promise<{ count: number }>;
   };
   opportunity: {
     create(args: {
@@ -694,6 +854,22 @@ export type CreateOpportunityDocumentInput = {
   extractionStatus?: "NOT_REQUESTED" | "PENDING" | "SUCCEEDED" | "FAILED";
   extractedAt?: Date | null;
   metadata?: Prisma.InputJsonValue | null;
+  occurredAt?: Date;
+};
+
+export type UpsertOpportunityProposalInput = {
+  actor: OpportunityWriteActor;
+  opportunityId: string;
+  status: OpportunityProposalStatus;
+  ownerUserId?: string | null;
+  completedChecklistKeys: OpportunityProposalChecklistKey[];
+  linkedDocumentIds: string[];
+  occurredAt?: Date;
+};
+
+export type DeleteOpportunityProposalInput = {
+  actor: OpportunityWriteActor;
+  proposalId: string;
   occurredAt?: Date;
 };
 
@@ -1567,6 +1743,337 @@ export async function createOpportunityDocument({
   });
 }
 
+export async function upsertOpportunityProposal({
+  db,
+  input,
+}: {
+  db: OpportunityWriteClient;
+  input: UpsertOpportunityProposalInput;
+}) {
+  return db.$transaction(async (tx) => {
+    const opportunity = await tx.opportunity.findFirstOrThrow({
+      where: {
+        id: input.opportunityId,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityAuditSelect,
+    });
+
+    if (!canTrackProposalForStage(opportunity.currentStageKey)) {
+      throw new Error(
+        "Proposal tracking can only start after the pursuit is approved.",
+      );
+    }
+
+    const occurredAt = input.occurredAt ?? new Date();
+    const ownerUserId = await resolveProposalOwnerUserId({
+      tx,
+      organizationId: input.actor.organizationId,
+      userId: input.ownerUserId,
+    });
+    const linkedDocuments = await resolveProposalLinkedDocuments({
+      tx,
+      organizationId: input.actor.organizationId,
+      opportunityId: opportunity.id,
+      documentIds: input.linkedDocumentIds,
+    });
+    const linkedDocumentIds = linkedDocuments.map((document) => document.id);
+    const existingProposal = await tx.opportunityProposal.findFirst({
+      where: {
+        opportunityId: opportunity.id,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityProposalAuditSelect,
+    });
+
+    if (!existingProposal) {
+      const createdProposal = await tx.opportunityProposal.create({
+        data: {
+          organizationId: opportunity.organizationId,
+          opportunityId: opportunity.id,
+          ownerUserId,
+          createdByUserId:
+            input.actor.type === AuditActorType.USER
+              ? input.actor.userId ?? null
+              : null,
+          updatedByUserId:
+            input.actor.type === AuditActorType.USER
+              ? input.actor.userId ?? null
+              : null,
+          status: input.status,
+          submittedAt: input.status === "SUBMITTED" ? occurredAt : null,
+        },
+        select: opportunityProposalAuditSelect,
+      });
+
+      await syncProposalChecklistItems({
+        tx,
+        completedChecklistKeys: input.completedChecklistKeys,
+        existingItems: [],
+        occurredAt,
+        organizationId: opportunity.organizationId,
+        proposalId: createdProposal.id,
+      });
+      await syncProposalDocumentLinks({
+        tx,
+        documentIds: linkedDocumentIds,
+        proposalId: createdProposal.id,
+      });
+
+      const proposal = await tx.opportunityProposal.findFirstOrThrow({
+        where: {
+          id: createdProposal.id,
+          organizationId: opportunity.organizationId,
+        },
+        select: opportunityProposalAuditSelect,
+      });
+
+      await tx.opportunityActivityEvent.create({
+        data: {
+          actorIdentifier: input.actor.identifier ?? null,
+          actorType: input.actor.type,
+          actorUserId:
+            input.actor.type === AuditActorType.USER
+              ? input.actor.userId ?? null
+              : null,
+          description: `Proposal tracking started with ${proposal.checklistItems.filter((item) => item.isComplete).length} of ${proposal.checklistItems.length} compliance checkpoints complete.`,
+          eventType: "proposal_record_created",
+          metadata: {
+            linkedDocumentIds,
+            ownerUserId: proposal.ownerUserId,
+            status: proposal.status,
+          },
+          occurredAt,
+          opportunityId: opportunity.id,
+          organizationId: opportunity.organizationId,
+          relatedEntityId: proposal.id,
+          relatedEntityType: "proposal_record",
+          title: `Proposal record started: ${humanizeProposalStatus(proposal.status)}`,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      await recordAuditEvent({
+        db: tx,
+        event: {
+          organizationId: opportunity.organizationId,
+          actor: input.actor,
+          action: AUDIT_ACTIONS.opportunityProposalCreate,
+          target: {
+            type: "opportunity_proposal",
+            id: proposal.id,
+            display: opportunity.title,
+          },
+          summary: `Started proposal tracking on ${opportunity.title}.`,
+          metadata: {
+            completedChecklistKeys: proposal.checklistItems
+              .filter((item) => item.isComplete)
+              .map((item) => item.checklistKey),
+            linkedDocumentIds,
+            ownerUserId: proposal.ownerUserId,
+            status: proposal.status,
+          },
+          occurredAt,
+        },
+      });
+
+      return proposal;
+    }
+
+    const submittedAt =
+      input.status === "SUBMITTED"
+        ? existingProposal.submittedAt ?? occurredAt
+        : null;
+    const updatedProposal = await tx.opportunityProposal.update({
+      where: {
+        id: existingProposal.id,
+      },
+      data: {
+        ownerUserId,
+        updatedByUserId:
+          input.actor.type === AuditActorType.USER
+            ? input.actor.userId ?? null
+            : null,
+        status: input.status,
+        submittedAt,
+      },
+      select: opportunityProposalAuditSelect,
+    });
+
+    await syncProposalChecklistItems({
+      tx,
+      completedChecklistKeys: input.completedChecklistKeys,
+      existingItems: existingProposal.checklistItems,
+      occurredAt,
+      organizationId: opportunity.organizationId,
+      proposalId: updatedProposal.id,
+    });
+    await syncProposalDocumentLinks({
+      tx,
+      documentIds: linkedDocumentIds,
+      proposalId: updatedProposal.id,
+    });
+
+    const proposal = await tx.opportunityProposal.findFirstOrThrow({
+      where: {
+        id: updatedProposal.id,
+        organizationId: opportunity.organizationId,
+      },
+      select: opportunityProposalAuditSelect,
+    });
+
+    const changedFields = {
+      status: buildFieldChange(existingProposal.status, proposal.status),
+      ownerUserId: buildFieldChange(
+        existingProposal.ownerUserId,
+        proposal.ownerUserId,
+      ),
+      submittedAt: buildFieldChange(
+        existingProposal.submittedAt,
+        proposal.submittedAt,
+      ),
+      completedChecklistKeys: buildStringArrayFieldChange(
+        existingProposal.checklistItems
+          .filter((item) => item.isComplete)
+          .map((item) => item.checklistKey),
+        proposal.checklistItems
+          .filter((item) => item.isComplete)
+          .map((item) => item.checklistKey),
+      ),
+      linkedDocumentIds: buildStringArrayFieldChange(
+        existingProposal.linkedDocuments.map((link) => link.document.id),
+        proposal.linkedDocuments.map((link) => link.document.id),
+      ),
+    };
+
+    const auditChanges = Object.fromEntries(
+      Object.entries(changedFields).filter(([, value]) => value !== null),
+    );
+
+    if (Object.keys(auditChanges).length > 0) {
+      await tx.opportunityActivityEvent.create({
+        data: {
+          actorIdentifier: input.actor.identifier ?? null,
+          actorType: input.actor.type,
+          actorUserId:
+            input.actor.type === AuditActorType.USER
+              ? input.actor.userId ?? null
+              : null,
+          description: `Proposal tracking now shows ${proposal.checklistItems.filter((item) => item.isComplete).length} of ${proposal.checklistItems.length} compliance checkpoints complete.`,
+          eventType: "proposal_record_updated",
+          metadata: {
+            changedFields: auditChanges,
+          },
+          occurredAt,
+          opportunityId: opportunity.id,
+          organizationId: opportunity.organizationId,
+          relatedEntityId: proposal.id,
+          relatedEntityType: "proposal_record",
+          title: `Proposal record updated: ${humanizeProposalStatus(proposal.status)}`,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      await recordAuditEvent({
+        db: tx,
+        event: {
+          organizationId: opportunity.organizationId,
+          actor: input.actor,
+          action: AUDIT_ACTIONS.opportunityProposalUpdate,
+          target: {
+            type: "opportunity_proposal",
+            id: proposal.id,
+            display: opportunity.title,
+          },
+          summary: `Updated proposal tracking on ${opportunity.title}.`,
+          metadata: {
+            changedFields: auditChanges,
+          },
+          occurredAt,
+        },
+      });
+    }
+
+    return proposal;
+  });
+}
+
+export async function deleteOpportunityProposal({
+  db,
+  input,
+}: {
+  db: OpportunityWriteClient;
+  input: DeleteOpportunityProposalInput;
+}) {
+  return db.$transaction(async (tx) => {
+    const existingProposal = await tx.opportunityProposal.findFirstOrThrow({
+      where: {
+        id: input.proposalId,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityProposalAuditSelect,
+    });
+    const occurredAt = input.occurredAt ?? new Date();
+    const deletedProposal = await tx.opportunityProposal.delete({
+      where: {
+        id: existingProposal.id,
+      },
+      select: opportunityProposalAuditSelect,
+    });
+
+    await tx.opportunityActivityEvent.create({
+      data: {
+        actorIdentifier: input.actor.identifier ?? null,
+        actorType: input.actor.type,
+        actorUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        description:
+          "Proposal tracking was removed from the workspace record.",
+        eventType: "proposal_record_deleted",
+        metadata: {
+          ownerUserId: deletedProposal.ownerUserId,
+          status: deletedProposal.status,
+        },
+        occurredAt,
+        opportunityId: deletedProposal.opportunity.id,
+        organizationId: deletedProposal.organizationId,
+        relatedEntityId: deletedProposal.id,
+        relatedEntityType: "proposal_record",
+        title: "Proposal record removed",
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await recordAuditEvent({
+      db: tx,
+      event: {
+        organizationId: deletedProposal.organizationId,
+        actor: input.actor,
+        action: AUDIT_ACTIONS.opportunityProposalDelete,
+        target: {
+          type: "opportunity_proposal",
+          id: deletedProposal.id,
+          display: deletedProposal.opportunity.title,
+        },
+        summary: `Removed proposal tracking from ${deletedProposal.opportunity.title}.`,
+        metadata: {
+          ownerUserId: deletedProposal.ownerUserId,
+          status: deletedProposal.status,
+        },
+        occurredAt,
+      },
+    });
+
+    return deletedProposal;
+  });
+}
+
 export async function updateOpportunityMilestone({
   db,
   input,
@@ -2259,6 +2766,38 @@ async function resolveTaskAssigneeUserId({
   return assignee.id;
 }
 
+async function resolveProposalOwnerUserId({
+  tx,
+  organizationId,
+  userId,
+}: {
+  tx: OpportunityWriteTransactionClient;
+  organizationId: string;
+  userId: string | null | undefined;
+}) {
+  const normalizedUserId = normalizeOptionalText(userId);
+
+  if (!normalizedUserId) {
+    return null;
+  }
+
+  const owner = await tx.user.findFirst({
+    where: {
+      id: normalizedUserId,
+      organizationId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!owner) {
+    throw new Error("The selected proposal owner is not available in this workspace.");
+  }
+
+  return owner.id;
+}
+
 async function resolveOpportunityCompetitorId({
   tx,
   organizationId,
@@ -2335,6 +2874,133 @@ function buildMilestoneLifecycleDates({
   };
 }
 
+async function resolveProposalLinkedDocuments({
+  tx,
+  organizationId,
+  opportunityId,
+  documentIds,
+}: {
+  tx: OpportunityWriteTransactionClient;
+  organizationId: string;
+  opportunityId: string;
+  documentIds: string[];
+}) {
+  const normalizedDocumentIds = [
+    ...new Set(documentIds.map((documentId) => documentId.trim()).filter(Boolean)),
+  ];
+
+  if (normalizedDocumentIds.length === 0) {
+    return [];
+  }
+
+  const documents = await tx.opportunityDocument.findMany({
+    where: {
+      id: {
+        in: normalizedDocumentIds,
+      },
+      opportunityId,
+      organizationId,
+    },
+    select: {
+      id: true,
+      title: true,
+    },
+  });
+
+  if (documents.length !== normalizedDocumentIds.length) {
+    throw new Error(
+      "One or more linked proposal documents are no longer available in this workspace.",
+    );
+  }
+
+  const documentsById = new Map(documents.map((document) => [document.id, document]));
+
+  return normalizedDocumentIds.map((documentId) => {
+    const document = documentsById.get(documentId);
+
+    if (!document) {
+      throw new Error(
+        "One or more linked proposal documents are no longer available in this workspace.",
+      );
+    }
+
+    return document;
+  });
+}
+
+async function syncProposalChecklistItems({
+  tx,
+  proposalId,
+  organizationId,
+  occurredAt,
+  completedChecklistKeys,
+  existingItems,
+}: {
+  tx: OpportunityWriteTransactionClient;
+  proposalId: string;
+  organizationId: string;
+  occurredAt: Date;
+  completedChecklistKeys: OpportunityProposalChecklistKey[];
+  existingItems: OpportunityProposalAuditRecord["checklistItems"];
+}) {
+  const completedKeySet = new Set(completedChecklistKeys);
+  const existingItemsByKey = new Map(
+    existingItems.map((item) => [item.checklistKey, item]),
+  );
+
+  await tx.opportunityProposalChecklistItem.deleteMany({
+    where: {
+      proposalId,
+    },
+  });
+
+  await tx.opportunityProposalChecklistItem.createMany({
+    data: OPPORTUNITY_PROPOSAL_CHECKLIST_ITEMS.map((item, index) => {
+      const existingItem = existingItemsByKey.get(item.key);
+      const isComplete = completedKeySet.has(item.key);
+
+      return {
+        organizationId,
+        proposalId,
+        checklistKey: item.key,
+        checklistLabel: item.label,
+        isComplete,
+        completedAt: isComplete
+          ? existingItem?.completedAt ?? occurredAt
+          : null,
+        sortOrder: index,
+      };
+    }),
+  });
+}
+
+async function syncProposalDocumentLinks({
+  tx,
+  proposalId,
+  documentIds,
+}: {
+  tx: OpportunityWriteTransactionClient;
+  proposalId: string;
+  documentIds: string[];
+}) {
+  await tx.opportunityProposalDocument.deleteMany({
+    where: {
+      proposalId,
+    },
+  });
+
+  if (documentIds.length === 0) {
+    return;
+  }
+
+  await tx.opportunityProposalDocument.createMany({
+    data: documentIds.map((documentId) => ({
+      proposalId,
+      documentId,
+    })),
+  });
+}
+
 function buildOpportunityStageValidationContext(
   opportunity: OpportunityStageValidationRecord,
 ): OpportunityStageValidationContext {
@@ -2368,6 +3034,15 @@ function humanizeStageKey(stageKey: string | null) {
     .join(" ");
 }
 
+function humanizeProposalStatus(status: OpportunityProposalStatus) {
+  return status
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
+
 function isClosedStageKey(stageKey: string) {
   return stageKey === "awarded" || stageKey === "lost" || stageKey === "no_bid";
 }
@@ -2394,6 +3069,20 @@ function buildFieldChange(
   return {
     from: serializedPreviousValue,
     to: serializedNextValue,
+  };
+}
+
+function buildStringArrayFieldChange(previousValue: string[], nextValue: string[]) {
+  const sortedPreviousValue = [...previousValue].sort();
+  const sortedNextValue = [...nextValue].sort();
+
+  if (JSON.stringify(sortedPreviousValue) === JSON.stringify(sortedNextValue)) {
+    return null;
+  }
+
+  return {
+    from: sortedPreviousValue,
+    to: sortedNextValue,
   };
 }
 

@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { OpportunityWorkspace } from "./opportunity-workspace";
 import { INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
@@ -7,9 +7,16 @@ import { INITIAL_OPPORTUNITY_CLOSEOUT_ACTION_STATE } from "@/modules/opportuniti
 import { INITIAL_OPPORTUNITY_DOCUMENT_ACTION_STATE } from "@/modules/opportunities/opportunity-document-form.schema";
 import { INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE } from "@/modules/opportunities/opportunity-milestone-form.schema";
 import { INITIAL_OPPORTUNITY_NOTE_ACTION_STATE } from "@/modules/opportunities/opportunity-note-form.schema";
+import { INITIAL_OPPORTUNITY_PROPOSAL_ACTION_STATE } from "@/modules/opportunities/opportunity-proposal-form.schema";
 import { INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE } from "@/modules/opportunities/opportunity-stage-policy";
 import { INITIAL_OPPORTUNITY_TASK_ACTION_STATE } from "@/modules/opportunities/opportunity-task-form.schema";
 import type { OpportunityWorkspaceSnapshot } from "@/modules/opportunities/opportunity.types";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: vi.fn(),
+  }),
+}));
 
 const snapshot: OpportunityWorkspaceSnapshot = {
   organization: {
@@ -191,6 +198,56 @@ const snapshot: OpportunityWorkspaceSnapshot = {
     },
   ],
   closeout: null,
+  proposal: {
+    id: "proposal_1",
+    status: "IN_PROGRESS",
+    statusLabel: "In Progress",
+    ownerUserId: "user_admin",
+    ownerName: "OneSource Admin",
+    submittedAt: null,
+    createdAt: "2026-04-16T10:00:00.000Z",
+    updatedAt: "2026-04-18T04:00:00.000Z",
+    completedChecklistCount: 2,
+    totalChecklistCount: 4,
+    checklistItems: [
+      {
+        id: "proposal_check_1",
+        checklistKey: "requirement_matrix_reviewed",
+        checklistLabel: "Requirement matrix reviewed",
+        isComplete: true,
+        completedAt: "2026-04-16T15:00:00.000Z",
+      },
+      {
+        id: "proposal_check_2",
+        checklistKey: "section_owners_assigned",
+        checklistLabel: "Section owners assigned",
+        isComplete: true,
+        completedAt: "2026-04-16T16:00:00.000Z",
+      },
+      {
+        id: "proposal_check_3",
+        checklistKey: "pricing_package_aligned",
+        checklistLabel: "Pricing package aligned",
+        isComplete: false,
+        completedAt: null,
+      },
+      {
+        id: "proposal_check_4",
+        checklistKey: "final_compliance_review_complete",
+        checklistLabel: "Final compliance review complete",
+        isComplete: false,
+        completedAt: null,
+      },
+    ],
+    linkedDocuments: [
+      {
+        id: "doc_1",
+        title: "Performance Work Statement",
+        documentType: "statement_of_work",
+        downloadUrl: "/api/opportunities/documents/doc_1/download",
+      },
+    ],
+  },
   tasks: [
     {
       id: "task_1",
@@ -332,6 +389,9 @@ describe("OpportunityWorkspace", () => {
           INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE
         }
         createNoteAction={async () => INITIAL_OPPORTUNITY_NOTE_ACTION_STATE}
+        deleteProposalAction={async () =>
+          INITIAL_OPPORTUNITY_PROPOSAL_ACTION_STATE
+        }
         createTaskAction={async () => INITIAL_OPPORTUNITY_TASK_ACTION_STATE}
         deleteMilestoneAction={async () =>
           INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE
@@ -339,6 +399,9 @@ describe("OpportunityWorkspace", () => {
         deleteTaskAction={async () => INITIAL_OPPORTUNITY_TASK_ACTION_STATE}
         recordCloseoutAction={async () =>
           INITIAL_OPPORTUNITY_CLOSEOUT_ACTION_STATE
+        }
+        saveProposalAction={async () =>
+          INITIAL_OPPORTUNITY_PROPOSAL_ACTION_STATE
         }
         snapshot={snapshot}
         stageTransitionAction={async () =>
@@ -361,6 +424,9 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("heading", { name: /suggested reusable content/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /^Proposal tracking$/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Tasks$/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Documents$/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Notes$/i })).toBeInTheDocument();
@@ -371,8 +437,8 @@ describe("OpportunityWorkspace", () => {
       screen.getByText(/complete incumbent analysis brief/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /performance work statement/i }),
-    ).toBeInTheDocument();
+      screen.getAllByRole("heading", { name: /performance work statement/i }).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText(/capture summary/i)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /capability fit/i }),
@@ -436,6 +502,12 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("button", { name: /^upload document$/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^save proposal$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^delete proposal record$/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^add note$/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^save milestone$/i }),
@@ -458,6 +530,9 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("link", { name: /download stored file/i }),
     ).toHaveAttribute("href", "/api/opportunities/documents/doc_1/download");
+    expect(
+      screen.getAllByText(/requirement matrix reviewed/i).length,
+    ).toBeGreaterThan(0);
   });
 
   it("renders the closeout section for closed opportunities", () => {
@@ -503,8 +578,14 @@ describe("OpportunityWorkspace", () => {
         recordBidDecisionAction={async () =>
           INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE
         }
+        deleteProposalAction={async () =>
+          INITIAL_OPPORTUNITY_PROPOSAL_ACTION_STATE
+        }
         recordCloseoutAction={async () =>
           INITIAL_OPPORTUNITY_CLOSEOUT_ACTION_STATE
+        }
+        saveProposalAction={async () =>
+          INITIAL_OPPORTUNITY_PROPOSAL_ACTION_STATE
         }
         snapshot={closedSnapshot}
       />,

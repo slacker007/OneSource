@@ -2021,7 +2021,40 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
             reviewStatus: "in_progress",
           },
         },
+        {
+          key: "va-compliance-matrix",
+          title: "Compliance Matrix",
+          documentType: "qualification_brief",
+          sourceType: "MANUAL_UPLOAD",
+          sourceRecordRef: null,
+          sourceUrl: null,
+          originalFileName: "va-compliance-matrix.xlsx",
+          storageProvider: "local_disk",
+          storagePath:
+            "documents/opportunities/va-claims-automation/compliance-matrix.xlsx",
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          fileSizeBytes: 98304,
+          checksumSha256:
+            "4d7f535916df9624fc65b31727e299f6f07955d92b1e6b90f0e403d291c44fc8",
+          extractedText: null,
+          extractionStatus: "NOT_REQUESTED",
+          extractedAt: null,
+          metadata: {
+            reviewStatus: "pending",
+          },
+        },
       ],
+      proposal: {
+        key: "va-proposal-record",
+        ownerUserKey: "morgan-patel",
+        status: "IN_PROGRESS",
+        completedChecklistKeys: [
+          "requirement_matrix_reviewed",
+          "section_owners_assigned",
+        ],
+        linkedDocumentRefs: ["va-storyboard"],
+      },
       stageTransitions: [
         {
           key: "va-qualified-to-approved",
@@ -2138,6 +2171,22 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
         decidedAt: "2026-04-10T18:00:00.000Z",
       },
       activityEvents: [
+        {
+          eventType: "proposal_record_created",
+          title: "Proposal tracking started",
+          description:
+            "Proposal ownership, compliance checkpoints, and linked artifacts were captured in the workspace.",
+          actorType: "USER",
+          actorIdentifier: "morgan.patel@onesource.local",
+          relatedEntityType: "proposal_record",
+          relatedEntityRef: "va-proposal-record",
+          occurredAt: "2026-04-16T10:00:00.000Z",
+          metadata: {
+            completedChecklistCount: 2,
+            linkedDocumentRefs: ["va-storyboard"],
+            status: "IN_PROGRESS",
+          },
+        },
         {
           eventType: "stage_transition",
           title: "Opportunity moved into proposal development",
