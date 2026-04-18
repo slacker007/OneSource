@@ -179,10 +179,7 @@ const ORGANIZATION_SCORING_PROFILE = {
     "army-peo-eis",
     "va-technology-acquisition-center",
   ],
-  relationshipAgencyKeys: [
-    "army-peo-eis",
-    "va-technology-acquisition-center",
-  ],
+  relationshipAgencyKeys: ["army-peo-eis", "va-technology-acquisition-center"],
   activeScoringModelKey: "default_capture_v1",
   activeScoringModelVersion: "2026-04-18",
   goRecommendationThreshold: "70.00",
@@ -271,11 +268,7 @@ const ORGANIZATION_SCORING_PROFILE = {
         "Process-maturity evidence used in proposal qualification and execution-risk reviews.",
     },
   ],
-  selectedVehicleKeys: [
-    "oasis-plus-unrestricted",
-    "gsa-mas-it",
-    "seaport-nxg",
-  ],
+  selectedVehicleKeys: ["oasis-plus-unrestricted", "gsa-mas-it", "seaport-nxg"],
   scoringCriteria: [
     {
       key: "capability_fit",
@@ -340,8 +333,7 @@ const COMPETITORS = [
     key: "northstar-digital",
     name: "Northstar Digital Group",
     websiteUrl: "https://northstar-digital.example",
-    notes:
-      "Known for Army cloud operations and platform engineering bids.",
+    notes: "Known for Army cloud operations and platform engineering bids.",
   },
   {
     key: "sentinel-cyber",
@@ -1194,8 +1186,7 @@ const OPPORTUNITY_WORKSPACE = {
     {
       key: "questions-window",
       title: "Customer questions due",
-      description:
-        "Submit clarifications before the public Q&A period closes.",
+      description: "Submit clarifications before the public Q&A period closes.",
       milestoneTypeKey: "question_deadline",
       status: "PLANNED",
       targetDate: "2026-04-18T23:59:00.000Z",
@@ -1535,8 +1526,7 @@ const OPPORTUNITY_WORKSPACE = {
     {
       eventType: "task_progressed",
       title: "Incumbent analysis task moved into progress",
-      description:
-        "Capture team started the incumbent analysis workstream.",
+      description: "Capture team started the incumbent analysis workstream.",
       actorType: "USER",
       actorIdentifier: "admin@onesource.local",
       relatedEntityType: "task",
@@ -1796,7 +1786,8 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
             weight: "15.00",
             score: "13.00",
             maximumScore: "15.00",
-            explanation: "Vehicle coverage is credible but not yet customer-preferred.",
+            explanation:
+              "Vehicle coverage is credible but not yet customer-preferred.",
             factorMetadata: null,
             sortOrder: 1,
           },
@@ -1818,7 +1809,8 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
             weight: "30.00",
             score: "19.00",
             maximumScore: "30.00",
-            explanation: "Staffing risk keeps the opportunity below the go threshold.",
+            explanation:
+              "Staffing risk keeps the opportunity below the go threshold.",
             factorMetadata: {
               staffingGap: true,
             },
@@ -1931,7 +1923,8 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
         {
           competitorKey: "vector-analytics",
           role: "KNOWN_COMPETITOR",
-          notes: "Known competitor on benefits and workflow modernization work.",
+          notes:
+            "Known competitor on benefits and workflow modernization work.",
         },
       ],
     },
@@ -1998,8 +1991,7 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
         {
           key: "va-theme-note",
           title: "Proposal focus",
-          body:
-            "Emphasize intake speed, veteran experience, and measurable backlog reduction.",
+          body: "Emphasize intake speed, veteran experience, and measurable backlog reduction.",
           contentFormat: "markdown",
           isPinned: true,
         },
@@ -2107,7 +2099,8 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
             weight: "25.00",
             score: "21.00",
             maximumScore: "25.00",
-            explanation: "The customer mission aligns with existing VA past performance.",
+            explanation:
+              "The customer mission aligns with existing VA past performance.",
             factorMetadata: null,
             sortOrder: 2,
           },
@@ -2117,7 +2110,8 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
             weight: "25.00",
             score: "22.00",
             maximumScore: "25.00",
-            explanation: "Proposal, pricing, and solution resources are already committed.",
+            explanation:
+              "Proposal, pricing, and solution resources are already committed.",
             factorMetadata: null,
             sortOrder: 3,
           },
@@ -2214,7 +2208,8 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
         {
           competitorKey: "sentinel-cyber",
           role: "KNOWN_COMPETITOR",
-          notes: "Cyber incumbent-adjacent competitor with strong DHS presence.",
+          notes:
+            "Cyber incumbent-adjacent competitor with strong DHS presence.",
         },
       ],
     },
@@ -2241,7 +2236,8 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
         {
           key: "dhs-submitted",
           title: "Proposal submitted",
-          description: "Proposal package delivered through the official portal.",
+          description:
+            "Proposal package delivered through the official portal.",
           milestoneTypeKey: "submission",
           status: "COMPLETED",
           targetDate: "2026-04-18T21:00:00.000Z",
@@ -2254,8 +2250,7 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
         {
           key: "dhs-post-submit",
           title: "Post-submit watch list",
-          body:
-            "Monitor for discussions, OCI follow-up, and clarification requests during evaluation.",
+          body: "Monitor for discussions, OCI follow-up, and clarification requests during evaluation.",
           contentFormat: "markdown",
           isPinned: false,
         },
@@ -2398,8 +2393,7 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
         {
           eventType: "stage_transition",
           title: "Opportunity moved to Submitted",
-          description:
-            "The proposal package was submitted successfully.",
+          description: "The proposal package was submitted successfully.",
           actorType: "USER",
           actorIdentifier: "morgan.patel@onesource.local",
           relatedEntityType: "stage_transition",
@@ -2503,8 +2497,7 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
         {
           key: "navy-no-bid-note",
           title: "Why we passed",
-          body:
-            "The team lacked the required relationship depth and did not have a compelling non-incumbent wedge.",
+          body: "The team lacked the required relationship depth and did not have a compelling non-incumbent wedge.",
           contentFormat: "markdown",
           isPinned: true,
         },
@@ -2559,7 +2552,8 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
             weight: "35.00",
             score: "9.00",
             maximumScore: "35.00",
-            explanation: "The team has little current Navy relationship depth here.",
+            explanation:
+              "The team has little current Navy relationship depth here.",
             factorMetadata: null,
             sortOrder: 1,
           },
@@ -2619,11 +2613,16 @@ const KNOWLEDGE_ASSETS = [
     title: "Air Force operational planning past performance",
     summary:
       "Reusable past-performance proof point for enterprise knowledge management and workflow modernization work inside Air Force operational planning organizations.",
-    body:
-      "Delivered enterprise knowledge management modernization for an Air Force operational planning customer by consolidating fragmented SharePoint workflows, automating approval routing, and deploying role-aware analytics dashboards. The team reduced manual coordination time, improved document traceability across planning cells, and transitioned the customer onto a governed content model that proposal reviewers can cite as a direct analogue for future workflow modernization work.",
+    body: "Delivered enterprise knowledge management modernization for an Air Force operational planning customer by consolidating fragmented SharePoint workflows, automating approval routing, and deploying role-aware analytics dashboards. The team reduced manual coordination time, improved document traceability across planning cells, and transitioned the customer onto a governed content model that proposal reviewers can cite as a direct analogue for future workflow modernization work.",
+    agencyKeys: ["air-force-acc-99-cons"],
+    capabilityKeys: ["data-ai-modernization", "enterprise-service-delivery"],
+    contractTypes: ["Solicitation"],
     tags: ["air force", "knowledge management", "workflow modernization"],
-    linkedOpportunityTitles: ["Enterprise Knowledge Management Support Services"],
+    linkedOpportunityTitles: [
+      "Enterprise Knowledge Management Support Services",
+    ],
     authorUserKey: "alex-morgan",
+    vehicleKeys: ["oasis-plus-unrestricted", "gsa-mas-it"],
   },
   {
     key: "va-claims-boilerplate",
@@ -2631,11 +2630,14 @@ const KNOWLEDGE_ASSETS = [
     title: "Claims intake modernization boilerplate",
     summary:
       "Baseline narrative for claims-intake workflow modernization, queue management, and human-centered service delivery.",
-    body:
-      "Our delivery approach modernizes claims intake by pairing domain-informed journey mapping with queue instrumentation, service blueprints, and secure workflow automation. The team establishes measurable intake-service baselines, reduces manual handoffs, and gives program leaders a repeatable operating picture for throughput, aging, and exception management across the full intake pipeline.",
+    body: "Our delivery approach modernizes claims intake by pairing domain-informed journey mapping with queue instrumentation, service blueprints, and secure workflow automation. The team establishes measurable intake-service baselines, reduces manual handoffs, and gives program leaders a repeatable operating picture for throughput, aging, and exception management across the full intake pipeline.",
+    agencyKeys: ["va-technology-acquisition-center"],
+    capabilityKeys: ["data-ai-modernization", "enterprise-service-delivery"],
+    contractTypes: ["Combined Synopsis/Solicitation"],
     tags: ["veterans affairs", "claims intake", "workflow automation"],
     linkedOpportunityTitles: ["VA Claims Intake Automation BPA"],
     authorUserKey: "morgan-patel",
+    vehicleKeys: ["gsa-mas-it", "cio-sp3-small-business"],
   },
   {
     key: "army-cloud-win-theme",
@@ -2643,14 +2645,20 @@ const KNOWLEDGE_ASSETS = [
     title: "Army cloud transition win theme",
     summary:
       "Reusable win-theme narrative for pursuits where the customer needs a low-disruption transition from incumbent operations into a more resilient cloud operating model.",
-    body:
-      "OneSource can position around controlled transition risk: the team already has contract-vehicle access, can stand up cleared platform engineering support quickly, and can show a disciplined migration path that preserves operational continuity while improving observability and release cadence. That lets the customer buy modernization without accepting unnecessary delivery turbulence during the first performance months.",
+    body: "OneSource can position around controlled transition risk: the team already has contract-vehicle access, can stand up cleared platform engineering support quickly, and can show a disciplined migration path that preserves operational continuity while improving observability and release cadence. That lets the customer buy modernization without accepting unnecessary delivery turbulence during the first performance months.",
+    agencyKeys: ["army-peo-eis", "dhs-cisa-ocpo"],
+    capabilityKeys: [
+      "cloud-platform-engineering",
+      "zero-trust-cyber-operations",
+    ],
+    contractTypes: ["Solicitation"],
     tags: ["army", "cloud operations", "transition strategy"],
     linkedOpportunityTitles: [
       "Army Cloud Operations Recompete",
       "DHS Zero Trust Assessment Support",
     ],
     authorUserKey: "taylor-reed",
+    vehicleKeys: ["oasis-plus-unrestricted", "stars-iii"],
   },
 ];
 

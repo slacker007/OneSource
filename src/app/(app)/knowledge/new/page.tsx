@@ -18,25 +18,39 @@ export default async function NewKnowledgeAssetPage() {
   });
 
   if (!snapshot) {
-    return <KnowledgeForm action={createKnowledgeAssetAction} feedback={null} snapshot={{
-      assetId: null,
-      initialValues: {
-        assetType: "PAST_PERFORMANCE_SNIPPET",
-        title: "",
-        summary: "",
-        body: "",
-        tags: "",
-        opportunityIds: [],
-      },
-      mode: "create",
-      opportunityOptions: [],
-      organization: {
-        id: session.user.organizationId,
-        name: "Knowledge workspace",
-        slug: "workspace",
-      },
-      updatedAt: null,
-    }} />;
+    return (
+      <KnowledgeForm
+        action={createKnowledgeAssetAction}
+        feedback={null}
+        snapshot={{
+          agencyOptions: [],
+          assetId: null,
+          capabilityOptions: [],
+          contractTypeOptions: [],
+          initialValues: {
+            assetType: "PAST_PERFORMANCE_SNIPPET",
+            agencyIds: [],
+            title: "",
+            summary: "",
+            body: "",
+            capabilityKeys: [],
+            contractTypes: [],
+            tags: "",
+            opportunityIds: [],
+            vehicleCodes: [],
+          },
+          mode: "create",
+          opportunityOptions: [],
+          organization: {
+            id: session.user.organizationId,
+            name: "Knowledge workspace",
+            slug: "workspace",
+          },
+          updatedAt: null,
+          vehicleOptions: [],
+        }}
+      />
+    );
   }
 
   return (

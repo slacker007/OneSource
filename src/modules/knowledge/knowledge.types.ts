@@ -18,7 +18,11 @@ export type KnowledgeAssetListQuery = {
   query: string | null;
   assetType: KnowledgeAssetType | null;
   tag: string | null;
+  agencyId: string | null;
+  capabilityKey: string | null;
+  contractType: string | null;
   opportunityId: string | null;
+  vehicleCode: string | null;
 };
 
 export type KnowledgeAssetOpportunitySummary = {
@@ -27,12 +31,20 @@ export type KnowledgeAssetOpportunitySummary = {
   currentStageLabel: string;
 };
 
+export type KnowledgeAssetFacetSummary = {
+  agencies: string[];
+  capabilities: string[];
+  contractTypes: string[];
+  vehicles: string[];
+};
+
 export type KnowledgeAssetSummary = {
   id: string;
   assetType: KnowledgeAssetType;
   title: string;
   summary: string | null;
   bodyPreview: string;
+  facets: KnowledgeAssetFacetSummary;
   tags: string[];
   linkedOpportunities: KnowledgeAssetOpportunitySummary[];
   createdByLabel: string | null;
@@ -51,15 +63,25 @@ export type KnowledgeOpportunityOption = {
   currentStageLabel: string;
 };
 
+export type KnowledgeFacetOption = {
+  description?: string | null;
+  label: string;
+  value: string;
+};
+
 export type KnowledgeLibrarySnapshot = {
   availableFilterCount: number;
   filterOptions: {
+    agencies: KnowledgeFacetOption[];
     assetTypes: Array<{
       label: string;
       value: KnowledgeAssetType;
     }>;
+    capabilities: KnowledgeFacetOption[];
+    contractTypes: KnowledgeFacetOption[];
     opportunities: KnowledgeOpportunityOption[];
     tags: KnowledgeAssetListFilterOption[];
+    vehicles: KnowledgeFacetOption[];
   };
   organization: OrganizationSummary;
   query: KnowledgeAssetListQuery;
@@ -73,11 +95,15 @@ export type KnowledgeFormMode = "create" | "edit";
 
 export type KnowledgeAssetFormValues = {
   assetType: KnowledgeAssetType;
+  agencyIds: string[];
   title: string;
   summary: string;
   body: string;
+  capabilityKeys: string[];
+  contractTypes: string[];
   tags: string;
   opportunityIds: string[];
+  vehicleCodes: string[];
 };
 
 export type KnowledgeAssetFormFieldName = keyof KnowledgeAssetFormValues;
@@ -87,10 +113,14 @@ export type KnowledgeAssetFormFieldErrors = Partial<
 >;
 
 export type KnowledgeAssetFormSnapshot = {
+  agencyOptions: KnowledgeFacetOption[];
   assetId: string | null;
+  capabilityOptions: KnowledgeFacetOption[];
+  contractTypeOptions: KnowledgeFacetOption[];
   initialValues: KnowledgeAssetFormValues;
   mode: KnowledgeFormMode;
   opportunityOptions: KnowledgeOpportunityOption[];
   organization: OrganizationSummary;
   updatedAt: string | null;
+  vehicleOptions: KnowledgeFacetOption[];
 };

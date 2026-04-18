@@ -8,17 +8,24 @@ import {
 
 const knowledgeAssetDraftValuesSchema = z.object({
   assetType: z.enum(KNOWLEDGE_ASSET_TYPES).catch("PAST_PERFORMANCE_SNIPPET"),
+  agencyIds: z.array(z.string().max(120)).max(24).catch([]),
   title: z.string().max(160).catch(""),
   summary: z.string().max(600).catch(""),
   body: z.string().max(12000).catch(""),
+  capabilityKeys: z.array(z.string().max(160)).max(24).catch([]),
+  contractTypes: z.array(z.string().max(160)).max(24).catch([]),
   tags: z.string().max(600).catch(""),
   opportunityIds: z.array(z.string().max(120)).max(24).catch([]),
+  vehicleCodes: z.array(z.string().max(160)).max(24).catch([]),
 });
 
 const knowledgeAssetSubmissionSchema = z.object({
   assetType: z.enum(KNOWLEDGE_ASSET_TYPES, {
     error: "Choose a knowledge asset type.",
   }),
+  agencyIds: z
+    .array(z.string().trim().min(1))
+    .max(24, "Tag at most 24 agencies on one knowledge asset."),
   title: z
     .string()
     .trim()
@@ -33,6 +40,12 @@ const knowledgeAssetSubmissionSchema = z.object({
     .trim()
     .min(20, "Enter at least 20 characters of reusable knowledge content.")
     .max(12000, "Keep the body to 12000 characters or fewer."),
+  capabilityKeys: z
+    .array(z.string().trim().min(1))
+    .max(24, "Tag at most 24 capabilities on one knowledge asset."),
+  contractTypes: z
+    .array(z.string().trim().min(1))
+    .max(24, "Tag at most 24 contract types on one knowledge asset."),
   tags: z
     .string()
     .trim()
@@ -40,15 +53,22 @@ const knowledgeAssetSubmissionSchema = z.object({
   opportunityIds: z
     .array(z.string().trim().min(1))
     .max(24, "Link at most 24 opportunities to one knowledge asset."),
+  vehicleCodes: z
+    .array(z.string().trim().min(1))
+    .max(24, "Tag at most 24 vehicles on one knowledge asset."),
 });
 
 export type KnowledgeAssetFormSubmission = {
   assetType: (typeof KNOWLEDGE_ASSET_TYPES)[number];
+  agencyIds: string[];
   title: string;
   summary: string | null;
   body: string;
+  capabilityKeys: string[];
+  contractTypes: string[];
   tags: string[];
   opportunityIds: string[];
+  vehicleCodes: string[];
 };
 
 export type KnowledgeAssetFormActionState = {
@@ -58,11 +78,15 @@ export type KnowledgeAssetFormActionState = {
 
 export const EMPTY_KNOWLEDGE_ASSET_FORM_VALUES: KnowledgeAssetFormValues = {
   assetType: "PAST_PERFORMANCE_SNIPPET",
+  agencyIds: [],
   title: "",
   summary: "",
   body: "",
+  capabilityKeys: [],
+  contractTypes: [],
   tags: "",
   opportunityIds: [],
+  vehicleCodes: [],
 };
 
 export const INITIAL_KNOWLEDGE_ASSET_FORM_ACTION_STATE: KnowledgeAssetFormActionState =
@@ -94,21 +118,29 @@ export function readKnowledgeAssetFormValues(
     input instanceof FormData
       ? {
           assetType: input.get("assetType"),
+          agencyIds: input.getAll("agencyIds"),
           title: input.get("title"),
           summary: input.get("summary"),
           body: input.get("body"),
+          capabilityKeys: input.getAll("capabilityKeys"),
+          contractTypes: input.getAll("contractTypes"),
           tags: input.get("tags"),
           opportunityIds: input.getAll("opportunityIds"),
+          vehicleCodes: input.getAll("vehicleCodes"),
         }
       : input;
 
   return {
     assetType: readKnowledgeAssetType(candidate.assetType),
+    agencyIds: readStringArray(candidate.agencyIds),
     title: readFormString(candidate.title),
     summary: readFormString(candidate.summary),
     body: readFormString(candidate.body),
+    capabilityKeys: readStringArray(candidate.capabilityKeys),
+    contractTypes: readStringArray(candidate.contractTypes),
     tags: readFormString(candidate.tags),
     opportunityIds: readStringArray(candidate.opportunityIds),
+    vehicleCodes: readStringArray(candidate.vehicleCodes),
   };
 }
 
@@ -141,27 +173,31 @@ export function validateKnowledgeAssetFormSubmission(
     success: true,
     submission: {
       assetType: parsed.data.assetType,
+      agencyIds: [...new Set(parsed.data.agencyIds)],
       title: parsed.data.title,
       summary: toOptionalString(parsed.data.summary),
       body: parsed.data.body,
+      capabilityKeys: [...new Set(parsed.data.capabilityKeys)],
+      contractTypes: [...new Set(parsed.data.contractTypes)],
       tags: parseKnowledgeTagsInput(parsed.data.tags),
       opportunityIds: [...new Set(parsed.data.opportunityIds)],
+      vehicleCodes: [...new Set(parsed.data.vehicleCodes)],
     },
   };
 }
 
 export function parseKnowledgeTagsInput(value: string) {
-  return [...new Set(
-    value
-      .split(/[\n,]/)
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0)
-  )];
+  return [
+    ...new Set(
+      value
+        .split(/[\n,]/)
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0),
+    ),
+  ];
 }
 
-function mapFieldErrors(
-  issues: z.ZodIssue[],
-): KnowledgeAssetFormFieldErrors {
+function mapFieldErrors(issues: z.ZodIssue[]): KnowledgeAssetFormFieldErrors {
   const fieldErrors: KnowledgeAssetFormFieldErrors = {};
 
   for (const issue of issues) {
@@ -180,7 +216,9 @@ function mapFieldErrors(
 }
 
 function readKnowledgeAssetType(value: unknown) {
-  return KNOWLEDGE_ASSET_TYPES.includes(value as (typeof KNOWLEDGE_ASSET_TYPES)[number])
+  return KNOWLEDGE_ASSET_TYPES.includes(
+    value as (typeof KNOWLEDGE_ASSET_TYPES)[number],
+  )
     ? (value as (typeof KNOWLEDGE_ASSET_TYPES)[number])
     : EMPTY_KNOWLEDGE_ASSET_FORM_VALUES.assetType;
 }

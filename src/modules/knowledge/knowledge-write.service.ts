@@ -1,4 +1,8 @@
-import { AuditActorType, type KnowledgeAssetType, type Prisma } from "@prisma/client";
+import {
+  AuditActorType,
+  type KnowledgeAssetType,
+  type Prisma,
+} from "@prisma/client";
 
 import {
   AUDIT_ACTIONS,
@@ -20,6 +24,8 @@ type KnowledgeAssetAuditRecord = {
   tags: Array<{
     label: string;
     normalizedLabel: string;
+    tagKey: string;
+    tagType: KnowledgeTagType;
   }>;
   linkedOpportunities: Array<{
     opportunity: {
@@ -28,6 +34,17 @@ type KnowledgeAssetAuditRecord = {
     };
   }>;
 };
+
+const KNOWLEDGE_TAG_TYPES = {
+  AGENCY: "AGENCY",
+  CAPABILITY: "CAPABILITY",
+  CONTRACT_TYPE: "CONTRACT_TYPE",
+  FREEFORM: "FREEFORM",
+  VEHICLE: "VEHICLE",
+} as const;
+
+type KnowledgeTagType =
+  (typeof KNOWLEDGE_TAG_TYPES)[keyof typeof KNOWLEDGE_TAG_TYPES];
 
 const knowledgeAssetAuditSelect = {
   id: true,
@@ -45,6 +62,8 @@ const knowledgeAssetAuditSelect = {
     select: {
       label: true,
       normalizedLabel: true,
+      tagKey: true,
+      tagType: true,
     },
   },
   linkedOpportunities: {
@@ -67,6 +86,22 @@ const knowledgeAssetAuditSelect = {
 type LinkedOpportunityRecord = {
   id: string;
   title: string;
+};
+
+type AgencyFacetRecord = {
+  id: string;
+  name: string;
+  organizationCode: string | null;
+};
+
+type CapabilityFacetRecord = {
+  capabilityKey: string;
+  capabilityLabel: string;
+};
+
+type VehicleFacetRecord = {
+  code: string;
+  name: string;
 };
 
 export type KnowledgeAssetActor = AuditActorContext & {
@@ -114,6 +149,50 @@ export type KnowledgeAssetWriteTransactionClient = AuditLogWriter & {
       };
     }): Promise<LinkedOpportunityRecord[]>;
   };
+  agency: {
+    findMany(args: {
+      where: {
+        organizationId: string;
+        id: {
+          in: string[];
+        };
+      };
+      select: {
+        id: true;
+        name: true;
+        organizationCode: true;
+      };
+    }): Promise<AgencyFacetRecord[]>;
+  };
+  organizationCapability: {
+    findMany(args: {
+      where: {
+        organizationId: string;
+        capabilityKey: {
+          in: string[];
+        };
+        isActive: boolean;
+      };
+      select: {
+        capabilityKey: true;
+        capabilityLabel: true;
+      };
+    }): Promise<CapabilityFacetRecord[]>;
+  };
+  contractVehicle: {
+    findMany(args: {
+      where: {
+        organizationId: string;
+        code: {
+          in: string[];
+        };
+      };
+      select: {
+        code: true;
+        name: true;
+      };
+    }): Promise<VehicleFacetRecord[]>;
+  };
 };
 
 export type KnowledgeAssetWriteClient = KnowledgeAssetWriteTransactionClient & {
@@ -130,16 +209,28 @@ export async function createKnowledgeAsset({
   input: {
     actor: KnowledgeAssetActor;
     assetType: KnowledgeAssetType;
+    agencyIds: string[];
     title: string;
     summary?: string | null;
     body: string;
+    capabilityKeys: string[];
+    contractTypes: string[];
     tags: string[];
     opportunityIds: string[];
+    vehicleCodes: string[];
     occurredAt?: Date;
   };
 }) {
   return db.$transaction(async (tx) => {
-    const tags = buildKnowledgeTags(input.tags);
+    const tags = await buildKnowledgeTags({
+      agencyIds: input.agencyIds,
+      capabilityKeys: input.capabilityKeys,
+      contractTypes: input.contractTypes,
+      freeformTags: input.tags,
+      organizationId: input.actor.organizationId,
+      tx,
+      vehicleCodes: input.vehicleCodes,
+    });
     const linkedOpportunities = await loadLinkedOpportunities({
       opportunityIds: input.opportunityIds,
       organizationId: input.actor.organizationId,
@@ -167,6 +258,7 @@ export async function createKnowledgeAsset({
       },
       select: knowledgeAssetAuditSelect,
     });
+    const tagSummary = buildKnowledgeTagSummary(knowledgeAsset.tags);
 
     await recordAuditEvent({
       db: tx,
@@ -182,10 +274,14 @@ export async function createKnowledgeAsset({
         summary: `Created knowledge asset ${knowledgeAsset.title}.`,
         metadata: {
           assetType: knowledgeAsset.assetType,
+          agencies: tagSummary.agencies,
+          capabilities: tagSummary.capabilities,
+          contractTypes: tagSummary.contractTypes,
+          freeformTags: tagSummary.freeformTags,
           linkedOpportunityIds: knowledgeAsset.linkedOpportunities.map(
             (link) => link.opportunity.id,
           ),
-          tags: knowledgeAsset.tags.map((tag) => tag.label),
+          vehicles: tagSummary.vehicles,
         },
         occurredAt: input.occurredAt,
       },
@@ -204,11 +300,15 @@ export async function updateKnowledgeAsset({
     actor: KnowledgeAssetActor;
     knowledgeAssetId: string;
     assetType: KnowledgeAssetType;
+    agencyIds: string[];
     title: string;
     summary?: string | null;
     body: string;
+    capabilityKeys: string[];
+    contractTypes: string[];
     tags: string[];
     opportunityIds: string[];
+    vehicleCodes: string[];
     occurredAt?: Date;
   };
 }) {
@@ -221,7 +321,15 @@ export async function updateKnowledgeAsset({
       },
       select: knowledgeAssetAuditSelect,
     });
-    const tags = buildKnowledgeTags(input.tags);
+    const tags = await buildKnowledgeTags({
+      agencyIds: input.agencyIds,
+      capabilityKeys: input.capabilityKeys,
+      contractTypes: input.contractTypes,
+      freeformTags: input.tags,
+      organizationId: input.actor.organizationId,
+      tx,
+      vehicleCodes: input.vehicleCodes,
+    });
     const linkedOpportunities = await loadLinkedOpportunities({
       opportunityIds: input.opportunityIds,
       organizationId: input.actor.organizationId,
@@ -303,6 +411,8 @@ export async function deleteKnowledgeAsset({
       },
     });
 
+    const tagSummary = buildKnowledgeTagSummary(existingAsset.tags);
+
     await recordAuditEvent({
       db: tx,
       event: {
@@ -317,10 +427,14 @@ export async function deleteKnowledgeAsset({
         summary: `Deleted knowledge asset ${existingAsset.title}.`,
         metadata: {
           assetType: existingAsset.assetType,
+          agencies: tagSummary.agencies,
+          capabilities: tagSummary.capabilities,
+          contractTypes: tagSummary.contractTypes,
+          freeformTags: tagSummary.freeformTags,
           linkedOpportunityIds: existingAsset.linkedOpportunities.map(
             (link) => link.opportunity.id,
           ),
-          tags: existingAsset.tags.map((tag) => tag.label),
+          vehicles: tagSummary.vehicles,
         },
         occurredAt: input.occurredAt,
       },
@@ -364,16 +478,224 @@ async function loadLinkedOpportunities({
     );
   }
 
-  return opportunities.sort((left, right) => left.title.localeCompare(right.title));
+  return opportunities.sort((left, right) =>
+    left.title.localeCompare(right.title),
+  );
 }
 
-function buildKnowledgeTags(tags: string[]) {
-  return [...new Map(
-    tags.map((tag) => {
-      const trimmed = tag.trim();
-      return [normalizeKnowledgeTag(trimmed), { label: trimmed, normalizedLabel: normalizeKnowledgeTag(trimmed) }];
-    })
-  ).values()].filter((tag) => tag.label.length > 0);
+async function loadAgencyTags({
+  agencyIds,
+  organizationId,
+  tx,
+}: {
+  agencyIds: string[];
+  organizationId: string;
+  tx: KnowledgeAssetWriteTransactionClient;
+}) {
+  const uniqueAgencyIds = [...new Set(agencyIds)];
+
+  if (uniqueAgencyIds.length === 0) {
+    return [];
+  }
+
+  const agencies = await tx.agency.findMany({
+    where: {
+      organizationId,
+      id: {
+        in: uniqueAgencyIds,
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      organizationCode: true,
+    },
+  });
+
+  if (agencies.length !== uniqueAgencyIds.length) {
+    throw new Error("One or more knowledge-tagged agencies are unavailable.");
+  }
+
+  return agencies
+    .map((agency) => ({
+      label:
+        agency.organizationCode != null
+          ? `${agency.name} (${agency.organizationCode})`
+          : agency.name,
+      normalizedLabel: normalizeKnowledgeTag(agency.name),
+      tagKey: agency.id,
+      tagType: KNOWLEDGE_TAG_TYPES.AGENCY,
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
+async function loadCapabilityTags({
+  capabilityKeys,
+  organizationId,
+  tx,
+}: {
+  capabilityKeys: string[];
+  organizationId: string;
+  tx: KnowledgeAssetWriteTransactionClient;
+}) {
+  const uniqueCapabilityKeys = [...new Set(capabilityKeys)];
+
+  if (uniqueCapabilityKeys.length === 0) {
+    return [];
+  }
+
+  const capabilities = await tx.organizationCapability.findMany({
+    where: {
+      organizationId,
+      capabilityKey: {
+        in: uniqueCapabilityKeys,
+      },
+      isActive: true,
+    },
+    select: {
+      capabilityKey: true,
+      capabilityLabel: true,
+    },
+  });
+
+  if (capabilities.length !== uniqueCapabilityKeys.length) {
+    throw new Error(
+      "One or more knowledge-tagged capabilities are unavailable.",
+    );
+  }
+
+  return capabilities
+    .map((capability) => ({
+      label: capability.capabilityLabel,
+      normalizedLabel: normalizeKnowledgeTag(capability.capabilityLabel),
+      tagKey: capability.capabilityKey,
+      tagType: KNOWLEDGE_TAG_TYPES.CAPABILITY,
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
+async function loadVehicleTags({
+  organizationId,
+  tx,
+  vehicleCodes,
+}: {
+  organizationId: string;
+  tx: KnowledgeAssetWriteTransactionClient;
+  vehicleCodes: string[];
+}) {
+  const uniqueVehicleCodes = [...new Set(vehicleCodes)];
+
+  if (uniqueVehicleCodes.length === 0) {
+    return [];
+  }
+
+  const vehicles = await tx.contractVehicle.findMany({
+    where: {
+      organizationId,
+      code: {
+        in: uniqueVehicleCodes,
+      },
+    },
+    select: {
+      code: true,
+      name: true,
+    },
+  });
+
+  if (vehicles.length !== uniqueVehicleCodes.length) {
+    throw new Error("One or more knowledge-tagged vehicles are unavailable.");
+  }
+
+  return vehicles
+    .map((vehicle) => ({
+      label: `${vehicle.code} · ${vehicle.name}`,
+      normalizedLabel: normalizeKnowledgeTag(vehicle.code),
+      tagKey: vehicle.code,
+      tagType: KNOWLEDGE_TAG_TYPES.VEHICLE,
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
+async function buildKnowledgeTags({
+  agencyIds,
+  capabilityKeys,
+  contractTypes,
+  freeformTags,
+  organizationId,
+  tx,
+  vehicleCodes,
+}: {
+  agencyIds: string[];
+  capabilityKeys: string[];
+  contractTypes: string[];
+  freeformTags: string[];
+  organizationId: string;
+  tx: KnowledgeAssetWriteTransactionClient;
+  vehicleCodes: string[];
+}) {
+  const [agencyTags, capabilityTags, vehicleTags] = await Promise.all([
+    loadAgencyTags({
+      agencyIds,
+      organizationId,
+      tx,
+    }),
+    loadCapabilityTags({
+      capabilityKeys,
+      organizationId,
+      tx,
+    }),
+    loadVehicleTags({
+      organizationId,
+      tx,
+      vehicleCodes,
+    }),
+  ]);
+
+  const freeformKnowledgeTags = [
+    ...new Map(
+      freeformTags.map((tag) => {
+        const trimmed = tag.trim();
+        const normalizedTag = normalizeKnowledgeTag(trimmed);
+
+        return [
+          `${KNOWLEDGE_TAG_TYPES.FREEFORM}:${normalizedTag}`,
+          {
+            label: trimmed,
+            normalizedLabel: normalizedTag,
+            tagKey: normalizedTag,
+            tagType: KNOWLEDGE_TAG_TYPES.FREEFORM,
+          },
+        ];
+      }),
+    ).values(),
+  ].filter((tag) => tag.label.length > 0);
+
+  const contractTypeTags = [
+    ...new Map(
+      contractTypes.map((contractType) => {
+        const trimmed = contractType.trim();
+        const normalizedTag = normalizeKnowledgeTag(trimmed);
+
+        return [
+          `${KNOWLEDGE_TAG_TYPES.CONTRACT_TYPE}:${normalizedTag}`,
+          {
+            label: trimmed,
+            normalizedLabel: normalizedTag,
+            tagKey: normalizedTag,
+            tagType: KNOWLEDGE_TAG_TYPES.CONTRACT_TYPE,
+          },
+        ];
+      }),
+    ).values(),
+  ].filter((tag) => tag.label.length > 0);
+
+  return [
+    ...freeformKnowledgeTags,
+    ...agencyTags,
+    ...capabilityTags,
+    ...contractTypeTags,
+    ...vehicleTags,
+  ];
 }
 
 function buildTagsRelationData({
@@ -384,6 +706,8 @@ function buildTagsRelationData({
   tags: Array<{
     label: string;
     normalizedLabel: string;
+    tagKey: string;
+    tagType: KnowledgeTagType;
   }>;
 }) {
   if (tags.length === 0) {
@@ -395,6 +719,8 @@ function buildTagsRelationData({
       organizationId,
       label: tag.label,
       normalizedLabel: tag.normalizedLabel,
+      tagKey: tag.tagKey,
+      tagType: tag.tagType,
     })),
   };
 }
@@ -426,6 +752,8 @@ function buildTagsReplaceData({
   tags: Array<{
     label: string;
     normalizedLabel: string;
+    tagKey: string;
+    tagType: KnowledgeTagType;
   }>;
 }) {
   return {
@@ -439,6 +767,8 @@ function buildTagsReplaceData({
             organizationId,
             label: tag.label,
             normalizedLabel: tag.normalizedLabel,
+            tagKey: tag.tagKey,
+            tagType: tag.tagType,
           })),
         }
       : {}),
@@ -470,6 +800,8 @@ function buildKnowledgeAssetChangedFields(
   after: KnowledgeAssetAuditRecord,
 ) {
   const changedFields: Record<string, unknown> = {};
+  const beforeTagSummary = buildKnowledgeTagSummary(before.tags);
+  const afterTagSummary = buildKnowledgeTagSummary(after.tags);
 
   for (const [field, values] of Object.entries({
     assetType: {
@@ -488,9 +820,25 @@ function buildKnowledgeAssetChangedFields(
       from: before.body,
       to: after.body,
     },
-    tags: {
-      from: before.tags.map((tag) => tag.label),
-      to: after.tags.map((tag) => tag.label),
+    freeformTags: {
+      from: beforeTagSummary.freeformTags,
+      to: afterTagSummary.freeformTags,
+    },
+    agencies: {
+      from: beforeTagSummary.agencies,
+      to: afterTagSummary.agencies,
+    },
+    capabilities: {
+      from: beforeTagSummary.capabilities,
+      to: afterTagSummary.capabilities,
+    },
+    contractTypes: {
+      from: beforeTagSummary.contractTypes,
+      to: afterTagSummary.contractTypes,
+    },
+    vehicles: {
+      from: beforeTagSummary.vehicles,
+      to: afterTagSummary.vehicles,
     },
     linkedOpportunityIds: {
       from: before.linkedOpportunities.map((link) => link.opportunity.id),
@@ -503,6 +851,26 @@ function buildKnowledgeAssetChangedFields(
   }
 
   return changedFields;
+}
+
+function buildKnowledgeTagSummary(tags: KnowledgeAssetAuditRecord["tags"]) {
+  return {
+    agencies: tags
+      .filter((tag) => tag.tagType === KNOWLEDGE_TAG_TYPES.AGENCY)
+      .map((tag) => tag.label),
+    capabilities: tags
+      .filter((tag) => tag.tagType === KNOWLEDGE_TAG_TYPES.CAPABILITY)
+      .map((tag) => tag.label),
+    contractTypes: tags
+      .filter((tag) => tag.tagType === KNOWLEDGE_TAG_TYPES.CONTRACT_TYPE)
+      .map((tag) => tag.label),
+    freeformTags: tags
+      .filter((tag) => tag.tagType === KNOWLEDGE_TAG_TYPES.FREEFORM)
+      .map((tag) => tag.label),
+    vehicles: tags
+      .filter((tag) => tag.tagType === KNOWLEDGE_TAG_TYPES.VEHICLE)
+      .map((tag) => tag.label),
+  };
 }
 
 function cleanOptionalString(value: string | null | undefined) {

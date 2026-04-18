@@ -161,6 +161,14 @@ enum KnowledgeAssetType {
   WIN_THEME
 }
 
+enum KnowledgeAssetTagType {
+  FREEFORM
+  AGENCY
+  CAPABILITY
+  CONTRACT_TYPE
+  VEHICLE
+}
+
 model Organization {
   id                          String                         @id @default(cuid()) @map("id")
   name                        String                         @map("name")
@@ -1000,22 +1008,22 @@ model OpportunityDocument {
 }
 
 model KnowledgeAsset {
-  id               String                       @id @default(cuid()) @map("id")
-  organizationId   String                       @map("organization_id")
-  createdByUserId  String?                      @map("created_by_user_id")
-  updatedByUserId  String?                      @map("updated_by_user_id")
-  assetType        KnowledgeAssetType           @map("asset_type")
-  title            String                       @map("title")
-  summary          String?                      @map("summary") @db.Text
-  body             String                       @map("body") @db.Text
-  contentFormat    String                       @default("markdown") @map("content_format")
-  isArchived       Boolean                      @default(false) @map("is_archived")
-  createdAt        DateTime                     @default(now()) @map("created_at")
-  updatedAt        DateTime                     @updatedAt @map("updated_at")
-  organization     Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  createdByUser    User?                        @relation("KnowledgeAssetCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedByUser    User?                        @relation("KnowledgeAssetUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
-  tags             KnowledgeAssetTag[]
+  id                  String                      @id @default(cuid()) @map("id")
+  organizationId      String                      @map("organization_id")
+  createdByUserId     String?                     @map("created_by_user_id")
+  updatedByUserId     String?                     @map("updated_by_user_id")
+  assetType           KnowledgeAssetType          @map("asset_type")
+  title               String                      @map("title")
+  summary             String?                     @map("summary") @db.Text
+  body                String                      @map("body") @db.Text
+  contentFormat       String                      @default("markdown") @map("content_format")
+  isArchived          Boolean                     @default(false) @map("is_archived")
+  createdAt           DateTime                    @default(now()) @map("created_at")
+  updatedAt           DateTime                    @updatedAt @map("updated_at")
+  organization        Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdByUser       User?                       @relation("KnowledgeAssetCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser       User?                       @relation("KnowledgeAssetUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  tags                KnowledgeAssetTag[]
   linkedOpportunities KnowledgeAssetOpportunity[]
 
   @@index([organizationId, assetType, updatedAt], map: "knowledge_assets_org_type_updated_at_idx")
@@ -1026,18 +1034,21 @@ model KnowledgeAsset {
 }
 
 model KnowledgeAssetTag {
-  id               String         @id @default(cuid()) @map("id")
-  organizationId   String         @map("organization_id")
-  knowledgeAssetId String         @map("knowledge_asset_id")
-  label            String         @map("label")
-  normalizedLabel  String         @map("normalized_label")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  knowledgeAsset   KnowledgeAsset @relation(fields: [knowledgeAssetId], references: [id], onDelete: Cascade)
+  id               String                @id @default(cuid()) @map("id")
+  organizationId   String                @map("organization_id")
+  knowledgeAssetId String                @map("knowledge_asset_id")
+  label            String                @map("label")
+  normalizedLabel  String                @map("normalized_label")
+  tagKey           String                @map("tag_key")
+  tagType          KnowledgeAssetTagType @default(FREEFORM) @map("tag_type")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  knowledgeAsset   KnowledgeAsset        @relation(fields: [knowledgeAssetId], references: [id], onDelete: Cascade)
 
-  @@unique([knowledgeAssetId, normalizedLabel], map: "knowledge_asset_tags_asset_id_normalized_label_key")
+  @@unique([knowledgeAssetId, tagType, tagKey], map: "knowledge_asset_tags_asset_id_tag_type_tag_key_key")
   @@index([organizationId, normalizedLabel], map: "knowledge_asset_tags_org_normalized_label_idx")
+  @@index([organizationId, tagType, tagKey], map: "knowledge_asset_tags_org_tag_type_tag_key_idx")
   @@index([knowledgeAssetId], map: "knowledge_asset_tags_asset_id_idx")
   @@map("knowledge_asset_tags")
 }

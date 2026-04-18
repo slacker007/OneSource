@@ -7,10 +7,28 @@ import type { KnowledgeLibrarySnapshot } from "@/modules/knowledge/knowledge.typ
 const snapshot: KnowledgeLibrarySnapshot = {
   availableFilterCount: 1,
   filterOptions: {
+    agencies: [
+      {
+        label: "Army PEO EIS (W52P1J)",
+        value: "agency_army",
+      },
+    ],
     assetTypes: [
       {
         label: "Win theme",
         value: "WIN_THEME",
+      },
+    ],
+    capabilities: [
+      {
+        label: "Cloud platform engineering",
+        value: "cloud-platform-engineering",
+      },
+    ],
+    contractTypes: [
+      {
+        label: "Solicitation",
+        value: "solicitation",
       },
     ],
     opportunities: [
@@ -26,6 +44,12 @@ const snapshot: KnowledgeLibrarySnapshot = {
         value: "army",
       },
     ],
+    vehicles: [
+      {
+        label: "OASIS-PLUS-UNR · OASIS+ Unrestricted",
+        value: "OASIS-PLUS-UNR",
+      },
+    ],
   },
   organization: {
     id: "org_123",
@@ -33,10 +57,14 @@ const snapshot: KnowledgeLibrarySnapshot = {
     slug: "default-org",
   },
   query: {
+    agencyId: "agency_army",
     query: null,
     assetType: "WIN_THEME",
+    capabilityKey: null,
+    contractType: null,
     tag: null,
     opportunityId: null,
+    vehicleCode: null,
   },
   results: [
     {
@@ -45,6 +73,12 @@ const snapshot: KnowledgeLibrarySnapshot = {
       title: "Army cloud transition win theme",
       summary: "Reusable transition-risk narrative.",
       bodyPreview: "Reusable transition-risk narrative.",
+      facets: {
+        agencies: ["Army PEO EIS (W52P1J)"],
+        capabilities: ["Cloud platform engineering"],
+        contractTypes: ["Solicitation"],
+        vehicles: ["OASIS-PLUS-UNR · OASIS+ Unrestricted"],
+      },
       tags: ["army", "cloud operations"],
       linkedOpportunities: [
         {
@@ -89,5 +123,7 @@ describe("KnowledgeLibrary", () => {
       screen.getAllByText(/army cloud operations recompete/i).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByText(/cloud operations/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/army peo eis/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/oasis-plus-unr/i).length).toBeGreaterThan(0);
   });
 });

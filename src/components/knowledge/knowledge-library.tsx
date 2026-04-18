@@ -14,13 +14,11 @@ import {
 
 type KnowledgeLibraryProps = {
   allowManageKnowledge?: boolean;
-  notice?:
-    | {
-        title: string;
-        message: string;
-        tone: "accent" | "warning" | "danger";
-      }
-    | null;
+  notice?: {
+    title: string;
+    message: string;
+    tone: "accent" | "warning" | "danger";
+  } | null;
   snapshot: KnowledgeLibrarySnapshot | null;
 };
 
@@ -61,9 +59,9 @@ export function KnowledgeLibrary({
             </h1>
             <p className="text-muted max-w-3xl text-sm leading-7">
               Capture reusable past performance, boilerplate, and win themes in
-              one organization-scoped library. This first slice adds freeform
-              tags and direct opportunity links; structured agency, capability,
-              contract-type, and vehicle retrieval lands in the next PRD item.
+              one organization-scoped library. Assets now carry both freeform
+              tags and structured agency, capability, contract-type, and vehicle
+              coverage so the team can narrow reusable content faster.
             </p>
           </div>
 
@@ -85,7 +83,7 @@ export function KnowledgeLibrary({
               />
               <SummaryCard
                 label="Tag labels"
-                supportingText="Distinct freeform tags in the current result set"
+                supportingText="Distinct freeform and structured labels in the current result set"
                 value={String(snapshot.totalTagCount)}
               />
               <SummaryCard
@@ -126,7 +124,7 @@ export function KnowledgeLibrary({
             </h2>
             <p className="text-muted max-w-2xl text-sm leading-6">
               Filter the current library by keyword, asset type, freeform tag,
-              or linked opportunity.
+              agency, capability, contract type, vehicle, or linked opportunity.
             </p>
           </div>
 
@@ -138,7 +136,10 @@ export function KnowledgeLibrary({
           </Link>
         </div>
 
-        <form action="/knowledge" className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+        <form
+          action="/knowledge"
+          className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4"
+        >
           <FormField
             hint="Matches title, summary, body text, tags, and linked opportunity titles."
             htmlFor="knowledge-query"
@@ -183,6 +184,66 @@ export function KnowledgeLibrary({
             </Select>
           </FormField>
 
+          <FormField htmlFor="knowledge-agency" label="Agency">
+            <Select
+              defaultValue={snapshot.query.agencyId ?? ""}
+              id="knowledge-agency"
+              name="agency"
+            >
+              <option value="">All agencies</option>
+              {snapshot.filterOptions.agencies.map((agency) => (
+                <option key={agency.value} value={agency.value}>
+                  {agency.label}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+
+          <FormField htmlFor="knowledge-capability" label="Capability">
+            <Select
+              defaultValue={snapshot.query.capabilityKey ?? ""}
+              id="knowledge-capability"
+              name="capability"
+            >
+              <option value="">All capabilities</option>
+              {snapshot.filterOptions.capabilities.map((capability) => (
+                <option key={capability.value} value={capability.value}>
+                  {capability.label}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+
+          <FormField htmlFor="knowledge-contract-type" label="Contract type">
+            <Select
+              defaultValue={snapshot.query.contractType ?? ""}
+              id="knowledge-contract-type"
+              name="contractType"
+            >
+              <option value="">All contract types</option>
+              {snapshot.filterOptions.contractTypes.map((contractType) => (
+                <option key={contractType.value} value={contractType.value}>
+                  {contractType.label}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+
+          <FormField htmlFor="knowledge-vehicle" label="Vehicle">
+            <Select
+              defaultValue={snapshot.query.vehicleCode ?? ""}
+              id="knowledge-vehicle"
+              name="vehicle"
+            >
+              <option value="">All vehicles</option>
+              {snapshot.filterOptions.vehicles.map((vehicle) => (
+                <option key={vehicle.value} value={vehicle.value}>
+                  {vehicle.label}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+
           <FormField htmlFor="knowledge-opportunity" label="Linked opportunity">
             <Select
               defaultValue={snapshot.query.opportunityId ?? ""}
@@ -198,7 +259,7 @@ export function KnowledgeLibrary({
             </Select>
           </FormField>
 
-          <div className="flex items-end xl:col-start-4">
+          <div className="flex items-end xl:col-span-4">
             <button
               className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
               type="submit"
@@ -240,17 +301,41 @@ export function KnowledgeLibrary({
               cell: (asset) => (
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
-                    <Badge>{KNOWLEDGE_ASSET_TYPE_LABELS[asset.assetType]}</Badge>
+                    <Badge>
+                      {KNOWLEDGE_ASSET_TYPE_LABELS[asset.assetType]}
+                    </Badge>
                     {asset.tags.map((tag) => (
                       <Badge key={tag} tone="muted">
                         {tag}
                       </Badge>
                     ))}
+                    {asset.facets.agencies.map((agency) => (
+                      <Badge key={`${asset.id}-${agency}`} tone="accent">
+                        {agency}
+                      </Badge>
+                    ))}
+                    {asset.facets.capabilities.map((capability) => (
+                      <Badge key={`${asset.id}-${capability}`} tone="warning">
+                        {capability}
+                      </Badge>
+                    ))}
+                    {asset.facets.contractTypes.map((contractType) => (
+                      <Badge key={`${asset.id}-${contractType}`} tone="muted">
+                        {contractType}
+                      </Badge>
+                    ))}
+                    {asset.facets.vehicles.map((vehicle) => (
+                      <Badge key={`${asset.id}-${vehicle}`} tone="accent">
+                        {vehicle}
+                      </Badge>
+                    ))}
                   </div>
                   <div className="space-y-1">
-                    <p className="font-medium text-foreground">{asset.title}</p>
+                    <p className="text-foreground font-medium">{asset.title}</p>
                     {asset.summary ? (
-                      <p className="text-muted text-sm leading-6">{asset.summary}</p>
+                      <p className="text-muted text-sm leading-6">
+                        {asset.summary}
+                      </p>
                     ) : null}
                   </div>
                 </div>
@@ -260,7 +345,9 @@ export function KnowledgeLibrary({
               key: "content",
               header: "Reusable content",
               cell: (asset) => (
-                <p className="text-muted text-sm leading-6">{asset.bodyPreview}</p>
+                <p className="text-muted text-sm leading-6">
+                  {asset.bodyPreview}
+                </p>
               ),
             },
             {
@@ -271,7 +358,7 @@ export function KnowledgeLibrary({
                   <div className="space-y-2">
                     {asset.linkedOpportunities.map((opportunity) => (
                       <div key={opportunity.id} className="space-y-1">
-                        <p className="font-medium text-foreground">
+                        <p className="text-foreground font-medium">
                           {opportunity.title}
                         </p>
                         <p className="text-muted text-xs">
@@ -291,7 +378,7 @@ export function KnowledgeLibrary({
               header: "Updated",
               cell: (asset) => (
                 <div className="space-y-2">
-                  <p className="font-medium text-foreground">
+                  <p className="text-foreground font-medium">
                     {formatUtcDate(asset.updatedAt)}
                   </p>
                   <p className="text-muted text-xs">
@@ -355,7 +442,7 @@ function Banner({
   tone: "accent" | "warning" | "danger";
 }) {
   return (
-    <section className="rounded-[28px] border border-border bg-white px-6 py-5 shadow-[0_14px_34px_rgba(20,37,34,0.06)]">
+    <section className="border-border rounded-[28px] border bg-white px-6 py-5 shadow-[0_14px_34px_rgba(20,37,34,0.06)]">
       <div className="flex flex-wrap gap-3">
         <Badge tone={tone}>{title}</Badge>
       </div>
@@ -379,12 +466,44 @@ function buildActiveFilterBadges(snapshot: KnowledgeLibrarySnapshot) {
     badges.push(`Tag: ${snapshot.query.tag}`);
   }
 
+  if (snapshot.query.agencyId) {
+    const agencyLabel =
+      snapshot.filterOptions.agencies.find(
+        (agency) => agency.value === snapshot.query.agencyId,
+      )?.label ?? snapshot.query.agencyId;
+    badges.push(`Agency: ${agencyLabel}`);
+  }
+
+  if (snapshot.query.capabilityKey) {
+    const capabilityLabel =
+      snapshot.filterOptions.capabilities.find(
+        (capability) => capability.value === snapshot.query.capabilityKey,
+      )?.label ?? snapshot.query.capabilityKey;
+    badges.push(`Capability: ${capabilityLabel}`);
+  }
+
+  if (snapshot.query.contractType) {
+    const contractTypeLabel =
+      snapshot.filterOptions.contractTypes.find(
+        (contractType) => contractType.value === snapshot.query.contractType,
+      )?.label ?? snapshot.query.contractType;
+    badges.push(`Contract type: ${contractTypeLabel}`);
+  }
+
   if (snapshot.query.opportunityId) {
     const opportunityLabel =
       snapshot.filterOptions.opportunities.find(
         (opportunity) => opportunity.value === snapshot.query.opportunityId,
       )?.label ?? snapshot.query.opportunityId;
     badges.push(`Opportunity: ${opportunityLabel}`);
+  }
+
+  if (snapshot.query.vehicleCode) {
+    const vehicleLabel =
+      snapshot.filterOptions.vehicles.find(
+        (vehicle) => vehicle.value === snapshot.query.vehicleCode,
+      )?.label ?? snapshot.query.vehicleCode;
+    badges.push(`Vehicle: ${vehicleLabel}`);
   }
 
   return badges;

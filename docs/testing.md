@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 8 knowledge-library baseline on top of the completed Phase 7 intake and observability work. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 8 structured knowledge-retrieval baseline on top of the completed Phase 7 intake and observability work. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
@@ -56,7 +56,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - create a note from the workspace with title, pinned state, and body content, then confirm that note appears in the notes section and history feed
 - upload a text document from the workspace, confirm the success state plus queued extraction status render, and confirm a stored-file download link is visible on the resulting document card
 - open `/opportunities/new`, restore a browser-local draft, create a tracked opportunity through the guarded form path, then edit that opportunity through the guarded update flow
-- navigate into `/knowledge`, filter the seeded library, create a reusable knowledge asset with freeform tags and linked opportunities, then return to the library and confirm the created asset can be filtered back down
+- navigate into `/knowledge`, filter the seeded library by structured capability or vehicle coverage, create a reusable knowledge asset with freeform plus structured tags and linked opportunities, then return to the library and confirm the created asset can be filtered back down
 - navigate into `/sources`, submit a structured fixture-backed `sam.gov` search, and observe the URL plus connector-backed result set update together
 - open a source-result preview, inspect duplicate detection, and either link the result into the existing tracked opportunity or confirm the already-linked state on reruns
 - upload a CSV file on `/sources`, confirm auto-detected mappings and row-level preview states render, then import one clean row and confirm it appears on the tracked opportunity list
@@ -73,13 +73,13 @@ For the current audit slice, targeted unit verification should confirm:
 - the transactional opportunity write service emits audit rows plus workspace activity for document uploads, including stored metadata and extraction status
 - update audits persist field-diff metadata rather than only a generic action label
 
-For the current Phase 8 knowledge slice, targeted verification should confirm:
+For the current Phase 8 knowledge slices, targeted verification should confirm:
 
-- the knowledge form schema validates asset type, title, summary, body, freeform tags, and linked opportunities into a stable typed write payload
-- the typed knowledge repository parses URL search params into bounded list filters and maps organization-scoped list plus form snapshots without leaking raw Prisma payloads into the page layer
-- the audited knowledge write service creates, updates, and deletes knowledge assets while syncing tags plus opportunity links and appending audit-log rows
-- the rendered `/knowledge` surface shows summary counts, truthful empty states, URL-synced filters, and create/edit affordances guarded by `manage_pipeline`
-- the browser smoke flow can browse `/knowledge`, create one asset, and find it again through the library filter state
+- the knowledge form schema validates asset type, title, summary, body, freeform tags, structured agency or capability or contract-type or vehicle tags, and linked opportunities into a stable typed write payload
+- the typed knowledge repository parses URL search params into bounded list filters for freeform tags plus agency, capability, contract type, vehicle, and linked opportunity retrieval without leaking raw Prisma payloads into the page layer
+- the audited knowledge write service creates, updates, and deletes knowledge assets while syncing freeform plus structured retrieval tags and opportunity links, then appends audit-log rows
+- the rendered `/knowledge` surface shows summary counts, truthful empty states, URL-synced structured filters, and create/edit affordances guarded by `manage_pipeline`
+- the browser smoke flow can browse `/knowledge`, create one asset, and find it again through the library filter state, including at least one structured retrieval facet
 
 For the current admin-console slice, targeted unit verification should confirm:
 
@@ -196,11 +196,11 @@ npm run db:seed
 
 When a schema item depends on seeded relationships, verify the persisted graph directly with a narrow Prisma query before closing the loop.
 
-For the current Phase 8 knowledge slice, host verification is expected to include:
+For the current Phase 8 knowledge slices, host verification is expected to include:
 
 ```bash
 docker compose up -d db
-npm run prisma:migrate:dev -- --name add_knowledge_assets
+npx prisma migrate deploy
 npm run db:seed
 npm run prisma:validate
 npm run lint

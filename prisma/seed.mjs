@@ -274,7 +274,9 @@ function buildOpportunityWriteData({
     procurementTypeLabel: opportunity.procurementTypeLabel ?? null,
     procurementBaseTypeLabel: opportunity.procurementBaseTypeLabel ?? null,
     archiveType: opportunity.archiveType ?? null,
-    archivedAt: opportunity.archivedAt ? new Date(opportunity.archivedAt) : null,
+    archivedAt: opportunity.archivedAt
+      ? new Date(opportunity.archivedAt)
+      : null,
     archiveDateRaw: opportunity.archiveDateRaw ?? null,
     sourceStatus: opportunity.sourceStatus ?? null,
     isActiveSourceRecord: opportunity.isActiveSourceRecord ?? true,
@@ -413,7 +415,7 @@ async function syncOpportunityWorkspace({
 
   for (const task of workspace.tasks) {
     const assigneeUser = task.assigneeUserKey
-      ? usersByKey.get(task.assigneeUserKey) ?? null
+      ? (usersByKey.get(task.assigneeUserKey) ?? null)
       : null;
 
     const createdTask = await prisma.opportunityTask.create({
@@ -499,7 +501,9 @@ async function syncOpportunityWorkspace({
         checksumSha256: document.checksumSha256 ?? null,
         extractedText: document.extractedText ?? null,
         extractionStatus: document.extractionStatus,
-        extractedAt: document.extractedAt ? new Date(document.extractedAt) : null,
+        extractedAt: document.extractedAt
+          ? new Date(document.extractedAt)
+          : null,
         metadata: document.metadata ?? null,
       },
     });
@@ -572,8 +576,10 @@ async function syncOpportunityWorkspace({
           : null,
       decidedByUserId: userId,
       decisionTypeKey: workspace.bidDecision.decisionTypeKey ?? null,
-      recommendationOutcome: workspace.bidDecision.recommendationOutcome ?? null,
-      recommendationSummary: workspace.bidDecision.recommendationSummary ?? null,
+      recommendationOutcome:
+        workspace.bidDecision.recommendationOutcome ?? null,
+      recommendationSummary:
+        workspace.bidDecision.recommendationSummary ?? null,
       recommendationMetadata:
         workspace.bidDecision.recommendationMetadata ?? null,
       recommendedByActorType: workspace.bidDecision.recommendedByActorType,
@@ -596,7 +602,7 @@ async function syncOpportunityWorkspace({
 
   for (const event of workspace.activityEvents) {
     const relatedEntityId = event.relatedEntityRef
-      ? relatedEntityIdsByRef.get(event.relatedEntityRef) ?? null
+      ? (relatedEntityIdsByRef.get(event.relatedEntityRef) ?? null)
       : null;
 
     await prisma.opportunityActivityEvent.create({
@@ -608,7 +614,7 @@ async function syncOpportunityWorkspace({
         actorIdentifier:
           event.actorType === AuditActorType.USER
             ? userEmail
-            : event.actorIdentifier ?? null,
+            : (event.actorIdentifier ?? null),
         eventType: event.eventType,
         title: event.title,
         description: event.description ?? null,
@@ -622,9 +628,12 @@ async function syncOpportunityWorkspace({
 }
 
 async function syncKnowledgeAssets({
+  agenciesByKey,
   knowledgeAssets,
   organizationId,
+  scoringProfile,
   usersByKey,
+  vehiclesByKey,
 }) {
   await prisma.knowledgeAsset.deleteMany({
     where: { organizationId },
@@ -645,17 +654,80 @@ async function syncKnowledgeAssets({
     const author = usersByKey.get(asset.authorUserKey);
 
     if (!author) {
-      throw new Error(`Missing seeded knowledge asset author ${asset.authorUserKey}`);
+      throw new Error(
+        `Missing seeded knowledge asset author ${asset.authorUserKey}`,
+      );
     }
 
     const linkedOpportunities = asset.linkedOpportunityTitles.map((title) => {
       const opportunity = opportunitiesByTitle.get(title);
 
       if (!opportunity) {
-        throw new Error(`Missing seeded opportunity for knowledge asset link ${title}`);
+        throw new Error(
+          `Missing seeded opportunity for knowledge asset link ${title}`,
+        );
       }
 
       return opportunity;
+    });
+    const agencyTags = asset.agencyKeys.map((agencyKey) => {
+      const agency = agenciesByKey.get(agencyKey);
+
+      if (!agency) {
+        throw new Error(`Missing seeded knowledge agency ${agencyKey}`);
+      }
+
+      return {
+        label:
+          agency.organizationCode != null
+            ? `${agency.name} (${agency.organizationCode})`
+            : agency.name,
+        normalizedLabel: agency.name.trim().toLowerCase(),
+        tagKey: agency.id,
+        tagType: "AGENCY",
+      };
+    });
+    const capabilityTags = asset.capabilityKeys.map((capabilityKey) => {
+      const capability = scoringProfile.capabilities.find(
+        (candidate) => candidate.key === capabilityKey,
+      );
+
+      if (!capability) {
+        throw new Error(`Missing seeded knowledge capability ${capabilityKey}`);
+      }
+
+      return {
+        label: capability.label,
+        normalizedLabel: capability.label.trim().toLowerCase(),
+        tagKey: capabilityKey,
+        tagType: "CAPABILITY",
+      };
+    });
+    const contractTypeTags = asset.contractTypes.map((contractType) => ({
+      label: contractType,
+      normalizedLabel: contractType.trim().toLowerCase(),
+      tagKey: contractType.trim().toLowerCase(),
+      tagType: "CONTRACT_TYPE",
+    }));
+    const freeformTags = asset.tags.map((tag) => ({
+      label: tag,
+      normalizedLabel: tag.trim().toLowerCase(),
+      tagKey: tag.trim().toLowerCase(),
+      tagType: "FREEFORM",
+    }));
+    const vehicleTags = asset.vehicleKeys.map((vehicleKey) => {
+      const vehicle = vehiclesByKey.get(vehicleKey);
+
+      if (!vehicle) {
+        throw new Error(`Missing seeded knowledge vehicle ${vehicleKey}`);
+      }
+
+      return {
+        label: `${vehicle.code} · ${vehicle.name}`,
+        normalizedLabel: vehicle.code.trim().toLowerCase(),
+        tagKey: vehicle.code,
+        tagType: "VEHICLE",
+      };
     });
 
     await prisma.knowledgeAsset.create({
@@ -669,10 +741,18 @@ async function syncKnowledgeAssets({
         body: asset.body,
         contentFormat: "markdown",
         tags: {
-          create: asset.tags.map((tag) => ({
+          create: [
+            ...freeformTags,
+            ...agencyTags,
+            ...capabilityTags,
+            ...contractTypeTags,
+            ...vehicleTags,
+          ].map((tag) => ({
             organizationId,
-            label: tag,
-            normalizedLabel: tag.trim().toLowerCase(),
+            label: tag.label,
+            normalizedLabel: tag.normalizedLabel,
+            tagKey: tag.tagKey,
+            tagType: tag.tagType,
           })),
         },
         linkedOpportunities: {
@@ -851,21 +931,25 @@ async function main() {
   }
 
   const scoringProfile = scenario.organizationScoringProfile;
-  const priorityAgencyIds = scoringProfile.priorityAgencyKeys.map((agencyKey) => {
-    const agency = agenciesByKey.get(agencyKey);
+  const priorityAgencyIds = scoringProfile.priorityAgencyKeys.map(
+    (agencyKey) => {
+      const agency = agenciesByKey.get(agencyKey);
 
-    if (!agency) {
-      throw new Error(`Missing seeded priority agency for key ${agencyKey}`);
-    }
+      if (!agency) {
+        throw new Error(`Missing seeded priority agency for key ${agencyKey}`);
+      }
 
-    return agency.id;
-  });
+      return agency.id;
+    },
+  );
   const relationshipAgencyIds = scoringProfile.relationshipAgencyKeys.map(
     (agencyKey) => {
       const agency = agenciesByKey.get(agencyKey);
 
       if (!agency) {
-        throw new Error(`Missing seeded relationship agency for key ${agencyKey}`);
+        throw new Error(
+          `Missing seeded relationship agency for key ${agencyKey}`,
+        );
       }
 
       return agency.id;
@@ -885,8 +969,7 @@ async function main() {
       activeScoringModelKey: scoringProfile.activeScoringModelKey,
       activeScoringModelVersion: scoringProfile.activeScoringModelVersion,
       goRecommendationThreshold: scoringProfile.goRecommendationThreshold,
-      deferRecommendationThreshold:
-        scoringProfile.deferRecommendationThreshold,
+      deferRecommendationThreshold: scoringProfile.deferRecommendationThreshold,
       minimumRiskScorePercent: scoringProfile.minimumRiskScorePercent,
     },
     create: {
@@ -899,8 +982,7 @@ async function main() {
       activeScoringModelKey: scoringProfile.activeScoringModelKey,
       activeScoringModelVersion: scoringProfile.activeScoringModelVersion,
       goRecommendationThreshold: scoringProfile.goRecommendationThreshold,
-      deferRecommendationThreshold:
-        scoringProfile.deferRecommendationThreshold,
+      deferRecommendationThreshold: scoringProfile.deferRecommendationThreshold,
       minimumRiskScorePercent: scoringProfile.minimumRiskScorePercent,
     },
   });
@@ -954,7 +1036,10 @@ async function main() {
     })),
   });
 
-  for (const [index, vehicleKey] of scoringProfile.selectedVehicleKeys.entries()) {
+  for (const [
+    index,
+    vehicleKey,
+  ] of scoringProfile.selectedVehicleKeys.entries()) {
     const vehicle = vehiclesByKey.get(vehicleKey);
 
     if (!vehicle) {
@@ -1567,7 +1652,9 @@ async function main() {
   });
 
   for (const manualScenario of scenario.manualOpportunities) {
-    const manualAgency = agenciesByKey.get(manualScenario.opportunity.agencyKey);
+    const manualAgency = agenciesByKey.get(
+      manualScenario.opportunity.agencyKey,
+    );
     const existingManualOpportunity = await prisma.opportunity.findFirst({
       where: {
         organizationId: organization.id,
@@ -1616,9 +1703,12 @@ async function main() {
   }
 
   await syncKnowledgeAssets({
+    agenciesByKey,
     knowledgeAssets: scenario.knowledgeAssets,
     organizationId: organization.id,
+    scoringProfile,
     usersByKey,
+    vehiclesByKey,
   });
 
   await prisma.auditLog.create({
@@ -1634,7 +1724,9 @@ async function main() {
       summary:
         "Initialized baseline organization, connector metadata, and multi-source opportunity seed data.",
       metadata: {
-        seededTeamMemberEmails: scenario.teamMembers.map((member) => member.email),
+        seededTeamMemberEmails: scenario.teamMembers.map(
+          (member) => member.email,
+        ),
         seededAgencyCount: scenario.agencies.length,
         seededOpportunityCount: 1 + scenario.manualOpportunities.length,
         seededProfileCapabilityCount:

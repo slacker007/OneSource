@@ -26,6 +26,15 @@ function createMockKnowledgeWriteClient() {
     opportunity: {
       findMany: vi.fn(),
     },
+    agency: {
+      findMany: vi.fn(),
+    },
+    organizationCapability: {
+      findMany: vi.fn(),
+    },
+    contractVehicle: {
+      findMany: vi.fn(),
+    },
   } as unknown as KnowledgeAssetWriteTransactionClient;
 
   const db = {
@@ -55,6 +64,25 @@ describe("knowledge-write.service", () => {
         title: "Army Cloud Operations Recompete",
       },
     ]);
+    vi.mocked(tx.agency.findMany).mockResolvedValue([
+      {
+        id: "agency_army",
+        name: "Army PEO EIS",
+        organizationCode: "W52P1J",
+      },
+    ]);
+    vi.mocked(tx.organizationCapability.findMany).mockResolvedValue([
+      {
+        capabilityKey: "cloud-platform-engineering",
+        capabilityLabel: "Cloud platform engineering",
+      },
+    ]);
+    vi.mocked(tx.contractVehicle.findMany).mockResolvedValue([
+      {
+        code: "OASIS-PLUS-UNR",
+        name: "OASIS+ Unrestricted",
+      },
+    ]);
     vi.mocked(tx.knowledgeAsset.create).mockResolvedValue({
       id: "asset_123",
       organizationId: "org_123",
@@ -66,8 +94,16 @@ describe("knowledge-write.service", () => {
       isArchived: false,
       tags: [
         {
+          tagKey: "army",
+          tagType: "FREEFORM",
           label: "army",
           normalizedLabel: "army",
+        },
+        {
+          tagKey: "agency_army",
+          tagType: "AGENCY",
+          label: "Army PEO EIS (W52P1J)",
+          normalizedLabel: "army peo eis",
         },
       ],
       linkedOpportunities: [
@@ -85,11 +121,15 @@ describe("knowledge-write.service", () => {
       input: {
         actor,
         assetType: "WIN_THEME",
+        agencyIds: ["agency_army"],
         title: " Army cloud transition win theme ",
         summary: "Reusable transition-risk narrative.",
         body: "Full reusable narrative body for cloud transition work.",
+        capabilityKeys: ["cloud-platform-engineering"],
+        contractTypes: ["Solicitation"],
         tags: ["army"],
         opportunityIds: ["opp_123"],
+        vehicleCodes: ["OASIS-PLUS-UNR"],
       },
     });
 
@@ -98,12 +138,34 @@ describe("knowledge-write.service", () => {
         data: expect.objectContaining({
           title: "Army cloud transition win theme",
           tags: expect.objectContaining({
-            create: [
+            create: expect.arrayContaining([
               expect.objectContaining({
                 label: "army",
                 normalizedLabel: "army",
+                tagKey: "army",
+                tagType: "FREEFORM",
               }),
-            ],
+              expect.objectContaining({
+                label: "Army PEO EIS (W52P1J)",
+                tagKey: "agency_army",
+                tagType: "AGENCY",
+              }),
+              expect.objectContaining({
+                label: "Cloud platform engineering",
+                tagKey: "cloud-platform-engineering",
+                tagType: "CAPABILITY",
+              }),
+              expect.objectContaining({
+                label: "Solicitation",
+                tagKey: "solicitation",
+                tagType: "CONTRACT_TYPE",
+              }),
+              expect.objectContaining({
+                label: "OASIS-PLUS-UNR · OASIS+ Unrestricted",
+                tagKey: "OASIS-PLUS-UNR",
+                tagType: "VEHICLE",
+              }),
+            ]),
           }),
           linkedOpportunities: expect.objectContaining({
             create: [
@@ -134,6 +196,25 @@ describe("knowledge-write.service", () => {
         title: "DHS Zero Trust Assessment Support",
       },
     ]);
+    vi.mocked(tx.agency.findMany).mockResolvedValue([
+      {
+        id: "agency_dhs",
+        name: "DHS CISA OCPO",
+        organizationCode: "70RCSA",
+      },
+    ]);
+    vi.mocked(tx.organizationCapability.findMany).mockResolvedValue([
+      {
+        capabilityKey: "zero-trust-cyber-operations",
+        capabilityLabel: "Zero-trust cyber operations",
+      },
+    ]);
+    vi.mocked(tx.contractVehicle.findMany).mockResolvedValue([
+      {
+        code: "STARS-III",
+        name: "8(a) STARS III",
+      },
+    ]);
     vi.mocked(tx.knowledgeAsset.findFirstOrThrow).mockResolvedValue({
       id: "asset_123",
       organizationId: "org_123",
@@ -145,8 +226,16 @@ describe("knowledge-write.service", () => {
       isArchived: false,
       tags: [
         {
+          tagKey: "army",
+          tagType: "FREEFORM",
           label: "army",
           normalizedLabel: "army",
+        },
+        {
+          tagKey: "agency_army",
+          tagType: "AGENCY",
+          label: "Army PEO EIS (W52P1J)",
+          normalizedLabel: "army peo eis",
         },
       ],
       linkedOpportunities: [
@@ -169,8 +258,16 @@ describe("knowledge-write.service", () => {
       isArchived: false,
       tags: [
         {
+          tagKey: "zero trust",
+          tagType: "FREEFORM",
           label: "zero trust",
           normalizedLabel: "zero trust",
+        },
+        {
+          tagKey: "agency_dhs",
+          tagType: "AGENCY",
+          label: "DHS CISA OCPO (70RCSA)",
+          normalizedLabel: "dhs cisa ocpo",
         },
       ],
       linkedOpportunities: [
@@ -189,11 +286,15 @@ describe("knowledge-write.service", () => {
         actor,
         knowledgeAssetId: "asset_123",
         assetType: "BOILERPLATE_CONTENT",
+        agencyIds: ["agency_dhs"],
         title: "Zero trust transition boilerplate",
         summary: "Updated reusable narrative.",
         body: "Updated body copy with stronger transition framing.",
+        capabilityKeys: ["zero-trust-cyber-operations"],
+        contractTypes: ["Solicitation"],
         tags: ["zero trust"],
         opportunityIds: ["opp_999"],
+        vehicleCodes: ["STARS-III"],
       },
     });
 
@@ -206,6 +307,10 @@ describe("knowledge-write.service", () => {
             assetType: {
               from: "WIN_THEME",
               to: "BOILERPLATE_CONTENT",
+            },
+            agencies: {
+              from: ["Army PEO EIS (W52P1J)"],
+              to: ["DHS CISA OCPO (70RCSA)"],
             },
             linkedOpportunityIds: {
               from: ["opp_123"],
@@ -231,8 +336,16 @@ describe("knowledge-write.service", () => {
       isArchived: false,
       tags: [
         {
+          tagKey: "air force",
+          tagType: "FREEFORM",
           label: "air force",
           normalizedLabel: "air force",
+        },
+        {
+          tagKey: "agency_air_force",
+          tagType: "AGENCY",
+          label: "99th Contracting Squadron (FA4861)",
+          normalizedLabel: "99th contracting squadron",
         },
       ],
       linkedOpportunities: [

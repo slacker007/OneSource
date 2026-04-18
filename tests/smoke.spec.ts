@@ -65,9 +65,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
       name: /va claims intake automation bpa/i,
     }),
   ).toBeVisible();
-  await expect(
-    page.getByLabel(/global search/i),
-  ).toBeVisible();
+  await expect(page.getByLabel(/global search/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
   await page.getByRole("link", { name: /^Opportunities/i }).click();
   await expect(page).toHaveURL(/\/opportunities$/);
@@ -107,9 +105,13 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     page.getByText(/air force operational planning past performance/i),
   ).toBeVisible();
   await page.locator("#knowledge-type").selectOption("WIN_THEME");
+  await page
+    .locator("#knowledge-capability")
+    .selectOption("cloud-platform-engineering");
   await page.getByRole("button", { name: /apply filters/i }).click();
   await expect(page).toHaveURL(/\/knowledge\?/);
   await expect(page).toHaveURL(/type=WIN_THEME/);
+  await expect(page).toHaveURL(/capability=cloud-platform-engineering/);
   await expect(
     page.getByText(/army cloud transition win theme/i),
   ).toBeVisible();
@@ -117,13 +119,31 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page).toHaveURL(/\/knowledge\/new$/);
   await page.locator("#knowledge-asset-type").selectOption("WIN_THEME");
   await page.getByLabel(/asset title/i).fill(knowledgeAssetTitle);
-  await page.getByLabel(/summary/i).fill(
-    "Reusable zero-trust transition narrative.",
-  );
-  await page.getByLabel(/reusable content/i).fill(
-    "This reusable win theme explains how to stabilize a zero-trust transition while improving operational visibility and keeping disruption low for the mission team.",
-  );
+  await page
+    .getByLabel(/summary/i)
+    .fill("Reusable zero-trust transition narrative.");
+  await page
+    .getByLabel(/reusable content/i)
+    .fill(
+      "This reusable win theme explains how to stabilize a zero-trust transition while improving operational visibility and keeping disruption low for the mission team.",
+    );
   await page.getByLabel(/tags/i).fill("zero trust, transition");
+  await page
+    .locator(
+      'label:has-text("PEO Enterprise Information Systems") input[name="agencyIds"]',
+    )
+    .check();
+  await page
+    .locator(
+      'input[name="capabilityKeys"][value="cloud-platform-engineering"]',
+    )
+    .check();
+  await page
+    .locator('input[name="contractTypes"][value="Solicitation"]')
+    .check();
+  await page
+    .locator('input[name="vehicleCodes"][value="OASIS-PLUS-UNR"]')
+    .check();
   await page
     .getByRole("checkbox", { name: /army cloud operations recompete/i })
     .check();
@@ -133,19 +153,29 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await page.getByRole("link", { name: /return to library/i }).click();
   await expect(page).toHaveURL(/\/knowledge$/);
   await page.locator("#knowledge-query").fill(knowledgeAssetTitle);
+  await page.locator("#knowledge-vehicle").selectOption("OASIS-PLUS-UNR");
   await page.getByRole("button", { name: /apply filters/i }).click();
   await expect(page).toHaveURL(/\/knowledge\?/);
+  await expect(page).toHaveURL(/vehicle=OASIS-PLUS-UNR/);
   await expect(
     page
       .getByRole("table", { name: /knowledge asset results/i })
       .getByText(
-        new RegExp(knowledgeAssetTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+        new RegExp(
+          knowledgeAssetTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          "i",
+        ),
       ),
   ).toBeVisible();
   await expect(
     page
       .getByRole("table", { name: /knowledge asset results/i })
       .getByText(/army cloud operations recompete/i),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("table", { name: /knowledge asset results/i })
+      .getByText(/cloud platform engineering/i),
   ).toBeVisible();
   await page.getByRole("link", { name: /^Sources/i }).click();
   await expect(page).toHaveURL(/\/sources$/);
@@ -160,7 +190,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByRole("button", { name: /search external opportunities/i }),
   ).toBeVisible();
-  await page.getByRole("button", { name: /search external opportunities/i }).click();
+  await page
+    .getByRole("button", { name: /search external opportunities/i })
+    .click();
   await expect(page).toHaveURL(/\/sources\?/);
   await expect(page).toHaveURL(/keywords=cloud\+operations/);
   await expect(page).toHaveURL(/ptype=r/);
@@ -174,9 +206,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByText(/enterprise knowledge management support services/i),
   ).not.toBeVisible();
-  await expect(
-    page.getByText(/title: cloud operations/i),
-  ).toBeVisible();
+  await expect(page.getByText(/title: cloud operations/i)).toBeVisible();
   await page.getByRole("link", { name: /preview result/i }).click();
   await expect(
     page.getByRole("heading", {
@@ -214,14 +244,15 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   ).toBeVisible();
   await page.getByRole("link", { name: /^Opportunities/i }).click();
   await expect(page).toHaveURL(/\/opportunities$/);
-  await page
-    .locator("#opportunity-query")
-    .fill(csvImportTitle);
+  await page.locator("#opportunity-query").fill(csvImportTitle);
   await page.getByRole("button", { name: /apply filters/i }).click();
   await expect(page).toHaveURL(/\/opportunities\?/);
   await expect(
     page.getByRole("heading", {
-      name: new RegExp(csvImportTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+      name: new RegExp(
+        csvImportTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "i",
+      ),
     }),
   ).toBeVisible();
   await page.getByRole("link", { name: /^Analytics/i }).click();
@@ -272,7 +303,10 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page.getByText(/sam\.gov/i).first()).toBeVisible();
   await expect(page.getByText(/rate limited/i).first()).toBeVisible();
   await expect(page.getByText(/rejected/i).first()).toBeVisible();
-  await page.getByRole("button", { name: /retry sync/i }).first().click();
+  await page
+    .getByRole("button", { name: /retry sync/i })
+    .first()
+    .click();
   await expect(
     page.getByText(/saved search retry has been queued/i),
   ).toBeVisible();
@@ -316,14 +350,18 @@ test("users can create and edit tracked opportunities from the app", async ({
   await page.getByLabel(/opportunity title/i).fill(opportunityTitle);
   await page
     .getByLabel(/description/i)
-    .fill("Bridge pursuit covering zero trust engineering and transition support.");
+    .fill(
+      "Bridge pursuit covering zero trust engineering and transition support.",
+    );
   await page.getByLabel(/solicitation number/i).fill("ZT-2026-001");
   await page.getByLabel(/NAICS code/i).fill("541512");
   await page.getByLabel(/response deadline/i).fill("2026-06-18");
   await expect(page.getByText(/draft saved locally at/i)).toBeVisible();
 
   await page.reload();
-  await expect(page.getByLabel(/opportunity title/i)).toHaveValue(opportunityTitle);
+  await expect(page.getByLabel(/opportunity title/i)).toHaveValue(
+    opportunityTitle,
+  );
   await page.getByRole("button", { name: /^Create opportunity$/i }).click();
 
   await expect(page).toHaveURL(/\/opportunities\/.+\/edit\?created=1$/);
@@ -332,7 +370,9 @@ test("users can create and edit tracked opportunities from the app", async ({
       /the new tracked opportunity is now persisted and ready for follow-on workspace work/i,
     ),
   ).toBeVisible();
-  await expect(page.getByLabel(/opportunity title/i)).toHaveValue(opportunityTitle);
+  await expect(page.getByLabel(/opportunity title/i)).toHaveValue(
+    opportunityTitle,
+  );
 
   await page.getByLabel(/opportunity title/i).fill(updatedOpportunityTitle);
   await page.getByRole("button", { name: /save changes/i }).click();
@@ -345,7 +385,9 @@ test("users can create and edit tracked opportunities from the app", async ({
   ).toBeVisible();
   await page.getByRole("link", { name: /back to opportunity list/i }).click();
   await expect(page).toHaveURL(/\/opportunities$/);
-  await expect(page.getByRole("heading", { name: updatedOpportunityTitle })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: updatedOpportunityTitle }),
+  ).toBeVisible();
 });
 
 test("users can open the opportunity workspace and review seeded sections", async ({
@@ -364,7 +406,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
 
   await page.goto("/opportunities");
   await expect(page).toHaveURL(/\/opportunities$/);
-  await page.locator("#opportunity-query").fill("Enterprise Knowledge Management");
+  await page
+    .locator("#opportunity-query")
+    .fill("Enterprise Knowledge Management");
   await page.getByRole("button", { name: /apply filters/i }).click();
 
   await expect(page).toHaveURL(/q=Enterprise\+Knowledge\+Management/);
@@ -383,9 +427,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByRole("heading", { name: /^Overview$/i }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: /^Scoring$/i }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Scoring$/i })).toBeVisible();
   await expect(page.getByText(/weight/i).first()).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /^Decision history$/i }),
@@ -413,7 +455,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     page.getByRole("heading", { name: /^Capture Summary$/i }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /^Bid decision recorded as GO$/i }).first(),
+    page
+      .getByRole("heading", { name: /^Bid decision recorded as GO$/i })
+      .first(),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /^Stage transition$/i }),
@@ -439,16 +483,20 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     page.getByRole("heading", { name: /^Executive Review$/i }).first(),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", {
-      name: /^Bid decision recorded as GO$/i,
-    }).first(),
+    page
+      .getByRole("heading", {
+        name: /^Bid decision recorded as GO$/i,
+      })
+      .first(),
   ).toBeVisible();
   await page.locator("#task-create-title").fill(createdTaskTitle);
   const assigneeOptionLabel = (
     await page.locator("#task-create-assignee option").allTextContents()
   ).find((label) => /alex morgan|admin@onesource\.local/i.test(label));
   if (!assigneeOptionLabel) {
-    throw new Error("Could not find the signed-in user in the task assignee list.");
+    throw new Error(
+      "Could not find the signed-in user in the task assignee list.",
+    );
   }
   await page.locator("#task-create-assignee").selectOption({
     label: assigneeOptionLabel,
@@ -470,7 +518,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await page
     .locator("#milestone-create-target-date")
     .fill(formatDateInputValue(createdMilestoneDate));
-  await page.locator("#milestone-create-type").selectOption("decision_checkpoint");
+  await page
+    .locator("#milestone-create-type")
+    .selectOption("decision_checkpoint");
   await page.locator("#milestone-create-status").selectOption("AT_RISK");
   await page
     .locator("#milestone-create-description")
@@ -488,7 +538,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await page.locator("#note-create-pinned").selectOption("true");
   await page
     .locator("#note-create-body")
-    .fill("Customer signals remain positive and the capture plan should stay pinned for the team.");
+    .fill(
+      "Customer signals remain positive and the capture plan should stay pinned for the team.",
+    );
   await page.getByRole("button", { name: /^add note$/i }).click();
   await expect(
     page.getByText(/note saved to the workspace history/i),
@@ -497,7 +549,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     page.getByRole("heading", { name: createdNoteTitle, exact: true }).first(),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: new RegExp(`^Note added: ${createdNoteTitle}$`, "i") }),
+    page.getByRole("heading", {
+      name: new RegExp(`^Note added: ${createdNoteTitle}$`, "i"),
+    }),
   ).toBeVisible();
   await page.locator("#document-create-title").fill(createdDocumentTitle);
   await page.locator("#document-create-type").selectOption("capture_plan");
@@ -511,7 +565,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   });
   await page.getByRole("button", { name: /^upload document$/i }).click();
   await expect(
-    page.getByText(/document uploaded\. the workspace now shows the stored metadata and queued extraction status/i),
+    page.getByText(
+      /document uploaded\. the workspace now shows the stored metadata and queued extraction status/i,
+    ),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: createdDocumentTitle, exact: true }),
@@ -519,9 +575,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByRole("link", { name: /download stored file/i }).first(),
   ).toBeVisible();
-  await expect(
-    page.getByText(/pending/i).first(),
-  ).toBeVisible();
+  await expect(page.getByText(/pending/i).first()).toBeVisible();
 
   await page.getByRole("link", { name: /^Tasks/i }).click();
   await expect(page).toHaveURL(/\/tasks$/);
@@ -542,7 +596,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
 
   await page.goto("/opportunities");
   await expect(page).toHaveURL(/\/opportunities$/);
-  await page.locator("#opportunity-query").fill("Enterprise Knowledge Management");
+  await page
+    .locator("#opportunity-query")
+    .fill("Enterprise Knowledge Management");
   await page.getByRole("button", { name: /apply filters/i }).click();
   await page.getByRole("link", { name: /open workspace/i }).click();
 
@@ -556,7 +612,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .first()
     .textContent();
   if (!targetStageValue || !targetStageLabel) {
-    throw new Error("No stage-transition target option was available in the workspace.");
+    throw new Error(
+      "No stage-transition target option was available in the workspace.",
+    );
   }
   const escapedTargetStageLabel = targetStageLabel.replace(
     /[.*+?^${}()|[\]\\]/g,
@@ -613,9 +671,7 @@ test.describe("mobile navigation", () => {
     await expect(
       page.getByRole("table", { name: /opportunity pipeline results/i }),
     ).toBeVisible();
-    await expect(
-      page.getByLabel(/global search/i),
-    ).toBeVisible();
+    await expect(page.getByLabel(/global search/i)).toBeVisible();
   });
 });
 

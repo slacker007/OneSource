@@ -1,11 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useActionState,
-  useState,
-  type ChangeEvent,
-} from "react";
+import { useActionState, useState, type ChangeEvent } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { FormField } from "@/components/ui/form-field";
@@ -19,6 +15,7 @@ import {
 import {
   KNOWLEDGE_ASSET_TYPE_LABELS,
   KNOWLEDGE_ASSET_TYPES,
+  type KnowledgeFacetOption,
   type KnowledgeAssetFormFieldName,
   type KnowledgeAssetFormSnapshot,
 } from "@/modules/knowledge/knowledge.types";
@@ -29,13 +26,11 @@ type KnowledgeFormProps = {
     formData: FormData,
   ) => Promise<KnowledgeAssetFormActionState>;
   deleteAction?: (formData: FormData) => Promise<void>;
-  feedback:
-    | {
-        tone: "accent" | "warning";
-        title: string;
-        message: string;
-      }
-    | null;
+  feedback: {
+    tone: "accent" | "warning";
+    title: string;
+    message: string;
+  } | null;
   snapshot: KnowledgeAssetFormSnapshot;
 };
 
@@ -71,12 +66,38 @@ export function KnowledgeForm({
       ...currentValues,
       opportunityIds: checked
         ? [...currentValues.opportunityIds, opportunityId]
-        : currentValues.opportunityIds.filter((value) => value !== opportunityId),
+        : currentValues.opportunityIds.filter(
+            (value) => value !== opportunityId,
+          ),
+    }));
+  }
+
+  function handleMultiSelectToggle({
+    checked,
+    field,
+    value,
+  }: {
+    checked: boolean;
+    field: "agencyIds" | "capabilityKeys" | "contractTypes" | "vehicleCodes";
+    value: string;
+  }) {
+    setValues((currentValues) => ({
+      ...currentValues,
+      [field]: checked
+        ? [...currentValues[field], value]
+        : currentValues[field].filter((currentValue) => currentValue !== value),
     }));
   }
 
   const modeLabel =
-    snapshot.mode === "create" ? "Create knowledge asset" : "Edit knowledge asset";
+    snapshot.mode === "create"
+      ? "Create knowledge asset"
+      : "Edit knowledge asset";
+  const structuredTagCount =
+    values.agencyIds.length +
+    values.capabilityKeys.length +
+    values.contractTypes.length +
+    values.vehicleCodes.length;
 
   return (
     <section className="space-y-6">
@@ -92,6 +113,11 @@ export function KnowledgeForm({
                 {values.opportunityIds.length === 1
                   ? "1 linked pursuit"
                   : `${values.opportunityIds.length} linked pursuits`}
+              </Badge>
+              <Badge tone="accent">
+                {structuredTagCount === 1
+                  ? "1 structured retrieval tag"
+                  : `${structuredTagCount} structured retrieval tags`}
               </Badge>
             </div>
             <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
@@ -125,6 +151,11 @@ export function KnowledgeForm({
               supportingText="Selected tracked pursuits"
               value={String(values.opportunityIds.length)}
             />
+            <SummaryCard
+              label="Retrieval tags"
+              supportingText="Structured agency, capability, contract-type, and vehicle coverage"
+              value={String(structuredTagCount)}
+            />
           </div>
         </div>
       </header>
@@ -147,7 +178,11 @@ export function KnowledgeForm({
 
       <form action={formAction} className="space-y-6">
         {snapshot.assetId ? (
-          <input name="knowledgeAssetId" type="hidden" value={snapshot.assetId} />
+          <input
+            name="knowledgeAssetId"
+            type="hidden"
+            value={snapshot.assetId}
+          />
         ) : null}
 
         <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
@@ -256,6 +291,65 @@ export function KnowledgeForm({
         <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
           <div className="space-y-2">
             <p className="text-muted text-xs tracking-[0.24em] uppercase">
+              Structured retrieval
+            </p>
+            <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
+              Tag the reusable context this asset covers
+            </h2>
+            <p className="text-muted text-sm leading-6">
+              These structured tags power fast browse filters now and the
+              upcoming in-workspace suggestion ranking in the next knowledge
+              slice.
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-6 xl:grid-cols-2">
+            <FacetCheckboxFieldset
+              description="Select the agencies where this language has proven relevance."
+              emptyMessage="No agencies are available in the current workspace."
+              error={formState.fieldErrors.agencyIds}
+              field="agencyIds"
+              onToggle={handleMultiSelectToggle}
+              options={snapshot.agencyOptions}
+              selectedValues={values.agencyIds}
+              title="Agencies"
+            />
+            <FacetCheckboxFieldset
+              description="Choose the organizational capabilities this content supports."
+              emptyMessage="No active capabilities are configured yet."
+              error={formState.fieldErrors.capabilityKeys}
+              field="capabilityKeys"
+              onToggle={handleMultiSelectToggle}
+              options={snapshot.capabilityOptions}
+              selectedValues={values.capabilityKeys}
+              title="Capabilities"
+            />
+            <FacetCheckboxFieldset
+              description="Mark the procurement or notice types this content fits."
+              emptyMessage="No contract types have been observed yet in this workspace."
+              error={formState.fieldErrors.contractTypes}
+              field="contractTypes"
+              onToggle={handleMultiSelectToggle}
+              options={snapshot.contractTypeOptions}
+              selectedValues={values.contractTypes}
+              title="Contract types"
+            />
+            <FacetCheckboxFieldset
+              description="Choose the vehicles where this language is ready to reuse."
+              emptyMessage="No contract vehicles are configured in this workspace."
+              error={formState.fieldErrors.vehicleCodes}
+              field="vehicleCodes"
+              onToggle={handleMultiSelectToggle}
+              options={snapshot.vehicleOptions}
+              selectedValues={values.vehicleCodes}
+              title="Vehicles"
+            />
+          </div>
+        </section>
+
+        <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
+          <div className="space-y-2">
+            <p className="text-muted text-xs tracking-[0.24em] uppercase">
               Opportunity links
             </p>
             <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
@@ -275,28 +369,33 @@ export function KnowledgeForm({
 
           <div className="mt-6 grid gap-3 lg:grid-cols-2">
             {snapshot.opportunityOptions.map((opportunity) => {
-              const isChecked = values.opportunityIds.includes(opportunity.value);
+              const isChecked = values.opportunityIds.includes(
+                opportunity.value,
+              );
 
               return (
                 <label
                   key={opportunity.value}
-                  className="flex items-start gap-3 rounded-[24px] border border-border bg-white px-4 py-4 shadow-[0_10px_24px_rgba(20,37,34,0.04)]"
+                  className="border-border flex items-start gap-3 rounded-[24px] border bg-white px-4 py-4 shadow-[0_10px_24px_rgba(20,37,34,0.04)]"
                 >
                   <input
                     checked={isChecked}
-                    className="mt-1 h-4 w-4 rounded border-border text-[rgb(19,78,68)]"
+                    className="border-border mt-1 h-4 w-4 rounded text-[rgb(19,78,68)]"
                     name="opportunityIds"
                     onChange={(event) =>
-                      handleOpportunityToggle(opportunity.value, event.target.checked)
+                      handleOpportunityToggle(
+                        opportunity.value,
+                        event.target.checked,
+                      )
                     }
                     type="checkbox"
                     value={opportunity.value}
                   />
                   <span className="space-y-1">
-                    <span className="block text-sm font-medium text-foreground">
+                    <span className="text-foreground block text-sm font-medium">
                       {opportunity.label}
                     </span>
-                    <span className="block text-xs text-muted">
+                    <span className="text-muted block text-xs">
                       {opportunity.currentStageLabel}
                     </span>
                   </span>
@@ -320,7 +419,7 @@ export function KnowledgeForm({
                   : "Save knowledge asset"}
             </button>
             <Link
-              className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-white px-5 py-3 text-sm font-medium text-foreground transition hover:bg-[rgba(15,28,31,0.03)]"
+              className="border-border text-foreground inline-flex min-h-12 items-center justify-center rounded-full border bg-white px-5 py-3 text-sm font-medium transition hover:bg-[rgba(15,28,31,0.03)]"
               href="/knowledge"
             >
               Cancel
@@ -378,11 +477,96 @@ function Banner({
   tone: "accent" | "warning" | "danger";
 }) {
   return (
-    <section className="rounded-[28px] border border-border bg-white px-6 py-5 shadow-[0_14px_34px_rgba(20,37,34,0.06)]">
+    <section className="border-border rounded-[28px] border bg-white px-6 py-5 shadow-[0_14px_34px_rgba(20,37,34,0.06)]">
       <div className="flex flex-wrap gap-3">
         <Badge tone={tone}>{title}</Badge>
       </div>
       <p className="text-muted mt-3 text-sm leading-6">{message}</p>
+    </section>
+  );
+}
+
+function FacetCheckboxFieldset({
+  description,
+  emptyMessage,
+  error,
+  field,
+  onToggle,
+  options,
+  selectedValues,
+  title,
+}: {
+  description: string;
+  emptyMessage: string;
+  error?: string;
+  field: "agencyIds" | "capabilityKeys" | "contractTypes" | "vehicleCodes";
+  onToggle: (input: {
+    checked: boolean;
+    field: "agencyIds" | "capabilityKeys" | "contractTypes" | "vehicleCodes";
+    value: string;
+  }) => void;
+  options: KnowledgeFacetOption[];
+  selectedValues: string[];
+  title: string;
+}) {
+  return (
+    <section className="border-border space-y-3 rounded-[24px] border bg-white px-4 py-4 shadow-[0_10px_24px_rgba(20,37,34,0.04)]">
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-foreground text-sm font-medium">{title}</p>
+          <Badge tone="muted">
+            {selectedValues.length === 1
+              ? "1 selected"
+              : `${selectedValues.length} selected`}
+          </Badge>
+        </div>
+        <p className="text-muted text-xs leading-5">{description}</p>
+        {error ? (
+          <p className="text-xs leading-5 text-[rgb(133,69,49)]">{error}</p>
+        ) : null}
+      </div>
+
+      {options.length === 0 ? (
+        <p className="text-muted text-sm">{emptyMessage}</p>
+      ) : (
+        <div className="grid gap-3">
+          {options.map((option) => {
+            const isChecked = selectedValues.includes(option.value);
+
+            return (
+              <label
+                key={`${field}-${option.value}`}
+                className="border-border flex items-start gap-3 rounded-[20px] border bg-[rgba(15,28,31,0.02)] px-4 py-3"
+              >
+                <input
+                  checked={isChecked}
+                  className="border-border mt-1 h-4 w-4 rounded text-[rgb(19,78,68)]"
+                  name={field}
+                  onChange={(event) =>
+                    onToggle({
+                      checked: event.target.checked,
+                      field,
+                      value: option.value,
+                    })
+                  }
+                  type="checkbox"
+                  value={option.value}
+                />
+                <span className="space-y-1">
+                  <span className="text-foreground block text-sm font-medium">
+                    {option.label}
+                  </span>
+                  {option.description ? (
+                    <span className="text-muted block text-xs">
+                      {option.description}
+                    </span>
+                  ) : null}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
