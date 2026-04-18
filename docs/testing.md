@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 4 source-search preview/import baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 4 opportunity create/edit baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/sources` external-search flow with mocked connector responses plus preview-and-link import behavior, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/sources` external-search flow with mocked connector responses plus preview-and-link import behavior, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -44,6 +44,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - submit seeded local credentials through the credentials provider
 - land back on the protected shell with the authenticated-session UI visible
 - navigate into `/opportunities`, apply real source and stage filters, and observe the URL plus result set update together
+- open `/opportunities/new`, restore a browser-local draft, create a tracked opportunity through the guarded form path, then edit that opportunity through the guarded update flow
 - navigate into `/sources`, submit a structured mocked `sam.gov` search, and observe the URL plus mocked result set update together
 - open a source-result preview, inspect duplicate detection, and either link the result into the existing tracked opportunity or confirm the already-linked state on reruns
 - navigate from the desktop shell into another primary section with the top-bar search placeholder still visible
@@ -87,6 +88,12 @@ For the current Phase 4 opportunities-list slice, targeted unit verification sho
 - the typed opportunity repository filters, sorts, paginates, and labels seeded opportunities without leaking raw Prisma payloads into the page layer
 - the rendered opportunity list page shows URL-synced control values, result rows, pagination state, and a truthful empty state
 
+For the current Phase 4 opportunity-form slice, targeted unit verification should confirm:
+
+- the typed opportunity form schema validates required fields, parses optional values, and converts deadline input into a stable typed write payload
+- the client opportunity form restores browser-local drafts and persists updated draft state without coupling validation rules to page-local ad hoc logic
+- the opportunity list exposes stable create and edit entry points into the guarded form routes
+
 When the changed area includes Prisma schema or seed logic, also run:
 
 ```bash
@@ -110,6 +117,13 @@ To point Playwright at an already-running host or compose stack:
 
 ```bash
 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e
+```
+
+If host-side `npm run e2e` fails before tests start because the Next.js dev server reports a Turbopack checksum or cache-corruption panic, clear the generated `.next` directory and rerun the same Playwright command:
+
+```bash
+rm -rf .next
+npm run e2e
 ```
 
 ## Compose Verification Commands

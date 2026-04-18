@@ -157,6 +157,54 @@ test("authenticated homepage smoke test", async ({ page }) => {
   await expect(page.getByText(/seed\.bootstrap/i).first()).toBeVisible();
 });
 
+test("users can create and edit tracked opportunities from the app", async ({
+  page,
+}) => {
+  const opportunityTitle = `Zero Trust Integration Support Bridge ${Date.now()}`;
+  const updatedOpportunityTitle = `${opportunityTitle} Updated`;
+
+  await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
+
+  await page.getByRole("link", { name: /^Opportunities/i }).click();
+  await expect(page).toHaveURL(/\/opportunities$/);
+  await page.getByRole("link", { name: /create tracked opportunity/i }).click();
+  await expect(page).toHaveURL(/\/opportunities\/new$/);
+
+  await page.getByLabel(/opportunity title/i).fill(opportunityTitle);
+  await page
+    .getByLabel(/description/i)
+    .fill("Bridge pursuit covering zero trust engineering and transition support.");
+  await page.getByLabel(/solicitation number/i).fill("ZT-2026-001");
+  await page.getByLabel(/NAICS code/i).fill("541512");
+  await page.getByLabel(/response deadline/i).fill("2026-06-18");
+  await expect(page.getByText(/draft saved locally at/i)).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByLabel(/opportunity title/i)).toHaveValue(opportunityTitle);
+  await page.getByRole("button", { name: /^Create opportunity$/i }).click();
+
+  await expect(page).toHaveURL(/\/opportunities\/.+\/edit\?created=1$/);
+  await expect(
+    page.getByText(
+      /the new tracked opportunity is now persisted and ready for follow-on workspace work/i,
+    ),
+  ).toBeVisible();
+  await expect(page.getByLabel(/opportunity title/i)).toHaveValue(opportunityTitle);
+
+  await page.getByLabel(/opportunity title/i).fill(updatedOpportunityTitle);
+  await page.getByRole("button", { name: /save changes/i }).click();
+
+  await expect(page).toHaveURL(/updated=1$/);
+  await expect(
+    page.getByText(
+      /changes were saved through the guarded application flow and are now visible to the workspace/i,
+    ),
+  ).toBeVisible();
+  await page.getByRole("link", { name: /back to opportunity list/i }).click();
+  await expect(page).toHaveURL(/\/opportunities$/);
+  await expect(page.getByRole("heading", { name: updatedOpportunityTitle })).toBeVisible();
+});
+
 test.describe("mobile navigation", () => {
   test.use({
     viewport: {

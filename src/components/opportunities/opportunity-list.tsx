@@ -66,26 +66,35 @@ export function OpportunityList({ snapshot }: OpportunityListProps) {
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <SummaryCard
-              label="Results"
-              value={String(snapshot.totalCount)}
-              supportingText={`${showingFrom}-${showingTo} on this page`}
-            />
-            <SummaryCard
-              label="Active filters"
-              value={String(snapshot.availableFilterCount)}
-              supportingText={
-                snapshot.availableFilterCount > 0
-                  ? "Applied from the URL query string"
-                  : "Showing the default workspace view"
-              }
-            />
-            <SummaryCard
-              label="Workspace"
-              value={snapshot.organization.name}
-              supportingText={`Page ${snapshot.query.page} of ${snapshot.pageCount}`}
-            />
+          <div className="space-y-3">
+            <Link
+              className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
+              href="/opportunities/new"
+            >
+              Create tracked opportunity
+            </Link>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <SummaryCard
+                label="Results"
+                value={String(snapshot.totalCount)}
+                supportingText={`${showingFrom}-${showingTo} on this page`}
+              />
+              <SummaryCard
+                label="Active filters"
+                value={String(snapshot.availableFilterCount)}
+                supportingText={
+                  snapshot.availableFilterCount > 0
+                    ? "Applied from the URL query string"
+                    : "Showing the default workspace view"
+                }
+              />
+              <SummaryCard
+                label="Workspace"
+                value={snapshot.organization.name}
+                supportingText={`Page ${snapshot.query.page} of ${snapshot.pageCount}`}
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -413,6 +422,13 @@ function OpportunityCell({
       {opportunity.sourceSummaryText ? (
         <p className="text-sm leading-6 text-muted">{opportunity.sourceSummaryText}</p>
       ) : null}
+
+      <Link
+        className="inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+        href={`/opportunities/${opportunity.id}/edit`}
+      >
+        Edit opportunity
+      </Link>
     </div>
   );
 }

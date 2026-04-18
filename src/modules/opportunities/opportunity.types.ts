@@ -171,6 +171,41 @@ export type OpportunityListSnapshot = {
   totalCount: number;
 };
 
+export type OpportunityFormMode = "create" | "edit";
+
+export type OpportunityFormValues = {
+  title: string;
+  description: string;
+  leadAgencyId: string;
+  responseDeadlineAt: string;
+  solicitationNumber: string;
+  naicsCode: string;
+};
+
+export type OpportunityFormFieldName = keyof OpportunityFormValues;
+
+export type OpportunityFormFieldErrors = Partial<
+  Record<OpportunityFormFieldName, string>
+>;
+
+export type OpportunityFormAgencyOption = {
+  label: string;
+  value: string;
+};
+
+export type OpportunityFormSnapshot = {
+  agencyOptions: OpportunityFormAgencyOption[];
+  currentStageKey: string;
+  currentStageLabel: string;
+  draftStorageKey: string;
+  initialValues: OpportunityFormValues;
+  mode: OpportunityFormMode;
+  opportunityId: string | null;
+  organization: OrganizationSummary;
+  originSourceSystem: string | null;
+  updatedAt: string | null;
+};
+
 export type OpportunityStageSummary = {
   stageKey: string;
   stageLabel: string;

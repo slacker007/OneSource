@@ -263,12 +263,14 @@ Symptoms:
 
 - Playwright exits non-zero
 - `playwright-report/` or `test-results/` contains artifacts
+- the host-side Next.js web server crashes before tests start with a Turbopack checksum or cache-corruption panic
 
 Recovery:
 
 1. Inspect the report artifacts in `playwright-report/` and `test-results/`.
 2. Confirm `web` is healthy with `docker compose ps` or `curl /api/health`.
-3. Re-run either the host-side `npm run e2e` flow or the compose Playwright workflow depending on the failing environment.
+3. If the failure is in the host-side Playwright web server and the error references Turbopack cache corruption, clear the generated cache with `rm -rf .next`.
+4. Re-run either the host-side `npm run e2e` flow or the compose Playwright workflow depending on the failing environment.
 
 ## Operational Gaps
 

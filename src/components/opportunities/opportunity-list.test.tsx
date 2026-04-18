@@ -86,6 +86,12 @@ describe("OpportunityList", () => {
     expect(screen.getByText(/search: cloud/i)).toBeInTheDocument();
     expect(screen.getByDisplayValue(/541512/i)).toBeInTheDocument();
     expect(
+      screen.getByRole("link", { name: /create tracked opportunity/i }),
+    ).toHaveAttribute("href", "/opportunities/new");
+    expect(
+      screen.getByRole("link", { name: /edit opportunity/i }),
+    ).toHaveAttribute("href", "/opportunities/opp_123/edit");
+    expect(
       screen.getByRole("cell", { name: /manual entry/i }),
     ).toBeInTheDocument();
   });
