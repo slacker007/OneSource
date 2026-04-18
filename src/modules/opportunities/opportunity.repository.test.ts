@@ -451,6 +451,16 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
           email: "taylor@example.com",
         },
       ],
+      competitors: [
+        {
+          id: "competitor_harbor",
+          name: "Harbor Mission Technologies",
+        },
+        {
+          id: "competitor_1",
+          name: "Vector Analytics LLC",
+        },
+      ],
       knowledgeAssets: [
         {
           id: "knowledge_air_force",
@@ -768,6 +778,7 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
         },
       },
     ],
+    closeouts: [],
   };
 }
 
@@ -1128,6 +1139,17 @@ describe("opportunity.repository", () => {
           value: "user_taylor",
         },
       ],
+      competitorOptions: [
+        {
+          label: "Harbor Mission Technologies",
+          value: "competitor_harbor",
+        },
+        {
+          label: "Vector Analytics LLC",
+          value: "competitor_1",
+        },
+      ],
+      closeout: null,
       opportunity: {
         title: "Enterprise Knowledge Management Support Services",
         procurementTypeLabel: "Solicitation",
@@ -1210,6 +1232,49 @@ describe("opportunity.repository", () => {
     expect(snapshot?.knowledgeSuggestions[0]?.matchReasons).toContain(
       "Linked to this opportunity",
     );
+  });
+
+  it("maps the current closeout for closed opportunity workspaces", async () => {
+    const record = buildOpportunityWorkspaceRecord();
+
+    record.currentStageKey = "no_bid";
+    record.currentStageLabel = "No Bid";
+    record.closeouts = [
+      {
+        id: "closeout_1",
+        isCurrent: true,
+        outcomeStageKey: "no_bid",
+        outcomeStageLabel: "No Bid",
+        outcomeReason:
+          "The team passed because customer access and incumbent advantage were both weak.",
+        lessonsLearned:
+          "Document relationship gaps before the first bid review so the team exits sooner.",
+        recordedAt: new Date("2026-04-18T09:00:00.000Z"),
+        recordedByUser: {
+          name: "Sam Rivera",
+          email: "sam@example.com",
+        },
+        competitor: {
+          id: "competitor_harbor",
+          name: "Harbor Mission Technologies",
+        },
+      },
+    ];
+
+    const db = createWorkspaceRepositoryClient(record);
+    const snapshot = await getOpportunityWorkspaceSnapshot({
+      db,
+      opportunityId: "opp_alpha",
+    });
+
+    expect(snapshot?.closeout).toMatchObject({
+      id: "closeout_1",
+      outcomeStageKey: "no_bid",
+      outcomeStageLabel: "No Bid",
+      competitorId: "competitor_harbor",
+      competitorName: "Harbor Mission Technologies",
+      recordedByName: "Sam Rivera",
+    });
   });
 
   it("calculates a workspace scorecard when no persisted current scorecard exists", async () => {

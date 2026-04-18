@@ -10,6 +10,11 @@ import {
   type OpportunityBidDecisionActionState,
 } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
 import {
+  INITIAL_OPPORTUNITY_CLOSEOUT_ACTION_STATE,
+  validateOpportunityCloseoutFormSubmission,
+  type OpportunityCloseoutActionState,
+} from "@/modules/opportunities/opportunity-closeout-form.schema";
+import {
   INITIAL_OPPORTUNITY_DOCUMENT_ACTION_STATE,
   validateOpportunityDocumentFormSubmission,
   type OpportunityDocumentActionState,
@@ -43,6 +48,7 @@ import {
   deleteOpportunityMilestone,
   deleteOpportunityTask,
   recordBidDecision,
+  recordOpportunityCloseout,
   recordStageTransition,
   updateOpportunityMilestone,
   updateOpportunityTask,
@@ -144,6 +150,47 @@ export async function recordOpportunityBidDecisionAction(
   return {
     ...INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE,
     successMessage: "Bid decision recorded and added to workspace history.",
+  };
+}
+
+export async function recordOpportunityCloseoutAction(
+  _previousState: OpportunityCloseoutActionState,
+  formData: FormData,
+): Promise<OpportunityCloseoutActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const validation = validateOpportunityCloseoutFormSubmission(formData);
+
+  if (!validation.success) {
+    return validation.state;
+  }
+
+  try {
+    await recordOpportunityCloseout({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        opportunityId,
+        competitorId: validation.submission.competitorId,
+        outcomeReason: validation.submission.outcomeReason,
+        lessonsLearned: validation.submission.lessonsLearned,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_CLOSEOUT_ACTION_STATE,
+      formError:
+        error instanceof Error
+          ? error.message
+          : "The opportunity closeout could not be recorded.",
+    };
+  }
+
+  revalidateOpportunitySurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_CLOSEOUT_ACTION_STATE,
+    successMessage: "Closeout notes recorded and added to workspace history.",
   };
 }
 

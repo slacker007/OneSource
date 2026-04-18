@@ -61,6 +61,17 @@ type BidDecisionRecord = {
   decidedAt: Date | null;
 };
 
+type OpportunityCloseoutRecord = {
+  id: string;
+  outcomeStageKey: string;
+  outcomeStageLabel: string | null;
+  recordedAt: Date;
+  competitor: {
+    id: string;
+    name: string;
+  } | null;
+};
+
 type OpportunityTaskAuditRecord = {
   id: string;
   organizationId: string;
@@ -197,6 +208,19 @@ const bidDecisionAuditSelect = {
   recommendationOutcome: true,
   finalOutcome: true,
   decidedAt: true,
+} as const;
+
+const opportunityCloseoutAuditSelect = {
+  id: true,
+  outcomeStageKey: true,
+  outcomeStageLabel: true,
+  recordedAt: true,
+  competitor: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
 } as const;
 
 const opportunityStageValidationSelect = {
@@ -485,6 +509,20 @@ export type OpportunityWriteTransactionClient = AuditLogWriter & {
       select: typeof bidDecisionAuditSelect;
     }): Promise<BidDecisionRecord>;
   };
+  opportunityCloseout: {
+    updateMany(args: {
+      where: {
+        organizationId: string;
+        opportunityId: string;
+        isCurrent: boolean;
+      };
+      data: Prisma.OpportunityCloseoutUncheckedUpdateManyInput;
+    }): Promise<{ count: number }>;
+    create(args: {
+      data: Prisma.OpportunityCloseoutUncheckedCreateInput;
+      select: typeof opportunityCloseoutAuditSelect;
+    }): Promise<OpportunityCloseoutRecord>;
+  };
   sourceRecord: {
     findFirstOrThrow(args: {
       where: {
@@ -501,6 +539,17 @@ export type OpportunityWriteTransactionClient = AuditLogWriter & {
     }): Promise<SourceImportDecisionRecord>;
   };
   user: {
+    findFirst(args: {
+      where: {
+        id: string;
+        organizationId: string;
+      };
+      select: {
+        id: true;
+      };
+    }): Promise<TaskAssigneeLookupRecord | null>;
+  };
+  competitor: {
     findFirst(args: {
       where: {
         id: string;
@@ -674,6 +723,16 @@ export type RecordBidDecisionInput = {
   decisionMetadata?: Prisma.InputJsonValue | null;
   recommendedAt?: Date | null;
   decidedAt?: Date | null;
+  occurredAt?: Date;
+};
+
+export type RecordOpportunityCloseoutInput = {
+  actor: OpportunityWriteActor;
+  opportunityId: string;
+  competitorId?: string | null;
+  outcomeReason: string;
+  lessonsLearned: string;
+  recordedAt?: Date;
   occurredAt?: Date;
 };
 
@@ -1951,6 +2010,133 @@ export async function recordBidDecision({
   });
 }
 
+export async function recordOpportunityCloseout({
+  db,
+  input,
+}: {
+  db: OpportunityWriteClient;
+  input: RecordOpportunityCloseoutInput;
+}) {
+  return db.$transaction(async (tx) => {
+    const opportunity = await tx.opportunity.findFirstOrThrow({
+      where: {
+        id: input.opportunityId,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityAuditSelect,
+    });
+
+    const stageKey = normalizeRequiredText(
+      opportunity.currentStageKey ?? "",
+      "Opportunity stage",
+    );
+    const stageLabel =
+      normalizeOptionalText(opportunity.currentStageLabel) ??
+      humanizeStageKey(stageKey) ??
+      stageKey;
+
+    if (!isClosedStageKey(stageKey)) {
+      throw new Error(
+        "Closeout details can only be recorded after the opportunity is moved to a closed stage.",
+      );
+    }
+
+    const competitorId = await resolveOpportunityCompetitorId({
+      tx,
+      organizationId: opportunity.organizationId,
+      competitorId: input.competitorId,
+      required: stageKey !== "no_bid",
+    });
+    const recordedAt = input.recordedAt ?? input.occurredAt ?? new Date();
+
+    await tx.opportunityCloseout.updateMany({
+      where: {
+        organizationId: opportunity.organizationId,
+        opportunityId: opportunity.id,
+        isCurrent: true,
+      },
+      data: {
+        isCurrent: false,
+      },
+    });
+
+    const closeout = await tx.opportunityCloseout.create({
+      data: {
+        organizationId: opportunity.organizationId,
+        opportunityId: opportunity.id,
+        competitorId,
+        recordedByUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        outcomeStageKey: stageKey,
+        outcomeStageLabel: stageLabel,
+        outcomeReason: normalizeRequiredText(
+          input.outcomeReason,
+          "Outcome reason",
+        ),
+        lessonsLearned: normalizeRequiredText(
+          input.lessonsLearned,
+          "Lessons learned",
+        ),
+        recordedAt,
+        isCurrent: true,
+      },
+      select: opportunityCloseoutAuditSelect,
+    });
+
+    await tx.opportunityActivityEvent.create({
+      data: {
+        actorIdentifier: input.actor.identifier ?? null,
+        actorType: input.actor.type,
+        actorUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        description: normalizeOptionalText(input.outcomeReason),
+        eventType: "opportunity_closeout_recorded",
+        metadata: {
+          closeoutId: closeout.id,
+          outcomeStageKey: closeout.outcomeStageKey,
+          outcomeStageLabel: closeout.outcomeStageLabel,
+          competitorId: closeout.competitor?.id ?? null,
+          competitorName: closeout.competitor?.name ?? null,
+        },
+        occurredAt: closeout.recordedAt,
+        opportunityId: opportunity.id,
+        organizationId: opportunity.organizationId,
+        relatedEntityId: closeout.id,
+        relatedEntityType: "opportunity_closeout",
+        title: `Closeout recorded for ${stageLabel}`,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await recordAuditEvent({
+      db: tx,
+      event: {
+        organizationId: opportunity.organizationId,
+        actor: input.actor,
+        action: AUDIT_ACTIONS.opportunityCloseoutRecord,
+        target: {
+          type: "opportunity",
+          id: opportunity.id,
+          display: opportunity.title,
+        },
+        summary: `Recorded closeout notes for ${opportunity.title}.`,
+        metadata: {
+          closeoutId: closeout.id,
+          outcomeStageKey: closeout.outcomeStageKey,
+          outcomeStageLabel: closeout.outcomeStageLabel,
+          competitorId: closeout.competitor?.id ?? null,
+          competitorName: closeout.competitor?.name ?? null,
+        },
+        occurredAt: closeout.recordedAt,
+      },
+    });
+
+    return closeout;
+  });
+}
+
 export async function recordSourceImportDecision({
   db,
   input,
@@ -2073,6 +2259,46 @@ async function resolveTaskAssigneeUserId({
   return assignee.id;
 }
 
+async function resolveOpportunityCompetitorId({
+  tx,
+  organizationId,
+  competitorId,
+  required,
+}: {
+  tx: OpportunityWriteTransactionClient;
+  organizationId: string;
+  competitorId: string | null | undefined;
+  required: boolean;
+}) {
+  const normalizedCompetitorId = normalizeOptionalText(competitorId);
+
+  if (!normalizedCompetitorId) {
+    if (required) {
+      throw new Error(
+        "Select a recorded competitor before saving closeout notes for awarded or lost pursuits.",
+      );
+    }
+
+    return null;
+  }
+
+  const competitor = await tx.competitor.findFirst({
+    where: {
+      id: normalizedCompetitorId,
+      organizationId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!competitor) {
+    throw new Error("The selected competitor is not available in this workspace.");
+  }
+
+  return competitor.id;
+}
+
 function buildTaskLifecycleDates({
   status,
   occurredAt,
@@ -2140,6 +2366,10 @@ function humanizeStageKey(stageKey: string | null) {
     .filter(Boolean)
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
+}
+
+function isClosedStageKey(stageKey: string) {
+  return stageKey === "awarded" || stageKey === "lost" || stageKey === "no_bid";
 }
 
 function serializeAuditValue(value: string | Date | null) {

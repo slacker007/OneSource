@@ -680,6 +680,66 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   ).toBeVisible();
 });
 
+test("users can record closeout notes on a closed opportunity workspace", async ({
+  page,
+}) => {
+  const outcomeReason = `The team passed because the incumbent relationship edge stayed too strong ${Date.now()}.`;
+  const lessonsLearned = `Document the relationship gap before bid review and exit sooner ${Date.now()}.`;
+
+  await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
+  await expect(page).toHaveURL(/\/$/);
+
+  await page.goto("/opportunities");
+  await expect(page).toHaveURL(/\/opportunities$/);
+  await page.locator("#opportunity-query").fill("Navy Training Range");
+  await page.getByRole("button", { name: /apply filters/i }).click();
+
+  await expect(
+    page.getByText(/navy training range modernization support/i).first(),
+  ).toBeVisible();
+  await page.getByRole("link", { name: /open workspace/i }).click();
+
+  await expect(
+    page.getByRole("heading", {
+      name: /navy training range modernization support/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Closeout$/i }),
+  ).toBeVisible();
+
+  const competitorOptionLabel = (
+    await page.locator("#closeout-competitor option").allTextContents()
+  ).find((label) => /harbor mission technologies/i.test(label));
+  if (!competitorOptionLabel) {
+    throw new Error(
+      "Could not find the seeded Harbor Mission Technologies competitor option.",
+    );
+  }
+
+  await page.locator("#closeout-competitor").selectOption({
+    label: competitorOptionLabel,
+  });
+  await page.locator("#closeout-outcome-reason").fill(outcomeReason);
+  await page.locator("#closeout-lessons-learned").fill(lessonsLearned);
+  await page
+    .getByRole("button", { name: /^(record|update) closeout$/i })
+    .click();
+
+  await expect(
+    page.getByText(/closeout notes recorded and added to workspace history/i),
+  ).toBeVisible();
+  await expect(page.getByText(new RegExp(outcomeReason, "i")).first()).toBeVisible();
+  await expect(
+    page.getByText(new RegExp(lessonsLearned, "i")).first(),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", { name: /^Closeout recorded for No Bid$/i })
+      .first(),
+  ).toBeVisible();
+});
+
 test.describe("mobile navigation", () => {
   test.use({
     viewport: {

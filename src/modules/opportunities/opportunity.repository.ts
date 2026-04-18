@@ -30,9 +30,11 @@ import type {
   HomeDashboardSnapshot,
   PipelineConversionSummary,
   PipelineStageAgingSummary,
+  OpportunityCompetitorOption,
   OpportunityTaskAssigneeOption,
   OpportunityWorkspaceActivity,
   OpportunityWorkspaceBidDecision,
+  OpportunityWorkspaceCloseout,
   OpportunityWorkspaceDocument,
   OpportunityListDueWindow,
   OpportunityListQuery,
@@ -469,6 +471,15 @@ const opportunityWorkspaceArgs = {
             email: true,
           },
         },
+        competitors: {
+          orderBy: {
+            name: "asc",
+          },
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         knowledgeAssets: {
           where: {
             isArchived: false,
@@ -739,6 +750,34 @@ const opportunityWorkspaceArgs = {
         },
       },
     },
+    closeouts: {
+      where: {
+        isCurrent: true,
+      },
+      orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
+      take: 1,
+      select: {
+        id: true,
+        isCurrent: true,
+        outcomeStageKey: true,
+        outcomeStageLabel: true,
+        outcomeReason: true,
+        lessonsLearned: true,
+        recordedAt: true,
+        recordedByUser: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+        competitor: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    },
   },
 };
 
@@ -998,6 +1037,10 @@ export type OpportunityWorkspaceRecord = {
       name: string | null;
       email: string;
     }>;
+    competitors: Array<{
+      id: string;
+      name: string;
+    }>;
     knowledgeAssets: Array<{
       id: string;
       assetType:
@@ -1186,6 +1229,23 @@ export type OpportunityWorkspaceRecord = {
     decidedByUser: {
       name: string | null;
       email: string;
+    } | null;
+  }>;
+  closeouts: Array<{
+    id: string;
+    isCurrent: boolean;
+    outcomeStageKey: string;
+    outcomeStageLabel: string | null;
+    outcomeReason: string;
+    lessonsLearned: string;
+    recordedAt: Date;
+    recordedByUser: {
+      name: string | null;
+      email: string;
+    } | null;
+    competitor: {
+      id: string;
+      name: string;
     } | null;
   }>;
 };
@@ -1612,6 +1672,8 @@ export async function getOpportunityWorkspaceSnapshot({
   const currentBidDecision =
     record.bidDecisions.find((bidDecision) => bidDecision.isCurrent) ??
     record.bidDecisions[0];
+  const currentCloseout =
+    record.closeouts.find((closeout) => closeout.isCurrent) ?? record.closeouts[0];
 
   return {
     organization: {
@@ -1631,6 +1693,8 @@ export async function getOpportunityWorkspaceSnapshot({
       return mappedBidDecision ? [mappedBidDecision] : [];
     }),
     taskAssigneeOptions: record.organization.users.map(mapTaskAssigneeOption),
+    competitorOptions: record.organization.competitors.map(mapCompetitorOption),
+    closeout: mapWorkspaceCloseout(currentCloseout),
     tasks: record.tasks.map(mapWorkspaceTask),
     milestones: record.milestones.map(mapWorkspaceMilestone),
     documents: record.documents.map(mapWorkspaceDocument),
@@ -2294,6 +2358,15 @@ function mapTaskAssigneeOption(
   };
 }
 
+function mapCompetitorOption(
+  competitor: OpportunityWorkspaceRecord["organization"]["competitors"][number],
+): OpportunityCompetitorOption {
+  return {
+    value: competitor.id,
+    label: competitor.name,
+  };
+}
+
 function mapPersonalTaskBoardItem(
   task: PersonalTaskBoardRecord["assignedOpportunityTasks"][number],
 ): PersonalTaskBoardItem {
@@ -2431,6 +2504,30 @@ function mapWorkspaceBidDecision(
       bidDecision.recommendedByIdentifier ?? "Deterministic rule engine",
     decidedByName: formatPersonLabel(bidDecision.decidedByUser),
     decidedAt: toIsoString(bidDecision.decidedAt),
+  };
+}
+
+function mapWorkspaceCloseout(
+  closeout: OpportunityWorkspaceRecord["closeouts"][number] | undefined,
+): OpportunityWorkspaceCloseout | null {
+  if (!closeout) {
+    return null;
+  }
+
+  return {
+    id: closeout.id,
+    isCurrent: closeout.isCurrent,
+    outcomeStageKey: closeout.outcomeStageKey,
+    outcomeStageLabel:
+      closeout.outcomeStageLabel ??
+      humanizeStageKey(closeout.outcomeStageKey) ??
+      "Closed",
+    competitorId: closeout.competitor?.id ?? null,
+    competitorName: closeout.competitor?.name ?? null,
+    outcomeReason: closeout.outcomeReason,
+    lessonsLearned: closeout.lessonsLearned,
+    recordedAt: closeout.recordedAt.toISOString(),
+    recordedByName: formatPersonLabel(closeout.recordedByUser),
   };
 }
 

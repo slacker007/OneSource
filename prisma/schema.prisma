@@ -202,6 +202,7 @@ model Organization {
   opportunityTransitions      OpportunityStageTransition[]
   opportunityScorecards       OpportunityScorecard[]
   bidDecisions                BidDecision[]
+  opportunityCloseouts        OpportunityCloseout[]
   knowledgeAssets             KnowledgeAsset[]
   knowledgeAssetTags          KnowledgeAssetTag[]
   knowledgeAssetOpportunities KnowledgeAssetOpportunity[]
@@ -241,6 +242,7 @@ model User {
   calculatedOpportunityScorecards OpportunityScorecard[]       @relation("OpportunityScorecardCalculator")
   recommendedBidDecisions         BidDecision[]                @relation("BidDecisionRecommender")
   decidedBidDecisions             BidDecision[]                @relation("BidDecisionDecider")
+  recordedOpportunityCloseouts    OpportunityCloseout[]        @relation("OpportunityCloseoutRecorder")
   createdKnowledgeAssets          KnowledgeAsset[]             @relation("KnowledgeAssetCreator")
   updatedKnowledgeAssets          KnowledgeAsset[]             @relation("KnowledgeAssetUpdater")
 
@@ -558,6 +560,7 @@ model Opportunity {
   stageTransitions              OpportunityStageTransition[]
   scorecards                    OpportunityScorecard[]
   bidDecisions                  BidDecision[]
+  closeouts                     OpportunityCloseout[]
   knowledgeAssets               KnowledgeAssetOpportunity[]
 
   @@index([organizationId, title], map: "opportunities_organization_id_title_idx")
@@ -593,6 +596,7 @@ model Competitor {
   updatedAt      DateTime                @updatedAt @map("updated_at")
   organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   opportunities  OpportunityCompetitor[]
+  closeouts      OpportunityCloseout[]
 
   @@unique([organizationId, name], map: "competitors_organization_id_name_key")
   @@index([organizationId], map: "competitors_organization_id_idx")
@@ -1178,6 +1182,33 @@ model BidDecision {
   @@index([recommendedByUserId], map: "bid_decisions_recommended_by_user_id_idx")
   @@index([decidedByUserId], map: "bid_decisions_decided_by_user_id_idx")
   @@map("bid_decisions")
+}
+
+model OpportunityCloseout {
+  id               String       @id @default(cuid()) @map("id")
+  organizationId   String       @map("organization_id")
+  opportunityId    String       @map("opportunity_id")
+  competitorId     String?      @map("competitor_id")
+  recordedByUserId String?      @map("recorded_by_user_id")
+  outcomeStageKey  String       @map("outcome_stage_key")
+  outcomeStageLabel String?     @map("outcome_stage_label")
+  outcomeReason    String       @map("outcome_reason") @db.Text
+  lessonsLearned   String       @map("lessons_learned") @db.Text
+  recordedAt       DateTime     @default(now()) @map("recorded_at")
+  isCurrent        Boolean      @default(true) @map("is_current")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  opportunity      Opportunity  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  competitor       Competitor?  @relation(fields: [competitorId], references: [id], onDelete: SetNull)
+  recordedByUser   User?        @relation("OpportunityCloseoutRecorder", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, recordedAt], map: "opportunity_closeouts_org_recorded_at_idx")
+  @@index([opportunityId, recordedAt], map: "opportunity_closeouts_opportunity_id_recorded_at_idx")
+  @@index([opportunityId, isCurrent], map: "opportunity_closeouts_opportunity_id_is_current_idx")
+  @@index([competitorId], map: "opportunity_closeouts_competitor_id_idx")
+  @@index([recordedByUserId], map: "opportunity_closeouts_recorded_by_user_id_idx")
+  @@map("opportunity_closeouts")
 }
 
 model SourceImportDecision {

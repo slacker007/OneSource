@@ -14,6 +14,7 @@ import {
   deleteOpportunityTask,
   deleteOpportunity,
   recordBidDecision,
+  recordOpportunityCloseout,
   recordSourceImportDecision,
   recordStageTransition,
   updateOpportunityMilestone,
@@ -71,6 +72,10 @@ function createMockWriteClient() {
       updateMany: vi.fn(),
       create: vi.fn(),
     },
+    opportunityCloseout: {
+      updateMany: vi.fn(),
+      create: vi.fn(),
+    },
     sourceRecord: {
       findFirstOrThrow: vi.fn(),
     },
@@ -78,6 +83,9 @@ function createMockWriteClient() {
       create: vi.fn(),
     },
     user: {
+      findFirst: vi.fn(),
+    },
+    competitor: {
       findFirst: vi.fn(),
     },
   } as unknown as OpportunityWriteTransactionClient;
@@ -1215,6 +1223,136 @@ describe("opportunity-write.service", () => {
         occurredAt: decidedAt,
       }),
     });
+  });
+
+  it("records opportunity closeout notes and emits closeout audit metadata", async () => {
+    const { db, tx } = createMockWriteClient();
+    const recordedAt = new Date("2026-04-18T01:37:00.000Z");
+
+    vi.mocked(tx.opportunity.findFirstOrThrow).mockResolvedValue({
+      id: "opp_123",
+      organizationId: "org_123",
+      title: "Data Platform Operations",
+      description: null,
+      leadAgencyId: null,
+      responseDeadlineAt: null,
+      solicitationNumber: null,
+      naicsCode: null,
+      originSourceSystem: null,
+      currentStageKey: "lost",
+      currentStageLabel: "Lost",
+    });
+    vi.mocked(tx.competitor.findFirst).mockResolvedValue({
+      id: "competitor_123",
+    });
+    vi.mocked(tx.opportunityCloseout.updateMany).mockResolvedValue({ count: 0 });
+    vi.mocked(tx.opportunityCloseout.create).mockResolvedValue({
+      id: "closeout_123",
+      outcomeStageKey: "lost",
+      outcomeStageLabel: "Lost",
+      recordedAt,
+      competitor: {
+        id: "competitor_123",
+        name: "Harbor Mission Technologies",
+      },
+    });
+
+    await recordOpportunityCloseout({
+      db,
+      input: {
+        actor,
+        opportunityId: "opp_123",
+        competitorId: "competitor_123",
+        outcomeReason:
+          "The team lost after the incumbent preserved the customer relationship edge.",
+        lessonsLearned:
+          "Start customer influence work earlier and document the discriminator gap before submission.",
+        recordedAt,
+      },
+    });
+
+    expect(tx.opportunityCloseout.updateMany).toHaveBeenCalledWith({
+      where: {
+        organizationId: "org_123",
+        opportunityId: "opp_123",
+        isCurrent: true,
+      },
+      data: {
+        isCurrent: false,
+      },
+    });
+    expect(tx.opportunityCloseout.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          opportunityId: "opp_123",
+          competitorId: "competitor_123",
+          outcomeStageKey: "lost",
+          outcomeStageLabel: "Lost",
+          recordedByUserId: "user_123",
+          recordedAt,
+        }),
+      }),
+    );
+    expect(tx.opportunityActivityEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventType: "opportunity_closeout_recorded",
+        relatedEntityType: "opportunity_closeout",
+        title: "Closeout recorded for Lost",
+      }),
+      select: {
+        id: true,
+      },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityCloseoutRecord,
+        targetId: "opp_123",
+        metadata: expect.objectContaining({
+          closeoutId: "closeout_123",
+          outcomeStageKey: "lost",
+          competitorId: "competitor_123",
+        }),
+        occurredAt: recordedAt,
+      }),
+    });
+  });
+
+  it("requires a competitor for awarded or lost closeouts", async () => {
+    const { db, tx } = createMockWriteClient();
+
+    vi.mocked(tx.opportunity.findFirstOrThrow).mockResolvedValue({
+      id: "opp_123",
+      organizationId: "org_123",
+      title: "Data Platform Operations",
+      description: null,
+      leadAgencyId: null,
+      responseDeadlineAt: null,
+      solicitationNumber: null,
+      naicsCode: null,
+      originSourceSystem: null,
+      currentStageKey: "awarded",
+      currentStageLabel: "Awarded",
+    });
+
+    await expect(
+      recordOpportunityCloseout({
+        db,
+        input: {
+          actor,
+          opportunityId: "opp_123",
+          competitorId: null,
+          outcomeReason: "The pursuit closed as a win after the oral presentation.",
+          lessonsLearned:
+            "Keep the oral presentation rehearsal loop because it sharpened the final response.",
+        },
+      }),
+    ).rejects.toThrow(
+      "Select a recorded competitor before saving closeout notes for awarded or lost pursuits.",
+    );
+
+    expect(tx.opportunityCloseout.create).not.toHaveBeenCalled();
+    expect(tx.opportunityActivityEvent.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("records source import decisions and emits import audit rows", async () => {

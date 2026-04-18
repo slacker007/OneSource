@@ -14,6 +14,7 @@ import {
   deleteOpportunityMilestoneAction,
   deleteOpportunityTaskAction,
   recordOpportunityBidDecisionAction,
+  recordOpportunityCloseoutAction,
   transitionOpportunityStageAction,
   updateOpportunityMilestoneAction,
   updateOpportunityTaskAction,
@@ -50,6 +51,7 @@ export default async function OpportunityWorkspacePage({
       deleteMilestoneAction={deleteOpportunityMilestoneAction}
       deleteTaskAction={deleteOpportunityTaskAction}
       recordBidDecisionAction={recordOpportunityBidDecisionAction}
+      recordCloseoutAction={recordOpportunityCloseoutAction}
       stageTransitionAction={transitionOpportunityStageAction}
       snapshot={snapshot}
       updateMilestoneAction={updateOpportunityMilestoneAction}

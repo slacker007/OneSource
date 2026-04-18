@@ -204,6 +204,11 @@ export type OpportunityTaskAssigneeOption = {
   value: string;
 };
 
+export type OpportunityCompetitorOption = {
+  label: string;
+  value: string;
+};
+
 export type OpportunityFormSnapshot = {
   agencyOptions: OpportunityFormAgencyOption[];
   currentStageKey: string;
@@ -353,6 +358,19 @@ export type OpportunityWorkspaceKnowledgeSuggestion = {
   updatedByLabel: string | null;
 };
 
+export type OpportunityWorkspaceCloseout = {
+  id: string;
+  isCurrent: boolean;
+  outcomeStageKey: string;
+  outcomeStageLabel: string;
+  competitorId: string | null;
+  competitorName: string | null;
+  outcomeReason: string;
+  lessonsLearned: string;
+  recordedAt: string;
+  recordedByName: string | null;
+};
+
 export type OpportunityWorkspaceSnapshot = {
   organization: OrganizationSummary;
   opportunity: OpportunityWorkspaceOpportunitySummary;
@@ -360,6 +378,8 @@ export type OpportunityWorkspaceSnapshot = {
   bidDecision: OpportunityWorkspaceBidDecision | null;
   decisionHistory: OpportunityWorkspaceBidDecisionHistoryEntry[];
   taskAssigneeOptions: OpportunityTaskAssigneeOption[];
+  competitorOptions: OpportunityCompetitorOption[];
+  closeout: OpportunityWorkspaceCloseout | null;
   tasks: OpportunityWorkspaceTask[];
   milestones: OpportunityWorkspaceMilestone[];
   documents: OpportunityWorkspaceDocument[];

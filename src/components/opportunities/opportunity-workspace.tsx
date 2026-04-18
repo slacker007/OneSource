@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { OpportunityBidDecisionManager } from "@/components/opportunities/opportunity-bid-decision-manager";
+import { OpportunityCloseoutManager } from "@/components/opportunities/opportunity-closeout-manager";
 import { OpportunityDocumentManager } from "@/components/opportunities/opportunity-document-manager";
 import { OpportunityMilestoneManager } from "@/components/opportunities/opportunity-milestone-manager";
 import { OpportunityNoteManager } from "@/components/opportunities/opportunity-note-manager";
@@ -11,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { KNOWLEDGE_ASSET_TYPE_LABELS } from "@/modules/knowledge/knowledge.types";
 import type { OpportunityBidDecisionActionState } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
+import type { OpportunityCloseoutActionState } from "@/modules/opportunities/opportunity-closeout-form.schema";
 import type { OpportunityDocumentActionState } from "@/modules/opportunities/opportunity-document-form.schema";
 import type { OpportunityMilestoneActionState } from "@/modules/opportunities/opportunity-milestone-form.schema";
 import type { OpportunityNoteActionState } from "@/modules/opportunities/opportunity-note-form.schema";
@@ -42,6 +44,10 @@ type OpportunityWorkspaceProps = {
     state: OpportunityMilestoneActionState,
     formData: FormData,
   ) => Promise<OpportunityMilestoneActionState>;
+  recordCloseoutAction?: (
+    state: OpportunityCloseoutActionState,
+    formData: FormData,
+  ) => Promise<OpportunityCloseoutActionState>;
   createDocumentAction?: (
     state: OpportunityDocumentActionState,
     formData: FormData,
@@ -80,6 +86,7 @@ export function OpportunityWorkspace({
   snapshot,
   allowManagePipeline = false,
   recordBidDecisionAction,
+  recordCloseoutAction,
   createMilestoneAction,
   createDocumentAction,
   createNoteAction,
@@ -220,6 +227,15 @@ export function OpportunityWorkspace({
           snapshot={snapshot}
         />
       </div>
+
+      {isClosedOpportunityStage(snapshot.opportunity.currentStageKey) ||
+      snapshot.closeout ? (
+        <CloseoutSection
+          allowManagePipeline={allowManagePipeline}
+          recordCloseoutAction={recordCloseoutAction}
+          snapshot={snapshot}
+        />
+      ) : null}
 
       <KnowledgeSuggestionsSection
         opportunityId={snapshot.opportunity.id}
@@ -676,6 +692,101 @@ function ScoringSection({
           title="No scoring context yet"
         />
       )}
+    </article>
+  );
+}
+
+function CloseoutSection({
+  allowManagePipeline,
+  recordCloseoutAction,
+  snapshot,
+}: {
+  allowManagePipeline: boolean;
+  recordCloseoutAction?: OpportunityWorkspaceProps["recordCloseoutAction"];
+  snapshot: OpportunityWorkspaceSnapshot;
+}) {
+  return (
+    <article className="border-border rounded-[28px] border bg-[linear-gradient(135deg,rgba(250,246,238,0.98),rgba(244,235,220,0.96))] p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-2">
+          <p className="text-muted text-xs tracking-[0.24em] uppercase">
+            Closeout
+          </p>
+          <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
+            Closeout
+          </h2>
+          <p className="text-muted max-w-3xl text-sm leading-6">
+            Preserve the final outcome reason, competitor context, and lessons
+            learned so postmortem reviews do not depend on memory.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="warning">{snapshot.opportunity.currentStageLabel}</Badge>
+          <Badge tone="muted">
+            {snapshot.closeout ? "Recorded" : "Awaiting postmortem"}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[0.98fr_1.02fr]">
+        <div className="space-y-4">
+          <h3 className="text-base font-semibold text-foreground">
+            Current closeout
+          </h3>
+          {snapshot.closeout ? (
+            <div className="space-y-4 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-white px-5 py-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone="accent">{snapshot.closeout.outcomeStageLabel}</Badge>
+                  <Badge tone="muted">
+                    {snapshot.closeout.competitorName ?? "No competitor recorded"}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted">
+                  {formatDate(snapshot.closeout.recordedAt)}
+                  {snapshot.closeout.recordedByName
+                    ? ` · ${snapshot.closeout.recordedByName}`
+                    : ""}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">
+                  Outcome reason
+                </h4>
+                <p className="text-sm leading-6 text-muted">
+                  {snapshot.closeout.outcomeReason}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">
+                  Lessons learned
+                </h4>
+                <p className="text-sm leading-6 text-muted">
+                  {snapshot.closeout.lessonsLearned}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <EmptyState
+              message="Once the opportunity is closed, record the reason and postmortem here so outcome analysis stays durable."
+              title="No closeout notes recorded"
+            />
+          )}
+        </div>
+
+        {allowManagePipeline && recordCloseoutAction ? (
+          <OpportunityCloseoutManager
+            action={recordCloseoutAction}
+            competitorOptions={snapshot.competitorOptions}
+            currentCloseout={snapshot.closeout}
+            currentStageKey={snapshot.opportunity.currentStageKey}
+            currentStageLabel={snapshot.opportunity.currentStageLabel}
+            opportunityId={snapshot.opportunity.id}
+          />
+        ) : null}
+      </div>
     </article>
   );
 }
@@ -1270,6 +1381,10 @@ function humanizeEnum(value: string) {
 
 function humanizeDecisionOutcome(value: string) {
   return value === "NO_GO" ? "No Go" : humanizeEnum(value);
+}
+
+function isClosedOpportunityStage(stageKey: string | null) {
+  return stageKey === "awarded" || stageKey === "lost" || stageKey === "no_bid";
 }
 
 function formatDate(value: string) {

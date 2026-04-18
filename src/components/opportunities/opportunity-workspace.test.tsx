@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { OpportunityWorkspace } from "./opportunity-workspace";
 import { INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
+import { INITIAL_OPPORTUNITY_CLOSEOUT_ACTION_STATE } from "@/modules/opportunities/opportunity-closeout-form.schema";
 import { INITIAL_OPPORTUNITY_DOCUMENT_ACTION_STATE } from "@/modules/opportunities/opportunity-document-form.schema";
 import { INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE } from "@/modules/opportunities/opportunity-milestone-form.schema";
 import { INITIAL_OPPORTUNITY_NOTE_ACTION_STATE } from "@/modules/opportunities/opportunity-note-form.schema";
@@ -179,6 +180,17 @@ const snapshot: OpportunityWorkspaceSnapshot = {
       value: "user_taylor",
     },
   ],
+  competitorOptions: [
+    {
+      label: "Harbor Mission Technologies",
+      value: "competitor_harbor",
+    },
+    {
+      label: "Vector Analytics LLC",
+      value: "competitor_1",
+    },
+  ],
+  closeout: null,
   tasks: [
     {
       id: "task_1",
@@ -325,6 +337,9 @@ describe("OpportunityWorkspace", () => {
           INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE
         }
         deleteTaskAction={async () => INITIAL_OPPORTUNITY_TASK_ACTION_STATE}
+        recordCloseoutAction={async () =>
+          INITIAL_OPPORTUNITY_CLOSEOUT_ACTION_STATE
+        }
         snapshot={snapshot}
         stageTransitionAction={async () =>
           INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE
@@ -378,6 +393,9 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("heading", { name: /^Decision history$/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /^Closeout$/i }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^record decision$/i }),
     ).toBeInTheDocument();
@@ -440,5 +458,86 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("link", { name: /download stored file/i }),
     ).toHaveAttribute("href", "/api/opportunities/documents/doc_1/download");
+  });
+
+  it("renders the closeout section for closed opportunities", () => {
+    const closedSnapshot: OpportunityWorkspaceSnapshot = {
+      ...snapshot,
+      opportunity: {
+        ...snapshot.opportunity,
+        currentStageKey: "no_bid",
+        currentStageLabel: "No Bid",
+      },
+      closeout: {
+        id: "closeout_1",
+        isCurrent: true,
+        outcomeStageKey: "no_bid",
+        outcomeStageLabel: "No Bid",
+        competitorId: "competitor_harbor",
+        competitorName: "Harbor Mission Technologies",
+        outcomeReason:
+          "The team passed because the incumbent relationship advantage was too strong.",
+        lessonsLearned:
+          "Exit weaker pursuits earlier and document the relationship gap before bid review.",
+        recordedAt: "2026-04-18T08:00:00.000Z",
+        recordedByName: "Sam Rivera",
+      },
+      activity: [
+        {
+          id: "activity_closeout",
+          eventType: "opportunity_closeout_recorded",
+          title: "Closeout recorded for No Bid",
+          description:
+            "The team passed because the incumbent relationship advantage was too strong.",
+          actorLabel: "Sam Rivera",
+          relatedEntityType: "opportunity_closeout",
+          occurredAt: "2026-04-18T08:00:00.000Z",
+        },
+        ...snapshot.activity,
+      ],
+    };
+
+    render(
+      <OpportunityWorkspace
+        allowManagePipeline
+        recordBidDecisionAction={async () =>
+          INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE
+        }
+        recordCloseoutAction={async () =>
+          INITIAL_OPPORTUNITY_CLOSEOUT_ACTION_STATE
+        }
+        snapshot={closedSnapshot}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /^Closeout$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        /the team passed because the incumbent relationship advantage was too strong/i,
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        /exit weaker pursuits earlier and document the relationship gap before bid review/i,
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("combobox", { name: /recorded competitor/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/^outcome reason$/i, {
+        selector: "textarea#closeout-outcome-reason",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/^lessons learned$/i, {
+        selector: "textarea#closeout-lessons-learned",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^update closeout$/i }),
+    ).toBeInTheDocument();
   });
 });
