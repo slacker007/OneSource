@@ -57,6 +57,7 @@ type OpportunityScorecardJobRecord = {
 };
 
 type OrganizationScoringProfileRecord = {
+  updatedAt: Date;
   activeScoringModelKey: string;
   activeScoringModelVersion: string;
   goRecommendationThreshold: { toString(): string };
@@ -129,6 +130,7 @@ type OpportunityScorecardTransactionClient = {
 export type OpportunityScorecardJobClient = {
   opportunity: {
     findMany(args: {
+      where?: Prisma.OpportunityWhereInput;
       orderBy: Prisma.OpportunityOrderByWithRelationInput[];
       select: {
         id: true;
@@ -176,6 +178,7 @@ export type OpportunityScorecardJobClient = {
           select: {
             organizationProfile: {
               select: {
+                updatedAt: true;
                 activeScoringModelKey: true;
                 activeScoringModelVersion: true;
                 goRecommendationThreshold: true;
@@ -270,13 +273,20 @@ export async function runOpportunityScorecardSweep({
   batchSize = 10,
   now = new Date(),
   log,
+  organizationId,
 }: {
   db: OpportunityScorecardJobClient;
   batchSize?: number;
   now?: Date;
   log?: JobLogger;
+  organizationId?: string;
 }): Promise<OpportunityScorecardSweepResult> {
   const opportunities = await db.opportunity.findMany({
+    where: organizationId
+      ? {
+          organizationId,
+        }
+      : undefined,
     orderBy: [{ updatedAt: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
@@ -322,11 +332,12 @@ export async function runOpportunityScorecardSweep({
       },
       organization: {
         select: {
-          organizationProfile: {
-            select: {
-              activeScoringModelKey: true,
-              activeScoringModelVersion: true,
-              goRecommendationThreshold: true,
+            organizationProfile: {
+              select: {
+                updatedAt: true,
+                activeScoringModelKey: true,
+                activeScoringModelVersion: true,
+                goRecommendationThreshold: true,
               deferRecommendationThreshold: true,
               minimumRiskScorePercent: true,
               strategicFocus: true,
@@ -405,9 +416,28 @@ export async function runOpportunityScorecardSweep({
   const eligibleOpportunities = opportunities
     .filter((opportunity) => {
       const currentScorecard = opportunity.scorecards[0];
+      const profile = opportunity.organization.organizationProfile;
+
+      if (!currentScorecard) {
+        return true;
+      }
+
+      if (opportunity.updatedAt.getTime() > currentScorecard.calculatedAt.getTime()) {
+        return true;
+      }
+
+      if (
+        profile &&
+        (profile.updatedAt.getTime() > currentScorecard.calculatedAt.getTime() ||
+          currentScorecard.scoringModelKey !== profile.activeScoringModelKey ||
+          currentScorecard.scoringModelVersion !==
+            profile.activeScoringModelVersion)
+      ) {
+        return true;
+      }
+
       return (
-        !currentScorecard ||
-        opportunity.updatedAt.getTime() > currentScorecard.calculatedAt.getTime()
+        false
       );
     })
     .slice(0, batchSize);

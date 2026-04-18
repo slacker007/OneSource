@@ -44,6 +44,7 @@ describe("opportunity-scorecard-job", () => {
             competitors: [],
             organization: {
               organizationProfile: {
+                updatedAt: new Date("2026-04-18T12:00:00.000Z"),
                 activeScoringModelKey: "default_capture_v1",
                 activeScoringModelVersion: "2026.04",
                 goRecommendationThreshold: { toString: () => "70" },
@@ -201,5 +202,110 @@ describe("opportunity-scorecard-job", () => {
       skippedOpportunities: 1,
     });
     expect(db.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("recalculates current scorecards when the organization scoring profile changed after the last calculation", async () => {
+    const tx = {
+      opportunityScorecard: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        create: vi.fn().mockResolvedValue({ id: "scorecard_new" }),
+      },
+      opportunityActivityEvent: {
+        create: vi.fn().mockResolvedValue({ id: "activity_new" }),
+      },
+      auditLog: {
+        create: vi.fn().mockResolvedValue({ id: "audit_new" }),
+      },
+    };
+    const db = {
+      opportunity: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "opp_456",
+            organizationId: "org_123",
+            title: "VA identity modernization",
+            description: "Identity modernization bridge support.",
+            sourceSummaryText: "Identity modernization bridge support.",
+            responseDeadlineAt: new Date("2026-06-12T18:00:00.000Z"),
+            currentStageKey: "qualified",
+            naicsCode: "541512",
+            originSourceSystem: "manual_entry",
+            isActiveSourceRecord: true,
+            isArchivedSourceRecord: false,
+            updatedAt: new Date("2026-04-18T10:00:00.000Z"),
+            leadAgency: null,
+            vehicles: [],
+            competitors: [],
+            organization: {
+              organizationProfile: {
+                updatedAt: new Date("2026-04-18T14:00:00.000Z"),
+                activeScoringModelKey: "default_capture_v1",
+                activeScoringModelVersion: "2026-04-18T14:00:00Z",
+                goRecommendationThreshold: { toString: () => "72" },
+                deferRecommendationThreshold: { toString: () => "48" },
+                minimumRiskScorePercent: { toString: () => "55" },
+                strategicFocus: "Identity modernization",
+                targetNaicsCodes: ["541512"],
+                priorityAgencyIds: [],
+                relationshipAgencyIds: [],
+                capabilities: [],
+                certifications: [],
+                selectedVehicles: [],
+                scoringCriteria: [
+                  {
+                    factorKey: "capability_fit",
+                    factorLabel: "Capability fit",
+                    weight: { toString: () => "34" },
+                  },
+                  {
+                    factorKey: "risk",
+                    factorLabel: "Risk",
+                    weight: { toString: () => "8" },
+                  },
+                ],
+              },
+            },
+            scorecards: [
+              {
+                id: "scorecard_current",
+                calculatedAt: new Date("2026-04-18T12:00:00.000Z"),
+                inputSnapshot: {
+                  opportunity: {
+                    id: "opp_456",
+                  },
+                  profile: {
+                    activeScoringModelVersion: "2026-04-18",
+                  },
+                },
+                scoringModelKey: "default_capture_v1",
+                scoringModelVersion: "2026-04-18",
+              },
+            ],
+          },
+        ]),
+      },
+      $transaction: vi.fn(async (callback) => callback(tx)),
+    };
+
+    const result = await runOpportunityScorecardSweep({
+      batchSize: 5,
+      db: db as never,
+      now: new Date("2026-04-18T15:00:00.000Z"),
+      organizationId: "org_123",
+    });
+
+    expect(result).toEqual({
+      processedOpportunities: 1,
+      recalculatedOpportunities: 1,
+      skippedOpportunities: 0,
+    });
+    expect(db.opportunity.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          organizationId: "org_123",
+        },
+      }),
+    );
+    expect(tx.opportunityScorecard.create).toHaveBeenCalled();
   });
 });

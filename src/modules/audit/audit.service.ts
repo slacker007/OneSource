@@ -17,6 +17,7 @@ export const AUDIT_ACTIONS = {
   opportunityStageTransition: "opportunity.stage_transition",
   opportunityDecisionRecord: "opportunity.decision.record",
   opportunityCloseoutRecord: "opportunity.closeout.record",
+  organizationScoringRecalibrate: "organization.scoring.recalibrate",
   sourceImportDecisionRecord: "source_import_decision.record",
   knowledgeAssetCreate: "knowledge_asset.create",
   knowledgeAssetUpdate: "knowledge_asset.update",

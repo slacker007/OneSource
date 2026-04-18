@@ -2,6 +2,12 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 
 import type { AdminWorkspaceSnapshot } from "./admin.types";
 import {
+  buildScoringRecalibrationSnapshot,
+  type ScoringRecalibrationObservation,
+  type ScoringRecalibrationOutcomeKey,
+} from "./scoring-recalibration";
+import type { OpportunityScoringFactorKey } from "@/modules/opportunities/opportunity-scoring";
+import {
   buildAdminSourceOperationsSnapshot,
   type AdminFailedImportDecisionRecord,
   type AdminRecentSourceSyncRunRecord,
@@ -269,9 +275,70 @@ const failedImportReviewArgs =
   },
 });
 
+const recalibrationOpportunityArgs =
+  Prisma.validator<Prisma.OpportunityDefaultArgs>()({
+    select: {
+      id: true,
+      title: true,
+      currentStageKey: true,
+      currentStageLabel: true,
+      scorecards: {
+        where: {
+          isCurrent: true,
+        },
+        orderBy: {
+          calculatedAt: "desc",
+        },
+        take: 1,
+        select: {
+          scorePercent: true,
+          factorScores: {
+            orderBy: {
+              sortOrder: "asc",
+            },
+            select: {
+              factorKey: true,
+              score: true,
+              maximumScore: true,
+            },
+          },
+        },
+      },
+      bidDecisions: {
+        where: {
+          isCurrent: true,
+        },
+        orderBy: {
+          decidedAt: "desc",
+        },
+        take: 1,
+        select: {
+          recommendationOutcome: true,
+          finalOutcome: true,
+        },
+      },
+      closeouts: {
+        where: {
+          isCurrent: true,
+        },
+        orderBy: {
+          recordedAt: "desc",
+        },
+        take: 1,
+        select: {
+          outcomeStageKey: true,
+        },
+      },
+    },
+  });
+
 export type AdminRepositoryClient = Pick<
   PrismaClient,
-  "organization" | "sourceConnectorConfig" | "sourceImportDecision" | "sourceSyncRun"
+  | "organization"
+  | "opportunity"
+  | "sourceConnectorConfig"
+  | "sourceImportDecision"
+  | "sourceSyncRun"
 >;
 
 export type OrganizationAdminRecord = Prisma.OrganizationGetPayload<
@@ -286,6 +353,9 @@ export type RecentSourceSyncRunPayload = Prisma.SourceSyncRunGetPayload<
 export type FailedImportReviewPayload = Prisma.SourceImportDecisionGetPayload<
   typeof failedImportReviewArgs
 >;
+export type RecalibrationOpportunityPayload = Prisma.OpportunityGetPayload<
+  typeof recalibrationOpportunityArgs
+>;
 
 export async function getAdminWorkspaceSnapshot({
   db,
@@ -294,7 +364,13 @@ export async function getAdminWorkspaceSnapshot({
   db: AdminRepositoryClient;
   organizationId: string;
 }): Promise<AdminWorkspaceSnapshot | null> {
-  const [organization, connectorHealthRecords, recentSyncRunRecords, failedImportReviews] =
+  const [
+    organization,
+    connectorHealthRecords,
+    recentSyncRunRecords,
+    failedImportReviews,
+    recalibrationOpportunities,
+  ] =
     await Promise.all([
       db.organization.findUnique({
         where: {
@@ -334,6 +410,18 @@ export async function getAdminWorkspaceSnapshot({
         take: 8,
         ...failedImportReviewArgs,
       }),
+      db.opportunity.findMany({
+        where: {
+          organizationId,
+          currentStageKey: {
+            in: ["awarded", "lost", "no_bid"],
+          },
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+        ...recalibrationOpportunityArgs,
+      }),
     ]);
 
   if (!organization) {
@@ -371,68 +459,86 @@ export async function getAdminWorkspaceSnapshot({
     ]),
   );
   const scoringProfile = organization.organizationProfile
-    ? {
-        overview: organization.organizationProfile.overview,
-        strategicFocus: organization.organizationProfile.strategicFocus,
-        targetNaicsCodes: organization.organizationProfile.targetNaicsCodes,
-        activeScoringModelKey:
-          organization.organizationProfile.activeScoringModelKey,
-        activeScoringModelVersion:
-          organization.organizationProfile.activeScoringModelVersion,
-        goRecommendationThreshold:
-          organization.organizationProfile.goRecommendationThreshold.toString(),
-        deferRecommendationThreshold:
-          organization.organizationProfile.deferRecommendationThreshold.toString(),
-        minimumRiskScorePercent:
-          organization.organizationProfile.minimumRiskScorePercent.toString(),
-        priorityAgencies: organization.organizationProfile.priorityAgencyIds
-          .map((agencyId) => agenciesById.get(agencyId))
-          .filter(isDefined),
-        relationshipAgencies: organization.organizationProfile.relationshipAgencyIds
-          .map((agencyId) => agenciesById.get(agencyId))
-          .filter(isDefined),
-        capabilities: organization.organizationProfile.capabilities.map(
-          (capability) => ({
-            id: capability.id,
-            key: capability.capabilityKey,
-            label: capability.capabilityLabel,
-            category: capability.capabilityCategory,
-            keywords: capability.capabilityKeywords,
-            description: capability.description,
-          }),
-        ),
-        certifications: organization.organizationProfile.certifications.map(
-          (certification) => ({
-            id: certification.id,
-            key: certification.certificationKey,
-            label: certification.certificationLabel,
-            code: certification.certificationCode,
-            issuingBody: certification.issuingBody,
-            description: certification.description,
-          }),
-        ),
-        selectedVehicles: organization.organizationProfile.selectedVehicles.map(
-          (selectedVehicle) => ({
-            id: selectedVehicle.vehicle.id,
-            code: selectedVehicle.vehicle.code,
-            name: selectedVehicle.vehicle.name,
-            vehicleType: selectedVehicle.vehicle.vehicleType,
-            awardingAgency: selectedVehicle.vehicle.awardingAgency,
-            isPreferred: selectedVehicle.isPreferred,
-            usageNotes: selectedVehicle.usageNotes,
-          }),
-        ),
-        scoringCriteria: organization.organizationProfile.scoringCriteria.map(
-          (criterion) => ({
-            id: criterion.id,
-            key: criterion.factorKey,
-            label: criterion.factorLabel,
-            description: criterion.description,
-            weight: criterion.weight.toString(),
-            isActive: criterion.isActive,
-          }),
-        ),
-      }
+    ? (() => {
+        const recalibration = buildScoringRecalibrationSnapshot({
+          criteria: organization.organizationProfile.scoringCriteria.map(
+            (criterion) => ({
+              key: criterion.factorKey as OpportunityScoringFactorKey,
+              label: criterion.factorLabel,
+              description: criterion.description,
+              weight: Number.parseFloat(criterion.weight.toString()),
+            }),
+          ),
+          observations: recalibrationOpportunities
+            .map(mapRecalibrationObservation)
+            .filter(isDefined),
+        });
+
+        return {
+          overview: organization.organizationProfile.overview,
+          strategicFocus: organization.organizationProfile.strategicFocus,
+          targetNaicsCodes: organization.organizationProfile.targetNaicsCodes,
+          activeScoringModelKey:
+            organization.organizationProfile.activeScoringModelKey,
+          activeScoringModelVersion:
+            organization.organizationProfile.activeScoringModelVersion,
+          goRecommendationThreshold:
+            organization.organizationProfile.goRecommendationThreshold.toString(),
+          deferRecommendationThreshold:
+            organization.organizationProfile.deferRecommendationThreshold.toString(),
+          minimumRiskScorePercent:
+            organization.organizationProfile.minimumRiskScorePercent.toString(),
+          priorityAgencies: organization.organizationProfile.priorityAgencyIds
+            .map((agencyId) => agenciesById.get(agencyId))
+            .filter(isDefined),
+          relationshipAgencies:
+            organization.organizationProfile.relationshipAgencyIds
+              .map((agencyId) => agenciesById.get(agencyId))
+              .filter(isDefined),
+          capabilities: organization.organizationProfile.capabilities.map(
+            (capability) => ({
+              id: capability.id,
+              key: capability.capabilityKey,
+              label: capability.capabilityLabel,
+              category: capability.capabilityCategory,
+              keywords: capability.capabilityKeywords,
+              description: capability.description,
+            }),
+          ),
+          certifications: organization.organizationProfile.certifications.map(
+            (certification) => ({
+              id: certification.id,
+              key: certification.certificationKey,
+              label: certification.certificationLabel,
+              code: certification.certificationCode,
+              issuingBody: certification.issuingBody,
+              description: certification.description,
+            }),
+          ),
+          selectedVehicles: organization.organizationProfile.selectedVehicles.map(
+            (selectedVehicle) => ({
+              id: selectedVehicle.vehicle.id,
+              code: selectedVehicle.vehicle.code,
+              name: selectedVehicle.vehicle.name,
+              vehicleType: selectedVehicle.vehicle.vehicleType,
+              awardingAgency: selectedVehicle.vehicle.awardingAgency,
+              isPreferred: selectedVehicle.isPreferred,
+              usageNotes: selectedVehicle.usageNotes,
+            }),
+          ),
+          scoringCriteria: organization.organizationProfile.scoringCriteria.map(
+            (criterion) => ({
+              id: criterion.id,
+              key: criterion.factorKey,
+              label: criterion.factorLabel,
+              description: criterion.description,
+              weight: criterion.weight.toString(),
+              isActive: criterion.isActive,
+            }),
+          ),
+          recalibration,
+        };
+      })()
     : null;
 
   return {
@@ -470,6 +576,67 @@ export async function getAdminWorkspaceSnapshot({
       metadataPreview: formatAuditMetadataPreview(auditLog.metadata),
     })),
   };
+}
+
+function mapRecalibrationObservation(
+  opportunity: RecalibrationOpportunityPayload,
+): ScoringRecalibrationObservation | undefined {
+  const scorecard = opportunity.scorecards[0];
+  const outcomeKey = resolveRecalibrationOutcomeKey(opportunity);
+
+  if (!scorecard || !outcomeKey) {
+    return undefined;
+  }
+
+  const finalDecision = opportunity.bidDecisions[0]?.finalOutcome ?? null;
+  const recommendationOutcome =
+    opportunity.bidDecisions[0]?.recommendationOutcome ?? null;
+
+  return {
+    opportunityId: opportunity.id,
+    opportunityTitle: opportunity.title,
+    outcomeKey,
+    scorePercent:
+      scorecard.scorePercent === null
+        ? null
+        : Number.parseFloat(scorecard.scorePercent.toString()),
+    recommendationAligned:
+      finalDecision === null || recommendationOutcome === null
+        ? null
+        : finalDecision === recommendationOutcome,
+    factorPercents: Object.fromEntries(
+      scorecard.factorScores.map((factor) => [
+        factor.factorKey,
+        factor.maximumScore && Number.parseFloat(factor.maximumScore.toString()) > 0
+          ? Number.parseFloat(
+              (
+                (Number.parseFloat(factor.score?.toString() ?? "0") /
+                  Number.parseFloat(factor.maximumScore.toString())) *
+                100
+              ).toFixed(2),
+            )
+          : null,
+      ]),
+    ),
+  };
+}
+
+function resolveRecalibrationOutcomeKey(
+  opportunity: RecalibrationOpportunityPayload,
+): ScoringRecalibrationOutcomeKey | null {
+  const closeoutOutcomeStageKey = opportunity.closeouts[0]?.outcomeStageKey ?? null;
+  const stageKey = closeoutOutcomeStageKey ?? opportunity.currentStageKey;
+
+  switch (stageKey) {
+    case "awarded":
+      return "awarded";
+    case "lost":
+      return "lost";
+    case "no_bid":
+      return "no_bid";
+    default:
+      return null;
+  }
 }
 
 function formatAuditActionLabel(action: string) {

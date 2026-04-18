@@ -360,10 +360,76 @@ function buildFailedImportReviews() {
   ];
 }
 
+function buildRecalibrationOpportunities() {
+  return [
+    {
+      id: "opp_awarded",
+      title: "Awarded cloud support bridge",
+      currentStageKey: "awarded",
+      currentStageLabel: "Awarded",
+      scorecards: [
+        {
+          scorePercent: { toString: () => "86.00" },
+          factorScores: [
+            {
+              factorKey: "capability_fit",
+              score: { toString: () => "27.60" },
+              maximumScore: { toString: () => "30.00" },
+            },
+          ],
+        },
+      ],
+      bidDecisions: [
+        {
+          recommendationOutcome: "GO",
+          finalOutcome: "GO",
+        },
+      ],
+      closeouts: [
+        {
+          outcomeStageKey: "awarded",
+        },
+      ],
+    },
+    {
+      id: "opp_lost",
+      title: "Lost sustainment recompete",
+      currentStageKey: "lost",
+      currentStageLabel: "Lost",
+      scorecards: [
+        {
+          scorePercent: { toString: () => "54.00" },
+          factorScores: [
+            {
+              factorKey: "capability_fit",
+              score: { toString: () => "16.20" },
+              maximumScore: { toString: () => "30.00" },
+            },
+          ],
+        },
+      ],
+      bidDecisions: [
+        {
+          recommendationOutcome: "GO",
+          finalOutcome: "NO_GO",
+        },
+      ],
+      closeouts: [
+        {
+          outcomeStageKey: "lost",
+        },
+      ],
+    },
+  ];
+}
+
 function createRepositoryClient(record: OrganizationAdminRecord | null) {
   return {
     organization: {
       findUnique: vi.fn().mockResolvedValue(record),
+    },
+    opportunity: {
+      findMany: vi.fn().mockResolvedValue(buildRecalibrationOpportunities()),
     },
     sourceConnectorConfig: {
       findMany: vi.fn().mockResolvedValue(buildConnectorHealthRecords()),
@@ -426,6 +492,18 @@ describe("admin.repository", () => {
     expect(snapshot?.scoringProfile?.scoringCriteria[0]).toMatchObject({
       key: "capability_fit",
       weight: "30.00",
+    });
+    expect(snapshot?.scoringProfile?.recalibration).toMatchObject({
+      closedOpportunityCount: 2,
+      sampledOpportunityCount: 2,
+      recommendationAlignmentPercent: "50.00",
+    });
+    expect(snapshot?.scoringProfile?.recalibration.factorInsights[0]).toMatchObject({
+      key: "capability_fit",
+      currentWeight: "30.00",
+      suggestedWeight: "30.00",
+      outcomeLiftPercent: "38.00",
+      recommendation: "hold",
     });
 
     expect(snapshot?.users[0]).toMatchObject({

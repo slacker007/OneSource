@@ -19,7 +19,7 @@ The current repo includes the first live authentication, authorization, audit-em
 - server-side protected-route gating in the `(app)` route group
 - server-side permission guards for restricted routes and mutating surfaces such as `/analytics`, `/settings`, source import actions under `/sources`, and `/opportunities/new` plus `/opportunities/[opportunityId]/edit`, with a public permission-denied route
 - authenticated-shell navigation that hides the analytics route when the signed-in role set lacks `view_decision_support`
-- a read-only admin console that lets admins inspect current role assignments, recent audit events, and the seeded organization scoring profile without touching the database directly
+- an admin console that lets admins inspect current role assignments, recent audit events, source-sync health, and the seeded organization scoring profile, and lets only `manage_workspace_settings` users recalibrate scoring weights and thresholds with audited server-side writes
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
 - shared audited opportunity write services for create, update, delete, import-decision, stage-transition, and bid-decision flows

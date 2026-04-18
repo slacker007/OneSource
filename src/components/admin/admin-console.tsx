@@ -3,14 +3,22 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type AdminConsoleProps = {
+  recalibrateScoringProfileAction: (formData: FormData) => Promise<void>;
   sessionUser: {
     name?: string | null;
     email?: string | null;
   };
   retrySourceSyncAction: (formData: FormData) => Promise<void>;
   snapshot: AdminWorkspaceSnapshot | null;
+  scoringRecalibrationNotice?: {
+    message: string;
+    tone: "accent" | "warning" | "danger";
+  } | null;
   sourceSyncRetryNotice?: {
     message: string;
     tone: "accent" | "warning" | "danger";
@@ -18,9 +26,11 @@ type AdminConsoleProps = {
 };
 
 export function AdminConsole({
+  recalibrateScoringProfileAction,
   sessionUser,
   retrySourceSyncAction,
   snapshot,
+  scoringRecalibrationNotice = null,
   sourceSyncRetryNotice = null,
 }: AdminConsoleProps) {
   const viewerLabel = sessionUser.name ?? sessionUser.email ?? "Unknown admin";
@@ -68,6 +78,16 @@ export function AdminConsole({
             <Badge tone={sourceSyncRetryNotice.tone}>Source sync retry</Badge>
             <p className="text-muted mt-3 text-sm leading-6">
               {sourceSyncRetryNotice.message}
+            </p>
+          </div>
+        ) : null}
+        {scoringRecalibrationNotice ? (
+          <div className="rounded-[24px] border border-border bg-white p-4">
+            <Badge tone={scoringRecalibrationNotice.tone}>
+              Scoring recalibration
+            </Badge>
+            <p className="text-muted mt-3 text-sm leading-6">
+              {scoringRecalibrationNotice.message}
             </p>
           </div>
         ) : null}
@@ -685,6 +705,298 @@ export function AdminConsole({
                 getRowKey={(criterion) => criterion.id}
                 rows={snapshot.scoringProfile.scoringCriteria}
               />
+
+              <section
+                aria-labelledby="scoring-recalibration-heading"
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                    Feedback loop
+                  </p>
+                  <h3
+                    className="font-heading text-foreground text-xl font-semibold tracking-[-0.03em]"
+                    id="scoring-recalibration-heading"
+                  >
+                    Scoring recalibration
+                  </h3>
+                  <p className="text-muted max-w-3xl text-sm leading-6">
+                    Use closed opportunity outcomes and recommendation
+                    alignment to tune factor weights and thresholds without
+                    editing code. Saving this form bumps the scoring model
+                    version and recalculates current scorecards immediately.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <SummaryCard
+                    label="Closed outcomes"
+                    value={String(
+                      snapshot.scoringProfile.recalibration.closedOpportunityCount,
+                    )}
+                    supportingText="Awarded, lost, and no-bid records with outcome evidence"
+                  />
+                  <SummaryCard
+                    label="Scored samples"
+                    value={String(
+                      snapshot.scoringProfile.recalibration.sampledOpportunityCount,
+                    )}
+                    supportingText="Closed records carrying a current scorecard"
+                  />
+                  <SummaryCard
+                    label="Alignment"
+                    value={
+                      snapshot.scoringProfile.recalibration
+                        .recommendationAlignmentPercent
+                        ? `${snapshot.scoringProfile.recalibration.recommendationAlignmentPercent}%`
+                        : "N/A"
+                    }
+                    supportingText="Final call matched the latest recommendation"
+                  />
+                  <SummaryCard
+                    label="Model version"
+                    value={snapshot.scoringProfile.activeScoringModelVersion}
+                    supportingText="Bumped automatically on recalibration"
+                  />
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-[0.94fr_1.06fr]">
+                  <div className="space-y-4">
+                    <DataTable
+                      ariaLabel="Observed outcome summaries"
+                      columns={[
+                        {
+                          key: "outcome",
+                          header: "Outcome",
+                          cell: (summary) => (
+                            <div className="space-y-2">
+                              <Badge tone={getOutcomeTone(summary.key)}>
+                                {summary.label}
+                              </Badge>
+                              <p className="text-muted text-xs">
+                                {summary.opportunityCount} opportunities
+                              </p>
+                            </div>
+                          ),
+                        },
+                        {
+                          key: "averageScore",
+                          header: "Average score",
+                          cell: (summary) =>
+                            summary.averageScorePercent
+                              ? `${summary.averageScorePercent}%`
+                              : "No scorecard sample",
+                        },
+                      ]}
+                      emptyState={
+                        <EmptyState
+                          message="Closed opportunity outcomes will appear here once award, loss, or no-bid records carry current scorecards."
+                          title="No observed outcomes are available yet"
+                        />
+                      }
+                      getRowKey={(summary) => summary.key}
+                      rows={snapshot.scoringProfile.recalibration.outcomeSummaries}
+                    />
+
+                    <article className="border-border rounded-[24px] border bg-white p-5">
+                      <p className="text-muted text-xs tracking-[0.22em] uppercase">
+                        Recalibration summary
+                      </p>
+                      <p className="text-muted mt-3 text-sm leading-7">
+                        {snapshot.scoringProfile.recalibration.suggestionSummary}
+                      </p>
+                    </article>
+                  </div>
+
+                  <form
+                    action={recalibrateScoringProfileAction}
+                    className="rounded-[28px] border border-border bg-[linear-gradient(180deg,rgba(248,252,250,1),rgba(239,247,243,0.94))] px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.06)]"
+                  >
+                    <div className="grid gap-4 xl:grid-cols-3">
+                      <FormField
+                        htmlFor="scoring-go-threshold"
+                        hint="Score percent required before the engine recommends GO."
+                        label="GO threshold"
+                      >
+                        <Input
+                          defaultValue={
+                            snapshot.scoringProfile.goRecommendationThreshold
+                          }
+                          id="scoring-go-threshold"
+                          max={100}
+                          min={0}
+                          name="goRecommendationThreshold"
+                          step="0.01"
+                          type="number"
+                        />
+                      </FormField>
+
+                      <FormField
+                        htmlFor="scoring-defer-threshold"
+                        hint="Score percent required before the engine recommends DEFER instead of NO_GO."
+                        label="DEFER threshold"
+                      >
+                        <Input
+                          defaultValue={
+                            snapshot.scoringProfile.deferRecommendationThreshold
+                          }
+                          id="scoring-defer-threshold"
+                          max={100}
+                          min={0}
+                          name="deferRecommendationThreshold"
+                          step="0.01"
+                          type="number"
+                        />
+                      </FormField>
+
+                      <FormField
+                        htmlFor="scoring-risk-floor"
+                        hint="Minimum risk factor percent required before a GO recommendation is allowed."
+                        label="Risk floor"
+                      >
+                        <Input
+                          defaultValue={
+                            snapshot.scoringProfile.minimumRiskScorePercent
+                          }
+                          id="scoring-risk-floor"
+                          max={100}
+                          min={0}
+                          name="minimumRiskScorePercent"
+                          step="0.01"
+                          type="number"
+                        />
+                      </FormField>
+                    </div>
+
+                    <div className="mt-5 space-y-4">
+                      {snapshot.scoringProfile.recalibration.factorInsights.map(
+                        (factor) => (
+                          <article
+                            className="rounded-[22px] border border-border bg-white px-4 py-4"
+                            key={factor.key}
+                          >
+                            <input
+                              name={`suggestedWeight_${factor.key}`}
+                              type="hidden"
+                              value={factor.suggestedWeight}
+                            />
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <div className="flex flex-wrap gap-2">
+                                  <Badge tone="muted">{factor.key}</Badge>
+                                  <Badge
+                                    tone={
+                                      factor.recommendation === "increase"
+                                        ? "accent"
+                                        : factor.recommendation === "decrease"
+                                        ? "warning"
+                                        : "muted"
+                                    }
+                                  >
+                                    {factor.recommendation === "hold"
+                                      ? "Hold"
+                                      : factor.recommendation === "increase"
+                                      ? "Increase"
+                                      : "Decrease"}
+                                  </Badge>
+                                </div>
+                                <h4 className="mt-3 text-base font-semibold text-foreground">
+                                  {factor.label}
+                                </h4>
+                                <p className="text-muted mt-2 text-sm leading-6">
+                                  {factor.rationale}
+                                </p>
+                              </div>
+
+                              <div className="grid min-w-60 gap-2 text-sm text-muted sm:grid-cols-2">
+                                <MetricPair
+                                  label="Current"
+                                  value={factor.currentWeight}
+                                />
+                                <MetricPair
+                                  label="Suggested"
+                                  value={factor.suggestedWeight}
+                                />
+                                <MetricPair
+                                  label="Awarded avg"
+                                  value={
+                                    factor.awardedAveragePercent
+                                      ? `${factor.awardedAveragePercent}%`
+                                      : "N/A"
+                                  }
+                                />
+                                <MetricPair
+                                  label="Non-award avg"
+                                  value={
+                                    factor.nonAwardAveragePercent
+                                      ? `${factor.nonAwardAveragePercent}%`
+                                      : "N/A"
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_auto] xl:items-end">
+                              <FormField
+                                htmlFor={`weight-${factor.key}`}
+                                hint={`Evidence rows: ${factor.evidenceCount}${
+                                  factor.outcomeLiftPercent
+                                    ? ` · Outcome lift ${factor.outcomeLiftPercent}%`
+                                    : ""
+                                }`}
+                                label="Manual weight"
+                              >
+                                <Input
+                                  defaultValue={factor.currentWeight}
+                                  id={`weight-${factor.key}`}
+                                  min={0}
+                                  name={`weight_${factor.key}`}
+                                  step="0.01"
+                                  type="number"
+                                />
+                              </FormField>
+                            </div>
+                          </article>
+                        ),
+                      )}
+                    </div>
+
+                    <FormField
+                      className="mt-5"
+                      htmlFor="scoring-recalibration-note"
+                      hint="Optional operator note captured in audit metadata."
+                      label="Recalibration note"
+                    >
+                      <Textarea
+                        defaultValue=""
+                        id="scoring-recalibration-note"
+                        name="recalibrationNote"
+                        placeholder="Summarize why the scoring profile is changing and what outcome evidence drove the update."
+                        rows={3}
+                      />
+                    </FormField>
+
+                    <div className="mt-5 flex flex-wrap justify-end gap-3">
+                      <button
+                        className="inline-flex min-h-12 items-center justify-center rounded-full border border-[rgba(19,78,68,0.2)] bg-white px-5 py-3 text-sm font-medium text-[rgb(19,78,68)] shadow-[0_10px_24px_rgba(20,37,34,0.05)] transition hover:bg-[rgba(255,255,255,0.92)]"
+                        name="recalibrationMode"
+                        type="submit"
+                        value="suggested"
+                      >
+                        Apply observed-outcome suggestions
+                      </button>
+                      <button
+                        className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
+                        name="recalibrationMode"
+                        type="submit"
+                        value="manual"
+                      >
+                        Save manual recalibration
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </section>
             </div>
           ) : (
             <EmptyState
@@ -884,6 +1196,21 @@ function SummaryCard({
   );
 }
 
+function MetricPair({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[18px] bg-[rgba(15,28,31,0.04)] px-3 py-3">
+      <p className="text-[11px] tracking-[0.16em] uppercase">{label}</p>
+      <p className="mt-2 font-medium text-foreground">{value}</p>
+    </div>
+  );
+}
+
 function ProfileBadgeGroup({
   badges,
   emptyLabel,
@@ -956,6 +1283,19 @@ function getImportReviewTone(status: string) {
     case "REJECTED":
       return "danger";
     case "PENDING":
+      return "warning";
+    default:
+      return "muted";
+  }
+}
+
+function getOutcomeTone(status: string) {
+  switch (status) {
+    case "awarded":
+      return "accent";
+    case "lost":
+      return "danger";
+    case "no_bid":
       return "warning";
     default:
       return "muted";

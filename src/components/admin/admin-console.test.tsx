@@ -8,6 +8,7 @@ describe("AdminConsole", () => {
   it("renders user-role visibility and recent audit activity", () => {
     render(
       <AdminConsole
+        recalibrateScoringProfileAction={async () => undefined}
         retrySourceSyncAction={async () => undefined}
         sessionUser={{
           name: "Alex Morgan",
@@ -156,6 +157,49 @@ describe("AdminConsole", () => {
                 isActive: true,
               },
             ],
+            recalibration: {
+              closedOpportunityCount: 3,
+              sampledOpportunityCount: 3,
+              recommendationAlignmentPercent: "66.67",
+              outcomeSummaries: [
+                {
+                  key: "awarded",
+                  label: "Awarded",
+                  opportunityCount: 1,
+                  averageScorePercent: "86.00",
+                },
+                {
+                  key: "lost",
+                  label: "Lost",
+                  opportunityCount: 1,
+                  averageScorePercent: "59.00",
+                },
+                {
+                  key: "no_bid",
+                  label: "No bid",
+                  opportunityCount: 1,
+                  averageScorePercent: "47.00",
+                },
+              ],
+              factorInsights: [
+                {
+                  key: "capability_fit",
+                  label: "Capability fit",
+                  description: "Measures capability match against the opportunity.",
+                  currentWeight: "30.00",
+                  suggestedWeight: "32.00",
+                  awardedAveragePercent: "92.00",
+                  nonAwardAveragePercent: "56.00",
+                  outcomeLiftPercent: "36.00",
+                  evidenceCount: 3,
+                  recommendation: "increase",
+                  rationale:
+                    "Capability fit scored higher on awarded work, so the suggested weight increases.",
+                },
+              ],
+              suggestionSummary:
+                "Observed outcomes cover 3 closed opportunities and highlight where weights can shift.",
+            },
           },
           users: [
             {
@@ -245,6 +289,20 @@ describe("AdminConsole", () => {
     expect(
       screen.getByRole("table", { name: /weighted scoring criteria/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /scoring recalibration/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: /observed outcome summaries/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /apply observed-outcome suggestions/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /save manual recalibration/i }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText(/admin@onesource\.local/i)).toHaveLength(2);
     expect(screen.getByText(/default_capture_v1/i)).toBeInTheDocument();
     expect(screen.getAllByText(/rate limited/i).length).toBeGreaterThan(0);
@@ -253,7 +311,7 @@ describe("AdminConsole", () => {
     expect(screen.getByText(/go >= 70\.00/i)).toBeInTheDocument();
     expect(screen.getByText(/risk floor >= 50\.00%/i)).toBeInTheDocument();
     expect(screen.getByText(/cloud platform engineering/i)).toBeInTheDocument();
-    expect(screen.getByText(/30\.00/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/30\.00/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/no roles assigned/i)).toBeInTheDocument();
     expect(screen.getByText("seed.bootstrap")).toBeInTheDocument();
   });
@@ -261,6 +319,7 @@ describe("AdminConsole", () => {
   it("renders a clear empty state when the organization snapshot is unavailable", () => {
     render(
       <AdminConsole
+        recalibrateScoringProfileAction={async () => undefined}
         retrySourceSyncAction={async () => undefined}
         sessionUser={{
           email: "admin@onesource.local",
@@ -279,6 +338,7 @@ describe("AdminConsole", () => {
 
     render(
       <AdminConsole
+        recalibrateScoringProfileAction={async () => undefined}
         retrySourceSyncAction={async () => undefined}
         sessionUser={{
           email: "admin@onesource.local",

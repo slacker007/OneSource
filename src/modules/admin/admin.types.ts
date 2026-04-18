@@ -79,6 +79,36 @@ export type AdminScoringCriterionSummary = {
   isActive: boolean;
 };
 
+export type AdminScoringRecalibrationOutcomeSummary = {
+  key: "awarded" | "lost" | "no_bid";
+  label: string;
+  opportunityCount: number;
+  averageScorePercent: string | null;
+};
+
+export type AdminScoringRecalibrationFactorInsight = {
+  key: string;
+  label: string;
+  description: string | null;
+  currentWeight: string;
+  suggestedWeight: string;
+  awardedAveragePercent: string | null;
+  nonAwardAveragePercent: string | null;
+  outcomeLiftPercent: string | null;
+  evidenceCount: number;
+  recommendation: "increase" | "decrease" | "hold";
+  rationale: string;
+};
+
+export type AdminScoringRecalibrationSummary = {
+  closedOpportunityCount: number;
+  sampledOpportunityCount: number;
+  recommendationAlignmentPercent: string | null;
+  outcomeSummaries: AdminScoringRecalibrationOutcomeSummary[];
+  factorInsights: AdminScoringRecalibrationFactorInsight[];
+  suggestionSummary: string;
+};
+
 export type AdminScoringProfileSummary = {
   overview: string | null;
   strategicFocus: string | null;
@@ -94,6 +124,7 @@ export type AdminScoringProfileSummary = {
   certifications: AdminScoringCertificationSummary[];
   selectedVehicles: AdminScoringVehicleSummary[];
   scoringCriteria: AdminScoringCriterionSummary[];
+  recalibration: AdminScoringRecalibrationSummary;
 };
 
 export type AdminSourceConnectorHealthStatus =

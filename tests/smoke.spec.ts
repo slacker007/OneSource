@@ -342,6 +342,33 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
       name: /weighted scoring criteria/i,
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /scoring recalibration/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", {
+      name: /observed outcome summaries/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: /apply observed-outcome suggestions/i,
+    }),
+  ).toBeVisible();
+  await page.locator("#weight-capability_fit").fill("28.25");
+  await page
+    .locator("#scoring-recalibration-note")
+    .fill("Lowered capability fit slightly after reviewing recent closed outcomes.");
+  await page
+    .getByRole("button", { name: /save manual recalibration/i })
+    .click();
+  await expect(page).toHaveURL(/scoringRecalibration=success/);
+  await expect(
+    page.getByText(/manual scoring recalibration was saved/i),
+  ).toBeVisible();
+  await expect(page.locator("#weight-capability_fit")).toHaveValue("28.25");
   await expect(page.getByText(/model default_capture_v1/i)).toBeVisible();
   await expect(
     page.getByRole("heading", {
@@ -438,12 +465,20 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     page.getByText(/enterprise knowledge management support services/i).first(),
   ).toBeVisible();
 
-  await page.getByRole("link", { name: /open workspace/i }).click();
+  const enterpriseOpportunityCard = page
+    .locator("article, tr")
+    .filter({
+      hasText: /enterprise knowledge management support services/i,
+    })
+    .first();
+  await enterpriseOpportunityCard
+    .getByRole("link", { name: /open workspace/i })
+    .click();
 
   await expect(page).toHaveURL(/\/opportunities\/.+$/);
   await expect(
-    page.getByRole("heading", {
-      name: /enterprise knowledge management support services/i,
+    page.locator("main h1").filter({
+      hasText: "Enterprise Knowledge Management Support Services",
     }),
   ).toBeVisible();
   await expect(
@@ -637,7 +672,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .locator("#opportunity-query")
     .fill("Enterprise Knowledge Management");
   await page.getByRole("button", { name: /apply filters/i }).click();
-  await page.getByRole("link", { name: /open workspace/i }).click();
+  await enterpriseOpportunityCard
+    .getByRole("link", { name: /open workspace/i })
+    .click();
 
   const targetStageSelect = page.locator("#stage-transition-target");
   const targetStageValue = await targetStageSelect
@@ -697,11 +734,19 @@ test("users can record closeout notes on a closed opportunity workspace", async 
   await expect(
     page.getByText(/navy training range modernization support/i).first(),
   ).toBeVisible();
-  await page.getByRole("link", { name: /open workspace/i }).click();
+  const navyOpportunityCard = page
+    .locator("article, tr")
+    .filter({
+      hasText: /navy training range modernization support/i,
+    })
+    .first();
+  await navyOpportunityCard
+    .getByRole("link", { name: /open workspace/i })
+    .click();
 
   await expect(
-    page.getByRole("heading", {
-      name: /navy training range modernization support/i,
+    page.locator("main h1").filter({
+      hasText: "Navy Training Range Modernization Support",
     }),
   ).toBeVisible();
   await expect(

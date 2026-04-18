@@ -1,4 +1,7 @@
-import { queueSourceSyncRetryAction } from "./actions";
+import {
+  queueSourceSyncRetryAction,
+  recalibrateScoringProfileAction,
+} from "./actions";
 
 import { AdminConsole } from "@/components/admin/admin-console";
 import { requireAppPermission } from "@/lib/auth/authorization";
@@ -27,9 +30,25 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   const sourceSyncRetryMessage = readSingleSearchParam(
     resolvedSearchParams?.sourceSyncRetryMessage,
   );
+  const scoringRecalibration = readSingleSearchParam(
+    resolvedSearchParams?.scoringRecalibration,
+  );
+  const scoringRecalibrationMode = readSingleSearchParam(
+    resolvedSearchParams?.scoringRecalibrationMode,
+  );
+  const scoringRecalibrationMessage = readSingleSearchParam(
+    resolvedSearchParams?.scoringRecalibrationMessage,
+  );
+  const scoringRecalibrationRecalculated = readSingleSearchParam(
+    resolvedSearchParams?.scoringRecalibrationRecalculated,
+  );
+  const scoringRecalibrationVersion = readSingleSearchParam(
+    resolvedSearchParams?.scoringRecalibrationVersion,
+  );
 
   return (
     <AdminConsole
+      recalibrateScoringProfileAction={recalibrateScoringProfileAction}
       retrySourceSyncAction={queueSourceSyncRetryAction}
       sessionUser={{
         name: session.user.name,
@@ -50,6 +69,31 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               message:
                 sourceSyncRetryMessage ??
                 "The saved search retry could not be completed.",
+              tone: "danger",
+            }
+          : null
+      }
+      scoringRecalibrationNotice={
+        scoringRecalibration === "success"
+          ? {
+              message: `${
+                scoringRecalibrationMode === "suggested"
+                  ? "Observed-outcome suggestions were applied."
+                  : "Manual scoring recalibration was saved."
+              } ${
+                scoringRecalibrationRecalculated
+                  ? `${scoringRecalibrationRecalculated} scorecards were recalculated`
+                  : "Scorecards were recalculated"
+              } under model version ${
+                scoringRecalibrationVersion ?? "the new configuration"
+              }.`,
+              tone: "accent",
+            }
+          : scoringRecalibration === "error"
+          ? {
+              message:
+                scoringRecalibrationMessage ??
+                "The scoring recalibration could not be completed.",
               tone: "danger",
             }
           : null
