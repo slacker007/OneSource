@@ -1,12 +1,13 @@
+import { AccessOverview } from "@/components/auth/access-overview";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { AppShellPreview } from "@/components/home/app-shell-preview";
-import { getServerAuthSession } from "@/lib/auth/auth-options";
+import { requireAuthenticatedAppSession } from "@/lib/auth/authorization";
 
 export const dynamic = "force-dynamic";
 
 export default async function AuthenticatedHomePage() {
-  const session = await getServerAuthSession();
-  const roleKeys = session?.user.roleKeys ?? [];
+  const session = await requireAuthenticatedAppSession();
+  const roleKeys = session.user.roleKeys;
   const roleSummary =
     roleKeys.length > 0
       ? roleKeys.join(", ")
@@ -20,14 +21,16 @@ export default async function AuthenticatedHomePage() {
             Authenticated session
           </p>
           <p className="text-foreground text-sm font-medium sm:text-base">
-            {session?.user.name ?? session?.user.email}
+            {session.user.name ?? session.user.email}
           </p>
           <p className="text-muted text-xs sm:text-sm">
-            {session?.user.email} · {roleSummary}
+            {session.user.email} · {roleSummary}
           </p>
         </div>
         <SignOutButton />
       </section>
+
+      <AccessOverview roleKeys={roleKeys} />
 
       <AppShellPreview snapshot={null} />
     </div>

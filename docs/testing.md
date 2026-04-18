@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 2 auth baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 2 auth and authz baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
-- Unit tests: Vitest with Testing Library for UI, runtime helpers, Auth.js callback behavior, credential authentication, password verification, and typed repository mapping
+- Unit tests: Vitest with Testing Library for UI, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, and permission-policy coverage
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in and authenticated-shell access
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, authenticated-shell access, admin access to `/settings`, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -38,11 +38,13 @@ npm run build
 npm run e2e
 ```
 
-For the current auth slice, the Playwright smoke test is expected to:
+For the current auth and authz slices, the Playwright smoke test is expected to:
 
 - redirect anonymous requests for `/` to `/sign-in`
 - submit seeded local credentials through the credentials provider
 - land back on the protected shell with the authenticated-session UI visible
+- allow the admin user through the restricted `/settings` route
+- redirect the seeded viewer user from `/settings` to `/forbidden`
 
 When the changed area includes Prisma schema or seed logic, also run:
 

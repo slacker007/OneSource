@@ -7,7 +7,7 @@ describe("buildOpportunitySeedScenario", () => {
     const scenario = buildOpportunitySeedScenario();
 
     expect(scenario.connectorConfigs).toHaveLength(3);
-    expect(scenario.teamMembers).toHaveLength(6);
+    expect(scenario.teamMembers).toHaveLength(7);
 
     expect(scenario.connectorConfigs).toEqual(
       expect.arrayContaining([

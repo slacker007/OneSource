@@ -114,9 +114,8 @@ export function AppShellPreview({ snapshot }: AppShellPreviewProps) {
               Current loop
             </p>
             <p className="mt-2 text-sm leading-6 text-stone-200">
-              `P2-01` adds Auth.js sign-in, sign-out, JWT-backed session
-              handling, and route protection so anonymous users cannot access
-              the app shell.
+              `P2-02` adds a shared authorization policy plus server-side guards
+              so role-based restrictions hold even on direct navigation.
             </p>
           </div>
         </aside>
@@ -133,19 +132,20 @@ export function AppShellPreview({ snapshot }: AppShellPreviewProps) {
                     Government opportunity tracking with audit-ready decisions.
                   </h1>
                   <p className="text-muted max-w-3xl text-base leading-7">
-                    Authenticated users can now enter the application through a
-                    protected shell while later slices continue building on the
-                    typed opportunity, connector, and workspace foundation.
+                    Authenticated users now carry role-aware access rules
+                    through shared helpers and server-side guards while later
+                    slices build on the typed opportunity, connector, and
+                    workspace foundation.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 text-sm">
                 <div className="border-border text-foreground rounded-full border bg-white px-4 py-2 font-medium">
-                  Status: Auth gate active
+                  Status: Authz guard active
                 </div>
                 <div className="bg-accent rounded-full px-4 py-2 font-medium text-white">
-                  Next: Permissions
+                  Next: Audit events
                 </div>
               </div>
             </header>

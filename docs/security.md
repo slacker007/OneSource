@@ -6,7 +6,7 @@ This document records the current security posture that exists in the repo today
 
 ## Current Baseline
 
-The current repo includes the first live authentication slice on top of the earlier auth and audit persistence baseline plus the connector-metadata and workspace-persistence baselines. Security-relevant implementation present today:
+The current repo includes the first live authentication and authorization slices on top of the earlier auth and audit persistence baseline plus the connector-metadata and workspace-persistence baselines. Security-relevant implementation present today:
 
 - Prisma-managed tables for organizations, users, roles, accounts, sessions, verification tokens, and audit logs
 - Prisma-managed opportunity lineage tables for agencies, vehicles, opportunities, competitors, connector configs, saved searches, search executions, sync runs, retained source records, source child records, and import decisions
@@ -14,7 +14,9 @@ The current repo includes the first live authentication slice on top of the earl
 - Auth.js credentials-provider sign-in backed by seeded local users
 - scrypt-based password-hash verification for local development credentials
 - JWT-backed sessions enriched with `organizationId` and `roleKeys`
+- shared role-to-permission policy helpers that can run in both server and client code
 - server-side protected-route gating in the `(app)` route group
+- server-side permission guards for restricted routes such as `/settings`, with a public permission-denied route
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
 - boot-time environment validation for `DATABASE_URL`, `AUTH_SECRET`, and `NEXTAUTH_URL`
@@ -25,7 +27,7 @@ The current repo includes the first live authentication slice on top of the earl
 The local seed command creates development-only bootstrap records:
 
 - organization slug: `default-org`
-- local users: `admin@onesource.local`, `jamie.chen@onesource.local`, `taylor.reed@onesource.local`, `morgan.patel@onesource.local`, `sam.rivera@onesource.local`, and `casey.brooks@onesource.local`
+- local users: `admin@onesource.local`, `jamie.chen@onesource.local`, `taylor.reed@onesource.local`, `morgan.patel@onesource.local`, `sam.rivera@onesource.local`, `casey.brooks@onesource.local`, and `avery.stone@onesource.local`
 - system roles: admin, executive, business development, capture manager, proposal manager, contributor, viewer
 
 These values are intended for local development only. They are not production credentials and must not be used as real identity defaults in deployed environments.
@@ -67,10 +69,10 @@ The only current producer is the bootstrap seed path. Future loops must add audi
 
 ## Current Risks And Pending Work
 
-- No role-based authorization guards yet beyond the authenticated route gate
+- Only the initial role-based authorization slice exists today. The app shell requires authentication and `/settings` requires the admin role, but most business workflows still need per-action permission enforcement.
 - No route-level or action-level audit emission yet
 - No production-grade password reset, OAuth, MFA, or account-recovery workflow yet
 - No secret-vault integration behind connector credential references yet
-- No authorization guardrails around access to retained source records, workspace notes, or extracted document text yet
+- No authorization guardrails around specific retained source records, workspace notes, documents, or future mutating actions yet
 
-Until `P2-02` and the later hardening items are complete, this auth slice should be treated as a local-development and baseline-access feature rather than a production-ready security boundary.
+Until the later hardening items are complete, this authz slice should be treated as a baseline security boundary rather than full production-ready RBAC coverage.

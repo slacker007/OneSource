@@ -2,6 +2,9 @@
 export const LOCAL_DEMO_SIGN_IN_EMAIL = "admin@onesource.local";
 
 /** @type {string} */
+export const LOCAL_DEMO_VIEWER_EMAIL = "avery.stone@onesource.local";
+
+/** @type {string} */
 export const LOCAL_DEMO_PASSWORD = "LocalDevOnly!123";
 
 /** @type {string} */

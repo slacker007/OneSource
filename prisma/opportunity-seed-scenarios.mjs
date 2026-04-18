@@ -115,6 +115,12 @@ const TEAM_MEMBERS = [
     name: "Casey Brooks",
     roleKeys: ["contributor"],
   },
+  {
+    key: "avery-stone",
+    email: "avery.stone@onesource.local",
+    name: "Avery Stone",
+    roleKeys: ["viewer"],
+  },
 ];
 
 const CONTRACT_VEHICLES = [

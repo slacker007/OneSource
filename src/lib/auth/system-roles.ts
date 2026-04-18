@@ -1,5 +1,17 @@
+export const SYSTEM_ROLE_KEYS = [
+  "admin",
+  "executive",
+  "business_development",
+  "capture_manager",
+  "proposal_manager",
+  "contributor",
+  "viewer",
+] as const;
+
+export type SystemRoleKey = (typeof SYSTEM_ROLE_KEYS)[number];
+
 export type SystemRoleDefinition = {
-  key: string;
+  key: SystemRoleKey;
   name: string;
   description: string;
 };

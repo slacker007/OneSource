@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
-
-import { getServerAuthSession } from "@/lib/auth/auth-options";
+import { requireAuthenticatedAppSession } from "@/lib/auth/authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +7,7 @@ export default async function AuthenticatedAppLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerAuthSession();
-
-  if (!session?.user?.id) {
-    redirect("/sign-in");
-  }
+  await requireAuthenticatedAppSession();
 
   return children;
 }
