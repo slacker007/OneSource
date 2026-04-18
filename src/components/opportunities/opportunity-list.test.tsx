@@ -89,6 +89,9 @@ describe("OpportunityList", () => {
       screen.getByRole("link", { name: /create tracked opportunity/i }),
     ).toHaveAttribute("href", "/opportunities/new");
     expect(
+      screen.getByRole("link", { name: /open workspace/i }),
+    ).toHaveAttribute("href", "/opportunities/opp_123");
+    expect(
       screen.getByRole("link", { name: /edit opportunity/i }),
     ).toHaveAttribute("href", "/opportunities/opp_123/edit");
     expect(

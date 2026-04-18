@@ -1,0 +1,836 @@
+import Link from "next/link";
+
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import type {
+  OpportunityWorkspaceActivity,
+  OpportunityWorkspaceDocument,
+  OpportunityWorkspaceMilestone,
+  OpportunityWorkspaceNote,
+  OpportunityWorkspaceSnapshot,
+  OpportunityWorkspaceStageTransition,
+  OpportunityWorkspaceTask,
+} from "@/modules/opportunities/opportunity.types";
+
+type OpportunityWorkspaceProps = {
+  snapshot: OpportunityWorkspaceSnapshot | null;
+  allowManagePipeline?: boolean;
+};
+
+export function OpportunityWorkspace({
+  snapshot,
+  allowManagePipeline = false,
+}: OpportunityWorkspaceProps) {
+  if (!snapshot) {
+    return (
+      <section className="space-y-4">
+        <p className="text-muted text-sm tracking-[0.26em] uppercase">
+          Opportunities
+        </p>
+        <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
+          Opportunity workspace
+        </h1>
+        <ErrorState
+          message="The requested opportunity workspace could not be loaded for the current organization. Re-seed the local database or confirm the selected record still exists."
+          title="Workspace data is unavailable"
+        />
+      </section>
+    );
+  }
+
+  const decisionLabel =
+    snapshot.bidDecision?.finalOutcome ??
+    snapshot.scorecard?.recommendationOutcome ??
+    "Pending";
+
+  return (
+    <section className="space-y-6">
+      <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Badge>Opportunity workspace</Badge>
+              <Badge tone="muted">{snapshot.opportunity.currentStageLabel}</Badge>
+              <Badge tone="warning">
+                {humanizeSourceSystem(snapshot.opportunity.originSourceSystem)}
+              </Badge>
+              <Badge tone="accent">{decisionLabel}</Badge>
+            </div>
+            <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
+              {snapshot.opportunity.title}
+            </h1>
+            <p className="text-muted max-w-3xl text-sm leading-7">
+              {snapshot.opportunity.description ??
+                snapshot.opportunity.sourceSummaryText ??
+                "No opportunity summary has been captured yet."}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {snapshot.opportunity.uiLink ? (
+              <Link
+                className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-white px-5 py-3 text-sm font-medium text-foreground transition hover:bg-[rgba(15,28,31,0.03)]"
+                href={snapshot.opportunity.uiLink}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Open source notice
+              </Link>
+            ) : null}
+
+            {allowManagePipeline ? (
+              <Link
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
+                href={`/opportunities/${snapshot.opportunity.id}/edit`}
+              >
+                Edit details
+              </Link>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard
+            label="Lead agency"
+            supportingText={
+              snapshot.opportunity.leadAgency?.organizationCode ?? "No agency code"
+            }
+            value={snapshot.opportunity.leadAgency?.name ?? "Unassigned"}
+          />
+          <SummaryCard
+            label="Response deadline"
+            supportingText={
+              snapshot.opportunity.postedAt
+                ? `Posted ${formatDate(snapshot.opportunity.postedAt)}`
+                : "Posted date unavailable"
+            }
+            value={
+              snapshot.opportunity.responseDeadlineAt
+                ? formatDate(snapshot.opportunity.responseDeadlineAt)
+                : "Not set"
+            }
+          />
+          <SummaryCard
+            label="Workspace scope"
+            supportingText={`Updated ${formatDate(snapshot.opportunity.updatedAt)}`}
+            value={snapshot.organization.name}
+          />
+          <SummaryCard
+            label="Score"
+            supportingText={
+              snapshot.scorecard?.recommendationSummary ??
+              "Scoring engine configuration ships in later PRD slices."
+            }
+            value={
+              snapshot.scorecard?.totalScore
+                ? `${snapshot.scorecard.totalScore}/100`
+                : "Unscored"
+            }
+          />
+        </div>
+      </header>
+
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <OverviewSection snapshot={snapshot} />
+        <ScoringSection snapshot={snapshot} />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <TasksSection
+          milestones={snapshot.milestones}
+          tasks={snapshot.tasks}
+        />
+        <DocumentsSection documents={snapshot.documents} />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <NotesSection notes={snapshot.notes} />
+        <HistorySection
+          activity={snapshot.activity}
+          stageTransitions={snapshot.stageTransitions}
+        />
+      </div>
+    </section>
+  );
+}
+
+function OverviewSection({
+  snapshot,
+}: {
+  snapshot: OpportunityWorkspaceSnapshot;
+}) {
+  const detailBadges = [
+    snapshot.opportunity.solicitationNumber
+      ? `Solicitation ${snapshot.opportunity.solicitationNumber}`
+      : null,
+    snapshot.opportunity.externalNoticeId
+      ? `Notice ${snapshot.opportunity.externalNoticeId}`
+      : null,
+    snapshot.opportunity.naicsCode
+      ? `NAICS ${snapshot.opportunity.naicsCode}`
+      : null,
+    snapshot.opportunity.classificationCode
+      ? `PSC ${snapshot.opportunity.classificationCode}`
+      : null,
+    snapshot.opportunity.setAsideDescription,
+  ].filter((value): value is string => Boolean(value));
+
+  return (
+    <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-muted text-xs tracking-[0.24em] uppercase">
+            Overview
+          </p>
+          <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+            Overview
+          </h2>
+        </div>
+        <Badge tone="muted">{snapshot.opportunity.currentStageLabel}</Badge>
+      </div>
+
+      <div className="mt-6 space-y-5">
+        {detailBadges.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {detailBadges.map((badge) => (
+              <Badge key={badge} tone="muted">
+                {badge}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
+
+        <DetailRow
+          label="Vehicles"
+          value={
+            snapshot.opportunity.vehicles.length > 0
+              ? snapshot.opportunity.vehicles
+                  .map((vehicle) => vehicle.code)
+                  .join(", ")
+              : "No contract vehicles linked"
+          }
+        />
+        <DetailRow
+          label="Competitors"
+          value={
+            snapshot.opportunity.competitors.length > 0
+              ? snapshot.opportunity.competitors
+                  .map((competitor) => competitor.name)
+                  .join(", ")
+              : "No competitor context linked"
+          }
+        />
+        <DetailRow
+          label="Office location"
+          value={snapshot.opportunity.officeLocation ?? "Not captured"}
+        />
+        <DetailRow
+          label="Place of performance"
+          value={snapshot.opportunity.placeOfPerformanceLocation ?? "Not captured"}
+        />
+
+        <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,249,239,0.78)] px-5 py-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-base font-semibold text-foreground">
+              Milestones
+            </h3>
+            <Badge tone="warning">{snapshot.milestones.length}</Badge>
+          </div>
+          {snapshot.milestones.length > 0 ? (
+            <div className="mt-4 space-y-3">
+              {snapshot.milestones.map((milestone) => (
+                <MilestoneCard key={milestone.id} milestone={milestone} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              className="mt-4 bg-white/80"
+              message="Milestones will appear here as capture checkpoints are recorded."
+              title="No milestones yet"
+            />
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ScoringSection({
+  snapshot,
+}: {
+  snapshot: OpportunityWorkspaceSnapshot;
+}) {
+  return (
+    <article className="border-border rounded-[28px] border bg-[linear-gradient(135deg,rgba(32,95,85,0.97),rgba(16,58,53,1))] p-6 text-white shadow-[0_22px_60px_rgba(16,58,53,0.28)]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs tracking-[0.24em] text-white/70 uppercase">
+            Scoring
+          </p>
+          <h2 className="font-heading mt-2 text-2xl font-semibold tracking-[-0.03em]">
+            Scoring
+          </h2>
+        </div>
+        <Badge className="border-white/20 bg-white/10 text-white" tone="muted">
+          {snapshot.bidDecision?.finalOutcome ??
+            snapshot.scorecard?.recommendationOutcome ??
+            "Pending"}
+        </Badge>
+      </div>
+
+      {snapshot.scorecard ? (
+        <div className="mt-6 space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <WorkspaceMetric
+              label="Current score"
+              value={`${snapshot.scorecard.totalScore ?? "0"}/${snapshot.scorecard.maximumScore ?? "100"}`}
+            />
+            <WorkspaceMetric
+              label="Calculated"
+              value={formatDate(snapshot.scorecard.calculatedAt)}
+            />
+          </div>
+
+          <p className="text-sm leading-7 text-white/80">
+            {snapshot.scorecard.summary ??
+              snapshot.scorecard.recommendationSummary ??
+              "No score summary is available yet."}
+          </p>
+
+          <div className="space-y-3">
+            {snapshot.scorecard.factors.map((factor) => (
+              <div
+                className="rounded-[22px] border border-white/12 bg-white/7 px-4 py-4"
+                key={factor.id}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-base font-semibold">{factor.factorLabel}</h3>
+                  <Badge
+                    className="border-white/15 bg-white/10 text-white"
+                    tone="muted"
+                  >
+                    {factor.score ?? "0"}/{factor.maximumScore ?? "0"}
+                  </Badge>
+                </div>
+                {factor.explanation ? (
+                  <p className="mt-2 text-sm leading-6 text-white/78">
+                    {factor.explanation}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+
+          {snapshot.bidDecision ? (
+            <div className="rounded-[22px] border border-white/12 bg-white/7 px-5 py-4">
+              <h3 className="text-base font-semibold">Current decision</h3>
+              <p className="mt-2 text-sm text-white/80">
+                Recommendation:{" "}
+                {snapshot.bidDecision.recommendationOutcome ?? "Pending"}
+                {snapshot.bidDecision.decidedByName
+                  ? ` · Finalized by ${snapshot.bidDecision.decidedByName}`
+                  : ""}
+              </p>
+              {snapshot.bidDecision.finalRationale ? (
+                <p className="mt-2 text-sm leading-6 text-white/80">
+                  {snapshot.bidDecision.finalRationale}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <EmptyState
+          className="mt-6 border-white/15 bg-white/5 text-white"
+          message="The seeded workspace does not have a current scorecard yet."
+          title="No scoring context yet"
+        />
+      )}
+    </article>
+  );
+}
+
+function TasksSection({
+  milestones,
+  tasks,
+}: {
+  milestones: OpportunityWorkspaceMilestone[];
+  tasks: OpportunityWorkspaceTask[];
+}) {
+  return (
+    <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-muted text-xs tracking-[0.24em] uppercase">
+            Execution
+          </p>
+          <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+            Tasks
+          </h2>
+        </div>
+        <Badge tone="warning">{tasks.length} open records</Badge>
+      </div>
+
+      {tasks.length > 0 ? (
+        <div className="mt-6 space-y-4">
+          {tasks.map((task) => (
+            <div
+              className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(246,239,228,0.55)] px-5 py-5"
+              key={task.id}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold text-foreground">
+                    {task.title}
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone={priorityTone(task.priority)}>{task.priority}</Badge>
+                    <Badge tone="muted">{humanizeEnum(task.status)}</Badge>
+                  </div>
+                </div>
+                <p className="text-sm text-muted">
+                  {task.dueAt ? `Due ${formatDate(task.dueAt)}` : "No due date"}
+                </p>
+              </div>
+
+              {task.description ? (
+                <p className="mt-3 text-sm leading-6 text-muted">
+                  {task.description}
+                </p>
+              ) : null}
+
+              <p className="mt-3 text-sm text-muted">
+                Owner: {task.assigneeName ?? "Unassigned"}
+                {task.createdByName ? ` · Created by ${task.createdByName}` : ""}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          className="mt-6"
+          message="Execution tasks will appear here once pipeline work starts."
+          title="No tasks yet"
+        />
+      )}
+
+      {milestones.length > 0 ? (
+        <div className="mt-6 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,255,255,0.9)] px-5 py-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-base font-semibold text-foreground">
+              Near-term milestones
+            </h3>
+            <Badge tone="muted">{milestones.length}</Badge>
+          </div>
+          <div className="mt-4 space-y-3">
+            {milestones.map((milestone) => (
+              <MilestoneCard key={milestone.id} milestone={milestone} compact />
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function DocumentsSection({
+  documents,
+}: {
+  documents: OpportunityWorkspaceDocument[];
+}) {
+  return (
+    <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-muted text-xs tracking-[0.24em] uppercase">
+            Artifacts
+          </p>
+          <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+            Documents
+          </h2>
+        </div>
+        <Badge tone="muted">{documents.length}</Badge>
+      </div>
+
+      {documents.length > 0 ? (
+        <div className="mt-6 space-y-4">
+          {documents.map((document) => (
+            <div
+              className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,249,239,0.7)] px-5 py-5"
+              key={document.id}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold text-foreground">
+                    {document.title}
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone="muted">
+                      {document.documentType
+                        ? humanizeEnum(document.documentType)
+                        : "General"}
+                    </Badge>
+                    <Badge tone="warning">
+                      {humanizeEnum(document.sourceType)}
+                    </Badge>
+                    <Badge tone="accent">
+                      {humanizeEnum(document.extractionStatus)}
+                    </Badge>
+                  </div>
+                </div>
+                <p className="text-sm text-muted">
+                  Added {formatDate(document.createdAt)}
+                </p>
+              </div>
+
+              <p className="mt-3 text-sm text-muted">
+                {document.originalFileName ?? "No local file name"}
+                {document.mimeType ? ` · ${document.mimeType}` : ""}
+                {document.fileSizeBytes
+                  ? ` · ${formatFileSize(document.fileSizeBytes)}`
+                  : ""}
+              </p>
+
+              {document.extractedText ? (
+                <p className="mt-3 text-sm leading-6 text-muted">
+                  {truncateText(document.extractedText, 220)}
+                </p>
+              ) : null}
+
+              {document.sourceUrl ? (
+                <Link
+                  className="mt-3 inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+                  href={document.sourceUrl}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Open document source
+                </Link>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          className="mt-6"
+          message="Source attachments and uploaded files will appear here."
+          title="No documents yet"
+        />
+      )}
+    </article>
+  );
+}
+
+function NotesSection({
+  notes,
+}: {
+  notes: OpportunityWorkspaceNote[];
+}) {
+  return (
+    <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-muted text-xs tracking-[0.24em] uppercase">Notes</p>
+          <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+            Notes
+          </h2>
+        </div>
+        <Badge tone="muted">{notes.length}</Badge>
+      </div>
+
+      {notes.length > 0 ? (
+        <div className="mt-6 space-y-4">
+          {notes.map((note) => (
+            <div
+              className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,255,255,0.9)] px-5 py-5"
+              key={note.id}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {note.isPinned ? <Badge>Pinned</Badge> : null}
+                    <Badge tone="muted">{note.contentFormat}</Badge>
+                  </div>
+                  <h3 className="text-base font-semibold text-foreground">
+                    {note.title ?? "Untitled note"}
+                  </h3>
+                </div>
+                <p className="text-sm text-muted">
+                  {note.authorName ?? "Unknown author"} · {formatDate(note.updatedAt)}
+                </p>
+              </div>
+
+              <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-6 text-muted">
+                {note.body}
+              </pre>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          className="mt-6"
+          message="Pursuit notes and working assumptions will appear here."
+          title="No notes yet"
+        />
+      )}
+    </article>
+  );
+}
+
+function HistorySection({
+  activity,
+  stageTransitions,
+}: {
+  activity: OpportunityWorkspaceActivity[];
+  stageTransitions: OpportunityWorkspaceStageTransition[];
+}) {
+  return (
+    <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-muted text-xs tracking-[0.24em] uppercase">
+            Timeline
+          </p>
+          <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+            History
+          </h2>
+        </div>
+        <Badge tone="warning">{activity.length + stageTransitions.length} events</Badge>
+      </div>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        <div className="space-y-4">
+          <h3 className="text-base font-semibold text-foreground">
+            Activity feed
+          </h3>
+          {activity.length > 0 ? (
+            activity.map((event) => (
+              <TimelineCard
+                detail={event.description}
+                key={event.id}
+                metadata={[
+                  event.actorLabel ?? "Unknown actor",
+                  event.relatedEntityType
+                    ? humanizeEnum(event.relatedEntityType)
+                    : null,
+                  formatDate(event.occurredAt),
+                ]}
+                title={event.title}
+              />
+            ))
+          ) : (
+            <EmptyState
+              message="User and system activity will appear here once recorded."
+              title="No activity yet"
+            />
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-base font-semibold text-foreground">
+            Stage transitions
+          </h3>
+          {stageTransitions.length > 0 ? (
+            stageTransitions.map((transition) => (
+              <TimelineCard
+                detail={transition.rationale}
+                key={transition.id}
+                metadata={[
+                  transition.fromStageLabel
+                    ? `${transition.fromStageLabel} -> ${transition.toStageLabel}`
+                    : transition.toStageLabel,
+                  humanizeEnum(transition.triggerType),
+                  transition.actorName,
+                  formatDate(transition.transitionedAt),
+                ]}
+                title={`Moved to ${transition.toStageLabel}`}
+              />
+            ))
+          ) : (
+            <EmptyState
+              message="Stage transitions will appear once the opportunity moves through the pipeline."
+              title="No transition history yet"
+            />
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function MilestoneCard({
+  milestone,
+  compact = false,
+}: {
+  milestone: OpportunityWorkspaceMilestone;
+  compact?: boolean;
+}) {
+  return (
+    <div className="rounded-[20px] border border-[rgba(15,28,31,0.08)] bg-white/75 px-4 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h4 className={`${compact ? "text-sm" : "text-base"} font-semibold text-foreground`}>
+            {milestone.title}
+          </h4>
+          <p className="text-sm text-muted">
+            {formatDate(milestone.targetDate)}
+            {milestone.milestoneTypeKey
+              ? ` · ${humanizeEnum(milestone.milestoneTypeKey)}`
+              : ""}
+          </p>
+        </div>
+        <Badge tone={milestoneTone(milestone.status)}>
+          {humanizeEnum(milestone.status)}
+        </Badge>
+      </div>
+      {milestone.description ? (
+        <p className="mt-2 text-sm leading-6 text-muted">{milestone.description}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function TimelineCard({
+  detail,
+  metadata,
+  title,
+}: {
+  detail: string | null;
+  metadata: Array<string | null>;
+  title: string;
+}) {
+  return (
+    <div className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-[rgba(246,239,228,0.45)] px-4 py-4">
+      <h4 className="text-base font-semibold text-foreground">{title}</h4>
+      <p className="mt-2 text-sm text-muted">{metadata.filter(Boolean).join(" · ")}</p>
+      {detail ? <p className="mt-2 text-sm leading-6 text-muted">{detail}</p> : null}
+    </div>
+  );
+}
+
+function SummaryCard({
+  label,
+  supportingText,
+  value,
+}: {
+  label: string;
+  supportingText: string;
+  value: string;
+}) {
+  return (
+    <article className="border-border rounded-[24px] border bg-white px-4 py-4 text-sm shadow-[0_12px_30px_rgba(20,37,34,0.06)]">
+      <p className="text-muted text-xs tracking-[0.2em] uppercase">{label}</p>
+      <p className="mt-2 font-semibold text-foreground">{value}</p>
+      <p className="mt-1 text-muted">{supportingText}</p>
+    </article>
+  );
+}
+
+function WorkspaceMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[22px] border border-white/12 bg-white/7 px-4 py-4">
+      <p className="text-xs tracking-[0.2em] text-white/65 uppercase">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1 border-b border-[rgba(15,28,31,0.06)] pb-4 last:border-b-0 last:pb-0">
+      <p className="text-muted text-xs tracking-[0.2em] uppercase">{label}</p>
+      <p className="text-sm leading-6 text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function humanizeSourceSystem(sourceSystem: string | null) {
+  if (!sourceSystem) {
+    return "Manual entry";
+  }
+
+  return sourceSystem
+    .split(/[_-]/g)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
+
+function humanizeEnum(value: string) {
+  return value
+    .split(/[_-]/g)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatFileSize(fileSizeBytes: number) {
+  if (fileSizeBytes < 1024) {
+    return `${fileSizeBytes} B`;
+  }
+
+  if (fileSizeBytes < 1024 * 1024) {
+    return `${Math.round(fileSizeBytes / 1024)} KB`;
+  }
+
+  return `${(fileSizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function truncateText(value: string, length: number) {
+  if (value.length <= length) {
+    return value;
+  }
+
+  return `${value.slice(0, length - 3).trimEnd()}...`;
+}
+
+function priorityTone(priority: string) {
+  if (priority === "CRITICAL") {
+    return "danger" as const;
+  }
+
+  if (priority === "HIGH") {
+    return "warning" as const;
+  }
+
+  if (priority === "LOW") {
+    return "muted" as const;
+  }
+
+  return "accent" as const;
+}
+
+function milestoneTone(status: string) {
+  if (status === "MISSED") {
+    return "danger" as const;
+  }
+
+  if (status === "AT_RISK") {
+    return "warning" as const;
+  }
+
+  if (status === "COMPLETED") {
+    return "accent" as const;
+  }
+
+  return "muted" as const;
+}

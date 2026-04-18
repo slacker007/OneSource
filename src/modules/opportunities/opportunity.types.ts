@@ -206,6 +206,120 @@ export type OpportunityFormSnapshot = {
   updatedAt: string | null;
 };
 
+export type OpportunityWorkspaceTask = OpportunityTaskSummary & {
+  description: string | null;
+  createdByName: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+};
+
+export type OpportunityWorkspaceMilestone = OpportunityMilestoneSummary & {
+  description: string | null;
+  milestoneTypeKey: string | null;
+  completedAt: string | null;
+};
+
+export type OpportunityWorkspaceScoreFactor = {
+  id: string;
+  factorKey: string;
+  factorLabel: string;
+  weight: string | null;
+  score: string | null;
+  maximumScore: string | null;
+  explanation: string | null;
+};
+
+export type OpportunityWorkspaceScorecard = OpportunityScoreSummary & {
+  scoringModelKey: string | null;
+  scoringModelVersion: string | null;
+  scorePercent: string | null;
+  recommendationSummary: string | null;
+  summary: string | null;
+  factors: OpportunityWorkspaceScoreFactor[];
+};
+
+export type OpportunityWorkspaceBidDecision =
+  OpportunityBidDecisionSummary & {
+    recommendationSummary: string | null;
+    finalRationale: string | null;
+    recommendedAt: string | null;
+    recommendedByLabel: string | null;
+    decidedByName: string | null;
+  };
+
+export type OpportunityWorkspaceDocument = {
+  id: string;
+  title: string;
+  documentType: string | null;
+  sourceType: string;
+  sourceUrl: string | null;
+  originalFileName: string | null;
+  mimeType: string | null;
+  fileSizeBytes: number | null;
+  extractionStatus: string;
+  extractedAt: string | null;
+  extractedText: string | null;
+  uploadedByName: string | null;
+  createdAt: string;
+};
+
+export type OpportunityWorkspaceNote = {
+  id: string;
+  title: string | null;
+  body: string;
+  contentFormat: string;
+  isPinned: boolean;
+  authorName: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OpportunityWorkspaceActivity = {
+  id: string;
+  eventType: string;
+  title: string;
+  description: string | null;
+  actorLabel: string | null;
+  relatedEntityType: string | null;
+  occurredAt: string;
+};
+
+export type OpportunityWorkspaceStageTransition = {
+  id: string;
+  triggerType: string;
+  fromStageLabel: string | null;
+  toStageLabel: string;
+  rationale: string | null;
+  actorName: string | null;
+  transitionedAt: string;
+};
+
+export type OpportunityWorkspaceOpportunitySummary = OpportunitySummary & {
+  description: string | null;
+  externalNoticeId: string | null;
+  sourceSummaryUrl: string | null;
+  postedAt: string | null;
+  classificationCode: string | null;
+  setAsideDescription: string | null;
+  currentStageChangedAt: string | null;
+  uiLink: string | null;
+  officeLocation: string | null;
+  placeOfPerformanceLocation: string | null;
+};
+
+export type OpportunityWorkspaceSnapshot = {
+  organization: OrganizationSummary;
+  opportunity: OpportunityWorkspaceOpportunitySummary;
+  scorecard: OpportunityWorkspaceScorecard | null;
+  bidDecision: OpportunityWorkspaceBidDecision | null;
+  tasks: OpportunityWorkspaceTask[];
+  milestones: OpportunityWorkspaceMilestone[];
+  documents: OpportunityWorkspaceDocument[];
+  notes: OpportunityWorkspaceNote[];
+  activity: OpportunityWorkspaceActivity[];
+  stageTransitions: OpportunityWorkspaceStageTransition[];
+};
+
 export type OpportunityStageSummary = {
   stageKey: string;
   stageLabel: string;

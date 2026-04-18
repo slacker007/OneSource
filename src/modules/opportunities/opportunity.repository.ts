@@ -6,10 +6,20 @@ import type {
   ContractVehicleSummary,
   DashboardDeadlineSummary,
   HomeDashboardSnapshot,
+  OpportunityWorkspaceActivity,
+  OpportunityWorkspaceBidDecision,
+  OpportunityWorkspaceDocument,
   OpportunityListDueWindow,
   OpportunityListQuery,
   OpportunityListSnapshot,
   OpportunityListSort,
+  OpportunityWorkspaceMilestone,
+  OpportunityWorkspaceNote,
+  OpportunityWorkspaceScoreFactor,
+  OpportunityWorkspaceScorecard,
+  OpportunityWorkspaceSnapshot,
+  OpportunityWorkspaceStageTransition,
+  OpportunityWorkspaceTask,
   OpportunityBidDecisionSummary,
   OpportunityMilestoneSummary,
   OpportunityScoreSummary,
@@ -202,6 +212,252 @@ const organizationDashboardArgs = {
   },
 };
 
+const opportunityWorkspaceArgs = {
+  select: {
+    id: true,
+    title: true,
+    description: true,
+    externalNoticeId: true,
+    solicitationNumber: true,
+    sourceSummaryText: true,
+    sourceSummaryUrl: true,
+    postedAt: true,
+    responseDeadlineAt: true,
+    originSourceSystem: true,
+    naicsCode: true,
+    classificationCode: true,
+    setAsideDescription: true,
+    currentStageKey: true,
+    currentStageLabel: true,
+    currentStageChangedAt: true,
+    updatedAt: true,
+    uiLink: true,
+    officeCity: true,
+    officeState: true,
+    officePostalCode: true,
+    placeOfPerformanceCityName: true,
+    placeOfPerformanceStateName: true,
+    placeOfPerformancePostalCode: true,
+    organization: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+      },
+    },
+    leadAgency: {
+      select: {
+        id: true,
+        name: true,
+        organizationCode: true,
+      },
+    },
+    vehicles: {
+      orderBy: [{ isPrimary: "desc" }, { vehicle: { code: "asc" } }],
+      select: {
+        isPrimary: true,
+        vehicle: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            vehicleType: true,
+          },
+        },
+      },
+    },
+    competitors: {
+      orderBy: {
+        competitor: {
+          name: "asc",
+        },
+      },
+      select: {
+        role: true,
+        competitor: {
+          select: {
+            id: true,
+            name: true,
+            websiteUrl: true,
+          },
+        },
+      },
+    },
+    tasks: {
+      orderBy: [{ sortOrder: "asc" }, { dueAt: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        status: true,
+        priority: true,
+        dueAt: true,
+        startedAt: true,
+        completedAt: true,
+        createdByUser: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+        assigneeUser: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    },
+    milestones: {
+      orderBy: [{ sortOrder: "asc" }, { targetDate: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        milestoneTypeKey: true,
+        status: true,
+        targetDate: true,
+        completedAt: true,
+      },
+    },
+    notes: {
+      orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        body: true,
+        contentFormat: true,
+        isPinned: true,
+        createdAt: true,
+        updatedAt: true,
+        authorUser: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    },
+    documents: {
+      orderBy: [{ createdAt: "desc" }, { title: "asc" }],
+      select: {
+        id: true,
+        title: true,
+        documentType: true,
+        sourceType: true,
+        sourceUrl: true,
+        originalFileName: true,
+        mimeType: true,
+        fileSizeBytes: true,
+        extractionStatus: true,
+        extractedAt: true,
+        extractedText: true,
+        createdAt: true,
+        uploadedByUser: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    },
+    activityEvents: {
+      orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+      take: 12,
+      select: {
+        id: true,
+        eventType: true,
+        title: true,
+        description: true,
+        actorIdentifier: true,
+        relatedEntityType: true,
+        occurredAt: true,
+        actorUser: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    },
+    stageTransitions: {
+      orderBy: [{ transitionedAt: "desc" }, { createdAt: "desc" }],
+      take: 8,
+      select: {
+        id: true,
+        triggerType: true,
+        fromStageLabel: true,
+        toStageLabel: true,
+        rationale: true,
+        transitionedAt: true,
+        actorUser: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    },
+    scorecards: {
+      where: {
+        isCurrent: true,
+      },
+      orderBy: {
+        calculatedAt: "desc",
+      },
+      take: 1,
+      select: {
+        scoringModelKey: true,
+        scoringModelVersion: true,
+        totalScore: true,
+        maximumScore: true,
+        scorePercent: true,
+        recommendationOutcome: true,
+        recommendationSummary: true,
+        summary: true,
+        calculatedAt: true,
+        factorScores: {
+          orderBy: [{ sortOrder: "asc" }, { factorLabel: "asc" }],
+          select: {
+            id: true,
+            factorKey: true,
+            factorLabel: true,
+            weight: true,
+            score: true,
+            maximumScore: true,
+            explanation: true,
+          },
+        },
+      },
+    },
+    bidDecisions: {
+      where: {
+        isCurrent: true,
+      },
+      orderBy: {
+        decidedAt: "desc",
+      },
+      take: 1,
+      select: {
+        decisionTypeKey: true,
+        recommendationOutcome: true,
+        finalOutcome: true,
+        recommendationSummary: true,
+        finalRationale: true,
+        recommendedAt: true,
+        recommendedByIdentifier: true,
+        decidedAt: true,
+        decidedByUser: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    },
+  },
+};
+
 export type OpportunityRepositoryClient = {
   organization: {
     findUnique(args: {
@@ -209,6 +465,19 @@ export type OpportunityRepositoryClient = {
         slug: string;
       };
     } & typeof organizationDashboardArgs): Promise<OrganizationDashboardRecord | null>;
+  };
+};
+
+export type OpportunityWorkspaceRepositoryClient = {
+  opportunity: {
+    findFirst(args: {
+      where: {
+        id: string;
+        organization: {
+          slug: string;
+        };
+      };
+    } & typeof opportunityWorkspaceArgs): Promise<OpportunityWorkspaceRecord | null>;
   };
 };
 
@@ -298,6 +567,159 @@ export type OrganizationDashboardRecord = {
   slug: string;
   sourceConnectorConfigs: OrganizationDashboardConnectorRecord[];
   opportunities: OrganizationDashboardOpportunityRecord[];
+};
+
+export type OpportunityWorkspaceRecord = {
+  id: string;
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  title: string;
+  description: string | null;
+  externalNoticeId: string | null;
+  solicitationNumber: string | null;
+  sourceSummaryText: string | null;
+  sourceSummaryUrl: string | null;
+  postedAt: Date | null;
+  responseDeadlineAt: Date | null;
+  originSourceSystem: string | null;
+  naicsCode: string | null;
+  classificationCode: string | null;
+  setAsideDescription: string | null;
+  currentStageKey: string | null;
+  currentStageLabel: string | null;
+  currentStageChangedAt: Date | null;
+  updatedAt: Date;
+  uiLink: string | null;
+  officeCity: string | null;
+  officeState: string | null;
+  officePostalCode: string | null;
+  placeOfPerformanceCityName: string | null;
+  placeOfPerformanceStateName: string | null;
+  placeOfPerformancePostalCode: string | null;
+  leadAgency: OrganizationDashboardLeadAgencyRecord;
+  vehicles: OrganizationDashboardOpportunityRecord["vehicles"];
+  competitors: OrganizationDashboardOpportunityRecord["competitors"];
+  tasks: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    status: OpportunityTaskSummary["status"];
+    priority: OpportunityTaskSummary["priority"];
+    dueAt: Date | null;
+    startedAt: Date | null;
+    completedAt: Date | null;
+    createdByUser: {
+      name: string | null;
+      email: string;
+    } | null;
+    assigneeUser: {
+      name: string | null;
+      email: string;
+    } | null;
+  }>;
+  milestones: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    milestoneTypeKey: string | null;
+    status: OpportunityMilestoneSummary["status"];
+    targetDate: Date;
+    completedAt: Date | null;
+  }>;
+  notes: Array<{
+    id: string;
+    title: string | null;
+    body: string;
+    contentFormat: string;
+    isPinned: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    authorUser: {
+      name: string | null;
+      email: string;
+    } | null;
+  }>;
+  documents: Array<{
+    id: string;
+    title: string;
+    documentType: string | null;
+    sourceType: string;
+    sourceUrl: string | null;
+    originalFileName: string | null;
+    mimeType: string | null;
+    fileSizeBytes: number | null;
+    extractionStatus: string;
+    extractedAt: Date | null;
+    extractedText: string | null;
+    createdAt: Date;
+    uploadedByUser: {
+      name: string | null;
+      email: string;
+    } | null;
+  }>;
+  activityEvents: Array<{
+    id: string;
+    eventType: string;
+    title: string;
+    description: string | null;
+    actorIdentifier: string | null;
+    relatedEntityType: string | null;
+    occurredAt: Date;
+    actorUser: {
+      name: string | null;
+      email: string;
+    } | null;
+  }>;
+  stageTransitions: Array<{
+    id: string;
+    triggerType: string;
+    fromStageLabel: string | null;
+    toStageLabel: string | null;
+    rationale: string | null;
+    transitionedAt: Date;
+    actorUser: {
+      name: string | null;
+      email: string;
+    } | null;
+  }>;
+  scorecards: Array<{
+    scoringModelKey: string | null;
+    scoringModelVersion: string | null;
+    totalScore: { toString(): string } | null;
+    maximumScore: { toString(): string } | null;
+    scorePercent: { toString(): string } | null;
+    recommendationOutcome: OpportunityScoreSummary["recommendationOutcome"];
+    recommendationSummary: string | null;
+    summary: string | null;
+    calculatedAt: Date;
+    factorScores: Array<{
+      id: string;
+      factorKey: string;
+      factorLabel: string;
+      weight: { toString(): string } | null;
+      score: { toString(): string } | null;
+      maximumScore: { toString(): string } | null;
+      explanation: string | null;
+    }>;
+  }>;
+  bidDecisions: Array<{
+    decisionTypeKey: string | null;
+    recommendationOutcome:
+      OpportunityBidDecisionSummary["recommendationOutcome"];
+    finalOutcome: OpportunityBidDecisionSummary["finalOutcome"];
+    recommendationSummary: string | null;
+    finalRationale: string | null;
+    recommendedAt: Date | null;
+    recommendedByIdentifier: string | null;
+    decidedAt: Date | null;
+    decidedByUser: {
+      name: string | null;
+      email: string;
+    } | null;
+  }>;
 };
 
 type GetHomeDashboardSnapshotParams = {
@@ -536,6 +958,43 @@ export async function getOpportunityListSnapshot({
   };
 }
 
+export async function getOpportunityWorkspaceSnapshot({
+  db,
+  opportunityId,
+  organizationSlug = DEFAULT_ORGANIZATION_SLUG,
+}: {
+  db: OpportunityWorkspaceRepositoryClient;
+  opportunityId: string;
+  organizationSlug?: string;
+}): Promise<OpportunityWorkspaceSnapshot | null> {
+  const record = await loadOpportunityWorkspaceRecord({
+    db,
+    opportunityId,
+    organizationSlug,
+  });
+
+  if (!record) {
+    return null;
+  }
+
+  return {
+    organization: {
+      id: record.organization.id,
+      name: record.organization.name,
+      slug: record.organization.slug,
+    },
+    opportunity: mapOpportunityWorkspaceSummary(record),
+    scorecard: mapWorkspaceScorecard(record.scorecards[0]),
+    bidDecision: mapWorkspaceBidDecision(record.bidDecisions[0]),
+    tasks: record.tasks.map(mapWorkspaceTask),
+    milestones: record.milestones.map(mapWorkspaceMilestone),
+    documents: record.documents.map(mapWorkspaceDocument),
+    notes: record.notes.map(mapWorkspaceNote),
+    activity: record.activityEvents.map(mapWorkspaceActivity),
+    stageTransitions: record.stageTransitions.map(mapWorkspaceStageTransition),
+  };
+}
+
 async function loadOrganizationDashboardRecord({
   db,
   organizationSlug,
@@ -549,6 +1008,26 @@ async function loadOrganizationDashboardRecord({
     },
     ...organizationDashboardArgs,
   })) as OrganizationDashboardRecord | null;
+}
+
+async function loadOpportunityWorkspaceRecord({
+  db,
+  opportunityId,
+  organizationSlug,
+}: {
+  db: OpportunityWorkspaceRepositoryClient;
+  opportunityId: string;
+  organizationSlug: string;
+}): Promise<OpportunityWorkspaceRecord | null> {
+  return (await db.opportunity.findFirst({
+    where: {
+      id: opportunityId,
+      organization: {
+        slug: organizationSlug,
+      },
+    },
+    ...opportunityWorkspaceArgs,
+  })) as OpportunityWorkspaceRecord | null;
 }
 
 function mapConnectorSummary(
@@ -690,6 +1169,213 @@ function mapOpportunitySummary(
     milestones: opportunity.milestones
       .map(mapMilestoneSummary)
       .sort(compareMilestoneSummaries),
+  };
+}
+
+function mapOpportunityWorkspaceSummary(
+  opportunity: OpportunityWorkspaceRecord,
+): OpportunityWorkspaceSnapshot["opportunity"] {
+  return {
+    id: opportunity.id,
+    title: opportunity.title,
+    solicitationNumber: opportunity.solicitationNumber,
+    leadAgency: mapAgencySummary(opportunity.leadAgency),
+    currentStageKey: opportunity.currentStageKey,
+    currentStageLabel:
+      opportunity.currentStageLabel ??
+      humanizeStageKey(opportunity.currentStageKey) ??
+      "Unstaged",
+    responseDeadlineAt: toIsoString(opportunity.responseDeadlineAt),
+    originSourceSystem: opportunity.originSourceSystem,
+    naicsCode: opportunity.naicsCode,
+    sourceSummaryText: opportunity.sourceSummaryText,
+    updatedAt: opportunity.updatedAt.toISOString(),
+    score: mapScoreSummary(opportunity.scorecards[0]),
+    bidDecision: mapBidDecisionSummary(opportunity.bidDecisions[0]),
+    vehicles: opportunity.vehicles.map(mapVehicleSummary),
+    competitors: opportunity.competitors.map(mapCompetitorSummary),
+    tasks: opportunity.tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      priority: task.priority,
+      dueAt: toIsoString(task.dueAt),
+      assigneeName: formatPersonLabel(task.assigneeUser),
+    })),
+    milestones: opportunity.milestones.map((milestone) => ({
+      id: milestone.id,
+      title: milestone.title,
+      status: milestone.status,
+      targetDate: milestone.targetDate.toISOString(),
+    })),
+    description: opportunity.description,
+    externalNoticeId: opportunity.externalNoticeId,
+    sourceSummaryUrl: opportunity.sourceSummaryUrl,
+    postedAt: toIsoString(opportunity.postedAt),
+    classificationCode: opportunity.classificationCode,
+    setAsideDescription: opportunity.setAsideDescription,
+    currentStageChangedAt: toIsoString(opportunity.currentStageChangedAt),
+    uiLink: opportunity.uiLink,
+    officeLocation: joinLocationParts([
+      opportunity.officeCity,
+      opportunity.officeState,
+      opportunity.officePostalCode,
+    ]),
+    placeOfPerformanceLocation: joinLocationParts([
+      opportunity.placeOfPerformanceCityName,
+      opportunity.placeOfPerformanceStateName,
+      opportunity.placeOfPerformancePostalCode,
+    ]),
+  };
+}
+
+function mapWorkspaceTask(
+  task: OpportunityWorkspaceRecord["tasks"][number],
+): OpportunityWorkspaceTask {
+  return {
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    priority: task.priority,
+    dueAt: toIsoString(task.dueAt),
+    startedAt: toIsoString(task.startedAt),
+    completedAt: toIsoString(task.completedAt),
+    assigneeName: formatPersonLabel(task.assigneeUser),
+    createdByName: formatPersonLabel(task.createdByUser),
+  };
+}
+
+function mapWorkspaceMilestone(
+  milestone: OpportunityWorkspaceRecord["milestones"][number],
+): OpportunityWorkspaceMilestone {
+  return {
+    id: milestone.id,
+    title: milestone.title,
+    description: milestone.description,
+    milestoneTypeKey: milestone.milestoneTypeKey,
+    status: milestone.status,
+    targetDate: milestone.targetDate.toISOString(),
+    completedAt: toIsoString(milestone.completedAt),
+  };
+}
+
+function mapWorkspaceScoreFactor(
+  factor: OpportunityWorkspaceRecord["scorecards"][number]["factorScores"][number],
+): OpportunityWorkspaceScoreFactor {
+  return {
+    id: factor.id,
+    factorKey: factor.factorKey,
+    factorLabel: factor.factorLabel,
+    weight: factor.weight?.toString() ?? null,
+    score: factor.score?.toString() ?? null,
+    maximumScore: factor.maximumScore?.toString() ?? null,
+    explanation: factor.explanation,
+  };
+}
+
+function mapWorkspaceScorecard(
+  scorecard: OpportunityWorkspaceRecord["scorecards"][number] | undefined,
+): OpportunityWorkspaceScorecard | null {
+  if (!scorecard) {
+    return null;
+  }
+
+  return {
+    scoringModelKey: scorecard.scoringModelKey,
+    scoringModelVersion: scorecard.scoringModelVersion,
+    totalScore: scorecard.totalScore?.toString() ?? null,
+    maximumScore: scorecard.maximumScore?.toString() ?? null,
+    scorePercent: scorecard.scorePercent?.toString() ?? null,
+    recommendationOutcome: scorecard.recommendationOutcome,
+    recommendationSummary: scorecard.recommendationSummary,
+    summary: scorecard.summary,
+    calculatedAt: scorecard.calculatedAt.toISOString(),
+    factors: scorecard.factorScores.map(mapWorkspaceScoreFactor),
+  };
+}
+
+function mapWorkspaceBidDecision(
+  bidDecision: OpportunityWorkspaceRecord["bidDecisions"][number] | undefined,
+): OpportunityWorkspaceBidDecision | null {
+  if (!bidDecision) {
+    return null;
+  }
+
+  return {
+    decisionTypeKey: bidDecision.decisionTypeKey,
+    recommendationOutcome: bidDecision.recommendationOutcome,
+    finalOutcome: bidDecision.finalOutcome,
+    recommendationSummary: bidDecision.recommendationSummary,
+    finalRationale: bidDecision.finalRationale,
+    recommendedAt: toIsoString(bidDecision.recommendedAt),
+    recommendedByLabel:
+      bidDecision.recommendedByIdentifier ?? "Deterministic rule engine",
+    decidedByName: formatPersonLabel(bidDecision.decidedByUser),
+    decidedAt: toIsoString(bidDecision.decidedAt),
+  };
+}
+
+function mapWorkspaceDocument(
+  document: OpportunityWorkspaceRecord["documents"][number],
+): OpportunityWorkspaceDocument {
+  return {
+    id: document.id,
+    title: document.title,
+    documentType: document.documentType,
+    sourceType: document.sourceType,
+    sourceUrl: document.sourceUrl,
+    originalFileName: document.originalFileName,
+    mimeType: document.mimeType,
+    fileSizeBytes: document.fileSizeBytes,
+    extractionStatus: document.extractionStatus,
+    extractedAt: toIsoString(document.extractedAt),
+    extractedText: document.extractedText,
+    uploadedByName: formatPersonLabel(document.uploadedByUser),
+    createdAt: document.createdAt.toISOString(),
+  };
+}
+
+function mapWorkspaceNote(
+  note: OpportunityWorkspaceRecord["notes"][number],
+): OpportunityWorkspaceNote {
+  return {
+    id: note.id,
+    title: note.title,
+    body: note.body,
+    contentFormat: note.contentFormat,
+    isPinned: note.isPinned,
+    authorName: formatPersonLabel(note.authorUser),
+    createdAt: note.createdAt.toISOString(),
+    updatedAt: note.updatedAt.toISOString(),
+  };
+}
+
+function mapWorkspaceActivity(
+  event: OpportunityWorkspaceRecord["activityEvents"][number],
+): OpportunityWorkspaceActivity {
+  return {
+    id: event.id,
+    eventType: event.eventType,
+    title: event.title,
+    description: event.description,
+    actorLabel: formatPersonLabel(event.actorUser) ?? event.actorIdentifier,
+    relatedEntityType: event.relatedEntityType,
+    occurredAt: event.occurredAt.toISOString(),
+  };
+}
+
+function mapWorkspaceStageTransition(
+  transition: OpportunityWorkspaceRecord["stageTransitions"][number],
+): OpportunityWorkspaceStageTransition {
+  return {
+    id: transition.id,
+    triggerType: transition.triggerType,
+    fromStageLabel: transition.fromStageLabel,
+    toStageLabel: transition.toStageLabel ?? "Stage updated",
+    rationale: transition.rationale,
+    actorName: formatPersonLabel(transition.actorUser),
+    transitionedAt: transition.transitionedAt.toISOString(),
   };
 }
 
@@ -1221,6 +1907,26 @@ function humanizeSourceSystem(sourceSystem: string) {
     .split(/[_-]/g)
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
+}
+
+function formatPersonLabel(
+  person:
+    | {
+        name: string | null;
+        email: string;
+      }
+    | null
+    | undefined,
+) {
+  return person?.name ?? person?.email ?? null;
+}
+
+function joinLocationParts(parts: Array<string | null>) {
+  const normalizedParts = parts.filter(
+    (part): part is string => Boolean(part && part.trim()),
+  );
+
+  return normalizedParts.length > 0 ? normalizedParts.join(", ") : null;
 }
 
 function toIsoString(value: Date | null) {

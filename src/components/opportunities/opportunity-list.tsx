@@ -423,12 +423,20 @@ function OpportunityCell({
         <p className="text-sm leading-6 text-muted">{opportunity.sourceSummaryText}</p>
       ) : null}
 
-      <Link
-        className="inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-        href={`/opportunities/${opportunity.id}/edit`}
-      >
-        Edit opportunity
-      </Link>
+      <div className="flex flex-wrap gap-4">
+        <Link
+          className="inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+          href={`/opportunities/${opportunity.id}`}
+        >
+          Open workspace
+        </Link>
+        <Link
+          className="inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+          href={`/opportunities/${opportunity.id}/edit`}
+        >
+          Edit opportunity
+        </Link>
+      </div>
     </div>
   );
 }

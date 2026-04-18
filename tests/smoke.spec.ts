@@ -205,6 +205,54 @@ test("users can create and edit tracked opportunities from the app", async ({
   await expect(page.getByRole("heading", { name: updatedOpportunityTitle })).toBeVisible();
 });
 
+test("users can open the opportunity workspace and review seeded sections", async ({
+  page,
+}) => {
+  await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
+  await expect(page).toHaveURL(/\/$/);
+
+  await page.goto("/opportunities");
+  await expect(page).toHaveURL(/\/opportunities$/);
+  await page.locator("#opportunity-query").fill("Enterprise Knowledge Management");
+  await page.getByRole("button", { name: /apply filters/i }).click();
+
+  await expect(page).toHaveURL(/q=Enterprise\+Knowledge\+Management/);
+  await expect(
+    page.getByText(/enterprise knowledge management support services/i),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: /open workspace/i }).click();
+
+  await expect(page).toHaveURL(/\/opportunities\/.+$/);
+  await expect(
+    page.getByRole("heading", {
+      name: /enterprise knowledge management support services/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Overview$/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Scoring$/i }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Tasks$/i })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Documents$/i }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Notes$/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^History$/i })).toBeVisible();
+  await expect(
+    page.getByText(/complete incumbent analysis brief/i),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Performance Work Statement$/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Capture Summary$/i }),
+  ).toBeVisible();
+  await expect(page.getByText(/bid decision recorded as go/i)).toBeVisible();
+});
+
 test.describe("mobile navigation", () => {
   test.use({
     viewport: {
