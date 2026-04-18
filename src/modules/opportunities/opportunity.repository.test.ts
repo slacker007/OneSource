@@ -395,6 +395,98 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
           email: "taylor@example.com",
         },
       ],
+      knowledgeAssets: [
+        {
+          id: "knowledge_air_force",
+          assetType: "PAST_PERFORMANCE_SNIPPET",
+          title: "Air Force operational planning past performance",
+          summary:
+            "Reusable past-performance proof point for enterprise knowledge management and workflow modernization work inside Air Force operational planning organizations.",
+          body: "Delivered enterprise knowledge management modernization for an Air Force operational planning customer by consolidating fragmented SharePoint workflows, automating approval routing, and deploying role-aware analytics dashboards.",
+          updatedAt: new Date("2026-04-18T03:00:00.000Z"),
+          updatedByUser: {
+            name: "Alex Morgan",
+            email: "alex@example.com",
+          },
+          tags: [
+            {
+              label: "99th Contracting Squadron (FA4861)",
+              normalizedLabel: "99th contracting squadron",
+              tagKey: "agency_1",
+              tagType: "AGENCY",
+            },
+            {
+              label: "Knowledge management",
+              normalizedLabel: "knowledge management",
+              tagKey: "knowledge-management",
+              tagType: "CAPABILITY",
+            },
+            {
+              label: "Solicitation",
+              normalizedLabel: "solicitation",
+              tagKey: "solicitation",
+              tagType: "CONTRACT_TYPE",
+            },
+            {
+              label: "knowledge management",
+              normalizedLabel: "knowledge management",
+              tagKey: "knowledge management",
+              tagType: "FREEFORM",
+            },
+            {
+              label: "OASIS-PLUS-UNR · OASIS+ Unrestricted",
+              normalizedLabel: "oasis-plus-unr",
+              tagKey: "OASIS-PLUS-UNR",
+              tagType: "VEHICLE",
+            },
+          ],
+          linkedOpportunities: [
+            {
+              opportunity: {
+                id: "opp_alpha",
+                title: "Enterprise Knowledge Management Support Services",
+                currentStageLabel: "Capture Active",
+              },
+            },
+          ],
+        },
+        {
+          id: "knowledge_army",
+          assetType: "WIN_THEME",
+          title: "Army cloud transition win theme",
+          summary:
+            "Reusable win-theme narrative for controlled cloud transition risk.",
+          body: "OneSource can position around controlled transition risk with a disciplined migration path.",
+          updatedAt: new Date("2026-04-17T03:00:00.000Z"),
+          updatedByUser: {
+            name: "Taylor Reed",
+            email: "taylor@example.com",
+          },
+          tags: [
+            {
+              label: "PEO Enterprise Information Systems",
+              normalizedLabel: "peo enterprise information systems",
+              tagKey: "agency_2",
+              tagType: "AGENCY",
+            },
+            {
+              label: "Cloud platform engineering",
+              normalizedLabel: "cloud platform engineering",
+              tagKey: "cloud-platform-engineering",
+              tagType: "CAPABILITY",
+            },
+          ],
+          linkedOpportunities: [
+            {
+              opportunity: {
+                id: "opp_beta",
+                title: "Army Cloud Operations Recompete",
+                currentStageLabel: "Qualified",
+              },
+            },
+          ],
+        },
+      ],
     },
     title: "Enterprise Knowledge Management Support Services",
     description:
@@ -408,6 +500,8 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
     responseDeadlineAt: new Date("2026-05-01T17:00:00.000Z"),
     originSourceSystem: "sam_gov",
     naicsCode: "541511",
+    procurementTypeLabel: "Solicitation",
+    procurementBaseTypeLabel: "Solicitation",
     isActiveSourceRecord: true,
     isArchivedSourceRecord: false,
     classificationCode: "D302",
@@ -852,6 +946,7 @@ describe("opportunity.repository", () => {
       ],
       opportunity: {
         title: "Enterprise Knowledge Management Support Services",
+        procurementTypeLabel: "Solicitation",
         officeLocation: "Nellis AFB, NV, 89191",
         placeOfPerformanceLocation: "Las Vegas, Nevada, 89191",
       },
@@ -914,7 +1009,23 @@ describe("opportunity.repository", () => {
           toStageLabel: "Capture Active",
         },
       ],
+      knowledgeSuggestions: [
+        {
+          id: "knowledge_air_force",
+          title: "Air Force operational planning past performance",
+          matchedFacets: {
+            agencies: ["99th Contracting Squadron (FA4861)"],
+            capabilities: ["Knowledge management"],
+            contractTypes: ["Solicitation"],
+            vehicles: ["OASIS-PLUS-UNR"],
+          },
+        },
+      ],
     });
+    expect(snapshot?.knowledgeSuggestions).toHaveLength(1);
+    expect(snapshot?.knowledgeSuggestions[0]?.matchReasons).toContain(
+      "Linked to this opportunity",
+    );
   });
 
   it("calculates a workspace scorecard when no persisted current scorecard exists", async () => {

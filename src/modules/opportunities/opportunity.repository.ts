@@ -6,6 +6,7 @@ import {
   type OrganizationScoringProfileInput,
   SCORING_FACTOR_KEYS,
 } from "./opportunity-scoring";
+import { rankOpportunityKnowledgeSuggestions } from "./opportunity-knowledge-suggestions";
 import { buildOpportunityDocumentDownloadPath } from "./opportunity-document-storage";
 import type {
   AgencySummary,
@@ -332,6 +333,8 @@ const opportunityWorkspaceArgs = {
     responseDeadlineAt: true,
     originSourceSystem: true,
     naicsCode: true,
+    procurementTypeLabel: true,
+    procurementBaseTypeLabel: true,
     isActiveSourceRecord: true,
     isArchivedSourceRecord: true,
     classificationCode: true,
@@ -364,6 +367,51 @@ const opportunityWorkspaceArgs = {
             id: true,
             name: true,
             email: true,
+          },
+        },
+        knowledgeAssets: {
+          where: {
+            isArchived: false,
+          },
+          orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
+          select: {
+            id: true,
+            assetType: true,
+            title: true,
+            summary: true,
+            body: true,
+            updatedAt: true,
+            updatedByUser: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
+            tags: {
+              orderBy: [{ tagType: "asc" }, { label: "asc" }],
+              select: {
+                label: true,
+                normalizedLabel: true,
+                tagKey: true,
+                tagType: true,
+              },
+            },
+            linkedOpportunities: {
+              orderBy: {
+                opportunity: {
+                  title: "asc",
+                },
+              },
+              select: {
+                opportunity: {
+                  select: {
+                    id: true,
+                    title: true,
+                    currentStageLabel: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -837,6 +885,39 @@ export type OpportunityWorkspaceRecord = {
       name: string | null;
       email: string;
     }>;
+    knowledgeAssets: Array<{
+      id: string;
+      assetType:
+        | "PAST_PERFORMANCE_SNIPPET"
+        | "BOILERPLATE_CONTENT"
+        | "WIN_THEME";
+      title: string;
+      summary: string | null;
+      body: string;
+      updatedAt: Date;
+      updatedByUser: {
+        name: string | null;
+        email: string | null;
+      } | null;
+      tags: Array<{
+        label: string;
+        normalizedLabel: string;
+        tagKey: string;
+        tagType:
+          | "FREEFORM"
+          | "AGENCY"
+          | "CAPABILITY"
+          | "CONTRACT_TYPE"
+          | "VEHICLE";
+      }>;
+      linkedOpportunities: Array<{
+        opportunity: {
+          id: string;
+          title: string;
+          currentStageLabel: string | null;
+        };
+      }>;
+    }>;
   };
   title: string;
   description: string | null;
@@ -848,6 +929,8 @@ export type OpportunityWorkspaceRecord = {
   responseDeadlineAt: Date | null;
   originSourceSystem: string | null;
   naicsCode: string | null;
+  procurementTypeLabel: string | null;
+  procurementBaseTypeLabel: string | null;
   isActiveSourceRecord: boolean;
   isArchivedSourceRecord: boolean;
   classificationCode: string | null;
@@ -1427,6 +1510,25 @@ export async function getOpportunityWorkspaceSnapshot({
     notes: record.notes.map(mapWorkspaceNote),
     activity: record.activityEvents.map(mapWorkspaceActivity),
     stageTransitions: record.stageTransitions.map(mapWorkspaceStageTransition),
+    knowledgeSuggestions: rankOpportunityKnowledgeSuggestions({
+      knowledgeAssets: record.organization.knowledgeAssets,
+      capabilities: record.organization.organizationProfile?.capabilities ?? [],
+      opportunity: {
+        id: record.id,
+        title: record.title,
+        description: record.description,
+        sourceSummaryText: record.sourceSummaryText,
+        leadAgency: record.leadAgency
+          ? {
+              id: record.leadAgency.id,
+              name: record.leadAgency.name,
+            }
+          : null,
+        procurementTypeLabel: record.procurementTypeLabel,
+        procurementBaseTypeLabel: record.procurementBaseTypeLabel,
+        vehicles: record.vehicles,
+      },
+    }),
   };
 }
 
@@ -1986,6 +2088,8 @@ function mapOpportunityWorkspaceSummary({
     externalNoticeId: opportunity.externalNoticeId,
     sourceSummaryUrl: opportunity.sourceSummaryUrl,
     postedAt: toIsoString(opportunity.postedAt),
+    procurementTypeLabel: opportunity.procurementTypeLabel,
+    procurementBaseTypeLabel: opportunity.procurementBaseTypeLabel,
     classificationCode: opportunity.classificationCode,
     setAsideDescription: opportunity.setAsideDescription,
     currentStageChangedAt: toIsoString(opportunity.currentStageChangedAt),

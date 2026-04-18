@@ -30,6 +30,8 @@ const snapshot: OpportunityWorkspaceSnapshot = {
     responseDeadlineAt: "2026-05-01T17:00:00.000Z",
     originSourceSystem: "sam_gov",
     naicsCode: "541511",
+    procurementTypeLabel: "Solicitation",
+    procurementBaseTypeLabel: "Solicitation",
     classificationCode: "D302",
     setAsideDescription: "Small Business Set-Aside",
     currentStageKey: "capture_active",
@@ -264,6 +266,43 @@ const snapshot: OpportunityWorkspaceSnapshot = {
       transitionedAt: "2026-04-15T16:05:00.000Z",
     },
   ],
+  knowledgeSuggestions: [
+    {
+      id: "knowledge_1",
+      assetType: "PAST_PERFORMANCE_SNIPPET",
+      title: "Air Force operational planning past performance",
+      summary:
+        "Reusable past-performance proof point for enterprise knowledge management and workflow modernization work inside Air Force operational planning organizations.",
+      bodyPreview:
+        "Reusable past-performance proof point for enterprise knowledge management and workflow modernization work inside Air Force operational planning organizations.",
+      matchReasons: [
+        "Linked to this opportunity",
+        "Lead agency: 99th Contracting Squadron (FA4861)",
+        "Capability fit: Data and AI modernization, Enterprise service delivery",
+        "Vehicle coverage: OASIS-PLUS-UNR",
+        "Contract type: Solicitation",
+      ],
+      matchedFacets: {
+        agencies: ["99th Contracting Squadron (FA4861)"],
+        capabilities: [
+          "Data and AI modernization",
+          "Enterprise service delivery",
+        ],
+        contractTypes: ["Solicitation"],
+        freeformTags: ["knowledge management"],
+        vehicles: ["OASIS-PLUS-UNR"],
+      },
+      linkedOpportunities: [
+        {
+          id: "opp_123",
+          title: "Enterprise Knowledge Management Support Services",
+          currentStageLabel: "Capture Active",
+        },
+      ],
+      updatedAt: "2026-04-18T04:00:00.000Z",
+      updatedByLabel: "Alex Morgan",
+    },
+  ],
 };
 
 describe("OpportunityWorkspace", () => {
@@ -304,6 +343,9 @@ describe("OpportunityWorkspace", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Overview$/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Scoring$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /suggested reusable content/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Tasks$/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Documents$/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Notes$/i })).toBeInTheDocument();
@@ -320,6 +362,15 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("heading", { name: /capability fit/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/linked to this opportunity/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /open filtered library/i }),
+    ).toHaveAttribute("href", "/knowledge?opportunity=opp_123");
+    expect(
+      screen.getByRole("link", { name: /open asset/i }),
+    ).toHaveAttribute("href", "/knowledge/knowledge_1/edit");
     expect(screen.getByText(/weight 30\.00/i)).toBeInTheDocument();
     expect(
       screen.getByText(/bid decision recorded as go/i),

@@ -432,6 +432,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByRole("heading", { name: /^Decision history$/i }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /suggested reusable content/i }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: /^Tasks$/i })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /^Documents$/i }),
@@ -454,6 +457,18 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByRole("heading", { name: /^Capture Summary$/i }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /^Air Force operational planning past performance$/i,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(/linked to this opportunity/i)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /open filtered library/i }),
+  ).toHaveAttribute(
+    "href",
+    /\/knowledge\?opportunity=/,
+  );
   await expect(
     page
       .getByRole("heading", { name: /^Bid decision recorded as GO$/i })

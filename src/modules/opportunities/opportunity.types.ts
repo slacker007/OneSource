@@ -317,12 +317,40 @@ export type OpportunityWorkspaceOpportunitySummary = OpportunitySummary & {
   externalNoticeId: string | null;
   sourceSummaryUrl: string | null;
   postedAt: string | null;
+  procurementTypeLabel: string | null;
+  procurementBaseTypeLabel: string | null;
   classificationCode: string | null;
   setAsideDescription: string | null;
   currentStageChangedAt: string | null;
   uiLink: string | null;
   officeLocation: string | null;
   placeOfPerformanceLocation: string | null;
+};
+
+export type OpportunityWorkspaceKnowledgeSuggestion = {
+  id: string;
+  assetType:
+    | "PAST_PERFORMANCE_SNIPPET"
+    | "BOILERPLATE_CONTENT"
+    | "WIN_THEME";
+  title: string;
+  summary: string | null;
+  bodyPreview: string;
+  matchReasons: string[];
+  matchedFacets: {
+    agencies: string[];
+    capabilities: string[];
+    contractTypes: string[];
+    freeformTags: string[];
+    vehicles: string[];
+  };
+  linkedOpportunities: Array<{
+    id: string;
+    title: string;
+    currentStageLabel: string;
+  }>;
+  updatedAt: string;
+  updatedByLabel: string | null;
 };
 
 export type OpportunityWorkspaceSnapshot = {
@@ -338,6 +366,7 @@ export type OpportunityWorkspaceSnapshot = {
   notes: OpportunityWorkspaceNote[];
   activity: OpportunityWorkspaceActivity[];
   stageTransitions: OpportunityWorkspaceStageTransition[];
+  knowledgeSuggestions: OpportunityWorkspaceKnowledgeSuggestion[];
 };
 
 export type PersonalTaskBoardItem = OpportunityWorkspaceTask & {

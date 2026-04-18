@@ -9,6 +9,7 @@ import { OpportunityTaskManager } from "@/components/opportunities/opportunity-t
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { KNOWLEDGE_ASSET_TYPE_LABELS } from "@/modules/knowledge/knowledge.types";
 import type { OpportunityBidDecisionActionState } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
 import type { OpportunityDocumentActionState } from "@/modules/opportunities/opportunity-document-form.schema";
 import type { OpportunityMilestoneActionState } from "@/modules/opportunities/opportunity-milestone-form.schema";
@@ -22,6 +23,7 @@ import type {
   OpportunityWorkspaceActivity,
   OpportunityWorkspaceBidDecisionHistoryEntry,
   OpportunityWorkspaceDocument,
+  OpportunityWorkspaceKnowledgeSuggestion,
   OpportunityWorkspaceMilestone,
   OpportunityWorkspaceNote,
   OpportunityWorkspaceSnapshot,
@@ -219,6 +221,11 @@ export function OpportunityWorkspace({
         />
       </div>
 
+      <KnowledgeSuggestionsSection
+        opportunityId={snapshot.opportunity.id}
+        suggestions={snapshot.knowledgeSuggestions}
+      />
+
       <div className="grid gap-6 xl:grid-cols-2">
         <TasksSection
           allowManagePipeline={allowManagePipeline}
@@ -354,6 +361,150 @@ function OverviewSection({
           )}
         </div>
       </div>
+    </article>
+  );
+}
+
+function KnowledgeSuggestionsSection({
+  opportunityId,
+  suggestions,
+}: {
+  opportunityId: string;
+  suggestions: OpportunityWorkspaceKnowledgeSuggestion[];
+}) {
+  return (
+    <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-muted text-xs tracking-[0.24em] uppercase">
+            Knowledge suggestions
+          </p>
+          <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+            Suggested reusable content
+          </h2>
+          <p className="text-muted mt-2 max-w-3xl text-sm leading-6">
+            Ranked from direct opportunity linkage, lead-agency alignment,
+            contract-vehicle coverage, inferred capability fit, and contract-type
+            overlap.
+          </p>
+        </div>
+
+        <Link
+          className="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-[rgba(15,28,31,0.03)]"
+          href={`/knowledge?opportunity=${opportunityId}`}
+        >
+          Open filtered library
+        </Link>
+      </div>
+
+      {suggestions.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            message="No reusable assets matched the current opportunity metadata yet. Add agency, vehicle, capability, or contract-type tags in the knowledge library to improve workspace suggestions."
+            title="No knowledge suggestions yet"
+          />
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-4 xl:grid-cols-2">
+          {suggestions.map((suggestion) => (
+            <article
+              key={suggestion.id}
+              className="border-border rounded-[24px] border bg-[rgba(248,248,245,0.9)] p-5"
+            >
+              <div className="flex flex-wrap gap-2">
+                <Badge>
+                  {KNOWLEDGE_ASSET_TYPE_LABELS[suggestion.assetType]}
+                </Badge>
+                {suggestion.matchedFacets.agencies.map((agency) => (
+                  <Badge key={`${suggestion.id}-${agency}`} tone="accent">
+                    {agency}
+                  </Badge>
+                ))}
+                {suggestion.matchedFacets.capabilities.map((capability) => (
+                  <Badge key={`${suggestion.id}-${capability}`} tone="warning">
+                    {capability}
+                  </Badge>
+                ))}
+                {suggestion.matchedFacets.contractTypes.map((contractType) => (
+                  <Badge key={`${suggestion.id}-${contractType}`} tone="muted">
+                    {contractType}
+                  </Badge>
+                ))}
+                {suggestion.matchedFacets.vehicles.map((vehicle) => (
+                  <Badge key={`${suggestion.id}-${vehicle}`} tone="accent">
+                    {vehicle}
+                  </Badge>
+                ))}
+                {suggestion.matchedFacets.freeformTags.map((tag) => (
+                  <Badge key={`${suggestion.id}-${tag}`} tone="muted">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <h3 className="text-foreground text-lg font-semibold">
+                    {suggestion.title}
+                  </h3>
+                  <Link
+                    className="text-sm font-medium text-[rgb(19,78,68)] hover:text-[rgb(16,66,57)]"
+                    href={`/knowledge/${suggestion.id}/edit`}
+                  >
+                    Open asset
+                  </Link>
+                </div>
+                {suggestion.summary ? (
+                  <p className="text-muted text-sm leading-6">
+                    {suggestion.summary}
+                  </p>
+                ) : null}
+                <p className="text-muted text-sm leading-6">
+                  {suggestion.bodyPreview}
+                </p>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <div>
+                  <p className="text-muted text-xs tracking-[0.18em] uppercase">
+                    Why suggested
+                  </p>
+                  <ul className="text-foreground mt-2 space-y-1 text-sm leading-6">
+                    {suggestion.matchReasons.map((reason) => (
+                      <li key={`${suggestion.id}-${reason}`}>{reason}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {suggestion.linkedOpportunities.length > 0 ? (
+                  <div>
+                    <p className="text-muted text-xs tracking-[0.18em] uppercase">
+                      Linked pursuits
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {suggestion.linkedOpportunities.map((opportunity) => (
+                        <Badge
+                          key={`${suggestion.id}-${opportunity.id}`}
+                          tone="muted"
+                        >
+                          {opportunity.title} · {opportunity.currentStageLabel}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <p className="text-muted text-xs">
+                  Updated {formatDateTime(suggestion.updatedAt)}
+                  {suggestion.updatedByLabel
+                    ? ` by ${suggestion.updatedByLabel}`
+                    : ""}
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </article>
   );
 }
@@ -1126,6 +1277,16 @@ function formatDate(value: string) {
     month: "short",
     day: "numeric",
     year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(new Date(value));
 }
 
