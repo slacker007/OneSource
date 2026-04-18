@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold plus the first five Phase 1 foundation slices for authentication, auditability, opportunity/source lineage, connector-ready multi-source persistence, opportunity workspace execution storage, and the first typed domain access layer over the Prisma baseline.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, and the first live Phase 2 authentication slice on top of the Prisma baseline.
 
 ## Current System Shape
 
-OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, and Prisma ORM. The app exposes a single public homepage plus a health-check route and runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, the connector metadata plus promotion-decision entities, and the execution-side workspace records needed for later capture workflows.
+OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, Prisma ORM, and Auth.js. The app exposes a protected authenticated shell under the `(app)` route group, a public sign-in route, an Auth.js route handler, and a health-check route, then runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, the connector metadata plus promotion-decision entities, and the execution-side workspace records needed for later capture workflows.
 
 Current runtime components:
 
@@ -34,8 +34,11 @@ The compose images install dependencies inside Docker rather than copying a host
 
 1. Next.js boots and executes [instrumentation.ts](/Users/maverick/Documents/RalphLoops/OneSource/instrumentation.ts:1).
 2. `register()` calls `getServerEnv()` from [src/lib/env.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/env.ts:1), which validates required environment variables with Zod and fails fast on invalid config.
-3. The homepage route renders [AppShellPreview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/home/app-shell-preview.tsx:1), which remains a static product shell used to verify layout, styling, and browser automation while the typed repository layer matures behind tests.
-4. The health route at [src/app/api/health/route.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/app/api/health/route.ts:1) calls [checkDatabaseConnection](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/database-health.ts:1) and returns either `200 ok` or `503 degraded`.
+3. Requests to [src/app/(app)/layout.tsx](/Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/layout.tsx:1) call `getServerAuthSession()` and redirect anonymous users to `/sign-in`.
+4. The sign-in page at [src/app/sign-in/page.tsx](/Users/maverick/Documents/RalphLoops/OneSource/src/app/sign-in/page.tsx:1) renders [SignInForm](/Users/maverick/Documents/RalphLoops/OneSource/src/components/auth/sign-in-form.tsx:1), which uses the Auth.js credentials provider against seeded local users.
+5. The protected homepage route renders [AppShellPreview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/home/app-shell-preview.tsx:1) plus an authenticated session summary and sign-out control.
+6. The Auth.js route at [src/app/api/auth/[...nextauth]/route.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/app/api/auth/[...nextauth]/route.ts:1) uses [src/lib/auth/auth-options.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/auth-options.ts:1) to issue JWT-backed sessions enriched with `organizationId` and `roleKeys`.
+7. The health route at [src/app/api/health/route.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/app/api/health/route.ts:1) calls [checkDatabaseConnection](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/database-health.ts:1) and returns either `200 ok` or `503 degraded`.
 
 ### Worker
 
@@ -67,7 +70,8 @@ Prisma now owns the initial database schema and migration history. The Phase 1 b
 - `organizations`: tenant root for users, roles, and audit scope
 - `users`: canonical app users with organization membership and lifecycle status
 - `roles` and `user_roles`: database-backed role catalog plus user-role assignments
-- `accounts`, `sessions`, and `verification_tokens`: Auth.js-compatible auth tables for future sign-in flows
+- `accounts`, `sessions`, and `verification_tokens`: Auth.js-compatible auth tables for current and future sign-in flows
+- `users.password_hash`: additive local-credentials field used by the current credentials-provider sign-in path
 - `audit_logs`: append-oriented audit storage for actor, target, action, and metadata
 - `agencies`: canonical agency and office lineage for opportunities and source records
 - `contract_vehicles` plus `opportunity_vehicles`: reusable vehicle catalog and opportunity-to-vehicle links
@@ -125,6 +129,8 @@ Canonical local orchestration is `docker compose`. The current compose file defi
 Environment configuration is injected through `.env` / compose variables and validated at boot. The current required variables are:
 
 - `DATABASE_URL`
+- `AUTH_SECRET`
+- `NEXTAUTH_URL`
 - `POSTGRES_DB`
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
@@ -136,10 +142,10 @@ Docker dependency installation defaults to online `npm ci`. Optional local fallb
 
 Current automated coverage consists of:
 
-- Vitest unit tests for the homepage shell and env parsing
+- Vitest unit tests for the homepage shell, env parsing, password verification, credential authentication, and Auth.js JWT/session callbacks
 - Vitest unit coverage for the canonical system role catalog
 - Vitest coverage for the typed opportunity repository DTO mapping and dashboard query contract
-- Playwright Chromium smoke coverage for the homepage
+- Playwright Chromium smoke coverage for protected-route redirect, sign-in, and authenticated-shell rendering
 - Prisma schema validation, migration, and seed verification against PostgreSQL
 - compose-backed lint, build, unit-test, and browser-test workflows documented in `docs/testing.md`
 
@@ -149,7 +155,7 @@ No live connector exists yet. The product architecture now persists source-agnos
 
 ## Known Gaps
 
-- No Auth.js runtime, protected routes, or authorization checks yet
+- No authorization checks yet beyond authenticated-session route gating
 - No audit event emitters on business workflows yet beyond the seed bootstrap record
 - No executable connector service layer yet despite the new connector metadata baseline
 - No production job runner beyond the placeholder worker heartbeat

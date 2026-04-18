@@ -1,6 +1,6 @@
 # OneSource
 
-OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold plus the first six Phase 1 foundation slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, a typed opportunity-domain repository layer with shared DTOs, expanded realistic demo seed data, boot-time environment validation, and a placeholder worker process.
+OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold, all current Phase 1 foundation slices, and the first Phase 2 auth slice: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, Auth.js credentials sign-in, protected routes, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, a typed opportunity-domain repository layer with shared DTOs, expanded realistic demo seed data, boot-time environment validation, and a placeholder worker process.
 
 ## Current Status
 
@@ -8,8 +8,8 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - Implementation scope, checklist sequencing, and current handoff state live in `PRD.md`.
 - Engineering and verification rules live in `AGENTS.md`.
 - Active loop notes and crash-recovery context live in `NOTES.md`.
-- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, and `P1-05` are complete.
-- The next recommended item is `P2-01`, which introduces Auth.js sign-in, sign-out, session handling, and protected routes.
+- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, and `P2-01` are complete.
+- The next recommended item is `P2-02`, which adds role-based permissions in server-side guards and shared client helpers.
 
 ## Stack In Repo Today
 
@@ -18,6 +18,7 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - Tailwind CSS 4
 - PostgreSQL 16
 - Prisma ORM 6 with Prisma Client and migrations
+- Auth.js 4 with a credentials provider for local seeded users
 - ESLint 9 with Next.js config
 - Prettier 3 with Tailwind plugin
 - Vitest + Testing Library
@@ -113,7 +114,7 @@ Seed the baseline auth, opportunity, and lineage data:
 npm run db:seed
 ```
 
-The current seed creates a default organization, the canonical system role set, six realistic local users spanning admin, executive, BD, capture, proposal, and contributor roles, five agencies, five contract vehicles, five competitors, connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`, one imported `sam.gov` opportunity with retained raw and normalized payloads plus attachment and contact child records, one applied import decision that created the canonical opportunity, one `usaspending_api` enrichment search and retained award-centric source record with an applied link-to-existing import decision, and four additional manual opportunities spanning `qualified`, `capture_active`, `proposal_in_development`, `submitted`, and `no_bid` stages with `GO`, `DEFER`, and `NO_GO` score or decision outcomes.
+The current seed creates a default organization, the canonical system role set, six realistic local users spanning admin, executive, BD, capture, proposal, and contributor roles, deterministic local password hashes for those seeded users, five agencies, five contract vehicles, five competitors, connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`, one imported `sam.gov` opportunity with retained raw and normalized payloads plus attachment and contact child records, one applied import decision that created the canonical opportunity, one `usaspending_api` enrichment search and retained award-centric source record with an applied link-to-existing import decision, and four additional manual opportunities spanning `qualified`, `capture_active`, `proposal_in_development`, `submitted`, and `no_bid` stages with `GO`, `DEFER`, and `NO_GO` score or decision outcomes.
 
 The typed opportunity repository under `src/modules/opportunities/` exposes shared DTOs plus typed query functions for dashboard-style summaries and opportunity cards. The homepage remains a static shell for now so compose builds do not depend on a runtime Prisma client yet, but future persisted read models should use these module boundaries instead of raw model payloads.
 
@@ -132,6 +133,8 @@ make docker-artifacts
 ## Required Environment Variables
 
 - `DATABASE_URL`: postgres connection string used by the app and worker. Required and validated at app boot.
+- `AUTH_SECRET`: session-signing secret used by Auth.js. Required and validated at app boot.
+- `NEXTAUTH_URL`: absolute base URL for Auth.js callback and redirect handling. Required and validated at app boot.
 - `POSTGRES_DB`: database name for the compose-managed PostgreSQL service.
 - `POSTGRES_USER`: database user for the compose-managed PostgreSQL service.
 - `POSTGRES_PASSWORD`: database password for the compose-managed PostgreSQL service.
@@ -181,7 +184,8 @@ The canonical loop is now:
 
 ## Known Gaps
 
-- No Auth.js runtime, protected routes, or server-side authorization enforcement yet
+- No role-based authorization enforcement yet beyond the authenticated route gate
+- No audit event emitters yet for auth, edits, imports, stage transitions, or decisions
 - No production job runner beyond the placeholder worker heartbeat
 
 Those gaps are intentional scope still tracked in `PRD.md`; this README only documents what exists today.

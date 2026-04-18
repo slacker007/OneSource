@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 1 baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 2 auth baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
-- Unit tests: Vitest with Testing Library for UI, runtime helpers, and typed repository mapping
+- Unit tests: Vitest with Testing Library for UI, runtime helpers, Auth.js callback behavior, credential authentication, password verification, and typed repository mapping
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in and authenticated-shell access
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -37,6 +37,12 @@ npm test
 npm run build
 npm run e2e
 ```
+
+For the current auth slice, the Playwright smoke test is expected to:
+
+- redirect anonymous requests for `/` to `/sign-in`
+- submit seeded local credentials through the credentials provider
+- land back on the protected shell with the authenticated-session UI visible
 
 When the changed area includes Prisma schema or seed logic, also run:
 

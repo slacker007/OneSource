@@ -6,14 +6,18 @@ This document records the current security posture that exists in the repo today
 
 ## Current Baseline
 
-The current repo includes the first persistence slice for auth and audit work plus the connector-metadata and workspace-persistence baselines, but it does not yet expose live sign-in flows. Security-relevant implementation present today:
+The current repo includes the first live authentication slice on top of the earlier auth and audit persistence baseline plus the connector-metadata and workspace-persistence baselines. Security-relevant implementation present today:
 
 - Prisma-managed tables for organizations, users, roles, accounts, sessions, verification tokens, and audit logs
 - Prisma-managed opportunity lineage tables for agencies, vehicles, opportunities, competitors, connector configs, saved searches, search executions, sync runs, retained source records, source child records, and import decisions
 - Prisma-managed workspace tables for tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, and activity events
+- Auth.js credentials-provider sign-in backed by seeded local users
+- scrypt-based password-hash verification for local development credentials
+- JWT-backed sessions enriched with `organizationId` and `roleKeys`
+- server-side protected-route gating in the `(app)` route group
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
-- boot-time environment validation for `DATABASE_URL`
+- boot-time environment validation for `DATABASE_URL`, `AUTH_SECRET`, and `NEXTAUTH_URL`
 - compose-managed PostgreSQL for local development
 
 ## Seed Defaults
@@ -26,6 +30,8 @@ The local seed command creates development-only bootstrap records:
 
 These values are intended for local development only. They are not production credentials and must not be used as real identity defaults in deployed environments.
 
+The current local credentials flow uses the shared development password documented in `src/lib/auth/local-demo-auth.mjs` and applied to each seeded user through deterministic password hashes. This is acceptable only for local development and test verification.
+
 ## Source Data Provenance
 
 - External source payloads are treated as untrusted input and are stored in `source_records` as raw JSON plus normalized JSON for traceability.
@@ -37,9 +43,11 @@ These values are intended for local development only. They are not production cr
 ## Secrets And Configuration
 
 - `DATABASE_URL` is required and loaded from `.env` through `prisma.config.ts` and the runtime env parser.
+- `AUTH_SECRET` is required and is used by Auth.js to sign and verify session tokens.
+- `NEXTAUTH_URL` is required and must be an absolute base URL so Auth.js redirect handling stays deterministic.
 - `.env` is ignored by git; `.env.example` is the only committed env file.
 - Connector configs can store a `credentialReference` string, but the repo still stores only secret references such as `secret://sam-gov/public-api-key`, never raw connector credentials.
-- No API keys, auth provider secrets, or session secrets are committed yet.
+- No production API keys, auth provider secrets, or session secrets are committed.
 
 ## Audit Model
 
@@ -59,12 +67,10 @@ The only current producer is the bootstrap seed path. Future loops must add audi
 
 ## Current Risks And Pending Work
 
-- No live authentication flow yet
-- No server-side authorization guards yet
-- No session-secret management yet
+- No role-based authorization guards yet beyond the authenticated route gate
 - No route-level or action-level audit emission yet
-- No password, OAuth, MFA, or account-recovery workflow yet
+- No production-grade password reset, OAuth, MFA, or account-recovery workflow yet
 - No secret-vault integration behind connector credential references yet
 - No authorization guardrails around access to retained source records, workspace notes, or extracted document text yet
 
-Until `P2-01` and `P2-02` are complete, this schema should be treated as a persistence baseline rather than an end-user security feature.
+Until `P2-02` and the later hardening items are complete, this auth slice should be treated as a local-development and baseline-access feature rather than a production-ready security boundary.

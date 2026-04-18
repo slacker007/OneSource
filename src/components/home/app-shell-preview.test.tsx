@@ -133,7 +133,7 @@ describe("AppShellPreview", () => {
     expect(
       screen.getByRole("navigation", { name: /primary/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/typed data layer active/i)).toBeInTheDocument();
+    expect(screen.getByText(/auth gate active/i)).toBeInTheDocument();
   });
 
   it("renders an empty-state shell when no snapshot is available", () => {

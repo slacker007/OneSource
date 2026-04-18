@@ -7,6 +7,7 @@ import {
 
 import { buildOpportunitySeedScenario } from "./opportunity-seed-scenarios.mjs";
 import { SYSTEM_ROLE_DEFINITIONS } from "./system-roles.mjs";
+import { LOCAL_DEMO_PASSWORD_HASH } from "../src/lib/auth/local-demo-auth.mjs";
 
 const prisma = new PrismaClient();
 
@@ -670,12 +671,14 @@ async function main() {
       update: {
         organizationId: organization.id,
         name: teamMember.name,
+        passwordHash: LOCAL_DEMO_PASSWORD_HASH,
         status: UserStatus.ACTIVE,
       },
       create: {
         organizationId: organization.id,
         email: teamMember.email,
         name: teamMember.name,
+        passwordHash: LOCAL_DEMO_PASSWORD_HASH,
         status: UserStatus.ACTIVE,
       },
     });

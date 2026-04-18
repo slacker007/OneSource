@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This runbook captures the real operational procedures for the current repo baseline. It now covers the full Phase 0 stack plus the first Prisma-backed auth, audit, opportunity, source-lineage, connector-metadata, and workspace-execution schema slices, and it should be updated as the app gains live auth flows, scheduled jobs, and external connectors.
+This runbook captures the real operational procedures for the current repo baseline. It now covers the full Phase 0 stack plus the Prisma-backed auth, audit, opportunity, source-lineage, connector-metadata, workspace-execution, and first live Auth.js sign-in slice, and it should be updated as the app gains authorization rules, scheduled jobs, and external connectors.
 
 ## Current Services
 
@@ -98,6 +98,8 @@ npm run db:seed
 
 The current seed is idempotent enough for local development. It upserts the default organization, system roles, and six realistic local users; persists five agencies, five contract vehicles, and five competitors; creates connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; seeds four additional manual opportunities across `qualified`, `proposal_in_development`, `submitted`, and `no_bid`; seeds realistic workspace data with varied tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, and activity events; then appends one bootstrap audit-log record.
 
+The same seed also writes deterministic local password hashes for all six users so the credentials-provider sign-in flow works immediately in development. Use the admin email `admin@onesource.local` plus the shared local development password documented in [src/lib/auth/local-demo-auth.mjs](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/local-demo-auth.mjs:1) for smoke verification only.
+
 To inspect the seeded opportunity portfolio directly:
 
 ```bash
@@ -148,6 +150,15 @@ make compose-test-e2e
 
 The Playwright container waits for the `web` health check before running tests.
 
+## Auth Smoke Check
+
+To verify the protected-route auth slice manually after the stack is running:
+
+1. Open `http://127.0.0.1:3000/`.
+2. Confirm the app redirects to `/sign-in`.
+3. Sign in with the seeded admin email `admin@onesource.local` and the shared local development password.
+4. Confirm the protected shell renders and the sign-out control is visible.
+
 ## Host Verification Commands
 
 These remain useful for faster local feedback:
@@ -186,13 +197,14 @@ docker compose down --remove-orphans
 Symptoms:
 
 - `web` exits during startup
-- error references `DATABASE_URL` or `WORKER_POLL_INTERVAL_MS`
+- error references `DATABASE_URL`, `AUTH_SECRET`, `NEXTAUTH_URL`, or `WORKER_POLL_INTERVAL_MS`
 
 Recovery:
 
 1. Check `.env` against `.env.example`.
 2. Ensure `DATABASE_URL` uses `postgres://` or `postgresql://`.
-3. Restart the stack with `make compose-up`.
+3. Ensure `AUTH_SECRET` is at least 32 characters and `NEXTAUTH_URL` is an absolute URL.
+4. Restart the stack with `make compose-up`.
 
 ### Database Unhealthy
 

@@ -1,5 +1,7 @@
 x-app-environment: &app-environment
+  AUTH_SECRET: ${AUTH_SECRET}
   DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+  NEXTAUTH_URL: ${NEXTAUTH_URL}
 
 services:
   db:

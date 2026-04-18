@@ -1,6 +1,9 @@
 import { z } from "zod";
 
 const serverEnvSchema = z.object({
+  AUTH_SECRET: z
+    .string()
+    .min(32, "AUTH_SECRET must be at least 32 characters long."),
   DATABASE_URL: z
     .string()
     .min(1, "DATABASE_URL is required.")
@@ -12,6 +15,7 @@ const serverEnvSchema = z.object({
         return false;
       }
     }, "DATABASE_URL must be a valid postgres connection string."),
+  NEXTAUTH_URL: z.url("NEXTAUTH_URL must be a valid absolute URL."),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),

@@ -80,9 +80,9 @@ export function AppShellPreview({ snapshot }: AppShellPreviewProps) {
                   Capture intelligence for the next serious bid.
                 </p>
                 <p className="max-w-xs text-sm leading-6 text-stone-300">
-                  The app shell is now backed by typed domain queries over the
-                  persisted opportunity workspace baseline instead of static
-                  placeholders.
+                  The first authenticated shell is live. Future slices can now
+                  layer protected opportunity views, scoring, and workflow
+                  controls on top of the seeded workspace baseline.
                 </p>
               </div>
             </div>
@@ -114,9 +114,9 @@ export function AppShellPreview({ snapshot }: AppShellPreviewProps) {
               Current loop
             </p>
             <p className="mt-2 text-sm leading-6 text-stone-200">
-              `P1-04` adds shared domain types plus a typed repository layer so
-              the app can consume core opportunity entities without raw Prisma
-              payloads leaking into page code.
+              `P2-01` adds Auth.js sign-in, sign-out, JWT-backed session
+              handling, and route protection so anonymous users cannot access
+              the app shell.
             </p>
           </div>
         </aside>
@@ -133,19 +133,19 @@ export function AppShellPreview({ snapshot }: AppShellPreviewProps) {
                     Government opportunity tracking with audit-ready decisions.
                   </h1>
                   <p className="text-muted max-w-3xl text-base leading-7">
-                    The home experience now reads from typed domain queries over
-                    persisted opportunities, connectors, tasks, milestones, and
-                    bid decisions so later feature work can reuse stable DTOs.
+                    Authenticated users can now enter the application through a
+                    protected shell while later slices continue building on the
+                    typed opportunity, connector, and workspace foundation.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 text-sm">
                 <div className="border-border text-foreground rounded-full border bg-white px-4 py-2 font-medium">
-                  Status: Typed data layer active
+                  Status: Auth gate active
                 </div>
                 <div className="bg-accent rounded-full px-4 py-2 font-medium text-white">
-                  Next: Seed expansion
+                  Next: Permissions
                 </div>
               </div>
             </header>

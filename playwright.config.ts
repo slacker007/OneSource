@@ -17,6 +17,11 @@ export default defineConfig({
         command: `DATABASE_URL=${
           process.env.DATABASE_URL ??
           "postgresql://onesource:onesource@127.0.0.1:5432/onesource"
+        } AUTH_SECRET=${
+          process.env.AUTH_SECRET ??
+          "development-auth-secret-for-playwright-local"
+        } NEXTAUTH_URL=${
+          process.env.NEXTAUTH_URL ?? "http://127.0.0.1:3000"
         } npm run dev`,
         url: "http://127.0.0.1:3000",
         reuseExistingServer: !process.env.CI,
