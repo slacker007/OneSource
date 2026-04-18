@@ -274,6 +274,13 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
             toStageKey: "capture_active",
           },
         ],
+        _count: {
+          activityEvents: 2,
+          documents: 1,
+          milestones: 1,
+          notes: 1,
+          tasks: 2,
+        },
       },
       {
         id: "opp_beta",
@@ -298,6 +305,13 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         scorecards: [],
         bidDecisions: [],
         stageTransitions: [],
+        _count: {
+          activityEvents: 0,
+          documents: 0,
+          milestones: 0,
+          notes: 0,
+          tasks: 0,
+        },
       },
       {
         id: "opp_gamma",
@@ -397,6 +411,13 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
             toStageKey: "submitted",
           },
         ],
+        _count: {
+          activityEvents: 2,
+          documents: 1,
+          milestones: 1,
+          notes: 1,
+          tasks: 1,
+        },
       },
     ],
   } as OrganizationDashboardRecord;
@@ -978,6 +999,94 @@ describe("opportunity.repository", () => {
       comparedOpportunityCount: 2,
       goOpportunityCount: 1,
       urgentOpportunityCount: 1,
+      decisionAnalytics: {
+        reviewedOpportunityCount: 3,
+        finalDecisionCount: 2,
+        recommendationOnlyCount: 1,
+        recentDecisionVolume: 1,
+        recommendationAlignmentPercent: "100.00",
+        outcomeSummaries: [
+          {
+            outcome: "GO",
+            opportunityCount: 2,
+            percentage: "66.67",
+          },
+          {
+            outcome: "DEFER",
+            opportunityCount: 1,
+            percentage: "33.33",
+          },
+          {
+            outcome: "NO_GO",
+            opportunityCount: 0,
+            percentage: "0.00",
+          },
+        ],
+        scoreDistributionBuckets: [
+          {
+            key: "under_50",
+            opportunityCount: 1,
+            currentCallCounts: {
+              GO: 0,
+              DEFER: 1,
+              NO_GO: 0,
+            },
+          },
+          {
+            key: "50_to_69",
+            opportunityCount: 0,
+            currentCallCounts: {
+              GO: 0,
+              DEFER: 0,
+              NO_GO: 0,
+            },
+          },
+          {
+            key: "70_to_84",
+            opportunityCount: 1,
+            currentCallCounts: {
+              GO: 1,
+              DEFER: 0,
+              NO_GO: 0,
+            },
+          },
+          {
+            key: "85_plus",
+            opportunityCount: 1,
+            currentCallCounts: {
+              GO: 1,
+              DEFER: 0,
+              NO_GO: 0,
+            },
+          },
+        ],
+        effortOutcomeSummaries: [
+          {
+            outcome: "GO",
+            opportunityCount: 2,
+            averageEffortUnits: "9.0",
+            averageTaskCount: "1.5",
+            averageMilestoneCount: "1.0",
+            averageArtifactCount: "6.5",
+          },
+          {
+            outcome: "DEFER",
+            opportunityCount: 1,
+            averageEffortUnits: "0.0",
+            averageTaskCount: "0.0",
+            averageMilestoneCount: "0.0",
+            averageArtifactCount: "0.0",
+          },
+          {
+            outcome: "NO_GO",
+            opportunityCount: 0,
+            averageEffortUnits: "0.0",
+            averageTaskCount: "0.0",
+            averageMilestoneCount: "0.0",
+            averageArtifactCount: "0.0",
+          },
+        ],
+      },
       rankedOpportunities: [
         {
           title: "Enterprise Knowledge Management Support Services",

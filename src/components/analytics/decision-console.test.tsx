@@ -17,6 +17,96 @@ const snapshot: DecisionConsoleSnapshot = {
   comparedOpportunityCount: 2,
   goOpportunityCount: 1,
   urgentOpportunityCount: 1,
+  decisionAnalytics: {
+    reviewedOpportunityCount: 3,
+    finalDecisionCount: 2,
+    recommendationOnlyCount: 1,
+    recentDecisionVolume: 2,
+    recommendationAlignmentPercent: "100.00",
+    effortSignalLabel:
+      "Tracked execution artifacts: tasks, milestones, notes, documents, activity, and stage changes.",
+    outcomeSummaries: [
+      {
+        outcome: "GO",
+        label: "Go",
+        opportunityCount: 2,
+        percentage: "66.67",
+      },
+      {
+        outcome: "DEFER",
+        label: "Defer",
+        opportunityCount: 1,
+        percentage: "33.33",
+      },
+      {
+        outcome: "NO_GO",
+        label: "No-go",
+        opportunityCount: 0,
+        percentage: "0.00",
+      },
+    ],
+    scoreDistributionBuckets: [
+      {
+        key: "50_to_69",
+        label: "50-69%",
+        opportunityCount: 1,
+        currentCallCounts: {
+          GO: 0,
+          DEFER: 1,
+          NO_GO: 0,
+        },
+      },
+      {
+        key: "70_to_84",
+        label: "70-84%",
+        opportunityCount: 1,
+        currentCallCounts: {
+          GO: 1,
+          DEFER: 0,
+          NO_GO: 0,
+        },
+      },
+      {
+        key: "85_plus",
+        label: "85%+",
+        opportunityCount: 1,
+        currentCallCounts: {
+          GO: 1,
+          DEFER: 0,
+          NO_GO: 0,
+        },
+      },
+    ],
+    effortOutcomeSummaries: [
+      {
+        outcome: "GO",
+        label: "Go",
+        opportunityCount: 2,
+        averageEffortUnits: "9.0",
+        averageTaskCount: "1.5",
+        averageMilestoneCount: "1.0",
+        averageArtifactCount: "6.5",
+      },
+      {
+        outcome: "DEFER",
+        label: "Defer",
+        opportunityCount: 1,
+        averageEffortUnits: "0.0",
+        averageTaskCount: "0.0",
+        averageMilestoneCount: "0.0",
+        averageArtifactCount: "0.0",
+      },
+      {
+        outcome: "NO_GO",
+        label: "No-go",
+        opportunityCount: 0,
+        averageEffortUnits: "0.0",
+        averageTaskCount: "0.0",
+        averageMilestoneCount: "0.0",
+        averageArtifactCount: "0.0",
+      },
+    ],
+  },
   rankingOptions: [
     {
       label: "Value lens",
@@ -99,6 +189,15 @@ describe("DecisionConsole", () => {
       screen.getByRole("table", { name: /decision console rankings/i }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", { name: /bid volume and alignment/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /score bands/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /effort versus outcome/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("combobox", { name: /rank by/i }),
     ).toHaveValue("risk");
     expect(
@@ -108,6 +207,8 @@ describe("DecisionConsole", () => {
       screen.getByText(/enterprise knowledge management support services/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/55.00%/i)).toBeInTheDocument();
+    expect(screen.getByText(/100.00%/i)).toBeInTheDocument();
+    expect(screen.getByText(/85%\+/i)).toBeInTheDocument();
     expect(
       screen.getAllByRole("link", { name: /open workspace/i })[0],
     ).toHaveAttribute("href", "/opportunities/opp_alpha");

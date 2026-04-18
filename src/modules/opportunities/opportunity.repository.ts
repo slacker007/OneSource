@@ -14,11 +14,16 @@ import { rankOpportunityKnowledgeSuggestions } from "./opportunity-knowledge-sug
 import { buildOpportunityDocumentDownloadPath } from "./opportunity-document-storage";
 import type {
   AgencySummary,
+  BidDecisionOutcome,
+  DecisionAnalyticsOutcomeSummary,
+  DecisionAnalyticsSnapshot,
   DecisionConsoleItem,
   DecisionConsoleQuery,
   DecisionConsoleRanking,
   DecisionConsoleScope,
   DecisionConsoleSnapshot,
+  DecisionEffortOutcomeSummary,
+  DecisionScoreDistributionBucket,
   CompetitorSummary,
   ContractVehicleSummary,
   DashboardDeadlineSummary,
@@ -124,6 +129,40 @@ const DECISION_CONSOLE_SCOPES = [
   "active",
   "all",
 ] as const satisfies DecisionConsoleScope[];
+const DECISION_ANALYTICS_RECENT_WINDOW_DAYS = 30;
+const DECISION_SCORE_DISTRIBUTION_BUCKETS = [
+  {
+    key: "under_50",
+    label: "Under 50%",
+    minimumInclusive: 0,
+    maximumExclusive: 50,
+  },
+  {
+    key: "50_to_69",
+    label: "50-69%",
+    minimumInclusive: 50,
+    maximumExclusive: 70,
+  },
+  {
+    key: "70_to_84",
+    label: "70-84%",
+    minimumInclusive: 70,
+    maximumExclusive: 85,
+  },
+  {
+    key: "85_plus",
+    label: "85%+",
+    minimumInclusive: 85,
+    maximumExclusive: Number.POSITIVE_INFINITY,
+  },
+] as const satisfies Array<{
+  key: string;
+  label: string;
+  minimumInclusive: number;
+  maximumExclusive: number;
+}>;
+const DECISION_EFFORT_SIGNAL_LABEL =
+  "Tracked execution artifacts: tasks, milestones, notes, documents, activity, and stage changes.";
 
 const organizationScoringProfileSelect = {
   select: {
@@ -365,6 +404,15 @@ const organizationDashboardArgs = {
           select: {
             fromStageKey: true,
             toStageKey: true,
+          },
+        },
+        _count: {
+          select: {
+            activityEvents: true,
+            documents: true,
+            milestones: true,
+            notes: true,
+            tasks: true,
           },
         },
       },
@@ -920,6 +968,13 @@ type OrganizationDashboardOpportunityRecord = {
     fromStageKey: string | null;
     toStageKey: string | null;
   }>;
+  _count: {
+    activityEvents: number;
+    documents: number;
+    milestones: number;
+    notes: number;
+    tasks: number;
+  };
 };
 
 export type OrganizationDashboardRecord = {
@@ -1348,6 +1403,10 @@ export async function getDecisionConsoleSnapshot({
   const rankedOpportunities = [...opportunitiesInScope]
     .sort((left, right) => compareDecisionConsoleItems(left, right, query.ranking))
     .map(stripDecisionConsoleWorkingFields);
+  const decisionAnalytics = buildDecisionAnalyticsSnapshot({
+    opportunities,
+    now,
+  });
 
   return {
     organization: {
@@ -1367,6 +1426,7 @@ export async function getDecisionConsoleSnapshot({
       (opportunity) =>
         opportunity.urgencyDays !== null && opportunity.urgencyDays <= 14,
     ).length,
+    decisionAnalytics,
     rankingOptions: [
       {
         label: "Value lens",
@@ -1911,7 +1971,16 @@ type ResolvedOpportunityScoringMetrics = {
 };
 
 type DecisionConsoleWorkingItem = DecisionConsoleItem & {
+  currentOutcome: BidDecisionOutcome | null;
+  decidedAt: string | null;
+  effortArtifactCount: number;
+  effortMilestoneCount: number;
+  effortTaskCount: number;
+  effortUnits: number;
+  hasFinalDecision: boolean;
+  hasRecommendation: boolean;
   isActivePipelineOpportunity: boolean;
+  recommendationAligned: boolean | null;
   scoreSortValue: number;
   strategicValueSortValue: number;
   riskPressureSortValue: number;
@@ -2024,6 +2093,16 @@ function mapDecisionConsoleItem({
   });
   const bidDecision = mapBidDecisionSummary(opportunity.bidDecisions[0]);
   const urgency = buildUrgencyMetrics(opportunity.responseDeadlineAt, referenceDate);
+  const recommendationOutcome =
+    bidDecision?.recommendationOutcome ?? scoringMetrics.recommendationOutcome;
+  const finalDecision = bidDecision?.finalOutcome ?? null;
+  const effortArtifactCount =
+    opportunity._count.notes +
+    opportunity._count.documents +
+    opportunity._count.activityEvents +
+    opportunity.stageTransitions.length;
+  const effortTaskCount = opportunity._count.tasks;
+  const effortMilestoneCount = opportunity._count.milestones;
 
   return {
     id: opportunity.id,
@@ -2053,9 +2132,21 @@ function mapDecisionConsoleItem({
     urgencyScore: formatNumericScore(urgency.score),
     urgencyDays: urgency.days,
     urgencyLabel: urgency.label,
-    recommendationOutcome: scoringMetrics.recommendationOutcome,
-    finalDecision: bidDecision?.finalOutcome ?? null,
+    recommendationOutcome,
+    finalDecision,
+    currentOutcome: finalDecision ?? recommendationOutcome,
+    decidedAt: bidDecision?.decidedAt ?? null,
+    effortArtifactCount,
+    effortMilestoneCount,
+    effortTaskCount,
+    effortUnits: effortTaskCount + effortMilestoneCount + effortArtifactCount,
+    hasFinalDecision: finalDecision !== null,
+    hasRecommendation: recommendationOutcome !== null,
     isActivePipelineOpportunity: isActiveStageKey(opportunity.currentStageKey),
+    recommendationAligned:
+      finalDecision !== null && recommendationOutcome !== null
+        ? finalDecision === recommendationOutcome
+        : null,
     scoreSortValue: scoringMetrics.scorePercent ?? -1,
     strategicValueSortValue: scoringMetrics.strategicValuePercent ?? -1,
     riskPressureSortValue: scoringMetrics.riskPressurePercent ?? -1,
@@ -2956,6 +3047,183 @@ function stripDecisionConsoleWorkingFields(
   };
 }
 
+function buildDecisionAnalyticsSnapshot({
+  opportunities,
+  now,
+}: {
+  opportunities: DecisionConsoleWorkingItem[];
+  now: Date;
+}): DecisionAnalyticsSnapshot {
+  const reviewedOpportunities = opportunities.filter(
+    (opportunity) =>
+      opportunity.currentOutcome !== null || opportunity.scoreSortValue >= 0,
+  );
+  const opportunitiesWithFinalDecision = reviewedOpportunities.filter(
+    (opportunity) => opportunity.hasFinalDecision,
+  );
+  const recommendationOnlyCount = reviewedOpportunities.filter(
+    (opportunity) => !opportunity.hasFinalDecision && opportunity.hasRecommendation,
+  ).length;
+  const alignedRecommendationCount = reviewedOpportunities.filter(
+    (opportunity) => opportunity.recommendationAligned === true,
+  ).length;
+  const comparableRecommendationCount = reviewedOpportunities.filter(
+    (opportunity) => opportunity.recommendationAligned !== null,
+  ).length;
+  const recentWindowStart = new Date(
+    now.getTime() - DECISION_ANALYTICS_RECENT_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  );
+
+  return {
+    reviewedOpportunityCount: reviewedOpportunities.length,
+    finalDecisionCount: opportunitiesWithFinalDecision.length,
+    recommendationOnlyCount,
+    recentDecisionVolume: opportunitiesWithFinalDecision.filter((opportunity) => {
+      if (!opportunity.decidedAt) {
+        return false;
+      }
+
+      const decidedAt = new Date(opportunity.decidedAt);
+      return decidedAt >= recentWindowStart && decidedAt <= now;
+    }).length,
+    recommendationAlignmentPercent:
+      comparableRecommendationCount === 0
+        ? null
+        : formatNumericScore(
+            (alignedRecommendationCount / comparableRecommendationCount) * 100,
+          ),
+    effortSignalLabel: DECISION_EFFORT_SIGNAL_LABEL,
+    outcomeSummaries: buildDecisionOutcomeSummaries(reviewedOpportunities),
+    scoreDistributionBuckets: buildDecisionScoreDistributionBuckets(
+      reviewedOpportunities,
+    ),
+    effortOutcomeSummaries: buildDecisionEffortOutcomeSummaries(
+      reviewedOpportunities,
+    ),
+  };
+}
+
+function buildDecisionOutcomeSummaries(
+  opportunities: DecisionConsoleWorkingItem[],
+): DecisionAnalyticsOutcomeSummary[] {
+  const opportunitiesWithCurrentOutcome = opportunities.filter(
+    (opportunity) => opportunity.currentOutcome !== null,
+  );
+  const totalCount = opportunitiesWithCurrentOutcome.length;
+  const outcomeDefinitions = [
+    {
+      outcome: "GO",
+      label: "Go",
+    },
+    {
+      outcome: "DEFER",
+      label: "Defer",
+    },
+    {
+      outcome: "NO_GO",
+      label: "No-go",
+    },
+  ] as const satisfies Array<{
+    outcome: BidDecisionOutcome;
+    label: string;
+  }>;
+
+  return outcomeDefinitions.map((summary) => {
+    const opportunityCount = opportunitiesWithCurrentOutcome.filter(
+      (opportunity) => opportunity.currentOutcome === summary.outcome,
+    ).length;
+
+    return {
+      outcome: summary.outcome,
+      label: summary.label,
+      opportunityCount,
+      percentage:
+        totalCount === 0
+          ? "0.00"
+          : formatNumericScore((opportunityCount / totalCount) * 100),
+    };
+  });
+}
+
+function buildDecisionScoreDistributionBuckets(
+  opportunities: DecisionConsoleWorkingItem[],
+): DecisionScoreDistributionBucket[] {
+  return DECISION_SCORE_DISTRIBUTION_BUCKETS.map((bucket) => {
+    const opportunitiesInBucket = opportunities.filter(
+      (opportunity) =>
+        opportunity.scoreSortValue >= bucket.minimumInclusive &&
+        opportunity.scoreSortValue < bucket.maximumExclusive,
+    );
+
+    return {
+      key: bucket.key,
+      label: bucket.label,
+      opportunityCount: opportunitiesInBucket.length,
+      currentCallCounts: {
+        GO: opportunitiesInBucket.filter(
+          (opportunity) => opportunity.currentOutcome === "GO",
+        ).length,
+        DEFER: opportunitiesInBucket.filter(
+          (opportunity) => opportunity.currentOutcome === "DEFER",
+        ).length,
+        NO_GO: opportunitiesInBucket.filter(
+          (opportunity) => opportunity.currentOutcome === "NO_GO",
+        ).length,
+      },
+    };
+  });
+}
+
+function buildDecisionEffortOutcomeSummaries(
+  opportunities: DecisionConsoleWorkingItem[],
+): DecisionEffortOutcomeSummary[] {
+  const outcomeDefinitions = [
+    {
+      outcome: "GO",
+      label: "Go",
+    },
+    {
+      outcome: "DEFER",
+      label: "Defer",
+    },
+    {
+      outcome: "NO_GO",
+      label: "No-go",
+    },
+  ] as const satisfies Array<{
+    outcome: BidDecisionOutcome;
+    label: string;
+  }>;
+
+  return outcomeDefinitions.map((summary) => {
+    const opportunitiesForOutcome = opportunities.filter(
+      (opportunity) => opportunity.currentOutcome === summary.outcome,
+    );
+
+    return {
+      outcome: summary.outcome,
+      label: summary.label,
+      opportunityCount: opportunitiesForOutcome.length,
+      averageEffortUnits: formatAverageCount(
+        opportunitiesForOutcome,
+        (opportunity) => opportunity.effortUnits,
+      ),
+      averageTaskCount: formatAverageCount(
+        opportunitiesForOutcome,
+        (opportunity) => opportunity.effortTaskCount,
+      ),
+      averageMilestoneCount: formatAverageCount(
+        opportunitiesForOutcome,
+        (opportunity) => opportunity.effortMilestoneCount,
+      ),
+      averageArtifactCount: formatAverageCount(
+        opportunitiesForOutcome,
+        (opportunity) => opportunity.effortArtifactCount,
+      ),
+    };
+  });
+}
+
 function getScoreValue(score: string | null | undefined) {
   if (!score) {
     return -1;
@@ -2963,6 +3231,18 @@ function getScoreValue(score: string | null | undefined) {
 
   const parsed = Number.parseFloat(score);
   return Number.isFinite(parsed) ? parsed : -1;
+}
+
+function formatAverageCount<T>(
+  items: T[],
+  getValue: (item: T) => number,
+): string {
+  if (items.length === 0) {
+    return "0.0";
+  }
+
+  const total = items.reduce((sum, item) => sum + getValue(item), 0);
+  return (total / items.length).toFixed(1);
 }
 
 function getDecisionRank(

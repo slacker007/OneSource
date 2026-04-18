@@ -459,12 +459,49 @@ export type DecisionConsoleItem = {
   finalDecision: BidDecisionOutcome | null;
 };
 
+export type DecisionAnalyticsOutcomeSummary = {
+  outcome: BidDecisionOutcome;
+  label: string;
+  opportunityCount: number;
+  percentage: string;
+};
+
+export type DecisionScoreDistributionBucket = {
+  key: string;
+  label: string;
+  opportunityCount: number;
+  currentCallCounts: Record<BidDecisionOutcome, number>;
+};
+
+export type DecisionEffortOutcomeSummary = {
+  outcome: BidDecisionOutcome;
+  label: string;
+  opportunityCount: number;
+  averageEffortUnits: string;
+  averageTaskCount: string;
+  averageMilestoneCount: string;
+  averageArtifactCount: string;
+};
+
+export type DecisionAnalyticsSnapshot = {
+  reviewedOpportunityCount: number;
+  finalDecisionCount: number;
+  recommendationOnlyCount: number;
+  recentDecisionVolume: number;
+  recommendationAlignmentPercent: string | null;
+  effortSignalLabel: string;
+  outcomeSummaries: DecisionAnalyticsOutcomeSummary[];
+  scoreDistributionBuckets: DecisionScoreDistributionBucket[];
+  effortOutcomeSummaries: DecisionEffortOutcomeSummary[];
+};
+
 export type DecisionConsoleSnapshot = {
   organization: OrganizationSummary;
   query: DecisionConsoleQuery;
   comparedOpportunityCount: number;
   goOpportunityCount: number;
   urgentOpportunityCount: number;
+  decisionAnalytics: DecisionAnalyticsSnapshot;
   rankingOptions: Array<{
     label: string;
     value: DecisionConsoleRanking;

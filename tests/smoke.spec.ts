@@ -276,6 +276,17 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByRole("table", { name: /decision console rankings/i }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /bid volume and alignment/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /score bands/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /effort versus outcome/i }),
+  ).toBeVisible();
+  await expect(page.getByText(/recommendation alignment/i)).toBeVisible();
+  await expect(page.getByText(/85%\+/i)).toBeVisible();
   await page.locator("#decision-ranking").selectOption("risk");
   await page.getByRole("button", { name: /apply ranking/i }).click();
   await expect(page).toHaveURL(/\/analytics\?/);
