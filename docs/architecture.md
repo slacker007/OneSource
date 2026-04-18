@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, the first live Phase 2 authentication, authorization, auditability, and admin-visibility slices, the first three Phase 3 UI slices, and the first Phase 4 opportunity-management slice on top of the Prisma baseline.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, the first live Phase 2 authentication, authorization, auditability, and admin-visibility slices, the first three Phase 3 UI slices, and the first two Phase 4 opportunity-management slices on top of the Prisma baseline.
 
 ## Current System Shape
 
-OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, Prisma ORM, and Auth.js. The app exposes a protected authenticated shell under the `(app)` route group with a shared desktop sidebar, sticky top bar, read-only global search affordance, and reusable mobile drawer navigation; a public sign-in route; a real opportunity list page at `/opportunities`; a truthful source-intake preview page at `/sources`; protected placeholder routes for `/tasks` and `/analytics`; a server-guarded admin console at `/settings` that now uses shared badge and table primitives; a public permission-denied route; an Auth.js route handler; and a health-check route, then runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, the connector metadata plus promotion-decision entities, and the execution-side workspace records needed for later capture workflows. Typed read boundaries now live under both `src/modules/opportunities` and `src/modules/admin`, while the first transactional write boundary for the opportunity domain emits append-only audit rows through a shared module-local audit service.
+OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, Prisma ORM, and Auth.js. The app exposes a protected authenticated shell under the `(app)` route group with a shared desktop sidebar, sticky top bar, read-only global search affordance, and reusable mobile drawer navigation; a public sign-in route; a real opportunity list page at `/opportunities`; a real external source search page at `/sources`; protected placeholder routes for `/tasks` and `/analytics`; a server-guarded admin console at `/settings` that now uses shared badge and table primitives; a public permission-denied route; an Auth.js route handler; and a health-check route, then runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, the connector metadata plus promotion-decision entities, and the execution-side workspace records needed for later capture workflows. Typed read boundaries now live under `src/modules/opportunities`, `src/modules/source-integrations`, and `src/modules/admin`, while the first transactional write boundary for the opportunity domain emits append-only audit rows through a shared module-local audit service.
 
 Current runtime components:
 
@@ -25,6 +25,7 @@ The compose images install dependencies inside Docker rather than copying a host
 - `src/modules/admin`: typed admin DTOs and repository functions for user-role and audit-log read models
 - `src/modules/audit`: typed audit-log helpers, stable action names, and append-only audit payload shaping
 - `src/modules/opportunities`: shared DTOs and typed repository functions for opportunity-centric read models
+- `src/modules/source-integrations`: typed external-search parsing, connector capability metadata, request translation, and mocked `sam.gov` result execution
 - `prisma`: schema, generated migrations, and seed scripts
 - `scripts`: operational helper scripts including the placeholder worker
 - `tests`: Playwright smoke coverage
@@ -41,7 +42,7 @@ The compose images install dependencies inside Docker rather than copying a host
 5. The protected `(app)` layout now renders [AuthenticatedAppShell](/Users/maverick/Documents/RalphLoops/OneSource/src/components/layout/authenticated-app-shell.tsx:1), which derives the active section from the current pathname and exposes the shared sidebar, top bar, sign-out control, read-only global search field, and a reusable mobile navigation drawer built from the shared UI kit.
 6. The protected homepage route renders [DashboardLanding](/Users/maverick/Documents/RalphLoops/OneSource/src/components/home/dashboard-landing.tsx:1), [AccessOverview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/auth/access-overview.tsx:1), and the authenticated session summary so the shell opens with real stage, deadline, and ranked-opportunity widgets backed by the typed opportunity repository.
 7. The protected `/opportunities` route renders [OpportunityList](/Users/maverick/Documents/RalphLoops/OneSource/src/components/opportunities/opportunity-list.tsx:1) from [src/app/(app)/opportunities/page.tsx](</Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/opportunities/page.tsx:1>), parsing `searchParams` into a typed repository query so search, filters, sort, pagination, and URL state stay server-driven.
-8. The protected `/sources` route renders [SourceIntakePreview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/sources/source-intake-preview.tsx:1), which truthfully demonstrates the shared form, badge, table, dialog, empty-state, and error-state primitives before live connector work exists.
+8. The protected `/sources` route renders [SourceSearch](/Users/maverick/Documents/RalphLoops/OneSource/src/components/sources/source-search.tsx:1) from [src/app/(app)/sources/page.tsx](</Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/sources/page.tsx:1>), which parses URL search params through [src/modules/source-integrations/source-search.service.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/modules/source-integrations/source-search.service.ts:1), validates the canonical external-search query, translates it into explicit `sam.gov` request parameters, and executes deterministic mocked connector results so the route is real before the live adapter lands.
 9. The protected `/tasks` and `/analytics` routes still render [SectionPlaceholder](/Users/maverick/Documents/RalphLoops/OneSource/src/components/layout/section-placeholder.tsx:1) so those navigation targets resolve truthfully before their later feature slices land.
 10. The Auth.js route at [src/app/api/auth/[...nextauth]/route.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/app/api/auth/[...nextauth]/route.ts:1) uses [src/lib/auth/auth-options.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/auth-options.ts:1) to issue JWT-backed sessions enriched with `organizationId` and `roleKeys`.
 11. The guarded settings route at [src/app/(app)/settings/page.tsx](</Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/settings/page.tsx:1>) calls [requireAppPermission](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/authorization.ts:1), loads organization-scoped admin data through [src/modules/admin/admin.repository.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/modules/admin/admin.repository.ts:1), and renders [AdminConsole](/Users/maverick/Documents/RalphLoops/OneSource/src/components/admin/admin-console.tsx:1) through the shared table, badge, empty-state, and error-state primitives.
@@ -67,6 +68,7 @@ Current boundaries are intentionally simple but no longer purely route-plus-lib:
 - Organization-scoped admin read models now live in `src/modules/admin`.
 - Shared audit helpers live in `src/modules/audit`.
 - Typed entity DTOs and repository functions now live in `src/modules/opportunities`.
+- Typed external-search parsing, connector capability metadata, and mock connector execution now live in `src/modules/source-integrations`.
 - Background-process behavior lives in `scripts`.
 
 This keeps early Phase 0 behavior out of page files while establishing the first `src/modules` pattern expected by `PRD.md`:
@@ -159,7 +161,7 @@ Current automated coverage consists of:
 - Vitest coverage for the admin repository DTO mapping and organization-scoped audit preview contract
 - Vitest coverage for the typed opportunity repository DTO mapping and seeded dashboard query contract
 - Vitest coverage for the transactional opportunity write service that emits audit rows for create, update, delete, import-decision, stage-transition, and bid-decision flows
-- Playwright Chromium smoke coverage for protected-route redirect, sign-in, the `/opportunities` filter flow, desktop shell navigation, the `/sources` preview dialog, small-screen drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct settings navigation
+- Playwright Chromium smoke coverage for protected-route redirect, sign-in, the `/opportunities` filter flow, the `/sources` mocked external-search flow, desktop shell navigation, small-screen drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct settings navigation
 - Prisma schema validation, migration, and seed verification against PostgreSQL
 - compose-backed lint, build, unit-test, and browser-test workflows documented in `docs/testing.md`
 
@@ -169,7 +171,7 @@ No live connector exists yet. The product architecture now persists source-agnos
 
 ## Known Gaps
 
-- The shared app shell, reusable UI-pattern kit, seeded dashboard landing page, and real opportunity list now exist, but most remaining primary routes still render placeholders or preview-only surfaces rather than complete intake, task, analytics, or workspace modules
+- The shared app shell, reusable UI-pattern kit, seeded dashboard landing page, real opportunity list, and real external-search page now exist, but most remaining primary routes still render placeholders or partially mocked surfaces rather than complete intake, task, analytics, or workspace modules
 - Only one restricted surface currently uses role-based permission enforcement; most business workflows still need per-action authorization
 - The opportunity write service now emits audit rows for representative business writes, but no user-facing route handlers or auth events call that boundary yet
 - No executable connector service layer yet despite the new connector metadata baseline

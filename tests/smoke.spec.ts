@@ -83,14 +83,32 @@ test("authenticated homepage smoke test", async ({ page }) => {
   await expect(page).toHaveURL(/\/sources$/);
   await expect(
     page.getByRole("heading", {
-      name: /search and import patterns are now standardized/i,
+      name: /external source search/i,
     }),
   ).toBeVisible();
-  await page.getByRole("button", { name: /preview import review/i }).click();
+  await page.getByLabel(/keywords/i).fill("cloud operations");
+  await page.locator("#ptype-r").check();
+  await page.getByLabel(/place of performance state/i).fill("VA");
   await expect(
-    page.getByRole("dialog", { name: /import preview/i }),
+    page.getByRole("button", { name: /search external opportunities/i }),
   ).toBeVisible();
-  await page.getByRole("button", { name: /close preview/i }).click();
+  await page.getByRole("button", { name: /search external opportunities/i }).click();
+  await expect(page).toHaveURL(/\/sources\?/);
+  await expect(page).toHaveURL(/keywords=cloud\+operations/);
+  await expect(page).toHaveURL(/ptype=r/);
+  await expect(page).toHaveURL(/state=VA/);
+  await expect(
+    page.getByRole("table", { name: /external source search results/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/army cloud operations recompete/i),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/enterprise knowledge management support services/i),
+  ).not.toBeVisible();
+  await expect(
+    page.getByText(/title: cloud operations/i),
+  ).toBeVisible();
   await page.getByRole("link", { name: /^Analytics/i }).click();
   await expect(page).toHaveURL(/\/analytics$/);
   await expect(

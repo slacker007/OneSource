@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 4 opportunity-list baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 4 external-source-search baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/sources` preview dialog, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/sources` external-search flow with mocked connector responses, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -44,8 +44,8 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - submit seeded local credentials through the credentials provider
 - land back on the protected shell with the authenticated-session UI visible
 - navigate into `/opportunities`, apply real source and stage filters, and observe the URL plus result set update together
+- navigate into `/sources`, submit a structured mocked `sam.gov` search, and observe the URL plus mocked result set update together
 - navigate from the desktop shell into another primary section with the top-bar search placeholder still visible
-- open the shared `/sources` import-preview dialog successfully
 - open the small-screen drawer and navigate into another primary section successfully
 - allow the admin user through the restricted `/settings` route and render both assigned-role visibility plus recent audit activity
 - redirect the seeded viewer user from `/settings` to `/forbidden`
@@ -67,8 +67,12 @@ For the current Phase 3 dashboard slice, targeted unit verification should confi
 - the seeded dashboard landing component renders stage counts, ranked opportunities, and upcoming deadlines from typed snapshot data
 - the typed opportunity repository derives the dashboard snapshot without leaking raw Prisma model payloads into the page layer
 - the authenticated shell still opens the mobile drawer through the shared drawer primitive
-- the source-intake preview renders the shared form, table, empty-state, and error-state patterns
-- the source-intake preview can open the shared dialog without breaking page rendering
+
+For the current Phase 4 source-search slice, targeted unit verification should confirm:
+
+- the typed source-integration module parses URL search params into a normalized canonical query object with `sam.gov` validation rules and bounded defaults
+- the typed source-integration module translates canonical filters into the explicit `sam.gov` outbound request parameters and filters deterministic mocked results without leaking transport details into the page layer
+- the rendered source-search page shows URL-synced control values, translated request visibility, mocked result rows, and truthful empty or validation states
 
 For the current Phase 4 opportunities-list slice, targeted unit verification should confirm:
 
