@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "cache:npm:refresh": "node scripts/refresh-offline-npm-cache.mjs",
+    "cache:prisma:refresh": "node scripts/refresh-offline-prisma-client.mjs",
+    "docker:artifacts": "node scripts/prepare-docker-artifacts.mjs",
     "db:seed": "prisma db seed",
     "dev": "next dev --hostname 127.0.0.1 --port 3000",
     "dev:compose": "next dev --hostname 0.0.0.0 --port 3000",
@@ -26,6 +28,7 @@
     "@prisma/client": "^6.19.3",
     "dotenv": "^17.4.2",
     "next": "16.2.4",
+    "next-auth": "^4.24.14",
     "pg": "^8.20.0",
     "prisma": "^6.19.3",
     "react": "19.2.4",

@@ -34,6 +34,7 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - `prisma`: Prisma schema, generated migrations, and seed defaults
 - `scripts`: runtime helper scripts including the placeholder worker
 - `tests`: Playwright browser tests
+- `Makefile`: wrapper targets that prepare local Docker cache archives before builds
 - `docs/testing.md`: canonical host and compose verification workflows
 - `docs/architecture.md`: current system topology, module boundaries, and Phase 0 constraints
 - `docs/runbook.md`: operational commands, health checks, and failure recovery notes
@@ -58,12 +59,10 @@ cp .env.example .env
 npm install
 ```
 
-Host dependency installation is not required for compose workflows when Docker can reach the npm registry. If container builds cannot reach the registry in a given environment, generate local cache archives under `vendor/` before rebuilding:
+Host dependency installation is not required for compose workflows when Docker can reach the npm registry. In this environment the safer path is to use the `Makefile` wrappers, which prepare local cache archives under `vendor/` before Docker builds:
 
 ```bash
-npm install
-npm run cache:npm:refresh
-npm run cache:prisma:refresh
+make docker-artifacts
 ```
 
 3. Install the Chromium browser used by host-side Playwright runs:
@@ -77,13 +76,13 @@ The compose-managed Playwright workflow uses the official Playwright image and d
 4. Start the local PostgreSQL, web app, and worker stack:
 
 ```bash
-docker compose up --build
+make compose-up
 ```
 
 For a detached stack:
 
 ```bash
-docker compose up --build -d
+make compose-up-detached
 ```
 
 5. Optional: run the app directly on the host instead of through Compose:
@@ -122,12 +121,10 @@ The typed opportunity repository under `src/modules/opportunities/` exposes shar
 
 Developer-generated cache archives under `vendor/` are not committed to the repo. Docker images install dependencies with normal `npm ci` by default, but the build will switch to `npm ci --offline` automatically when `vendor/npm-offline-cache.tar.gz` is present locally.
 
-If Docker cannot reach the npm registry in your environment, generate the optional local archives first:
+`make docker-artifacts` is the canonical way to prepare those local archives. It refreshes dependencies when needed, regenerates the Prisma client when needed, and then refreshes both ignored tarballs before Docker builds:
 
 ```bash
-npm install
-npm run cache:npm:refresh
-npm run cache:prisma:refresh
+make docker-artifacts
 ```
 
 `vendor/prisma-client.tar.gz` is also an optional local artifact. When present, the Docker dependency stage overlays it after install so compose builds can reuse a host-generated Prisma client if the environment needs that fallback.
@@ -152,15 +149,17 @@ The committed `.env.example` contains the canonical development defaults.
 - Production build: `npm run build`
 - Chromium smoke test with a Playwright-managed local server: `npm run e2e`
 - Chromium smoke test against an already-running compose stack: `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e`
-- Compose lint: `docker compose --profile test run --rm --build test run lint`
-- Compose unit tests with coverage: `docker compose --profile test run --rm --build test`
-- Compose build validation: `docker compose --profile test run --rm --build test run build`
-- Compose Chromium smoke test: `docker compose --profile test up --build --abort-on-container-exit --exit-code-from playwright playwright`
+- Compose lint: `make compose-test-lint`
+- Compose unit tests with coverage: `make compose-test`
+- Compose build validation: `make compose-test-build`
+- Compose Chromium smoke test: `make compose-test-e2e`
+- Prepare local Docker archives only: `make docker-artifacts`
+- Direct Docker image build with prebuild archive refresh: `make docker-build`
 - Format check: `npm run format:check`
 - Apply formatting: `npm run format`
 - Compose stack status: `docker compose ps`
 - Compose logs: `docker compose logs -f web worker`
-- Compose teardown: `docker compose down`
+- Compose teardown: `make compose-down`
 
 `npm run e2e` starts the app automatically through the Playwright `webServer` configuration and injects a default local `DATABASE_URL` when one is not already set. When `PLAYWRIGHT_BASE_URL` is provided, Playwright skips the internal web server and targets the existing app instance instead.
 
@@ -178,7 +177,7 @@ The canonical loop is now:
 5. Append timestamped task notes to `NOTES.md` during the loop.
 6. Update durable docs in the same loop whenever setup, behavior, or requirements change.
 7. Run the narrowest relevant verification, and for code changes also run the full automated suite currently available in the repo.
-8. When the stack is needed, prefer `docker compose up --build` and a compose-backed Playwright smoke run.
+8. When the stack is needed, prefer the `make` wrappers such as `make compose-up` and `make compose-test-e2e` so local Docker cache archives are prepared automatically before the build starts.
 
 ## Known Gaps
 

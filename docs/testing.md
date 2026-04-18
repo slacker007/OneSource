@@ -20,12 +20,10 @@ Compose builds now default to normal `npm ci`. If the container environment cann
 
 When `vendor/npm-offline-cache.tar.gz` exists locally, the Docker dependency stage unpacks it and runs `npm ci --offline` automatically. When `vendor/prisma-client.tar.gz` exists locally, the same stage overlays that generated Prisma client after install.
 
-Generate or refresh the local fallback archives whenever `package-lock.json` changes or a Docker build needs offline inputs:
+Generate or refresh the local fallback archives with the `Makefile` wrapper whenever `package-lock.json` changes or a Docker build needs offline inputs:
 
 ```bash
-npm install
-npm run cache:npm:refresh
-npm run cache:prisma:refresh
+make docker-artifacts
 ```
 
 ## Host Verification Commands
@@ -72,25 +70,25 @@ The compose-managed Playwright workflow does not require a host browser install 
 Lint:
 
 ```bash
-docker compose --profile test run --rm --build test run lint
+make compose-test-lint
 ```
 
 Unit tests with coverage:
 
 ```bash
-docker compose --profile test run --rm --build test
+make compose-test
 ```
 
 Production build validation:
 
 ```bash
-docker compose --profile test run --rm --build test run build
+make compose-test-build
 ```
 
 Chromium Playwright against the live compose app:
 
 ```bash
-docker compose --profile test up --build --abort-on-container-exit --exit-code-from playwright playwright
+make compose-test-e2e
 ```
 
 The Playwright workflow automatically starts PostgreSQL and the web app, waits for the app health check, then runs Chromium from the dedicated Playwright container.
@@ -100,7 +98,7 @@ The Playwright workflow automatically starts PostgreSQL and the web app, waits f
 Start the app stack without tests:
 
 ```bash
-docker compose up --build -d
+make compose-up-detached
 ```
 
 Inspect service state:

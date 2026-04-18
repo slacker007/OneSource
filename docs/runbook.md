@@ -26,14 +26,12 @@ cp .env.example .env
 npm install
 ```
 
-Compose workflows do not depend on host `node_modules`. Docker images install with normal `npm ci` by default and can fall back to optional local cache archives under `vendor/` when container registry access is unavailable.
+Compose workflows do not depend on host `node_modules`. Docker images install with normal `npm ci` by default and can fall back to optional local cache archives under `vendor/` when container registry access is unavailable. The canonical entrypoint is now the repo `Makefile`, which prepares those local archives before Docker builds.
 
 3. When dependency versions change, or when a Docker environment needs offline install inputs, refresh the optional local cache archives before rebuilding images:
 
 ```bash
-npm install
-npm run cache:npm:refresh
-npm run cache:prisma:refresh
+make docker-artifacts
 ```
 
 ## Boot The Default Stack
@@ -41,13 +39,13 @@ npm run cache:prisma:refresh
 Start the app, database, and worker:
 
 ```bash
-docker compose up --build
+make compose-up
 ```
 
 Detached mode:
 
 ```bash
-docker compose up --build -d
+make compose-up-detached
 ```
 
 ## Health Checks
@@ -127,25 +125,25 @@ Worker logs are structured JSON with:
 Lint:
 
 ```bash
-docker compose --profile test run --rm --build test run lint
+make compose-test-lint
 ```
 
 Unit tests:
 
 ```bash
-docker compose --profile test run --rm --build test
+make compose-test
 ```
 
 Production build validation:
 
 ```bash
-docker compose --profile test run --rm --build test run build
+make compose-test-build
 ```
 
 Chromium Playwright against the compose-managed app:
 
 ```bash
-docker compose --profile test up --build --abort-on-container-exit --exit-code-from playwright playwright
+make compose-test-e2e
 ```
 
 The Playwright container waits for the `web` health check before running tests.
@@ -172,7 +170,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e
 Stop the stack:
 
 ```bash
-docker compose down
+make compose-down
 ```
 
 Stop the stack and remove orphaned containers:
@@ -194,7 +192,7 @@ Recovery:
 
 1. Check `.env` against `.env.example`.
 2. Ensure `DATABASE_URL` uses `postgres://` or `postgresql://`.
-3. Restart the stack with `docker compose up --build`.
+3. Restart the stack with `make compose-up`.
 
 ### Database Unhealthy
 
@@ -242,7 +240,7 @@ Symptoms:
 Recovery:
 
 1. If the environment should support online installs, confirm the container runtime can reach the npm registry and re-run the compose command.
-2. If the environment needs offline inputs, generate fresh local archives with `npm install`, `npm run cache:npm:refresh`, and `npm run cache:prisma:refresh`.
+2. If the environment needs offline inputs, regenerate the local archives with `make docker-artifacts`.
 3. Re-run the compose test command.
 
 ### Browser Tests Fail
