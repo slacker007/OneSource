@@ -1,5 +1,4 @@
 import { AccessOverview } from "@/components/auth/access-overview";
-import { SignOutButton } from "@/components/auth/sign-out-button";
 import { AppShellPreview } from "@/components/home/app-shell-preview";
 import { requireAuthenticatedAppSession } from "@/lib/auth/authorization";
 
@@ -9,30 +8,43 @@ export default async function AuthenticatedHomePage() {
   const session = await requireAuthenticatedAppSession();
   const roleKeys = session.user.roleKeys;
   const roleSummary =
-    roleKeys.length > 0
-      ? roleKeys.join(", ")
-      : "No roles assigned";
+    roleKeys.length > 0 ? roleKeys.join(", ") : "No roles assigned";
 
   return (
-    <div className="from-[rgba(242,233,222,0.7)] to-[rgba(224,234,232,0.7)] flex min-h-screen flex-col gap-4 bg-linear-to-br px-4 py-4 sm:px-6">
-      <section className="border-border bg-surface mx-auto flex w-full max-w-7xl items-center justify-between gap-4 rounded-[28px] border px-5 py-4 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
-        <div className="space-y-1">
-          <p className="text-muted text-xs tracking-[0.24em] uppercase">
-            Authenticated session
-          </p>
-          <p className="text-foreground text-sm font-medium sm:text-base">
-            {session.user.name ?? session.user.email}
-          </p>
-          <p className="text-muted text-xs sm:text-sm">
-            {session.user.email} · {roleSummary}
-          </p>
+    <div className="space-y-6">
+      <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <p className="text-muted text-xs tracking-[0.24em] uppercase">
+              Dashboard
+            </p>
+            <h1 className="font-heading text-foreground text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+              Government opportunity tracking with audit-ready decisions.
+            </h1>
+            <p className="text-muted max-w-3xl text-sm leading-7 sm:text-base">
+              The authenticated shell is now the shared entry point for the
+              workspace. Primary sections are navigable on desktop and mobile
+              while later phases fill them with real capture workflows.
+            </p>
+          </div>
+
+          <div className="border-border rounded-[24px] border bg-white px-4 py-4 text-sm shadow-[0_12px_30px_rgba(20,37,34,0.06)]">
+            <p className="text-muted text-xs tracking-[0.2em] uppercase">
+              Signed in as
+            </p>
+            <p className="text-foreground mt-2 font-semibold">
+              {session.user.name ?? session.user.email}
+            </p>
+            <p className="text-muted mt-1">
+              {session.user.email} · {roleSummary}
+            </p>
+          </div>
         </div>
-        <SignOutButton />
       </section>
 
-      <AccessOverview roleKeys={roleKeys} />
-
       <AppShellPreview snapshot={null} />
+
+      <AccessOverview roleKeys={roleKeys} />
     </div>
   );
 }

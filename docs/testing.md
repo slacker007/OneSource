@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 2 auth, authz, audit, and admin-console baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 3 authenticated-shell baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, authenticated-shell access, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, authenticated-shell access, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -43,6 +43,8 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - redirect anonymous requests for `/` to `/sign-in`
 - submit seeded local credentials through the credentials provider
 - land back on the protected shell with the authenticated-session UI visible
+- navigate from the desktop shell into another primary section with the top-bar search placeholder still visible
+- open the small-screen drawer and navigate into another primary section successfully
 - allow the admin user through the restricted `/settings` route and render both assigned-role visibility plus recent audit activity
 - redirect the seeded viewer user from `/settings` to `/forbidden`
 

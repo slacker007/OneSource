@@ -31,9 +31,18 @@ test("authenticated homepage smoke test", async ({ page }) => {
       name: /government opportunity tracking with audit-ready decisions/i,
     }),
   ).toBeVisible();
-  await expect(page.getByText(/authz guard active/i)).toBeVisible();
+  await expect(
+    page.getByRole("searchbox", { name: /global search/i }),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
-  await page.getByRole("link", { name: /open admin console/i }).click();
+  await page.getByRole("link", { name: /^Analytics/i }).click();
+  await expect(page).toHaveURL(/\/analytics$/);
+  await expect(
+    page.getByRole("heading", {
+      name: /analytics workspace/i,
+    }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: /^Settings/i }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(
     page.getByRole("heading", {
@@ -54,6 +63,37 @@ test("authenticated homepage smoke test", async ({ page }) => {
   await expect(page.getByText(/seed\.bootstrap/i).first()).toBeVisible();
 });
 
+test.describe("mobile navigation", () => {
+  test.use({
+    viewport: {
+      width: 390,
+      height: 844,
+    },
+  });
+
+  test("small-screen users can navigate from the shell drawer", async ({
+    page,
+  }) => {
+    await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
+
+    await expect(page).toHaveURL(/\/$/);
+    await page.getByRole("button", { name: /open navigation menu/i }).click();
+    await expect(
+      page.getByRole("navigation", { name: /mobile navigation/i }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: /^Opportunities/i }).click();
+    await expect(page).toHaveURL(/\/opportunities$/);
+    await expect(
+      page.getByRole("heading", {
+        name: /opportunity pipeline/i,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("searchbox", { name: /global search/i }),
+    ).toBeVisible();
+  });
+});
+
 test("viewer users are blocked from the restricted settings route", async ({
   page,
 }) => {
@@ -61,7 +101,9 @@ test("viewer users are blocked from the restricted settings route", async ({
 
   await expect(page).toHaveURL(/\/$/);
   await page.goto("/settings");
-  await expect(page).toHaveURL(/\/forbidden\?permission=manage_workspace_settings$/);
+  await expect(page).toHaveURL(
+    /\/forbidden\?permission=manage_workspace_settings$/,
+  );
   await expect(
     page.getByRole("heading", {
       name: /you do not have access to manage workspace settings/i,

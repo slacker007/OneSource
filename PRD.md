@@ -616,7 +616,7 @@ This section is mandatory for every future coding iteration because conversation
 
 ### Phase 3: App Shell And Navigation
 
-- [ ] P3-01 Build the primary authenticated layout with sidebar, top bar, global search placeholder, and responsive navigation.
+- [x] P3-01 Build the primary authenticated layout with sidebar, top bar, global search placeholder, and responsive navigation.
       Done when: all major sections are navigable and the shell works on desktop and small screens.
       Verify with: responsive UI smoke test in Chromium via Playwright.
 
@@ -789,8 +789,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, `P2-03`, and `P2-04` are complete. This loop replaced the `/settings` placeholder with a guarded admin console backed by a typed admin repository that exposes organization-scoped user-role visibility plus recent audit-log inspection.
-- Next recommended item: `P3-01 Build the primary authenticated layout with sidebar, top bar, global search placeholder, and responsive navigation.`
-- Blockers: No product blocker for `P3-01`. Unrelated repo sync blocker remains: the earlier local history rewrite still has not been force-pushed to `origin` from this environment because the remote is SSH-based and this runtime lacks an authenticated SSH path.
-- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/runbook.md`, `docs/security.md`, `docs/testing.md`, `src/app/(app)/settings/page.tsx`, `src/components/admin/admin-console.tsx`, `src/components/admin/admin-console.test.tsx`, `src/components/auth/access-overview.tsx`, `src/modules/admin/admin.repository.ts`, `src/modules/admin/admin.repository.test.ts`, `src/modules/admin/admin.types.ts`, and `tests/smoke.spec.ts`.
-- Tests run in latest loop: `npm test -- src/modules/admin/admin.repository.test.ts src/components/admin/admin-console.test.tsx`; `npm run prisma:validate`; `docker compose up -d db`; `npm run db:seed`; `npm run lint`; `npm test`; `npm run build`; `npm run e2e`; `make compose-test-lint`; `make compose-test`; `make compose-test-build`; `make compose-test-e2e`; `make compose-down`; and `git diff --check`. Verification used Docker and Playwright.
+- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, `P2-03`, `P2-04`, and `P3-01` are complete. This loop moved the `(app)` route group onto a shared authenticated shell with a desktop sidebar, sticky top bar, read-only global search placeholder, mobile navigation drawer, and truthful protected placeholder routes for `/opportunities`, `/sources`, `/tasks`, and `/analytics`, while preserving the guarded `/settings` admin console inside that shell.
+- Next recommended item: `P3-02 Establish shared UI patterns for tables, forms, badges, drawers, dialogs, empty states, and error states.`
+- Blockers: No product blocker for `P3-02`. Unrelated repo sync blocker remains: the earlier local history rewrite still has not been force-pushed to `origin` from this environment because the remote is SSH-based and this runtime lacks an authenticated SSH path.
+- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/testing.md`, `src/app/(app)/layout.tsx`, `src/app/(app)/page.tsx`, `src/app/(app)/analytics/page.tsx`, `src/app/(app)/opportunities/page.tsx`, `src/app/(app)/sources/page.tsx`, `src/app/(app)/tasks/page.tsx`, `src/components/admin/admin-console.tsx`, `src/components/home/app-shell-preview.tsx`, `src/components/home/app-shell-preview.test.tsx`, `src/components/layout/authenticated-app-shell.tsx`, `src/components/layout/authenticated-app-shell.test.tsx`, `src/components/layout/section-placeholder.tsx`, and `tests/smoke.spec.ts`.
+- Tests run in latest loop: `npm test -- src/components/layout/authenticated-app-shell.test.tsx src/components/home/app-shell-preview.test.tsx`; `npm run lint`; `npm run build`; `npm run prisma:validate`; `docker compose up -d db`; `npm run db:seed`; `npm run lint`; `npm test`; `npm run build`; `npm run e2e`; `make compose-test-lint`; `make compose-test`; `make compose-test-build`; `make compose-test-e2e`; and `make compose-down`. Verification used Docker and Playwright.

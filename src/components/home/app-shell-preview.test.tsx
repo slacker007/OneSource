@@ -124,16 +124,18 @@ describe("AppShellPreview", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /government opportunity tracking with audit-ready decisions/i,
+        name: /capture command center/i,
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/current score 79\.50 \/ 100\.00 with go recommendation/i),
+      screen.getByText(
+        /current score 79\.50 \/ 100\.00 with go recommendation/i,
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("navigation", { name: /primary/i }),
+      screen.getByText(/seeded pipeline preview cards/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/authz guard active/i)).toBeInTheDocument();
+    expect(screen.getByText(/dashboard preview/i)).toBeInTheDocument();
   });
 
   it("renders an empty-state shell when no snapshot is available", () => {
