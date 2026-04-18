@@ -534,6 +534,8 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
     ],
     bidDecisions: [
       {
+        id: "decision_current",
+        isCurrent: true,
         decisionTypeKey: "initial_pursuit",
         recommendationOutcome: "GO",
         finalOutcome: "GO",
@@ -544,6 +546,24 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
         recommendedAt: new Date("2026-04-15T16:31:00.000Z"),
         recommendedByIdentifier: "rule_engine:default_capture_v1",
         decidedAt: new Date("2026-04-16T14:10:00.000Z"),
+        decidedByUser: {
+          name: "OneSource Admin",
+          email: "admin@onesource.local",
+        },
+      },
+      {
+        id: "decision_previous",
+        isCurrent: false,
+        decisionTypeKey: "qualification_review",
+        recommendationOutcome: "DEFER",
+        finalOutcome: "DEFER",
+        recommendationSummary:
+          "Defer pursuit until the customer confirms the vehicle path.",
+        finalRationale:
+          "Leadership held the record until the teaming structure was clarified.",
+        recommendedAt: new Date("2026-04-10T10:00:00.000Z"),
+        recommendedByIdentifier: "rule_engine:default_capture_v1",
+        decidedAt: new Date("2026-04-10T12:00:00.000Z"),
         decidedByUser: {
           name: "OneSource Admin",
           email: "admin@onesource.local",
@@ -756,9 +776,25 @@ describe("opportunity.repository", () => {
         ],
       },
       bidDecision: {
+        id: "decision_current",
+        isCurrent: true,
         finalOutcome: "GO",
         decidedByName: "OneSource Admin",
       },
+      decisionHistory: [
+        {
+          id: "decision_current",
+          isCurrent: true,
+          decisionTypeKey: "initial_pursuit",
+          finalOutcome: "GO",
+        },
+        {
+          id: "decision_previous",
+          isCurrent: false,
+          decisionTypeKey: "qualification_review",
+          finalOutcome: "DEFER",
+        },
+      ],
       tasks: [
         {
           title: "Complete incumbent analysis brief",

@@ -1,8 +1,14 @@
 "use server";
 
+import { AuditActorType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAppPermission } from "@/lib/auth/authorization";
 import { prisma } from "@/lib/prisma";
+import {
+  INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE,
+  validateOpportunityBidDecisionFormSubmission,
+  type OpportunityBidDecisionActionState,
+} from "@/modules/opportunities/opportunity-bid-decision-form.schema";
 import {
   INITIAL_OPPORTUNITY_FORM_ACTION_STATE,
   validateOpportunityFormSubmission,
@@ -30,6 +36,7 @@ import {
   createOpportunityTask,
   deleteOpportunityMilestone,
   deleteOpportunityTask,
+  recordBidDecision,
   recordStageTransition,
   updateOpportunityMilestone,
   updateOpportunityTask,
@@ -83,6 +90,54 @@ export async function createOpportunityAction(
   }
 
   redirect(`/opportunities/${createdOpportunityId}/edit?created=1`);
+}
+
+export async function recordOpportunityBidDecisionAction(
+  _previousState: OpportunityBidDecisionActionState,
+  formData: FormData,
+): Promise<OpportunityBidDecisionActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const validation = validateOpportunityBidDecisionFormSubmission(formData);
+
+  if (!validation.success) {
+    return validation.state;
+  }
+
+  try {
+    await recordBidDecision({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        opportunityId,
+        decisionTypeKey: validation.submission.decisionTypeKey,
+        recommendedByActorType: validation.submission.recommendationOutcome
+          ? AuditActorType.SYSTEM
+          : undefined,
+        recommendedByIdentifier: validation.submission.recommendationSource,
+        recommendationOutcome: validation.submission.recommendationOutcome,
+        recommendationSummary: validation.submission.recommendationSummary,
+        finalOutcome: validation.submission.finalOutcome,
+        finalRationale: validation.submission.finalRationale,
+        recommendedAt: validation.submission.recommendedAt,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE,
+      formError:
+        error instanceof Error
+          ? error.message
+          : "The bid decision could not be recorded.",
+    };
+  }
+
+  revalidateOpportunitySurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE,
+    successMessage: "Bid decision recorded and added to workspace history.",
+  };
 }
 
 export async function updateOpportunityAction(

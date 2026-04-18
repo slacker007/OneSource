@@ -252,12 +252,17 @@ export type OpportunityWorkspaceScorecard = OpportunityScoreSummary & {
 
 export type OpportunityWorkspaceBidDecision =
   OpportunityBidDecisionSummary & {
+    id: string;
+    isCurrent: boolean;
     recommendationSummary: string | null;
     finalRationale: string | null;
     recommendedAt: string | null;
     recommendedByLabel: string | null;
     decidedByName: string | null;
   };
+
+export type OpportunityWorkspaceBidDecisionHistoryEntry =
+  OpportunityWorkspaceBidDecision;
 
 export type OpportunityWorkspaceDocument = {
   id: string;
@@ -324,6 +329,7 @@ export type OpportunityWorkspaceSnapshot = {
   opportunity: OpportunityWorkspaceOpportunitySummary;
   scorecard: OpportunityWorkspaceScorecard | null;
   bidDecision: OpportunityWorkspaceBidDecision | null;
+  decisionHistory: OpportunityWorkspaceBidDecisionHistoryEntry[];
   taskAssigneeOptions: OpportunityTaskAssigneeOption[];
   tasks: OpportunityWorkspaceTask[];
   milestones: OpportunityWorkspaceMilestone[];

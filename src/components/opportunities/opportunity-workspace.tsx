@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { OpportunityBidDecisionManager } from "@/components/opportunities/opportunity-bid-decision-manager";
 import { OpportunityMilestoneManager } from "@/components/opportunities/opportunity-milestone-manager";
 import { OpportunityNoteManager } from "@/components/opportunities/opportunity-note-manager";
 import { OpportunityStageTransitionPanel } from "@/components/opportunities/opportunity-stage-transition-panel";
@@ -7,6 +8,7 @@ import { OpportunityTaskManager } from "@/components/opportunities/opportunity-t
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import type { OpportunityBidDecisionActionState } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
 import type { OpportunityMilestoneActionState } from "@/modules/opportunities/opportunity-milestone-form.schema";
 import type { OpportunityNoteActionState } from "@/modules/opportunities/opportunity-note-form.schema";
 import type { OpportunityTaskActionState } from "@/modules/opportunities/opportunity-task-form.schema";
@@ -16,6 +18,7 @@ import {
 } from "@/modules/opportunities/opportunity-stage-policy";
 import type {
   OpportunityWorkspaceActivity,
+  OpportunityWorkspaceBidDecisionHistoryEntry,
   OpportunityWorkspaceDocument,
   OpportunityWorkspaceMilestone,
   OpportunityWorkspaceNote,
@@ -27,6 +30,10 @@ import type {
 type OpportunityWorkspaceProps = {
   snapshot: OpportunityWorkspaceSnapshot | null;
   allowManagePipeline?: boolean;
+  recordBidDecisionAction?: (
+    state: OpportunityBidDecisionActionState,
+    formData: FormData,
+  ) => Promise<OpportunityBidDecisionActionState>;
   createMilestoneAction?: (
     state: OpportunityMilestoneActionState,
     formData: FormData,
@@ -64,6 +71,7 @@ type OpportunityWorkspaceProps = {
 export function OpportunityWorkspace({
   snapshot,
   allowManagePipeline = false,
+  recordBidDecisionAction,
   createMilestoneAction,
   createNoteAction,
   createTaskAction,
@@ -196,7 +204,12 @@ export function OpportunityWorkspace({
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <OverviewSection snapshot={snapshot} />
-        <ScoringSection snapshot={snapshot} />
+        <ScoringSection
+          allowManagePipeline={allowManagePipeline}
+          decisionHistory={snapshot.decisionHistory}
+          recordBidDecisionAction={recordBidDecisionAction}
+          snapshot={snapshot}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -334,10 +347,20 @@ function OverviewSection({
 }
 
 function ScoringSection({
+  allowManagePipeline,
+  decisionHistory,
+  recordBidDecisionAction,
   snapshot,
 }: {
+  allowManagePipeline: boolean;
+  decisionHistory: OpportunityWorkspaceBidDecisionHistoryEntry[];
+  recordBidDecisionAction?: OpportunityWorkspaceProps["recordBidDecisionAction"];
   snapshot: OpportunityWorkspaceSnapshot;
 }) {
+  const recommendationSourceLabel = snapshot.scorecard?.scoringModelKey
+    ? `rule_engine:${snapshot.scorecard.scoringModelKey}`
+    : snapshot.bidDecision?.recommendedByLabel ?? null;
+
   return (
     <article className="border-border rounded-[28px] border bg-[linear-gradient(135deg,rgba(32,95,85,0.97),rgba(16,58,53,1))] p-6 text-white shadow-[0_22px_60px_rgba(16,58,53,0.28)]">
       <div className="flex items-center justify-between gap-3">
@@ -358,7 +381,7 @@ function ScoringSection({
 
       {snapshot.scorecard ? (
         <div className="mt-6 space-y-5">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <WorkspaceMetric
               label="Current score"
               value={`${snapshot.scorecard.totalScore ?? "0"}/${snapshot.scorecard.maximumScore ?? "100"}`}
@@ -366,6 +389,12 @@ function ScoringSection({
             <WorkspaceMetric
               label="Calculated"
               value={formatDate(snapshot.scorecard.calculatedAt)}
+            />
+            <WorkspaceMetric
+              label="Recommendation"
+              value={humanizeDecisionOutcome(
+                snapshot.scorecard.recommendationOutcome ?? "DEFER",
+              )}
             />
           </div>
 
@@ -383,12 +412,20 @@ function ScoringSection({
               >
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-base font-semibold">{factor.factorLabel}</h3>
-                  <Badge
-                    className="border-white/15 bg-white/10 text-white"
-                    tone="muted"
-                  >
-                    {factor.score ?? "0"}/{factor.maximumScore ?? "0"}
-                  </Badge>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Badge
+                      className="border-white/15 bg-white/10 text-white"
+                      tone="muted"
+                    >
+                      Weight {factor.weight ?? "0"}
+                    </Badge>
+                    <Badge
+                      className="border-white/15 bg-white/10 text-white"
+                      tone="muted"
+                    >
+                      {factor.score ?? "0"}/{factor.maximumScore ?? "0"}
+                    </Badge>
+                  </div>
                 </div>
                 {factor.explanation ? (
                   <p className="mt-2 text-sm leading-6 text-white/78">
@@ -402,13 +439,33 @@ function ScoringSection({
           {snapshot.bidDecision ? (
             <div className="rounded-[22px] border border-white/12 bg-white/7 px-5 py-4">
               <h3 className="text-base font-semibold">Current decision</h3>
-              <p className="mt-2 text-sm text-white/80">
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Badge className="border-white/15 bg-white/10 text-white" tone="muted">
+                  {snapshot.bidDecision.decisionTypeKey
+                    ? humanizeEnum(snapshot.bidDecision.decisionTypeKey)
+                    : "Decision record"}
+                </Badge>
+                <Badge className="border-white/15 bg-white/10 text-white" tone="muted">
+                  Final {humanizeDecisionOutcome(snapshot.bidDecision.finalOutcome ?? "DEFER")}
+                </Badge>
+              </div>
+              <p className="mt-3 text-sm text-white/80">
                 Recommendation:{" "}
-                {snapshot.bidDecision.recommendationOutcome ?? "Pending"}
+                {snapshot.bidDecision.recommendationOutcome
+                  ? humanizeDecisionOutcome(snapshot.bidDecision.recommendationOutcome)
+                  : "Pending"}
                 {snapshot.bidDecision.decidedByName
                   ? ` · Finalized by ${snapshot.bidDecision.decidedByName}`
                   : ""}
+                {snapshot.bidDecision.decidedAt
+                  ? ` · ${formatDate(snapshot.bidDecision.decidedAt)}`
+                  : ""}
               </p>
+              {snapshot.bidDecision.recommendationSummary ? (
+                <p className="mt-2 text-sm leading-6 text-white/80">
+                  {snapshot.bidDecision.recommendationSummary}
+                </p>
+              ) : null}
               {snapshot.bidDecision.finalRationale ? (
                 <p className="mt-2 text-sm leading-6 text-white/80">
                   {snapshot.bidDecision.finalRationale}
@@ -416,6 +473,38 @@ function ScoringSection({
               ) : null}
             </div>
           ) : null}
+
+          {allowManagePipeline && recordBidDecisionAction ? (
+            <OpportunityBidDecisionManager
+              action={recordBidDecisionAction}
+              currentDecisionTypeKey={snapshot.bidDecision?.decisionTypeKey}
+              opportunityId={snapshot.opportunity.id}
+              recommendationSourceLabel={recommendationSourceLabel}
+              scorecard={snapshot.scorecard}
+            />
+          ) : null}
+
+          <div className="rounded-[22px] border border-white/12 bg-white/7 px-5 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base font-semibold">Decision history</h3>
+              <Badge className="border-white/15 bg-white/10 text-white" tone="muted">
+                {decisionHistory.length} recorded
+              </Badge>
+            </div>
+            {decisionHistory.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {decisionHistory.map((decision) => (
+                  <DecisionHistoryCard decision={decision} key={decision.id} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                className="mt-4 border-white/15 bg-white/5 text-white"
+                message="Record the first final decision to preserve the human rationale alongside the deterministic recommendation."
+                title="No decision history yet"
+              />
+            )}
+          </div>
         </div>
       ) : (
         <EmptyState
@@ -871,6 +960,56 @@ function TimelineCard({
   );
 }
 
+function DecisionHistoryCard({
+  decision,
+}: {
+  decision: OpportunityWorkspaceBidDecisionHistoryEntry;
+}) {
+  const metadata = [
+    decision.decisionTypeKey ? humanizeEnum(decision.decisionTypeKey) : null,
+    decision.finalOutcome
+      ? `Final ${humanizeDecisionOutcome(decision.finalOutcome)}`
+      : null,
+    decision.recommendationOutcome
+      ? `Recommended ${humanizeDecisionOutcome(decision.recommendationOutcome)}`
+      : null,
+    decision.decidedByName ? `By ${decision.decidedByName}` : null,
+    decision.decidedAt ? formatDate(decision.decidedAt) : null,
+  ].filter(Boolean);
+
+  return (
+    <div className="rounded-[22px] border border-white/12 bg-white/6 px-4 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="text-base font-semibold text-white">
+            {decision.decisionTypeKey
+              ? humanizeEnum(decision.decisionTypeKey)
+              : "Decision record"}
+          </h4>
+          <p className="mt-2 text-sm text-white/75">{metadata.join(" · ")}</p>
+        </div>
+        {decision.isCurrent ? (
+          <Badge className="border-white/20 bg-white/10 text-white" tone="muted">
+            Current
+          </Badge>
+        ) : null}
+      </div>
+
+      {decision.recommendationSummary ? (
+        <p className="mt-3 text-sm leading-6 text-white/78">
+          {decision.recommendationSummary}
+        </p>
+      ) : null}
+
+      {decision.finalRationale ? (
+        <p className="mt-2 text-sm leading-6 text-white/85">
+          {decision.finalRationale}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function SummaryCard({
   label,
   supportingText,
@@ -935,6 +1074,10 @@ function humanizeEnum(value: string) {
     .split(/[_-]/g)
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
     .join(" ");
+}
+
+function humanizeDecisionOutcome(value: string) {
+  return value === "NO_GO" ? "No Go" : humanizeEnum(value);
 }
 
 function formatDate(value: string) {

@@ -225,6 +225,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   const createdTaskTitle = `Prepare capture brief ${Date.now()}`;
   const createdMilestoneTitle = `Executive checkpoint ${Date.now()}`;
   const createdNoteTitle = `Capture note ${Date.now()}`;
+  const decisionRationale = `Leadership confirmed pursuit priority and staffing alignment ${Date.now()}.`;
   const createdMilestoneDate = new Date();
   createdMilestoneDate.setUTCDate(createdMilestoneDate.getUTCDate() + 7);
 
@@ -255,6 +256,10 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByRole("heading", { name: /^Scoring$/i }),
   ).toBeVisible();
+  await expect(page.getByText(/weight/i).first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Decision history$/i }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: /^Tasks$/i })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /^Documents$/i }),
@@ -274,9 +279,36 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByRole("heading", { name: /^Capture Summary$/i }),
   ).toBeVisible();
-  await expect(page.getByText(/bid decision recorded as go/i)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Bid decision recorded as GO$/i }).first(),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /^Stage transition$/i }),
+  ).toBeVisible();
+  await page.locator("#decision-create-type").selectOption("executive_review");
+  await page.locator("#decision-create-outcome").selectOption("GO");
+  await page.locator("#decision-create-rationale").fill(decisionRationale);
+  await page.getByRole("button", { name: /^record decision$/i }).click();
+  await expect(
+    page.getByText(/bid decision recorded and added to workspace history/i),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByText(
+        new RegExp(
+          decisionRationale.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          "i",
+        ),
+      )
+      .first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Executive Review$/i }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /^Bid decision recorded as GO$/i,
+    }).first(),
   ).toBeVisible();
   await page.locator("#task-create-title").fill(createdTaskTitle);
   const assigneeOptionLabel = (

@@ -587,6 +587,8 @@ export type RecordBidDecisionInput = {
   opportunityId: string;
   scorecardId?: string | null;
   decisionTypeKey?: string | null;
+  recommendedByActorType?: AuditActorType;
+  recommendedByIdentifier?: string | null;
   recommendationOutcome?: BidDecisionOutcome | null;
   recommendationSummary?: string | null;
   recommendationMetadata?: Prisma.InputJsonValue | null;
@@ -1658,6 +1660,20 @@ export async function recordBidDecision({
     const recommendedAt = input.recommendedAt ?? input.occurredAt ?? new Date();
     const decidedAt =
       input.decidedAt ?? input.occurredAt ?? (input.finalOutcome ? new Date() : null);
+    const recommendedByActorType =
+      input.recommendedByActorType ?? input.actor.type;
+    const recommendedByUserId =
+      recommendedByActorType === AuditActorType.USER
+        ? input.actor.userId ?? null
+        : null;
+    const recommendedByIdentifier =
+      normalizeOptionalText(input.recommendedByIdentifier) ??
+      input.actor.identifier ??
+      null;
+    const decidedByUserId =
+      input.finalOutcome && input.actor.type === AuditActorType.USER
+        ? input.actor.userId ?? null
+        : null;
 
     await tx.bidDecision.updateMany({
       where: {
@@ -1679,18 +1695,49 @@ export async function recordBidDecision({
         recommendationOutcome: input.recommendationOutcome ?? null,
         recommendationSummary: normalizeOptionalText(input.recommendationSummary),
         recommendationMetadata: toOptionalJson(input.recommendationMetadata),
-        recommendedByActorType: input.actor.type,
-        recommendedByUserId:
-          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
-        recommendedByIdentifier: input.actor.identifier ?? null,
+        recommendedByActorType,
+        recommendedByUserId,
+        recommendedByIdentifier,
         recommendedAt,
         finalOutcome: input.finalOutcome ?? null,
         finalRationale: normalizeOptionalText(input.finalRationale),
         decisionMetadata: toOptionalJson(input.decisionMetadata),
+        decidedByUserId,
         decidedAt,
         isCurrent: true,
       },
       select: bidDecisionAuditSelect,
+    });
+
+    await tx.opportunityActivityEvent.create({
+      data: {
+        actorIdentifier: input.actor.identifier ?? null,
+        actorType: input.actor.type,
+        actorUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        description:
+          normalizeOptionalText(input.finalRationale) ??
+          normalizeOptionalText(input.recommendationSummary),
+        eventType: "bid_decision_recorded",
+        metadata: {
+          decisionId: bidDecision.id,
+          decisionTypeKey: bidDecision.decisionTypeKey,
+          recommendationOutcome: bidDecision.recommendationOutcome,
+          finalOutcome: bidDecision.finalOutcome,
+          scorecardId: input.scorecardId ?? null,
+        },
+        occurredAt: bidDecision.decidedAt ?? recommendedAt,
+        opportunityId: opportunity.id,
+        organizationId: opportunity.organizationId,
+        relatedEntityId: bidDecision.id,
+        relatedEntityType: "bid_decision",
+        title: bidDecision.finalOutcome
+          ? `Bid decision recorded as ${bidDecision.finalOutcome}`
+          : "Bid recommendation recorded",
+      },
+      select: {
+        id: true,
+      },
     });
 
     await recordAuditEvent({

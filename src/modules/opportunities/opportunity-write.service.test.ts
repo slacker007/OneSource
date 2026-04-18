@@ -1054,6 +1054,8 @@ describe("opportunity-write.service", () => {
         actor,
         opportunityId: "opp_123",
         decisionTypeKey: "initial_pursuit",
+        recommendedByActorType: AuditActorType.SYSTEM,
+        recommendedByIdentifier: "rule_engine:default_capture_v1",
         recommendationOutcome: "GO",
         finalOutcome: "GO",
         finalRationale: "Vehicle access and incumbent story are favorable.",
@@ -1069,6 +1071,26 @@ describe("opportunity-write.service", () => {
       },
       data: {
         isCurrent: false,
+      },
+    });
+    expect(tx.bidDecision.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          recommendedByActorType: AuditActorType.SYSTEM,
+          recommendedByUserId: null,
+          recommendedByIdentifier: "rule_engine:default_capture_v1",
+          decidedByUserId: "user_123",
+        }),
+      }),
+    );
+    expect(tx.opportunityActivityEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventType: "bid_decision_recorded",
+        relatedEntityType: "bid_decision",
+        title: "Bid decision recorded as GO",
+      }),
+      select: {
+        id: true,
       },
     });
     expect(tx.auditLog.create).toHaveBeenCalledWith({

@@ -529,14 +529,21 @@ const opportunityWorkspaceArgs = {
       },
     },
     bidDecisions: {
-      where: {
-        isCurrent: true,
-      },
-      orderBy: {
-        decidedAt: "desc",
-      },
-      take: 1,
+      orderBy: [
+        {
+          isCurrent: "desc",
+        },
+        {
+          decidedAt: "desc",
+        },
+        {
+          recommendedAt: "desc",
+        },
+      ],
+      take: 6,
       select: {
+        id: true,
+        isCurrent: true,
         decisionTypeKey: true,
         recommendationOutcome: true,
         finalOutcome: true,
@@ -757,6 +764,8 @@ type OrganizationDashboardOpportunityRecord = {
     calculatedAt: Date;
   }>;
   bidDecisions: Array<{
+    id: string;
+    isCurrent: boolean;
     decisionTypeKey: string | null;
     recommendationOutcome:
       OpportunityBidDecisionSummary["recommendationOutcome"];
@@ -924,6 +933,8 @@ export type OpportunityWorkspaceRecord = {
     }>;
   }>;
   bidDecisions: Array<{
+    id: string;
+    isCurrent: boolean;
     decisionTypeKey: string | null;
     recommendationOutcome:
       OpportunityBidDecisionSummary["recommendationOutcome"];
@@ -1235,6 +1246,9 @@ export async function getOpportunityWorkspaceSnapshot({
     organizationProfile: record.organization.organizationProfile,
     referenceDate,
   });
+  const currentBidDecision =
+    record.bidDecisions.find((bidDecision) => bidDecision.isCurrent) ??
+    record.bidDecisions[0];
 
   return {
     organization: {
@@ -1247,7 +1261,12 @@ export async function getOpportunityWorkspaceSnapshot({
       scoreSummary: mapScoreSummary(record.scorecards[0], resolvedScorecard),
     }),
     scorecard: mapWorkspaceScorecard(record.scorecards[0], resolvedScorecard),
-    bidDecision: mapWorkspaceBidDecision(record.bidDecisions[0]),
+    bidDecision: mapWorkspaceBidDecision(currentBidDecision),
+    decisionHistory: record.bidDecisions.flatMap((bidDecision) => {
+      const mappedBidDecision = mapWorkspaceBidDecision(bidDecision);
+
+      return mappedBidDecision ? [mappedBidDecision] : [];
+    }),
     taskAssigneeOptions: record.organization.users.map(mapTaskAssigneeOption),
     tasks: record.tasks.map(mapWorkspaceTask),
     milestones: record.milestones.map(mapWorkspaceMilestone),
@@ -1842,6 +1861,8 @@ function mapWorkspaceBidDecision(
   }
 
   return {
+    id: bidDecision.id,
+    isCurrent: bidDecision.isCurrent,
     decisionTypeKey: bidDecision.decisionTypeKey,
     recommendationOutcome: bidDecision.recommendationOutcome,
     finalOutcome: bidDecision.finalOutcome,

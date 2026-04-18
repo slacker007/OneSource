@@ -8,7 +8,7 @@ This document records the canonical verification workflows for the repo as of th
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, deterministic scoring and recommendation formulas plus fallback scorecard mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live task creation, live milestone creation, guarded note creation, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` external-search flow with mocked connector responses plus preview-and-link import behavior, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with scoring-profile visibility, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` external-search flow with mocked connector responses plus preview-and-link import behavior, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with scoring-profile visibility, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -45,6 +45,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - land back on the protected shell with the authenticated-session UI visible
 - navigate into `/opportunities`, apply real source and stage filters, and observe the URL plus result set update together
 - open a seeded opportunity workspace from `/opportunities`, verify the overview, scoring, tasks, documents, notes, and history sections render on the live app, then execute one guarded stage transition with recorded rationale
+- record a final bid decision from the workspace scoring panel and verify the rationale appears in the visible decision-history surface
 - create a task from the workspace with assignee, due date, status, and priority, then confirm that task appears in the signed-in user’s `/tasks` personal queue
 - render one seeded overdue task badge plus one seeded upcoming milestone badge before any new writes are made, proving the background worker and seed path persisted reminder state
 - create a milestone from the workspace with title, type, target date, and status, then confirm that milestone appears on the dashboard deadline surface
@@ -76,6 +77,7 @@ For the current Phase 6 scoring slices, targeted verification should confirm:
 - the admin console renders the scoring-profile sections, decision-threshold badges, and weighted-criteria table on the guarded `/settings` route
 - the pure scoring engine returns six factor scores with deterministic explanations plus `GO`, `DEFER`, and `NO_GO` recommendation outcomes across strong-fit, high-risk, borderline, and missing-profile edge cases
 - the typed opportunity repository synthesizes a deterministic scorecard for workspaces and list snapshots when a persisted current scorecard is missing, including recommendation outcome and rationale
+- the typed opportunity repository maps both the current workspace bid decision and a bounded decision-history list so the scoring panel can show human overrides without querying raw Prisma payloads in the page layer
 
 For the current Phase 3 dashboard slice, targeted unit verification should confirm:
 

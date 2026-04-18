@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { OpportunityWorkspace } from "./opportunity-workspace";
+import { INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
 import { INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE } from "@/modules/opportunities/opportunity-milestone-form.schema";
 import { INITIAL_OPPORTUNITY_NOTE_ACTION_STATE } from "@/modules/opportunities/opportunity-note-form.schema";
 import { INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE } from "@/modules/opportunities/opportunity-stage-policy";
@@ -119,6 +120,8 @@ const snapshot: OpportunityWorkspaceSnapshot = {
     ],
   },
   bidDecision: {
+    id: "decision_current",
+    isCurrent: true,
     decisionTypeKey: "initial_pursuit",
     recommendationOutcome: "GO",
     finalOutcome: "GO",
@@ -131,6 +134,38 @@ const snapshot: OpportunityWorkspaceSnapshot = {
     decidedByName: "OneSource Admin",
     decidedAt: "2026-04-16T14:10:00.000Z",
   },
+  decisionHistory: [
+    {
+      id: "decision_current",
+      isCurrent: true,
+      decisionTypeKey: "initial_pursuit",
+      recommendationOutcome: "GO",
+      finalOutcome: "GO",
+      recommendationSummary:
+        "Proceed with capture because the opportunity fits strategic priorities.",
+      finalRationale:
+        "Leadership approved pursuit because vehicle access is already cleared.",
+      recommendedAt: "2026-04-15T16:31:00.000Z",
+      recommendedByLabel: "rule_engine:default_capture_v1",
+      decidedByName: "OneSource Admin",
+      decidedAt: "2026-04-16T14:10:00.000Z",
+    },
+    {
+      id: "decision_previous",
+      isCurrent: false,
+      decisionTypeKey: "qualification_review",
+      recommendationOutcome: "DEFER",
+      finalOutcome: "DEFER",
+      recommendationSummary:
+        "Defer pursuit until the customer confirms the vehicle path.",
+      finalRationale:
+        "Leadership held the record until the teaming structure was clarified.",
+      recommendedAt: "2026-04-10T10:00:00.000Z",
+      recommendedByLabel: "rule_engine:default_capture_v1",
+      decidedByName: "OneSource Admin",
+      decidedAt: "2026-04-10T12:00:00.000Z",
+    },
+  ],
   taskAssigneeOptions: [
     {
       label: "OneSource Admin",
@@ -234,6 +269,9 @@ describe("OpportunityWorkspace", () => {
     render(
       <OpportunityWorkspace
         allowManagePipeline
+        recordBidDecisionAction={async () =>
+          INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE
+        }
         createMilestoneAction={async () =>
           INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE
         }
@@ -277,8 +315,26 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("heading", { name: /capability fit/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/weight 30\.00/i)).toBeInTheDocument();
     expect(
       screen.getByText(/bid decision recorded as go/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /^Decision history$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^record decision$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: /decision checkpoint/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: /final decision/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/^recorded rationale$/i, {
+        selector: "textarea#decision-create-rationale",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /^Stage transition$/i }),
@@ -287,7 +343,9 @@ describe("OpportunityWorkspace", () => {
       screen.getByRole("combobox", { name: /move to/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("textbox", { name: /recorded rationale/i }),
+      screen.getByLabelText(/^recorded rationale$/i, {
+        selector: "textarea#stage-transition-rationale",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /move to pursuit approved/i }),
