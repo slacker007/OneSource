@@ -2,6 +2,7 @@ import type {
   AgencySummary,
   CompetitorSummary,
   ContractVehicleSummary,
+  DashboardDeadlineSummary,
   HomeDashboardSnapshot,
   OpportunityBidDecisionSummary,
   OpportunityMilestoneSummary,
@@ -15,6 +16,14 @@ import type {
 export const DEFAULT_ORGANIZATION_SLUG = "default-org";
 
 const UPCOMING_DEADLINE_WINDOW_DAYS = 30;
+const UPCOMING_DEADLINE_ITEM_LIMIT = 6;
+const TOP_OPPORTUNITY_LIMIT = 3;
+const CLOSED_PIPELINE_STAGE_KEYS = [
+  "awarded",
+  "lost",
+  "no_bid",
+  "submitted",
+];
 
 const ACTIVE_TASK_STATUSES = [
   "NOT_STARTED",
@@ -168,7 +177,7 @@ const organizationDashboardArgs = {
       },
     },
   },
-} as const;
+};
 
 export type OpportunityRepositoryClient = {
   organization: {
@@ -315,7 +324,13 @@ export async function getHomeDashboardSnapshot({
   const connectors: SourceConnectorSummary[] = record.sourceConnectorConfigs.map(
     (connector) => mapConnectorSummary(connector),
   );
-  const focusOpportunity = pickFocusOpportunity(opportunities);
+  const activeOpportunities = opportunities.filter(isActivePipelineOpportunity);
+  const opportunitiesForAction =
+    activeOpportunities.length > 0 ? activeOpportunities : opportunities;
+  const upcomingDeadlines = buildUpcomingDeadlines({
+    opportunities: opportunitiesForAction,
+    now,
+  });
 
   return {
     organization: {
@@ -324,20 +339,19 @@ export async function getHomeDashboardSnapshot({
       slug: record.slug,
     },
     connectors,
-    activeOpportunityCount: opportunities.length,
-    upcomingDeadlineCount: opportunities.filter((opportunity) =>
-      isWithinUpcomingWindow(opportunity.responseDeadlineAt, now),
-    ).length,
+    trackedOpportunityCount: opportunities.length,
+    activeOpportunityCount: activeOpportunities.length,
+    upcomingDeadlineCount: upcomingDeadlines.length,
     enabledConnectorCount: connectors.filter((connector) => connector.isEnabled)
       .length,
-    opportunitiesRequiringAttentionCount: opportunities.filter((opportunity) =>
-      requiresAttention(opportunity),
+    opportunitiesRequiringAttentionCount: opportunitiesForAction.filter(
+      (opportunity) => requiresAttention(opportunity),
     ).length,
     stageSummaries: buildStageSummaries(opportunities),
-    decisionQueue: opportunities.slice(0, 3),
-    focusOpportunity,
-    focusTasks: focusOpportunity?.tasks ?? [],
-    focusMilestones: focusOpportunity?.milestones ?? [],
+    upcomingDeadlines,
+    topOpportunities: [...opportunitiesForAction]
+      .sort(compareTopOpportunities)
+      .slice(0, TOP_OPPORTUNITY_LIMIT),
   };
 }
 
@@ -532,22 +546,90 @@ function requiresAttention(opportunity: OpportunitySummary) {
   );
 }
 
-function pickFocusOpportunity(opportunities: OpportunitySummary[]) {
-  const withDeadlines = opportunities.filter(
-    (opportunity) => opportunity.responseDeadlineAt !== null,
-  );
-
-  if (withDeadlines.length > 0) {
-    return [...withDeadlines].sort(compareOpportunitySummaries)[0] ?? null;
+function isActivePipelineOpportunity(opportunity: OpportunitySummary) {
+  if (!opportunity.currentStageKey) {
+    return true;
   }
 
-  return opportunities[0] ?? null;
+  return !CLOSED_PIPELINE_STAGE_KEYS.includes(opportunity.currentStageKey);
 }
 
-function compareOpportunitySummaries(
+function buildUpcomingDeadlines({
+  opportunities,
+  now,
+}: {
+  opportunities: OpportunitySummary[];
+  now: Date;
+}): DashboardDeadlineSummary[] {
+  const deadlines: DashboardDeadlineSummary[] = [];
+
+  for (const opportunity of opportunities) {
+    if (isWithinUpcomingWindow(opportunity.responseDeadlineAt, now)) {
+      deadlines.push({
+        id: `${opportunity.id}:response-deadline`,
+        title: "Response deadline",
+        deadlineAt: opportunity.responseDeadlineAt as string,
+        deadlineType: "RESPONSE_DEADLINE",
+        opportunityId: opportunity.id,
+        opportunityTitle: opportunity.title,
+        stageLabel: opportunity.currentStageLabel,
+      });
+    }
+
+    for (const milestone of opportunity.milestones) {
+      if (!isWithinUpcomingWindow(milestone.targetDate, now)) {
+        continue;
+      }
+
+      deadlines.push({
+        id: `${opportunity.id}:milestone:${milestone.id}`,
+        title: milestone.title,
+        deadlineAt: milestone.targetDate,
+        deadlineType: "MILESTONE",
+        opportunityId: opportunity.id,
+        opportunityTitle: opportunity.title,
+        stageLabel: opportunity.currentStageLabel,
+      });
+    }
+  }
+
+  return deadlines
+    .sort(compareDashboardDeadlines)
+    .slice(0, UPCOMING_DEADLINE_ITEM_LIMIT);
+}
+
+function compareDashboardDeadlines(
+  left: DashboardDeadlineSummary,
+  right: DashboardDeadlineSummary,
+) {
+  const deadlineComparison = left.deadlineAt.localeCompare(right.deadlineAt);
+
+  if (deadlineComparison !== 0) {
+    return deadlineComparison;
+  }
+
+  return left.opportunityTitle.localeCompare(right.opportunityTitle);
+}
+
+function compareTopOpportunities(
   left: OpportunitySummary,
   right: OpportunitySummary,
 ) {
+  const scoreComparison =
+    getScoreValue(right.score?.totalScore) - getScoreValue(left.score?.totalScore);
+
+  if (scoreComparison !== 0) {
+    return scoreComparison;
+  }
+
+  const decisionComparison =
+    getDecisionRank(left.bidDecision?.finalOutcome) -
+    getDecisionRank(right.bidDecision?.finalOutcome);
+
+  if (decisionComparison !== 0) {
+    return decisionComparison;
+  }
+
   const leftDeadline = left.responseDeadlineAt;
   const rightDeadline = right.responseDeadlineAt;
 
@@ -564,6 +646,30 @@ function compareOpportunitySummaries(
   }
 
   return left.title.localeCompare(right.title);
+}
+
+function getScoreValue(score: string | null | undefined) {
+  if (!score) {
+    return -1;
+  }
+
+  const parsed = Number.parseFloat(score);
+  return Number.isFinite(parsed) ? parsed : -1;
+}
+
+function getDecisionRank(
+  decision: OpportunityBidDecisionSummary["finalOutcome"] | undefined,
+) {
+  switch (decision) {
+    case "GO":
+      return 0;
+    case "DEFER":
+      return 1;
+    case "NO_GO":
+      return 2;
+    default:
+      return 3;
+  }
 }
 
 function compareTaskSummaries(

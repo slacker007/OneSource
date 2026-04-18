@@ -1,11 +1,17 @@
 import { AccessOverview } from "@/components/auth/access-overview";
-import { AppShellPreview } from "@/components/home/app-shell-preview";
+import { DashboardLanding } from "@/components/home/dashboard-landing";
 import { requireAuthenticatedAppSession } from "@/lib/auth/authorization";
+import { prisma } from "@/lib/prisma";
+import { getHomeDashboardSnapshot } from "@/modules/opportunities/opportunity.repository";
+import type { OpportunityRepositoryClient } from "@/modules/opportunities/opportunity.repository";
 
 export const dynamic = "force-dynamic";
 
 export default async function AuthenticatedHomePage() {
   const session = await requireAuthenticatedAppSession();
+  const snapshot = await getHomeDashboardSnapshot({
+    db: prisma as unknown as OpportunityRepositoryClient,
+  });
   const roleKeys = session.user.roleKeys;
   const roleSummary =
     roleKeys.length > 0 ? roleKeys.join(", ") : "No roles assigned";
@@ -19,12 +25,12 @@ export default async function AuthenticatedHomePage() {
               Dashboard
             </p>
             <h1 className="font-heading text-foreground text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-              Government opportunity tracking with audit-ready decisions.
+              Capture dashboard with live seeded pipeline queries.
             </h1>
             <p className="text-muted max-w-3xl text-sm leading-7 sm:text-base">
-              The authenticated shell is now the shared entry point for the
-              workspace. Primary sections are navigable on desktop and mobile
-              while later phases fill them with real capture workflows.
+              The landing page now reads the persisted opportunity graph
+              directly through the typed repository layer so stage distribution,
+              deadline pressure, and ranked pursuits are visible on first load.
             </p>
           </div>
 
@@ -42,7 +48,7 @@ export default async function AuthenticatedHomePage() {
         </div>
       </section>
 
-      <AppShellPreview snapshot={null} />
+      <DashboardLanding snapshot={snapshot} />
 
       <AccessOverview roleKeys={roleKeys} />
     </div>

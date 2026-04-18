@@ -116,16 +116,25 @@ export type OpportunityStageSummary = {
   opportunityCount: number;
 };
 
+export type DashboardDeadlineSummary = {
+  id: string;
+  title: string;
+  deadlineAt: string;
+  deadlineType: "RESPONSE_DEADLINE" | "MILESTONE";
+  opportunityId: string;
+  opportunityTitle: string;
+  stageLabel: string;
+};
+
 export type HomeDashboardSnapshot = {
   organization: OrganizationSummary;
   connectors: SourceConnectorSummary[];
+  trackedOpportunityCount: number;
   activeOpportunityCount: number;
   upcomingDeadlineCount: number;
   enabledConnectorCount: number;
   opportunitiesRequiringAttentionCount: number;
   stageSummaries: OpportunityStageSummary[];
-  decisionQueue: OpportunitySummary[];
-  focusOpportunity: OpportunitySummary | null;
-  focusTasks: OpportunityTaskSummary[];
-  focusMilestones: OpportunityMilestoneSummary[];
+  upcomingDeadlines: DashboardDeadlineSummary[];
+  topOpportunities: OpportunitySummary[];
 };

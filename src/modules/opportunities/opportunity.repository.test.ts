@@ -152,6 +152,61 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         scorecards: [],
         bidDecisions: [],
       },
+      {
+        id: "opp_gamma",
+        title: "DHS Zero Trust Assessment Support",
+        currentStageKey: "submitted",
+        currentStageLabel: "Submitted",
+        responseDeadlineAt: new Date("2026-04-18T21:00:00.000Z"),
+        originSourceSystem: "manual_entry",
+        naicsCode: "541519",
+        sourceSummaryText: "Submitted cyber support pursuit.",
+        leadAgency: {
+          id: "agency_2",
+          name: "CISA OCPO",
+          organizationCode: "70RCSJ",
+        },
+        vehicles: [],
+        competitors: [],
+        tasks: [
+          {
+            id: "task_submitted",
+            title: "Prepare oral presentation backup deck",
+            status: "IN_PROGRESS",
+            priority: "HIGH",
+            dueAt: new Date("2026-04-22T18:00:00.000Z"),
+            assigneeUser: {
+              id: "user_3",
+              name: "Casey Brooks",
+              email: "casey@example.com",
+            },
+          },
+        ],
+        milestones: [
+          {
+            id: "milestone_submitted",
+            title: "Proposal submitted",
+            status: "COMPLETED",
+            targetDate: new Date("2026-04-18T21:00:00.000Z"),
+          },
+        ],
+        scorecards: [
+          {
+            totalScore: { toString: () => "91.00" },
+            maximumScore: { toString: () => "100.00" },
+            recommendationOutcome: "GO",
+            calculatedAt: new Date("2026-04-18T20:00:00.000Z"),
+          },
+        ],
+        bidDecisions: [
+          {
+            decisionTypeKey: "submit_authorization",
+            recommendationOutcome: "GO",
+            finalOutcome: "GO",
+            decidedAt: new Date("2026-04-18T20:15:00.000Z"),
+          },
+        ],
+      },
     ],
   } as OrganizationDashboardRecord;
 }
@@ -170,7 +225,7 @@ describe("opportunity.repository", () => {
 
     const summaries = await listOpportunitySummaries({ db });
 
-    expect(summaries).toHaveLength(2);
+    expect(summaries).toHaveLength(3);
     expect(summaries[0]).toMatchObject({
       title: "Enterprise Knowledge Management Support Services",
       currentStageLabel: "Capture Active",
@@ -188,6 +243,10 @@ describe("opportunity.repository", () => {
       priority: "CRITICAL",
     });
     expect(summaries[1].currentStageLabel).toBe("Unstaged");
+    expect(summaries[2]).toMatchObject({
+      title: "DHS Zero Trust Assessment Support",
+      currentStageLabel: "Submitted",
+    });
   });
 
   it("builds a home dashboard snapshot from typed repository data", async () => {
@@ -200,16 +259,32 @@ describe("opportunity.repository", () => {
 
     expect(snapshot).not.toBeNull();
     expect(snapshot).toMatchObject({
+      trackedOpportunityCount: 3,
       activeOpportunityCount: 2,
-      upcomingDeadlineCount: 1,
+      upcomingDeadlineCount: 2,
       enabledConnectorCount: 2,
       opportunitiesRequiringAttentionCount: 1,
       organization: {
         slug: "default-org",
       },
-      focusOpportunity: {
-        title: "Enterprise Knowledge Management Support Services",
-      },
+      topOpportunities: [
+        {
+          title: "Enterprise Knowledge Management Support Services",
+        },
+        {
+          title: "Army Cloud Operations Recompete",
+        },
+      ],
+      upcomingDeadlines: [
+        {
+          title: "Go/No-Go Board",
+          opportunityTitle: "Enterprise Knowledge Management Support Services",
+        },
+        {
+          title: "Response deadline",
+          opportunityTitle: "Enterprise Knowledge Management Support Services",
+        },
+      ],
     });
 
     expect(snapshot?.stageSummaries).toEqual([
@@ -219,22 +294,21 @@ describe("opportunity.repository", () => {
         opportunityCount: 1,
       },
       {
+        stageKey: "submitted",
+        stageLabel: "Submitted",
+        opportunityCount: 1,
+      },
+      {
         stageKey: "unstaged",
         stageLabel: "Unstaged",
         opportunityCount: 1,
       },
     ]);
 
-    expect(snapshot?.focusTasks).toEqual([
-      expect.objectContaining({
-        title: "Confirm incumbent teaming posture",
-        assigneeName: "Alex Morgan",
-      }),
-      expect.objectContaining({
-        title: "Review PWS changes",
-        assigneeName: "capture@example.com",
-      }),
-    ]);
+    expect(snapshot?.topOpportunities).toHaveLength(2);
+    expect(
+      snapshot?.topOpportunities.map((opportunity) => opportunity.title),
+    ).not.toContain("DHS Zero Trust Assessment Support");
   });
 
   it("returns null when the requested organization is missing", async () => {

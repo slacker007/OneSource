@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 3 UI-pattern baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 3 dashboard baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, authenticated-shell access, the `/sources` preview dialog, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/sources` preview dialog, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -61,8 +61,10 @@ For the current admin-console slice, targeted unit verification should confirm:
 - the admin repository maps recent audit rows into stable display fields without exposing raw Prisma records to the page
 - the admin console component renders both populated and missing-organization states
 
-For the current Phase 3 UI-pattern slice, targeted unit verification should confirm:
+For the current Phase 3 dashboard slice, targeted unit verification should confirm:
 
+- the seeded dashboard landing component renders stage counts, ranked opportunities, and upcoming deadlines from typed snapshot data
+- the typed opportunity repository derives the dashboard snapshot without leaking raw Prisma model payloads into the page layer
 - the authenticated shell still opens the mobile drawer through the shared drawer primitive
 - the source-intake preview renders the shared form, table, empty-state, and error-state patterns
 - the source-intake preview can open the shared dialog without breaking page rendering

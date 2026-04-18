@@ -28,7 +28,27 @@ test("authenticated homepage smoke test", async ({ page }) => {
   await expect(page).toHaveTitle(/OneSource/i);
   await expect(
     page.getByRole("heading", {
-      name: /government opportunity tracking with audit-ready decisions/i,
+      name: /capture dashboard with live seeded pipeline queries/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /counts by stage/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /upcoming deadlines/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /top opportunities/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /va claims intake automation bpa/i,
     }),
   ).toBeVisible();
   await expect(

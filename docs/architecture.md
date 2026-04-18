@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, the first live Phase 2 authentication, authorization, auditability, and admin-visibility slices, plus the first two Phase 3 UI slices on top of the Prisma baseline.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, the first live Phase 2 authentication, authorization, auditability, and admin-visibility slices, plus the first three Phase 3 UI slices on top of the Prisma baseline.
 
 ## Current System Shape
 
@@ -39,7 +39,7 @@ The compose images install dependencies inside Docker rather than copying a host
 3. Requests to [src/app/(app)/layout.tsx](</Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/layout.tsx:1>) call [requireAuthenticatedAppSession](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/authorization.ts:1) and redirect anonymous users to `/sign-in`.
 4. The sign-in page at [src/app/sign-in/page.tsx](/Users/maverick/Documents/RalphLoops/OneSource/src/app/sign-in/page.tsx:1) renders [SignInForm](/Users/maverick/Documents/RalphLoops/OneSource/src/components/auth/sign-in-form.tsx:1), which uses the Auth.js credentials provider against seeded local users.
 5. The protected `(app)` layout now renders [AuthenticatedAppShell](/Users/maverick/Documents/RalphLoops/OneSource/src/components/layout/authenticated-app-shell.tsx:1), which derives the active section from the current pathname and exposes the shared sidebar, top bar, sign-out control, read-only global search field, and a reusable mobile navigation drawer built from the shared UI kit.
-6. The protected homepage route renders [AccessOverview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/auth/access-overview.tsx:1), [AppShellPreview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/home/app-shell-preview.tsx:1), and the authenticated session summary so the shared client-safe permission snapshot is visible within the shell chrome.
+6. The protected homepage route renders [DashboardLanding](/Users/maverick/Documents/RalphLoops/OneSource/src/components/home/dashboard-landing.tsx:1), [AccessOverview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/auth/access-overview.tsx:1), and the authenticated session summary so the shell opens with real stage, deadline, and ranked-opportunity widgets backed by the typed opportunity repository.
 7. The protected `/sources` route renders [SourceIntakePreview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/sources/source-intake-preview.tsx:1), which truthfully demonstrates the shared form, badge, table, dialog, empty-state, and error-state primitives before live connector work exists.
 8. The protected `/opportunities`, `/tasks`, and `/analytics` routes still render [SectionPlaceholder](/Users/maverick/Documents/RalphLoops/OneSource/src/components/layout/section-placeholder.tsx:1) so those major navigation targets resolve truthfully before their later feature slices land.
 9. The Auth.js route at [src/app/api/auth/[...nextauth]/route.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/app/api/auth/[...nextauth]/route.ts:1) uses [src/lib/auth/auth-options.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/auth-options.ts:1) to issue JWT-backed sessions enriched with `organizationId` and `roleKeys`.
@@ -156,7 +156,7 @@ Current automated coverage consists of:
 - Vitest unit tests for the homepage shell, env parsing, password verification, credential authentication, Auth.js JWT/session callbacks, the centralized permission matrix, the admin console component, and the shared audit-log helper
 - Vitest unit coverage for the canonical system role catalog
 - Vitest coverage for the admin repository DTO mapping and organization-scoped audit preview contract
-- Vitest coverage for the typed opportunity repository DTO mapping and dashboard query contract
+- Vitest coverage for the typed opportunity repository DTO mapping and seeded dashboard query contract
 - Vitest coverage for the transactional opportunity write service that emits audit rows for create, update, delete, import-decision, stage-transition, and bid-decision flows
 - Playwright Chromium smoke coverage for protected-route redirect, sign-in, desktop shell navigation, the `/sources` preview dialog, small-screen drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct settings navigation
 - Prisma schema validation, migration, and seed verification against PostgreSQL
@@ -168,7 +168,7 @@ No live connector exists yet. The product architecture now persists source-agnos
 
 ## Known Gaps
 
-- The shared app shell and reusable UI-pattern kit now exist, but most primary routes still render placeholders or preview-only surfaces rather than real list, intake, task, or analytics modules
+- The shared app shell, reusable UI-pattern kit, and seeded dashboard landing page now exist, but most primary routes still render placeholders or preview-only surfaces rather than real list, intake, task, or analytics modules
 - Only one restricted surface currently uses role-based permission enforcement; most business workflows still need per-action authorization
 - The opportunity write service now emits audit rows for representative business writes, but no user-facing route handlers or auth events call that boundary yet
 - No executable connector service layer yet despite the new connector metadata baseline
