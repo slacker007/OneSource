@@ -33,13 +33,25 @@ test("authenticated homepage smoke test", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText(/authz guard active/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
-  await page.getByRole("link", { name: /open protected settings surface/i }).click();
+  await page.getByRole("link", { name: /open admin console/i }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(
     page.getByRole("heading", {
-      name: /workspace settings/i,
+      name: /admin console/i,
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /assigned roles/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /recent audit activity/i,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(/admin@onesource\.local/i).first()).toBeVisible();
+  await expect(page.getByText(/seed\.bootstrap/i).first()).toBeVisible();
 });
 
 test("viewer users are blocked from the restricted settings route", async ({

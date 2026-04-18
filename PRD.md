@@ -610,7 +610,7 @@ This section is mandatory for every future coding iteration because conversation
       Done when: important state changes emit structured audit rows with actor, target, action, and timestamp.
       Verify with: tests covering at least three audit-producing flows.
 
-- [ ] P2-04 Add a simple admin page for user role visibility and audit-log inspection.
+- [x] P2-04 Add a simple admin page for user role visibility and audit-log inspection.
       Done when: admins can inspect recent audit events and see assigned roles.
       Verify with: UI smoke tests and permission enforcement tests.
 
@@ -789,8 +789,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, and `P2-03` are complete. This loop added a reusable audit module plus a transactional opportunity write-service boundary that emits structured audit rows for create, update, delete, import-decision, stage-transition, and bid-decision flows.
-- Next recommended item: `P2-04 Add a simple admin page for user role visibility and audit-log inspection.`
-- Blockers: No product blocker for `P2-04`. Unrelated repo sync blocker remains: the earlier local history rewrite still has not been force-pushed to `origin` from this environment because the remote is SSH-based and this runtime lacks an authenticated SSH path.
-- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/security.md`, `docs/testing.md`, `src/modules/audit/audit.service.ts`, `src/modules/audit/audit.service.test.ts`, `src/modules/opportunities/opportunity-write.service.ts`, and `src/modules/opportunities/opportunity-write.service.test.ts`.
-- Tests run in latest loop: `npm test -- src/modules/audit/audit.service.test.ts src/modules/opportunities/opportunity-write.service.test.ts`; `npm run prisma:validate`; `docker compose up -d db`; `npm run db:seed`; `npm run lint`; `npm test`; `npm run build`; `npm run e2e`; `make compose-test-lint`; `make compose-test`; `make compose-test-build`; `make compose-test-e2e`; `make compose-down`; and `git diff --check`. Verification used Docker and Playwright.
+- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, `P2-03`, and `P2-04` are complete. This loop replaced the `/settings` placeholder with a guarded admin console backed by a typed admin repository that exposes organization-scoped user-role visibility plus recent audit-log inspection.
+- Next recommended item: `P3-01 Build the primary authenticated layout with sidebar, top bar, global search placeholder, and responsive navigation.`
+- Blockers: No product blocker for `P3-01`. Unrelated repo sync blocker remains: the earlier local history rewrite still has not been force-pushed to `origin` from this environment because the remote is SSH-based and this runtime lacks an authenticated SSH path.
+- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/runbook.md`, `docs/security.md`, `docs/testing.md`, `src/app/(app)/settings/page.tsx`, `src/components/admin/admin-console.tsx`, `src/components/admin/admin-console.test.tsx`, `src/components/auth/access-overview.tsx`, `src/modules/admin/admin.repository.ts`, `src/modules/admin/admin.repository.test.ts`, `src/modules/admin/admin.types.ts`, and `tests/smoke.spec.ts`.
+- Tests run in latest loop: `npm test -- src/modules/admin/admin.repository.test.ts src/components/admin/admin-console.test.tsx`; `npm run prisma:validate`; `docker compose up -d db`; `npm run db:seed`; `npm run lint`; `npm test`; `npm run build`; `npm run e2e`; `make compose-test-lint`; `make compose-test`; `make compose-test-build`; `make compose-test-e2e`; `make compose-down`; and `git diff --check`. Verification used Docker and Playwright.

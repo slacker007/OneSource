@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, and the first live Phase 2 authentication, authorization, and auditability slices on top of the Prisma baseline.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, and the first live Phase 2 authentication, authorization, auditability, and admin-visibility slices on top of the Prisma baseline.
 
 ## Current System Shape
 
-OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, Prisma ORM, and Auth.js. The app exposes a protected authenticated shell under the `(app)` route group, a public sign-in route, a server-guarded restricted settings route, a public permission-denied route, an Auth.js route handler, and a health-check route, then runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, the connector metadata plus promotion-decision entities, and the execution-side workspace records needed for later capture workflows. The first transactional write boundary for the opportunity domain now lives under `src/modules/opportunities` and emits append-only audit rows through a shared module-local audit service.
+OneSource is currently a modular-monolith scaffold built with Next.js 16, TypeScript, Prisma ORM, and Auth.js. The app exposes a protected authenticated shell under the `(app)` route group, a public sign-in route, a server-guarded admin console at `/settings`, a public permission-denied route, an Auth.js route handler, and a health-check route, then runs alongside PostgreSQL and a placeholder worker in `docker compose`. The database now persists the auth baseline, the canonical opportunity/source-lineage aggregate, the connector metadata plus promotion-decision entities, and the execution-side workspace records needed for later capture workflows. Typed read boundaries now live under both `src/modules/opportunities` and `src/modules/admin`, while the first transactional write boundary for the opportunity domain emits append-only audit rows through a shared module-local audit service.
 
 Current runtime components:
 
@@ -22,6 +22,7 @@ The compose images install dependencies inside Docker rather than copying a host
 - `src/app`: App Router routes, layout, global styles, and route handlers
 - `src/components`: shared UI components and component tests
 - `src/lib`: runtime helpers such as environment parsing, Prisma client construction, and database health checks
+- `src/modules/admin`: typed admin DTOs and repository functions for user-role and audit-log read models
 - `src/modules/audit`: typed audit-log helpers, stable action names, and append-only audit payload shaping
 - `src/modules/opportunities`: shared DTOs and typed repository functions for opportunity-centric read models
 - `prisma`: schema, generated migrations, and seed scripts
@@ -39,8 +40,9 @@ The compose images install dependencies inside Docker rather than copying a host
 4. The sign-in page at [src/app/sign-in/page.tsx](/Users/maverick/Documents/RalphLoops/OneSource/src/app/sign-in/page.tsx:1) renders [SignInForm](/Users/maverick/Documents/RalphLoops/OneSource/src/components/auth/sign-in-form.tsx:1), which uses the Auth.js credentials provider against seeded local users.
 5. The protected homepage route renders [AccessOverview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/auth/access-overview.tsx:1), [AppShellPreview](/Users/maverick/Documents/RalphLoops/OneSource/src/components/home/app-shell-preview.tsx:1), and the authenticated session summary so the shared client-safe permission snapshot is visible in the shell.
 6. The Auth.js route at [src/app/api/auth/[...nextauth]/route.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/app/api/auth/[...nextauth]/route.ts:1) uses [src/lib/auth/auth-options.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/auth-options.ts:1) to issue JWT-backed sessions enriched with `organizationId` and `roleKeys`.
-7. The restricted settings route at [src/app/(app)/settings/page.tsx](/Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/settings/page.tsx:1) calls [requireAppPermission](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/authorization.ts:1) and redirects non-admin users to `/forbidden`.
-8. The health route at [src/app/api/health/route.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/app/api/health/route.ts:1) calls [checkDatabaseConnection](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/database-health.ts:1) and returns either `200 ok` or `503 degraded`.
+7. The guarded settings route at [src/app/(app)/settings/page.tsx](/Users/maverick/Documents/RalphLoops/OneSource/src/app/(app)/settings/page.tsx:1) calls [requireAppPermission](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/authorization.ts:1), loads organization-scoped admin data through [src/modules/admin/admin.repository.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/modules/admin/admin.repository.ts:1), and renders [AdminConsole](/Users/maverick/Documents/RalphLoops/OneSource/src/components/admin/admin-console.tsx:1).
+8. Non-admin users who navigate directly to `/settings` are redirected to `/forbidden`.
+9. The health route at [src/app/api/health/route.ts](/Users/maverick/Documents/RalphLoops/OneSource/src/app/api/health/route.ts:1) calls [checkDatabaseConnection](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/database-health.ts:1) and returns either `200 ok` or `503 degraded`.
 
 ### Worker
 
@@ -56,6 +58,7 @@ Current boundaries are intentionally simple but no longer purely route-plus-lib:
 - Route rendering stays in `src/app`.
 - Shared presentation logic lives in `src/components`.
 - Cross-route runtime helpers live in `src/lib`.
+- Organization-scoped admin read models now live in `src/modules/admin`.
 - Shared audit helpers live in `src/modules/audit`.
 - Typed entity DTOs and repository functions now live in `src/modules/opportunities`.
 - Background-process behavior lives in `scripts`.
@@ -145,11 +148,12 @@ Docker dependency installation defaults to online `npm ci`. Optional local fallb
 
 Current automated coverage consists of:
 
-- Vitest unit tests for the homepage shell, env parsing, password verification, credential authentication, Auth.js JWT/session callbacks, the centralized permission matrix, and the shared audit-log helper
+- Vitest unit tests for the homepage shell, env parsing, password verification, credential authentication, Auth.js JWT/session callbacks, the centralized permission matrix, the admin console component, and the shared audit-log helper
 - Vitest unit coverage for the canonical system role catalog
+- Vitest coverage for the admin repository DTO mapping and organization-scoped audit preview contract
 - Vitest coverage for the typed opportunity repository DTO mapping and dashboard query contract
 - Vitest coverage for the transactional opportunity write service that emits audit rows for create, update, delete, import-decision, stage-transition, and bid-decision flows
-- Playwright Chromium smoke coverage for protected-route redirect, sign-in, admin access to the restricted settings route, and viewer denial on direct settings navigation
+- Playwright Chromium smoke coverage for protected-route redirect, sign-in, admin access to the `/settings` admin console, and viewer denial on direct settings navigation
 - Prisma schema validation, migration, and seed verification against PostgreSQL
 - compose-backed lint, build, unit-test, and browser-test workflows documented in `docs/testing.md`
 

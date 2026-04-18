@@ -1,6 +1,6 @@
 # OneSource
 
-OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold, all current Phase 1 foundation slices, and the first three Phase 2 access-control and auditability slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, Auth.js credentials sign-in, protected routes, role-based permission helpers, a server-guarded restricted settings surface, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, a typed opportunity-domain repository layer with shared DTOs, transactional opportunity write services with built-in audit emission, expanded realistic demo seed data, boot-time environment validation, and a placeholder worker process.
+OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold, all current Phase 1 foundation slices, and the first four Phase 2 access-control and auditability slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, Auth.js credentials sign-in, protected routes, role-based permission helpers, a server-guarded admin console for role visibility and audit inspection, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, typed opportunity and admin read-model modules, transactional opportunity write services with built-in audit emission, expanded realistic demo seed data, boot-time environment validation, and a placeholder worker process.
 
 ## Current Status
 
@@ -8,8 +8,8 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - Implementation scope, checklist sequencing, and current handoff state live in `PRD.md`.
 - Engineering and verification rules live in `AGENTS.md`.
 - Active loop notes and crash-recovery context live in `NOTES.md`.
-- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, and `P2-03` are complete.
-- The next recommended item is `P2-04`, which adds an admin page for user-role visibility and audit-log inspection.
+- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, `P2-03`, and `P2-04` are complete.
+- The next recommended item is `P3-01`, which adds the primary authenticated app shell and responsive navigation.
 
 ## Stack In Repo Today
 
@@ -31,6 +31,7 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - `src/app`: Next.js routes, layout, and global styling
 - `src/components`: shared and page-specific UI components
 - `src/lib`: shared runtime helpers such as env parsing and health checks
+- `src/modules/admin`: typed admin read models for user-role visibility and audit-log inspection
 - `src/modules/audit`: typed audit-log helpers and stable action names
 - `src/modules`: typed domain modules such as the opportunity repository and shared DTOs
 - `prisma`: Prisma schema, generated migrations, and seed defaults
@@ -117,7 +118,7 @@ npm run db:seed
 
 The current seed creates a default organization, the canonical system role set, seven realistic local users spanning admin, executive, BD, capture, proposal, contributor, and viewer roles, deterministic local password hashes for those seeded users, five agencies, five contract vehicles, five competitors, connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`, one imported `sam.gov` opportunity with retained raw and normalized payloads plus attachment and contact child records, one applied import decision that created the canonical opportunity, one `usaspending_api` enrichment search and retained award-centric source record with an applied link-to-existing import decision, and four additional manual opportunities spanning `qualified`, `capture_active`, `proposal_in_development`, `submitted`, and `no_bid` stages with `GO`, `DEFER`, and `NO_GO` score or decision outcomes.
 
-The typed opportunity repository under `src/modules/opportunities/` exposes shared DTOs plus typed query functions for dashboard-style summaries and opportunity cards. The homepage remains a static shell for now so compose builds do not depend on a runtime Prisma client yet, but future persisted read models should use these module boundaries instead of raw model payloads.
+The typed opportunity repository under `src/modules/opportunities/` exposes shared DTOs plus typed query functions for dashboard-style summaries and opportunity cards. The typed admin repository under `src/modules/admin/` exposes organization-scoped user-role visibility plus recent audit-log inspection for the guarded `/settings` route. The homepage remains a static shell for now so compose builds do not depend on a runtime Prisma client yet, but future persisted read models should use these module boundaries instead of raw model payloads.
 
 ## Optional Local Docker Dependency Cache
 
@@ -185,7 +186,7 @@ The canonical loop is now:
 
 ## Known Gaps
 
-- Only the initial role-based authorization slice exists today: the app shell is authenticated and `/settings` is server-guarded for admins, but most business actions still need per-action authorization
+- Only the initial role-based authorization slice exists today: the app shell is authenticated and `/settings` now exposes a read-only admin console for user-role visibility and recent audit inspection, but most business actions still need per-action authorization
 - Audit emission now exists in the shared opportunity write-service boundary, but auth events, permission failures, and user-facing mutation routes are not wired to it yet
 - No production job runner beyond the placeholder worker heartbeat
 

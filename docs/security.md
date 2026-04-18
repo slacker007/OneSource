@@ -6,7 +6,7 @@ This document records the current security posture that exists in the repo today
 
 ## Current Baseline
 
-The current repo includes the first live authentication, authorization, and audit-emission slices on top of the earlier auth and audit persistence baseline plus the connector-metadata and workspace-persistence baselines. Security-relevant implementation present today:
+The current repo includes the first live authentication, authorization, audit-emission, and admin-visibility slices on top of the earlier auth and audit persistence baseline plus the connector-metadata and workspace-persistence baselines. Security-relevant implementation present today:
 
 - Prisma-managed tables for organizations, users, roles, accounts, sessions, verification tokens, and audit logs
 - Prisma-managed opportunity lineage tables for agencies, vehicles, opportunities, competitors, connector configs, saved searches, search executions, sync runs, retained source records, source child records, and import decisions
@@ -17,6 +17,7 @@ The current repo includes the first live authentication, authorization, and audi
 - shared role-to-permission policy helpers that can run in both server and client code
 - server-side protected-route gating in the `(app)` route group
 - server-side permission guards for restricted routes such as `/settings`, with a public permission-denied route
+- a read-only admin console that lets admins inspect current role assignments and recent audit events without touching the database directly
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
 - shared audited opportunity write services for create, update, delete, import-decision, stage-transition, and bid-decision flows
@@ -71,6 +72,7 @@ Current audit producers are the bootstrap seed path and the shared opportunity w
 ## Current Risks And Pending Work
 
 - Only the initial role-based authorization slice exists today. The app shell requires authentication and `/settings` requires the admin role, but most business workflows still need per-action permission enforcement.
+- The current admin console is read-only and meant for visibility, not user-role mutation or audit remediation workflows yet.
 - No auth-event or permission-failure audit emission yet
 - No user-facing mutation routes call the audited write-service boundary yet
 - No production-grade password reset, OAuth, MFA, or account-recovery workflow yet

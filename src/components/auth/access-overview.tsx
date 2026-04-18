@@ -76,7 +76,7 @@ export function AccessOverview({ roleKeys }: AccessOverviewProps) {
                     href="/settings"
                     className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
                   >
-                    Open protected settings surface
+                    Open admin console
                   </Link>
                 </div>
               ) : null}

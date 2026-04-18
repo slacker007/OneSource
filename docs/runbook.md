@@ -157,8 +157,8 @@ To verify the protected-route auth and authz slices manually after the stack is 
 1. Open `http://127.0.0.1:3000/`.
 2. Confirm the app redirects to `/sign-in`.
 3. Sign in with the seeded admin email `admin@onesource.local` and the shared local development password.
-4. Confirm the protected shell renders, the sign-out control is visible, and the protected settings link is shown.
-5. Open `/settings` and confirm the restricted surface renders for the admin user.
+4. Confirm the protected shell renders, the sign-out control is visible, and the admin-console link is shown.
+5. Open `/settings` and confirm the admin console renders for the admin user with both the `Assigned roles` and `Recent audit activity` sections visible.
 6. Sign out, sign back in as `avery.stone@onesource.local`, navigate directly to `/settings`, and confirm the app redirects to `/forbidden`.
 
 ## Host Verification Commands
