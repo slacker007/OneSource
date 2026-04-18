@@ -7,9 +7,12 @@ import {
   type OpportunityWorkspaceRepositoryClient,
 } from "@/modules/opportunities/opportunity.repository";
 import {
+  createOpportunityMilestoneAction,
   createOpportunityTaskAction,
+  deleteOpportunityMilestoneAction,
   deleteOpportunityTaskAction,
   transitionOpportunityStageAction,
+  updateOpportunityMilestoneAction,
   updateOpportunityTaskAction,
 } from "../actions";
 
@@ -37,10 +40,13 @@ export default async function OpportunityWorkspacePage({
         session.user.roleKeys,
         "manage_pipeline",
       )}
+      createMilestoneAction={createOpportunityMilestoneAction}
       createTaskAction={createOpportunityTaskAction}
+      deleteMilestoneAction={deleteOpportunityMilestoneAction}
       deleteTaskAction={deleteOpportunityTaskAction}
       stageTransitionAction={transitionOpportunityStageAction}
       snapshot={snapshot}
+      updateMilestoneAction={updateOpportunityMilestoneAction}
       updateTaskAction={updateOpportunityTaskAction}
     />
   );

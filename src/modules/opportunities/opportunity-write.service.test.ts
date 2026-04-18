@@ -5,13 +5,16 @@ import { AUDIT_ACTIONS } from "@/modules/audit/audit.service";
 import { OpportunityStageTransitionValidationError } from "@/modules/opportunities/opportunity-stage-policy";
 
 import {
+  createOpportunityMilestone,
   createOpportunityTask,
   createOpportunity,
+  deleteOpportunityMilestone,
   deleteOpportunityTask,
   deleteOpportunity,
   recordBidDecision,
   recordSourceImportDecision,
   recordStageTransition,
+  updateOpportunityMilestone,
   updateOpportunityTask,
   updateOpportunity,
   type OpportunityWriteClient,
@@ -34,6 +37,13 @@ function createMockWriteClient() {
       create: vi.fn(),
     },
     opportunityTask: {
+      count: vi.fn(),
+      create: vi.fn(),
+      findFirstOrThrow: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    opportunityMilestone: {
       count: vi.fn(),
       create: vi.fn(),
       findFirstOrThrow: vi.fn(),
@@ -499,6 +509,243 @@ describe("opportunity-write.service", () => {
         targetDisplay: "Finalize pricing assumptions",
         targetId: "task_123",
         targetType: "opportunity_task",
+        occurredAt,
+      }),
+    });
+  });
+
+  it("creates opportunity milestones and emits activity plus audit rows", async () => {
+    const { db, tx } = createMockWriteClient();
+    const occurredAt = new Date("2026-04-18T01:35:15.000Z");
+
+    vi.mocked(tx.opportunity.findFirstOrThrow).mockResolvedValue({
+      id: "opp_123",
+      organizationId: "org_123",
+      title: "Data Platform Operations",
+      description: null,
+      leadAgencyId: null,
+      responseDeadlineAt: null,
+      solicitationNumber: null,
+      naicsCode: null,
+      originSourceSystem: null,
+      currentStageKey: "capture_active",
+      currentStageLabel: "Capture Active",
+    });
+    vi.mocked(tx.opportunityMilestone.count).mockResolvedValue(1);
+    vi.mocked(tx.opportunityMilestone.create).mockResolvedValue({
+      id: "milestone_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Go/No-Go Board",
+      description: "Review pursuit posture with leadership.",
+      milestoneTypeKey: "decision_checkpoint",
+      status: "AT_RISK",
+      targetDate: new Date("2026-04-28T12:00:00.000Z"),
+      completedAt: null,
+      sortOrder: 1,
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+      },
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_901",
+    });
+
+    await createOpportunityMilestone({
+      db,
+      input: {
+        actor,
+        opportunityId: "opp_123",
+        title: "  Go/No-Go Board  ",
+        description: " Review pursuit posture with leadership. ",
+        milestoneTypeKey: "decision_checkpoint",
+        targetDate: new Date("2026-04-28T12:00:00.000Z"),
+        status: "AT_RISK",
+        occurredAt,
+      },
+    });
+
+    expect(tx.opportunityMilestone.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          createdByUserId: "user_123",
+          milestoneTypeKey: "decision_checkpoint",
+          sortOrder: 1,
+          status: "AT_RISK",
+          title: "Go/No-Go Board",
+        }),
+      }),
+    );
+    expect(tx.opportunityActivityEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventType: "milestone_created",
+        relatedEntityId: "milestone_123",
+        title: "Milestone created: Go/No-Go Board",
+      }),
+      select: {
+        id: true,
+      },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityMilestoneCreate,
+        targetId: "milestone_123",
+        targetType: "opportunity_milestone",
+        occurredAt,
+      }),
+    });
+  });
+
+  it("updates opportunity milestones and records changed fields in audit metadata", async () => {
+    const { db, tx } = createMockWriteClient();
+    const occurredAt = new Date("2026-04-18T01:35:25.000Z");
+
+    vi.mocked(tx.opportunityMilestone.findFirstOrThrow).mockResolvedValue({
+      id: "milestone_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Go/No-Go Board",
+      description: "Review pursuit posture with leadership.",
+      milestoneTypeKey: "decision_checkpoint",
+      status: "PLANNED",
+      targetDate: new Date("2026-04-28T12:00:00.000Z"),
+      completedAt: null,
+      sortOrder: 1,
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+      },
+    });
+    vi.mocked(tx.opportunityMilestone.update).mockResolvedValue({
+      id: "milestone_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Executive Go/No-Go Board",
+      description: "Leadership approved the checkpoint as complete.",
+      milestoneTypeKey: "bid_decision",
+      status: "COMPLETED",
+      targetDate: new Date("2026-04-29T12:00:00.000Z"),
+      completedAt: occurredAt,
+      sortOrder: 1,
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+      },
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_902",
+    });
+
+    await updateOpportunityMilestone({
+      db,
+      input: {
+        actor,
+        milestoneId: "milestone_123",
+        title: "Executive Go/No-Go Board",
+        description: "Leadership approved the checkpoint as complete.",
+        milestoneTypeKey: "bid_decision",
+        targetDate: new Date("2026-04-29T12:00:00.000Z"),
+        status: "COMPLETED",
+        occurredAt,
+      },
+    });
+
+    expect(tx.opportunityMilestone.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          completedAt: occurredAt,
+          milestoneTypeKey: "bid_decision",
+          status: "COMPLETED",
+          title: "Executive Go/No-Go Board",
+        }),
+      }),
+    );
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityMilestoneUpdate,
+        metadata: expect.objectContaining({
+          changedFields: expect.objectContaining({
+            milestoneTypeKey: {
+              from: "decision_checkpoint",
+              to: "bid_decision",
+            },
+            status: {
+              from: "PLANNED",
+              to: "COMPLETED",
+            },
+            title: {
+              from: "Go/No-Go Board",
+              to: "Executive Go/No-Go Board",
+            },
+          }),
+        }),
+        targetId: "milestone_123",
+      }),
+    });
+  });
+
+  it("deletes opportunity milestones and emits a delete audit row", async () => {
+    const { db, tx } = createMockWriteClient();
+    const occurredAt = new Date("2026-04-18T01:35:35.000Z");
+
+    vi.mocked(tx.opportunityMilestone.findFirstOrThrow).mockResolvedValue({
+      id: "milestone_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Executive Go/No-Go Board",
+      description: "Leadership approved the checkpoint as complete.",
+      milestoneTypeKey: "bid_decision",
+      status: "COMPLETED",
+      targetDate: new Date("2026-04-29T12:00:00.000Z"),
+      completedAt: new Date("2026-04-18T01:35:25.000Z"),
+      sortOrder: 1,
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+      },
+    });
+    vi.mocked(tx.opportunityMilestone.delete).mockResolvedValue({
+      id: "milestone_123",
+      organizationId: "org_123",
+      opportunityId: "opp_123",
+      title: "Executive Go/No-Go Board",
+      description: "Leadership approved the checkpoint as complete.",
+      milestoneTypeKey: "bid_decision",
+      status: "COMPLETED",
+      targetDate: new Date("2026-04-29T12:00:00.000Z"),
+      completedAt: new Date("2026-04-18T01:35:25.000Z"),
+      sortOrder: 1,
+      opportunity: {
+        id: "opp_123",
+        title: "Data Platform Operations",
+      },
+    });
+    vi.mocked(tx.opportunityActivityEvent.create).mockResolvedValue({
+      id: "activity_903",
+    });
+
+    await deleteOpportunityMilestone({
+      db,
+      input: {
+        actor,
+        milestoneId: "milestone_123",
+        occurredAt,
+      },
+    });
+
+    expect(tx.opportunityMilestone.delete).toHaveBeenCalledWith({
+      where: {
+        id: "milestone_123",
+      },
+      select: expect.any(Object),
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: AUDIT_ACTIONS.opportunityMilestoneDelete,
+        targetDisplay: "Executive Go/No-Go Board",
+        targetId: "milestone_123",
+        targetType: "opportunity_milestone",
         occurredAt,
       }),
     });

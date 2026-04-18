@@ -1,10 +1,12 @@
 import Link from "next/link";
 
+import { OpportunityMilestoneManager } from "@/components/opportunities/opportunity-milestone-manager";
 import { OpportunityStageTransitionPanel } from "@/components/opportunities/opportunity-stage-transition-panel";
 import { OpportunityTaskManager } from "@/components/opportunities/opportunity-task-manager";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import type { OpportunityMilestoneActionState } from "@/modules/opportunities/opportunity-milestone-form.schema";
 import type { OpportunityTaskActionState } from "@/modules/opportunities/opportunity-task-form.schema";
 import {
   buildOpportunityStageControlSnapshotFromWorkspace,
@@ -23,14 +25,26 @@ import type {
 type OpportunityWorkspaceProps = {
   snapshot: OpportunityWorkspaceSnapshot | null;
   allowManagePipeline?: boolean;
+  createMilestoneAction?: (
+    state: OpportunityMilestoneActionState,
+    formData: FormData,
+  ) => Promise<OpportunityMilestoneActionState>;
   createTaskAction?: (
     state: OpportunityTaskActionState,
     formData: FormData,
   ) => Promise<OpportunityTaskActionState>;
+  updateMilestoneAction?: (
+    state: OpportunityMilestoneActionState,
+    formData: FormData,
+  ) => Promise<OpportunityMilestoneActionState>;
   updateTaskAction?: (
     state: OpportunityTaskActionState,
     formData: FormData,
   ) => Promise<OpportunityTaskActionState>;
+  deleteMilestoneAction?: (
+    state: OpportunityMilestoneActionState,
+    formData: FormData,
+  ) => Promise<OpportunityMilestoneActionState>;
   deleteTaskAction?: (
     state: OpportunityTaskActionState,
     formData: FormData,
@@ -44,8 +58,11 @@ type OpportunityWorkspaceProps = {
 export function OpportunityWorkspace({
   snapshot,
   allowManagePipeline = false,
+  createMilestoneAction,
   createTaskAction,
+  updateMilestoneAction,
   updateTaskAction,
+  deleteMilestoneAction,
   deleteTaskAction,
   stageTransitionAction,
 }: OpportunityWorkspaceProps) {
@@ -177,12 +194,15 @@ export function OpportunityWorkspace({
       <div className="grid gap-6 xl:grid-cols-2">
         <TasksSection
           allowManagePipeline={allowManagePipeline}
+          createMilestoneAction={createMilestoneAction}
           createTaskAction={createTaskAction}
+          deleteMilestoneAction={deleteMilestoneAction}
           deleteTaskAction={deleteTaskAction}
           milestones={snapshot.milestones}
           opportunityId={snapshot.opportunity.id}
           taskAssigneeOptions={snapshot.taskAssigneeOptions}
           tasks={snapshot.tasks}
+          updateMilestoneAction={updateMilestoneAction}
           updateTaskAction={updateTaskAction}
         />
         <DocumentsSection documents={snapshot.documents} />
@@ -397,21 +417,27 @@ function ScoringSection({
 
 function TasksSection({
   allowManagePipeline,
+  createMilestoneAction,
   createTaskAction,
+  deleteMilestoneAction,
   deleteTaskAction,
   milestones,
   opportunityId,
   taskAssigneeOptions,
   tasks,
+  updateMilestoneAction,
   updateTaskAction,
 }: {
   allowManagePipeline: boolean;
+  createMilestoneAction?: OpportunityWorkspaceProps["createMilestoneAction"];
   createTaskAction?: OpportunityWorkspaceProps["createTaskAction"];
+  deleteMilestoneAction?: OpportunityWorkspaceProps["deleteMilestoneAction"];
   deleteTaskAction?: OpportunityWorkspaceProps["deleteTaskAction"];
   milestones: OpportunityWorkspaceMilestone[];
   opportunityId: string;
   taskAssigneeOptions: OpportunityWorkspaceSnapshot["taskAssigneeOptions"];
   tasks: OpportunityWorkspaceTask[];
+  updateMilestoneAction?: OpportunityWorkspaceProps["updateMilestoneAction"];
   updateTaskAction?: OpportunityWorkspaceProps["updateTaskAction"];
 }) {
   return (
@@ -487,21 +513,39 @@ function TasksSection({
         )}
       </div>
 
-      {milestones.length > 0 ? (
-        <div className="mt-6 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,255,255,0.9)] px-5 py-5">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-base font-semibold text-foreground">
-              Near-term milestones
-            </h3>
-            <Badge tone="muted">{milestones.length}</Badge>
-          </div>
-          <div className="mt-4 space-y-3">
-            {milestones.map((milestone) => (
-              <MilestoneCard key={milestone.id} milestone={milestone} compact />
-            ))}
-          </div>
+      <div className="mt-6 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,255,255,0.9)] px-5 py-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-base font-semibold text-foreground">Milestones</h3>
+          <Badge tone="muted">{milestones.length}</Badge>
         </div>
-      ) : null}
+
+        <div className="mt-4">
+          {allowManagePipeline &&
+          createMilestoneAction &&
+          updateMilestoneAction &&
+          deleteMilestoneAction ? (
+            <OpportunityMilestoneManager
+              createAction={createMilestoneAction}
+              deleteAction={deleteMilestoneAction}
+              milestones={milestones}
+              opportunityId={opportunityId}
+              updateAction={updateMilestoneAction}
+            />
+          ) : milestones.length > 0 ? (
+            <div className="space-y-3">
+              {milestones.map((milestone) => (
+                <MilestoneCard key={milestone.id} milestone={milestone} compact />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              className="bg-white"
+              message="Milestones will appear here as capture checkpoints are recorded."
+              title="No milestones yet"
+            />
+          )}
+        </div>
+      </div>
     </article>
   );
 }

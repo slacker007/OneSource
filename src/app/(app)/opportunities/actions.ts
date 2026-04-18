@@ -9,15 +9,23 @@ import {
   type OpportunityFormActionState,
 } from "@/modules/opportunities/opportunity-form.schema";
 import {
+  INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE,
+  validateOpportunityMilestoneFormSubmission,
+  type OpportunityMilestoneActionState,
+} from "@/modules/opportunities/opportunity-milestone-form.schema";
+import {
   INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
   validateOpportunityTaskFormSubmission,
   type OpportunityTaskActionState,
 } from "@/modules/opportunities/opportunity-task-form.schema";
 import {
   createOpportunity,
+  createOpportunityMilestone,
   createOpportunityTask,
+  deleteOpportunityMilestone,
   deleteOpportunityTask,
   recordStageTransition,
+  updateOpportunityMilestone,
   updateOpportunityTask,
   updateOpportunity,
   type OpportunityWriteClient,
@@ -185,11 +193,54 @@ export async function createOpportunityTaskAction(
     };
   }
 
-  revalidateTaskSurfaces(opportunityId);
+  revalidateOpportunitySurfaces(opportunityId);
 
   return {
     ...INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
     successMessage: "Task created and added to the workspace.",
+  };
+}
+
+export async function createOpportunityMilestoneAction(
+  _previousState: OpportunityMilestoneActionState,
+  formData: FormData,
+): Promise<OpportunityMilestoneActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const validation = validateOpportunityMilestoneFormSubmission(formData);
+
+  if (!validation.success) {
+    return validation.state;
+  }
+
+  try {
+    await createOpportunityMilestone({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        opportunityId,
+        title: validation.submission.title,
+        description: validation.submission.description,
+        milestoneTypeKey: validation.submission.milestoneTypeKey,
+        targetDate: validation.submission.targetDate,
+        status: validation.submission.status,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE,
+      formError:
+        error instanceof Error
+          ? error.message
+          : "The milestone could not be created.",
+    };
+  }
+
+  revalidateOpportunitySurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE,
+    successMessage: "Milestone created and added to the workspace.",
   };
 }
 
@@ -228,11 +279,55 @@ export async function updateOpportunityTaskAction(
     };
   }
 
-  revalidateTaskSurfaces(opportunityId);
+  revalidateOpportunitySurfaces(opportunityId);
 
   return {
     ...INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
     successMessage: "Task changes saved.",
+  };
+}
+
+export async function updateOpportunityMilestoneAction(
+  _previousState: OpportunityMilestoneActionState,
+  formData: FormData,
+): Promise<OpportunityMilestoneActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const milestoneId = readRequiredString(formData.get("milestoneId"));
+  const validation = validateOpportunityMilestoneFormSubmission(formData);
+
+  if (!validation.success) {
+    return validation.state;
+  }
+
+  try {
+    await updateOpportunityMilestone({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        milestoneId,
+        title: validation.submission.title,
+        description: validation.submission.description,
+        milestoneTypeKey: validation.submission.milestoneTypeKey,
+        targetDate: validation.submission.targetDate,
+        status: validation.submission.status,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE,
+      formError:
+        error instanceof Error
+          ? error.message
+          : "The milestone could not be updated.",
+    };
+  }
+
+  revalidateOpportunitySurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE,
+    successMessage: "Milestone changes saved.",
   };
 }
 
@@ -260,11 +355,45 @@ export async function deleteOpportunityTaskAction(
     };
   }
 
-  revalidateTaskSurfaces(opportunityId);
+  revalidateOpportunitySurfaces(opportunityId);
 
   return {
     ...INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
     successMessage: "Task deleted.",
+  };
+}
+
+export async function deleteOpportunityMilestoneAction(
+  _previousState: OpportunityMilestoneActionState,
+  formData: FormData,
+): Promise<OpportunityMilestoneActionState> {
+  const { session } = await requireAppPermission("manage_pipeline");
+  const opportunityId = readRequiredString(formData.get("opportunityId"));
+  const milestoneId = readRequiredString(formData.get("milestoneId"));
+
+  try {
+    await deleteOpportunityMilestone({
+      db: prisma as unknown as OpportunityWriteClient,
+      input: {
+        actor: buildOpportunityActor(session.user),
+        milestoneId,
+      },
+    });
+  } catch (error) {
+    return {
+      ...INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE,
+      formError:
+        error instanceof Error
+          ? error.message
+          : "The milestone could not be deleted.",
+    };
+  }
+
+  revalidateOpportunitySurfaces(opportunityId);
+
+  return {
+    ...INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE,
+    successMessage: "Milestone deleted.",
   };
 }
 
@@ -289,7 +418,7 @@ function readRequiredString(value: FormDataEntryValue | null) {
   return value;
 }
 
-function revalidateTaskSurfaces(opportunityId: string) {
+function revalidateOpportunitySurfaces(opportunityId: string) {
   revalidatePath("/");
   revalidatePath("/opportunities");
   revalidatePath(`/opportunities/${opportunityId}`);

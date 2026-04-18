@@ -21,6 +21,10 @@ async function signIn(page: Page, email: string) {
   await page.getByRole("button", { name: /sign in/i }).click();
 }
 
+function formatDateInputValue(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 test("authenticated homepage smoke test", async ({ page }) => {
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
 
@@ -208,6 +212,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   page,
 }) => {
   const createdTaskTitle = `Prepare capture brief ${Date.now()}`;
+  const createdMilestoneTitle = `Executive checkpoint ${Date.now()}`;
+  const createdMilestoneDate = new Date();
+  createdMilestoneDate.setUTCDate(createdMilestoneDate.getUTCDate() + 7);
 
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
   await expect(page).toHaveURL(/\/$/);
@@ -278,6 +285,24 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByRole("heading", { name: createdTaskTitle, exact: true }),
   ).toBeVisible();
+  await page.locator("#milestone-create-title").fill(createdMilestoneTitle);
+  await page
+    .locator("#milestone-create-target-date")
+    .fill(formatDateInputValue(createdMilestoneDate));
+  await page.locator("#milestone-create-type").selectOption("decision_checkpoint");
+  await page.locator("#milestone-create-status").selectOption("AT_RISK");
+  await page
+    .locator("#milestone-create-description")
+    .fill("Confirm the executive review packet and pursuit posture.");
+  await page.getByRole("button", { name: /^create milestone$/i }).click();
+  await expect(
+    page.getByText(/milestone created and added to the workspace/i),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", { name: createdMilestoneTitle, exact: true })
+      .first(),
+  ).toBeVisible();
 
   await page.getByRole("link", { name: /^Tasks/i }).click();
   await expect(page).toHaveURL(/\/tasks$/);
@@ -288,6 +313,12 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByText(/enterprise knowledge management support services/i).first(),
   ).toBeVisible();
+  await page.getByRole("link", { name: /^Dashboard/i }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole("heading", { name: /upcoming deadlines/i }),
+  ).toBeVisible();
+  await expect(page.getByText(createdMilestoneTitle)).toBeVisible();
 
   await page.goto("/opportunities");
   await expect(page).toHaveURL(/\/opportunities$/);

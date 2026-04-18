@@ -2,6 +2,7 @@ import {
   AuditActorType,
   Prisma,
   type BidDecisionOutcome,
+  type OpportunityMilestoneStatus,
   type OpportunityTaskPriority,
   type OpportunityTaskStatus,
   type SourceExecutionActorType,
@@ -73,6 +74,23 @@ type OpportunityTaskAuditRecord = {
   completedAt: Date | null;
   sortOrder: number;
   assigneeUserId: string | null;
+  opportunity: {
+    id: string;
+    title: string;
+  };
+};
+
+type OpportunityMilestoneAuditRecord = {
+  id: string;
+  organizationId: string;
+  opportunityId: string;
+  title: string;
+  description: string | null;
+  milestoneTypeKey: string | null;
+  status: OpportunityMilestoneStatus;
+  targetDate: Date;
+  completedAt: Date | null;
+  sortOrder: number;
   opportunity: {
     id: string;
     title: string;
@@ -230,6 +248,25 @@ const opportunityTaskAuditSelect = {
   },
 } as const;
 
+const opportunityMilestoneAuditSelect = {
+  id: true,
+  organizationId: true,
+  opportunityId: true,
+  title: true,
+  description: true,
+  milestoneTypeKey: true,
+  status: true,
+  targetDate: true,
+  completedAt: true,
+  sortOrder: true,
+  opportunity: {
+    select: {
+      id: true,
+      title: true,
+    },
+  },
+} as const;
+
 export type OpportunityWriteTransactionClient = AuditLogWriter & {
   opportunityActivityEvent: {
     create(args: {
@@ -270,6 +307,38 @@ export type OpportunityWriteTransactionClient = AuditLogWriter & {
       };
       select: typeof opportunityTaskAuditSelect;
     }): Promise<OpportunityTaskAuditRecord>;
+  };
+  opportunityMilestone: {
+    count(args: {
+      where: {
+        opportunityId: string;
+        organizationId: string;
+      };
+    }): Promise<number>;
+    create(args: {
+      data: Prisma.OpportunityMilestoneUncheckedCreateInput;
+      select: typeof opportunityMilestoneAuditSelect;
+    }): Promise<OpportunityMilestoneAuditRecord>;
+    findFirstOrThrow(args: {
+      where: {
+        id: string;
+        organizationId: string;
+      };
+      select: typeof opportunityMilestoneAuditSelect;
+    }): Promise<OpportunityMilestoneAuditRecord>;
+    update(args: {
+      where: {
+        id: string;
+      };
+      data: Prisma.OpportunityMilestoneUncheckedUpdateInput;
+      select: typeof opportunityMilestoneAuditSelect;
+    }): Promise<OpportunityMilestoneAuditRecord>;
+    delete(args: {
+      where: {
+        id: string;
+      };
+      select: typeof opportunityMilestoneAuditSelect;
+    }): Promise<OpportunityMilestoneAuditRecord>;
   };
   opportunity: {
     create(args: {
@@ -423,6 +492,36 @@ export type UpdateOpportunityTaskInput = {
 export type DeleteOpportunityTaskInput = {
   actor: OpportunityWriteActor;
   taskId: string;
+  occurredAt?: Date;
+};
+
+export type CreateOpportunityMilestoneInput = {
+  actor: OpportunityWriteActor;
+  opportunityId: string;
+  title: string;
+  description?: string | null;
+  milestoneTypeKey?: string | null;
+  targetDate: Date;
+  status?: OpportunityMilestoneStatus;
+  metadata?: Prisma.InputJsonValue | null;
+  occurredAt?: Date;
+};
+
+export type UpdateOpportunityMilestoneInput = {
+  actor: OpportunityWriteActor;
+  milestoneId: string;
+  title?: string;
+  description?: string | null;
+  milestoneTypeKey?: string | null;
+  targetDate?: Date;
+  status?: OpportunityMilestoneStatus;
+  metadata?: Prisma.InputJsonValue | null;
+  occurredAt?: Date;
+};
+
+export type DeleteOpportunityMilestoneInput = {
+  actor: OpportunityWriteActor;
+  milestoneId: string;
   occurredAt?: Date;
 };
 
@@ -994,6 +1093,308 @@ export async function deleteOpportunityTask({
   });
 }
 
+export async function createOpportunityMilestone({
+  db,
+  input,
+}: {
+  db: OpportunityWriteClient;
+  input: CreateOpportunityMilestoneInput;
+}) {
+  return db.$transaction(async (tx) => {
+    const opportunity = await tx.opportunity.findFirstOrThrow({
+      where: {
+        id: input.opportunityId,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityAuditSelect,
+    });
+    const occurredAt = input.occurredAt ?? new Date();
+    const status = input.status ?? "PLANNED";
+    const lifecycleDates = buildMilestoneLifecycleDates({
+      status,
+      occurredAt,
+      existingCompletedAt: null,
+    });
+    const sortOrder = await tx.opportunityMilestone.count({
+      where: {
+        opportunityId: opportunity.id,
+        organizationId: opportunity.organizationId,
+      },
+    });
+
+    const milestone = await tx.opportunityMilestone.create({
+      data: {
+        organizationId: opportunity.organizationId,
+        opportunityId: opportunity.id,
+        createdByUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        title: normalizeRequiredText(input.title, "Milestone title"),
+        description: normalizeOptionalText(input.description),
+        milestoneTypeKey: normalizeOptionalText(input.milestoneTypeKey),
+        status,
+        targetDate: input.targetDate,
+        completedAt: lifecycleDates.completedAt,
+        sortOrder,
+        metadata: toOptionalJson(input.metadata),
+      },
+      select: opportunityMilestoneAuditSelect,
+    });
+
+    await tx.opportunityActivityEvent.create({
+      data: {
+        actorIdentifier: input.actor.identifier ?? null,
+        actorType: input.actor.type,
+        actorUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        description: milestone.description,
+        eventType: "milestone_created",
+        metadata: {
+          completedAt: serializeAuditValue(milestone.completedAt),
+          milestoneTypeKey: milestone.milestoneTypeKey,
+          status: milestone.status,
+          targetDate: serializeAuditValue(milestone.targetDate),
+        },
+        occurredAt,
+        opportunityId: opportunity.id,
+        organizationId: opportunity.organizationId,
+        relatedEntityId: milestone.id,
+        relatedEntityType: "milestone",
+        title: `Milestone created: ${milestone.title}`,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await recordAuditEvent({
+      db: tx,
+      event: {
+        organizationId: opportunity.organizationId,
+        actor: input.actor,
+        action: AUDIT_ACTIONS.opportunityMilestoneCreate,
+        target: {
+          type: "opportunity_milestone",
+          id: milestone.id,
+          display: milestone.title,
+        },
+        summary: `Created milestone ${milestone.title} on ${opportunity.title}.`,
+        metadata: {
+          completedAt: serializeAuditValue(milestone.completedAt),
+          milestoneTypeKey: milestone.milestoneTypeKey,
+          opportunityId: opportunity.id,
+          opportunityTitle: opportunity.title,
+          status: milestone.status,
+          targetDate: serializeAuditValue(milestone.targetDate),
+        },
+        occurredAt,
+      },
+    });
+
+    return milestone;
+  });
+}
+
+export async function updateOpportunityMilestone({
+  db,
+  input,
+}: {
+  db: OpportunityWriteClient;
+  input: UpdateOpportunityMilestoneInput;
+}) {
+  return db.$transaction(async (tx) => {
+    const existingMilestone = await tx.opportunityMilestone.findFirstOrThrow({
+      where: {
+        id: input.milestoneId,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityMilestoneAuditSelect,
+    });
+    const nextStatus = input.status ?? existingMilestone.status;
+    const occurredAt = input.occurredAt ?? new Date();
+    const lifecycleDates = buildMilestoneLifecycleDates({
+      status: nextStatus,
+      occurredAt,
+      existingCompletedAt: existingMilestone.completedAt,
+    });
+    const nextValues = {
+      title:
+        input.title === undefined
+          ? existingMilestone.title
+          : normalizeRequiredText(input.title, "Milestone title"),
+      description:
+        input.description === undefined
+          ? existingMilestone.description
+          : normalizeOptionalText(input.description),
+      milestoneTypeKey:
+        input.milestoneTypeKey === undefined
+          ? existingMilestone.milestoneTypeKey
+          : normalizeOptionalText(input.milestoneTypeKey),
+      status: nextStatus,
+      targetDate:
+        input.targetDate === undefined
+          ? existingMilestone.targetDate
+          : input.targetDate,
+      completedAt: lifecycleDates.completedAt,
+      metadata: toOptionalJson(input.metadata),
+    };
+    const changedFields = {
+      title: buildFieldChange(existingMilestone.title, nextValues.title),
+      description: buildFieldChange(
+        existingMilestone.description,
+        nextValues.description,
+      ),
+      milestoneTypeKey: buildFieldChange(
+        existingMilestone.milestoneTypeKey,
+        nextValues.milestoneTypeKey,
+      ),
+      status: buildFieldChange(existingMilestone.status, nextValues.status),
+      targetDate: buildFieldChange(
+        existingMilestone.targetDate,
+        nextValues.targetDate,
+      ),
+      completedAt: buildFieldChange(
+        existingMilestone.completedAt,
+        nextValues.completedAt,
+      ),
+    };
+    const auditChanges = Object.fromEntries(
+      Object.entries(changedFields).filter(([, value]) => value !== null),
+    );
+
+    const milestone = await tx.opportunityMilestone.update({
+      where: {
+        id: existingMilestone.id,
+      },
+      data: nextValues,
+      select: opportunityMilestoneAuditSelect,
+    });
+
+    if (Object.keys(auditChanges).length > 0) {
+      await tx.opportunityActivityEvent.create({
+        data: {
+          actorIdentifier: input.actor.identifier ?? null,
+          actorType: input.actor.type,
+          actorUserId:
+            input.actor.type === AuditActorType.USER
+              ? input.actor.userId ?? null
+              : null,
+          description: `Status ${existingMilestone.status} -> ${milestone.status}.`,
+          eventType: "milestone_updated",
+          metadata: {
+            changedFields: auditChanges,
+          },
+          occurredAt,
+          opportunityId: milestone.opportunity.id,
+          organizationId: milestone.organizationId,
+          relatedEntityId: milestone.id,
+          relatedEntityType: "milestone",
+          title: `Milestone updated: ${milestone.title}`,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      await recordAuditEvent({
+        db: tx,
+        event: {
+          organizationId: milestone.organizationId,
+          actor: input.actor,
+          action: AUDIT_ACTIONS.opportunityMilestoneUpdate,
+          target: {
+            type: "opportunity_milestone",
+            id: milestone.id,
+            display: milestone.title,
+          },
+          summary: `Updated milestone ${milestone.title} on ${milestone.opportunity.title}.`,
+          metadata: {
+            changedFields: auditChanges,
+            opportunityId: milestone.opportunity.id,
+            opportunityTitle: milestone.opportunity.title,
+          },
+          occurredAt,
+        },
+      });
+    }
+
+    return milestone;
+  });
+}
+
+export async function deleteOpportunityMilestone({
+  db,
+  input,
+}: {
+  db: OpportunityWriteClient;
+  input: DeleteOpportunityMilestoneInput;
+}) {
+  return db.$transaction(async (tx) => {
+    const existingMilestone = await tx.opportunityMilestone.findFirstOrThrow({
+      where: {
+        id: input.milestoneId,
+        organizationId: input.actor.organizationId,
+      },
+      select: opportunityMilestoneAuditSelect,
+    });
+    const occurredAt = input.occurredAt ?? new Date();
+    const deletedMilestone = await tx.opportunityMilestone.delete({
+      where: {
+        id: existingMilestone.id,
+      },
+      select: opportunityMilestoneAuditSelect,
+    });
+
+    await tx.opportunityActivityEvent.create({
+      data: {
+        actorIdentifier: input.actor.identifier ?? null,
+        actorType: input.actor.type,
+        actorUserId:
+          input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
+        description: deletedMilestone.description,
+        eventType: "milestone_deleted",
+        metadata: {
+          completedAt: serializeAuditValue(deletedMilestone.completedAt),
+          milestoneTypeKey: deletedMilestone.milestoneTypeKey,
+          status: deletedMilestone.status,
+          targetDate: serializeAuditValue(deletedMilestone.targetDate),
+        },
+        occurredAt,
+        opportunityId: deletedMilestone.opportunity.id,
+        organizationId: deletedMilestone.organizationId,
+        relatedEntityId: deletedMilestone.id,
+        relatedEntityType: "milestone",
+        title: `Milestone deleted: ${deletedMilestone.title}`,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await recordAuditEvent({
+      db: tx,
+      event: {
+        organizationId: deletedMilestone.organizationId,
+        actor: input.actor,
+        action: AUDIT_ACTIONS.opportunityMilestoneDelete,
+        target: {
+          type: "opportunity_milestone",
+          id: deletedMilestone.id,
+          display: deletedMilestone.title,
+        },
+        summary: `Deleted milestone ${deletedMilestone.title} from ${deletedMilestone.opportunity.title}.`,
+        metadata: {
+          opportunityId: deletedMilestone.opportunity.id,
+          opportunityTitle: deletedMilestone.opportunity.title,
+          targetDate: serializeAuditValue(deletedMilestone.targetDate),
+        },
+        occurredAt,
+      },
+    });
+
+    return deletedMilestone;
+  });
+}
+
 export async function recordStageTransition({
   db,
   input,
@@ -1329,6 +1730,21 @@ function buildTaskLifecycleDates({
 
   return {
     startedAt: shouldRetainStartedAt ? existingStartedAt ?? occurredAt : null,
+    completedAt:
+      status === "COMPLETED" ? existingCompletedAt ?? occurredAt : null,
+  };
+}
+
+function buildMilestoneLifecycleDates({
+  status,
+  occurredAt,
+  existingCompletedAt,
+}: {
+  status: OpportunityMilestoneStatus;
+  occurredAt: Date;
+  existingCompletedAt: Date | null;
+}) {
+  return {
     completedAt:
       status === "COMPLETED" ? existingCompletedAt ?? occurredAt : null,
   };
