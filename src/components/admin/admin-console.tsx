@@ -1,8 +1,10 @@
 import type {
-  AdminAuditEventSummary,
-  AdminUserSummary,
   AdminWorkspaceSnapshot,
 } from "@/modules/admin/admin.types";
+import { Badge } from "@/components/ui/badge";
+import { DataTable } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 
 type AdminConsoleProps = {
   sessionUser: {
@@ -17,18 +19,17 @@ export function AdminConsole({ sessionUser, snapshot }: AdminConsoleProps) {
 
   if (!snapshot) {
     return (
-      <section className="border-border bg-surface flex w-full flex-col gap-4 rounded-[32px] border px-6 py-8 shadow-[0_24px_80px_rgba(20,37,34,0.12)] sm:px-8">
+      <section className="space-y-4">
         <p className="text-muted text-sm tracking-[0.26em] uppercase">
           Admin surface
         </p>
         <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
           Admin console
         </h1>
-        <p className="text-muted max-w-3xl text-sm leading-7">
-          Organization-scoped admin data could not be loaded for this session.
-          Re-seed the local database or verify the authenticated user still
-          belongs to an active organization.
-        </p>
+        <ErrorState
+          message="Organization-scoped admin data could not be loaded for this session. Re-seed the local database or verify the authenticated user still belongs to an active organization."
+          title="Admin data is unavailable"
+        />
       </section>
     );
   }
@@ -36,9 +37,11 @@ export function AdminConsole({ sessionUser, snapshot }: AdminConsoleProps) {
   return (
     <section className="border-border bg-surface flex w-full flex-col gap-6 rounded-[32px] border px-6 py-8 shadow-[0_24px_80px_rgba(20,37,34,0.12)] sm:px-8">
       <div className="space-y-3">
-        <p className="text-muted text-sm tracking-[0.26em] uppercase">
-          Admin surface
-        </p>
+        <div className="flex flex-wrap gap-2">
+          <Badge>Admin surface</Badge>
+          <Badge tone="muted">shared table pattern</Badge>
+          <Badge tone="warning">server-guarded</Badge>
+        </div>
         <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
           Admin console
         </h1>
@@ -47,8 +50,8 @@ export function AdminConsole({ sessionUser, snapshot }: AdminConsoleProps) {
           <span className="text-foreground font-medium">
             {snapshot.organizationName}
           </span>
-          . This is the first live admin read model wired behind the
-          server-enforced admin guard.
+          . This surface now reuses the shared badge, table, empty-state, and
+          error-state primitives established in `P3-02`.
         </p>
       </div>
 
@@ -75,69 +78,173 @@ export function AdminConsole({ sessionUser, snapshot }: AdminConsoleProps) {
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <section
-          aria-labelledby="assigned-roles-heading"
-          className="border-border rounded-[28px] border bg-white p-5"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <p className="text-muted text-xs tracking-[0.24em] uppercase">
-                User visibility
-              </p>
-              <h2
-                id="assigned-roles-heading"
-                className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
-              >
-                Assigned roles
-              </h2>
-              <p className="text-muted text-sm leading-6">
-                Role labels are loaded from organization-scoped assignments so
-                admins can verify who currently has elevated access.
-              </p>
-            </div>
+      <div className="grid gap-6">
+        <section aria-labelledby="assigned-roles-heading" className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-muted text-xs tracking-[0.24em] uppercase">
+              User visibility
+            </p>
+            <h2
+              className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
+              id="assigned-roles-heading"
+            >
+              Assigned roles
+            </h2>
+            <p className="text-muted text-sm leading-6">
+              Role assignments stay organization-scoped and now render through a
+              shared table treatment that later list and audit surfaces can
+              reuse.
+            </p>
           </div>
 
-          <div className="mt-5 space-y-4">
-            {snapshot.users.length > 0 ? (
-              snapshot.users.map((user) => (
-                <UserRoleCard key={user.id} user={user} />
-              ))
-            ) : (
-              <EmptyState message="No organization users are available yet." />
-            )}
-          </div>
+          <DataTable
+            ariaLabel="Assigned roles"
+            columns={[
+              {
+                key: "user",
+                header: "User",
+                cell: (user) => (
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {user.name ?? user.email}
+                    </p>
+                    <p className="text-muted text-xs">{user.email}</p>
+                  </div>
+                ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                cell: (user) => (
+                  <Badge tone={user.status === "ACTIVE" ? "accent" : "warning"}>
+                    {formatEnumLabel(user.status)}
+                  </Badge>
+                ),
+              },
+              {
+                key: "roles",
+                header: "Assigned roles",
+                cell: (user) =>
+                  user.roles.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {user.roles.map((role) => (
+                        <Badge
+                          key={`${user.id}-${role.key}`}
+                          title={`Assigned ${formatUtcTimestamp(role.assignedAt)}`}
+                          tone="muted"
+                        >
+                          {role.label}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <Badge tone="warning">No roles assigned</Badge>
+                  ),
+              },
+            ]}
+            emptyState={
+              <EmptyState
+                message="User assignments will appear here once the organization has seeded or created users."
+                title="No organization users are available yet"
+              />
+            }
+            getRowKey={(user) => user.id}
+            rows={snapshot.users}
+          />
         </section>
 
         <section
           aria-labelledby="recent-audit-heading"
-          className="border-border rounded-[28px] border bg-white p-5"
+          className="space-y-4"
         >
           <div className="space-y-2">
             <p className="text-muted text-xs tracking-[0.24em] uppercase">
               Audit visibility
             </p>
             <h2
-              id="recent-audit-heading"
               className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
+              id="recent-audit-heading"
             >
               Recent audit activity
             </h2>
             <p className="text-muted text-sm leading-6">
-              Newest events render first so admins can inspect who changed what
-              without querying the database directly.
+              Newest events render first so admins can inspect recent mutations
+              without leaving the app shell.
             </p>
           </div>
 
-          <div className="mt-5 space-y-4">
-            {snapshot.recentAuditEvents.length > 0 ? (
-              snapshot.recentAuditEvents.map((event) => (
-                <AuditEventCard key={event.id} event={event} />
-              ))
-            ) : (
-              <EmptyState message="No audit events are available yet." />
-            )}
-          </div>
+          <DataTable
+            ariaLabel="Recent audit activity"
+            columns={[
+              {
+                key: "action",
+                header: "Action",
+                cell: (event) => (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge>{event.actionLabel}</Badge>
+                      <Badge tone="muted">{event.action}</Badge>
+                    </div>
+                    {event.summary ? (
+                      <p className="text-sm leading-6 text-muted">
+                        {event.summary}
+                      </p>
+                    ) : null}
+                  </div>
+                ),
+              },
+              {
+                key: "actor",
+                header: "Actor",
+                cell: (event) => (
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {event.actorLabel}
+                    </p>
+                    <p className="text-muted text-xs">
+                      {formatEnumLabel(event.actorType)}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                key: "target",
+                header: "Target",
+                cell: (event) => (
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {event.targetLabel}
+                    </p>
+                    <p className="text-muted text-xs">
+                      {formatEnumLabel(event.targetType)}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                key: "occurredAt",
+                header: "Occurred",
+                cell: (event) => (
+                  <div className="space-y-2">
+                    <p>{formatUtcTimestamp(event.occurredAt)}</p>
+                    {event.metadataPreview ? (
+                      <pre className="overflow-x-auto rounded-[18px] bg-[rgba(15,28,31,0.05)] px-3 py-3 text-xs leading-5 break-all whitespace-pre-wrap">
+                        {event.metadataPreview}
+                      </pre>
+                    ) : null}
+                  </div>
+                ),
+              },
+            ]}
+            emptyState={
+              <EmptyState
+                message="Audit rows will appear here once write flows emit organization-scoped events."
+                title="No audit events are available yet"
+              />
+            }
+            getRowKey={(event) => event.id}
+            rows={snapshot.recentAuditEvents}
+          />
         </section>
       </div>
     </section>
@@ -159,100 +266,6 @@ function SummaryCard({
       <p className="text-foreground mt-3 text-lg font-semibold">{value}</p>
       <p className="text-muted mt-2 text-sm leading-6">{supportingText}</p>
     </article>
-  );
-}
-
-function UserRoleCard({ user }: { user: AdminUserSummary }) {
-  const displayName = user.name ?? user.email;
-
-  return (
-    <article className="border-border rounded-[24px] border bg-[rgba(248,244,234,0.72)] p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-foreground text-sm font-semibold">{displayName}</p>
-          <p className="text-muted mt-1 text-sm">{user.email}</p>
-          <p className="text-muted mt-2 text-xs tracking-[0.18em] uppercase">
-            {formatEnumLabel(user.status)}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          {user.roles.length > 0 ? (
-            user.roles.map((role) => (
-              <span
-                key={`${user.id}-${role.key}`}
-                className="border-border rounded-full border bg-white px-3 py-1 text-xs font-medium text-[rgb(19,78,68)]"
-                title={`Assigned ${formatUtcTimestamp(role.assignedAt)}`}
-              >
-                {role.label}
-              </span>
-            ))
-          ) : (
-            <span className="rounded-full bg-[rgba(150,75,53,0.12)] px-3 py-1 text-xs font-medium text-[rgb(133,69,49)]">
-              No roles assigned
-            </span>
-          )}
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function AuditEventCard({ event }: { event: AdminAuditEventSummary }) {
-  return (
-    <article className="border-border rounded-[24px] border bg-[rgba(242,248,247,0.72)] p-4">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[rgba(32,95,85,0.12)] px-3 py-1 text-xs font-medium text-[rgb(19,78,68)]">
-            {event.actionLabel}
-          </span>
-          <span className="border-border text-foreground rounded-full border bg-white px-3 py-1 text-xs font-medium">
-            {event.action}
-          </span>
-        </div>
-
-        <div className="text-muted grid gap-3 text-sm sm:grid-cols-2">
-          <div>
-            <p className="text-xs tracking-[0.18em] uppercase">Actor</p>
-            <p className="text-foreground mt-1">{event.actorLabel}</p>
-          </div>
-          <div>
-            <p className="text-xs tracking-[0.18em] uppercase">Occurred</p>
-            <p className="text-foreground mt-1">
-              {formatUtcTimestamp(event.occurredAt)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs tracking-[0.18em] uppercase">Target</p>
-            <p className="text-foreground mt-1">{event.targetLabel}</p>
-          </div>
-          <div>
-            <p className="text-xs tracking-[0.18em] uppercase">Target type</p>
-            <p className="text-foreground mt-1">
-              {formatEnumLabel(event.targetType)}
-            </p>
-          </div>
-        </div>
-
-        {event.summary ? (
-          <p className="text-foreground text-sm leading-6">{event.summary}</p>
-        ) : null}
-
-        {event.metadataPreview ? (
-          <pre className="text-foreground overflow-x-auto rounded-[18px] bg-[rgba(15,28,31,0.05)] px-3 py-3 text-xs leading-5 break-all whitespace-pre-wrap">
-            {event.metadataPreview}
-          </pre>
-        ) : null}
-      </div>
-    </article>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="border-border text-muted rounded-[24px] border border-dashed bg-[rgba(15,28,31,0.02)] px-4 py-6 text-sm">
-      {message}
-    </div>
   );
 }
 

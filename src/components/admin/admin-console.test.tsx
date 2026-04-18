@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { AdminConsole } from "./admin-console";
@@ -75,6 +76,12 @@ describe("AdminConsole", () => {
     expect(
       screen.getByRole("heading", { name: /recent audit activity/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: /assigned roles/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: /recent audit activity/i }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText(/admin@onesource\.local/i)).toHaveLength(2);
     expect(screen.getByText(/no roles assigned/i)).toBeInTheDocument();
     expect(screen.getByText("seed.bootstrap")).toBeInTheDocument();
@@ -92,6 +99,36 @@ describe("AdminConsole", () => {
 
     expect(
       screen.getByText(/organization-scoped admin data could not be loaded/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows empty shared table states when snapshot lists are empty", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AdminConsole
+        sessionUser={{
+          email: "admin@onesource.local",
+        }}
+        snapshot={{
+          organizationId: "org_123",
+          organizationName: "Default Organization",
+          totalUserCount: 0,
+          adminUserCount: 0,
+          totalAuditLogCount: 0,
+          users: [],
+          recentAuditEvents: [],
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("heading", { name: /assigned roles/i }));
+
+    expect(
+      screen.getByText(/no organization users are available yet/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no audit events are available yet/i),
     ).toBeInTheDocument();
   });
 });

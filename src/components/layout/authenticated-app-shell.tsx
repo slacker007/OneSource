@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { Drawer } from "@/components/ui/drawer";
 
 type NavItem = {
   href: string;
@@ -90,63 +91,37 @@ export function AppShellFrame({
 
   return (
     <div className="relative flex min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(32,95,85,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(168,93,42,0.1),transparent_24%)]">
-      {isMobileNavOpen ? (
-        <div className="fixed inset-0 z-40 flex lg:hidden">
-          <button
-            aria-label="Close navigation menu"
-            className="flex-1 bg-[rgba(15,28,31,0.45)]"
-            onClick={() => setIsMobileNavOpen(false)}
-            type="button"
-          />
-          <aside
-            className="border-border flex w-80 max-w-[84vw] flex-col border-l bg-[rgba(15,28,31,0.98)] px-5 py-5 text-stone-100 shadow-[-20px_0_80px_rgba(15,28,31,0.28)]"
-            id="mobile-navigation"
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm tracking-[0.24em] text-stone-400 uppercase">
-                  OneSource
-                </p>
-                <p className="font-heading mt-2 text-2xl font-semibold">
-                  Capture workspace
-                </p>
-              </div>
-              <button
-                aria-label="Dismiss navigation menu"
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm"
-                onClick={() => setIsMobileNavOpen(false)}
-                type="button"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="mt-6 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-              <p className="text-sm font-medium text-white">{displayName}</p>
-              <p className="mt-1 text-sm text-stone-300">{sessionUser.email}</p>
-              <p className="mt-3 text-xs tracking-[0.18em] text-stone-400 uppercase">
-                {roleSummary}
-              </p>
-            </div>
-
-            <NavigationList
-              currentPath={currentPath}
-              items={PRIMARY_NAV_ITEMS}
-              onNavigate={() => setIsMobileNavOpen(false)}
-              title="Mobile navigation"
-            />
-
-            {secondaryNavItems.length > 0 ? (
-              <NavigationList
-                currentPath={currentPath}
-                items={secondaryNavItems}
-                onNavigate={() => setIsMobileNavOpen(false)}
-                title="Admin"
-              />
-            ) : null}
-          </aside>
+      <Drawer
+        description="Responsive workspace navigation now reuses a shared drawer pattern instead of a shell-only implementation."
+        eyebrow="OneSource"
+        onClose={() => setIsMobileNavOpen(false)}
+        open={isMobileNavOpen}
+        title="Capture workspace"
+      >
+        <div className="mt-6 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
+          <p className="text-sm font-medium text-white">{displayName}</p>
+          <p className="mt-1 text-sm text-stone-300">{sessionUser.email}</p>
+          <p className="mt-3 text-xs tracking-[0.18em] text-stone-400 uppercase">
+            {roleSummary}
+          </p>
         </div>
-      ) : null}
+
+        <NavigationList
+          currentPath={currentPath}
+          items={PRIMARY_NAV_ITEMS}
+          onNavigate={() => setIsMobileNavOpen(false)}
+          title="Mobile navigation"
+        />
+
+        {secondaryNavItems.length > 0 ? (
+          <NavigationList
+            currentPath={currentPath}
+            items={secondaryNavItems}
+            onNavigate={() => setIsMobileNavOpen(false)}
+            title="Admin"
+          />
+        ) : null}
+      </Drawer>
 
       <aside className="border-border hidden w-80 shrink-0 border-r bg-[rgba(15,28,31,0.98)] px-6 py-6 text-stone-100 lg:flex lg:flex-col lg:justify-between">
         <div className="space-y-8">

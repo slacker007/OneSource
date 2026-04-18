@@ -35,6 +35,18 @@ test("authenticated homepage smoke test", async ({ page }) => {
     page.getByRole("searchbox", { name: /global search/i }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
+  await page.getByRole("link", { name: /^Sources/i }).click();
+  await expect(page).toHaveURL(/\/sources$/);
+  await expect(
+    page.getByRole("heading", {
+      name: /search and import patterns are now standardized/i,
+    }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /preview import review/i }).click();
+  await expect(
+    page.getByRole("dialog", { name: /import preview/i }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /close preview/i }).click();
   await page.getByRole("link", { name: /^Analytics/i }).click();
   await expect(page).toHaveURL(/\/analytics$/);
   await expect(
