@@ -8,6 +8,7 @@ describe("AdminConsole", () => {
   it("renders user-role visibility and recent audit activity", () => {
     render(
       <AdminConsole
+        retrySourceSyncAction={async () => undefined}
         sessionUser={{
           name: "Alex Morgan",
           email: "admin@onesource.local",
@@ -18,6 +19,78 @@ describe("AdminConsole", () => {
           totalUserCount: 2,
           adminUserCount: 1,
           totalAuditLogCount: 9,
+          sourceOperations: {
+            totalConnectorCount: 4,
+            activeConnectorCount: 3,
+            healthyConnectorCount: 2,
+            rateLimitedConnectorCount: 1,
+            failedImportReviewCount: 1,
+            lastSuccessfulSyncAt: "2026-04-18T08:10:00.000Z",
+            lastSuccessfulSyncSourceDisplayName: "USAspending API",
+            connectorHealth: [
+              {
+                id: "connector_sam",
+                sourceSystemKey: "sam_gov",
+                sourceDisplayName: "SAM.gov",
+                isEnabled: true,
+                validationStatus: "VALID",
+                connectorVersion: "sam-gov.v1",
+                savedSearchCount: 1,
+                latestRetryableSavedSearchId: "saved_search_123",
+                lastValidatedAt: "2026-04-18T08:00:00.000Z",
+                lastValidationMessage:
+                  "Public API key validated for opportunity search.",
+                lastSyncAttemptAt: "2026-04-18T08:15:00.000Z",
+                lastSuccessfulSyncAt: "2026-04-18T08:05:00.000Z",
+                lastSyncStatus: "FAILED",
+                healthStatus: "rate_limited",
+                rateLimitStrategy: "bounded_api_key",
+                rateLimitNotes: "postedFrom/postedTo required; limit capped at 1000.",
+                latestRateLimitAt: "2026-04-18T08:15:00.000Z",
+                latestRateLimitMessage:
+                  "SAM.gov returned HTTP 429: Too many requests.",
+              },
+            ],
+            recentSyncRuns: [
+              {
+                id: "sync_run_1",
+                sourceDisplayName: "SAM.gov",
+                sourceSystemKey: "sam_gov",
+                sourceSystem: "sam_gov",
+                savedSearchId: "saved_search_123",
+                savedSearchName: "Daily Air Force Search",
+                requestedAt: "2026-04-18T08:15:00.000Z",
+                completedAt: "2026-04-18T08:15:30.000Z",
+                status: "FAILED",
+                triggerType: "SCHEDULED",
+                recordsFetched: 0,
+                recordsImported: 0,
+                recordsFailed: 1,
+                httpStatus: 429,
+                errorCode: "sam_gov_http_429",
+                errorMessage: "SAM.gov returned HTTP 429: Too many requests.",
+                isRateLimited: true,
+                canRetry: true,
+              },
+            ],
+            failedImportReviews: [
+              {
+                id: "import_review_1",
+                sourceDisplayName: "SAM.gov",
+                sourceSystem: "sam_gov",
+                sourceRecordId: "FA4861-26-R-0001",
+                sourceTitle: "Enterprise Knowledge Management Support Services",
+                mode: "CREATE_OPPORTUNITY",
+                status: "REJECTED",
+                requestedAt: "2026-04-18T08:17:00.000Z",
+                decidedAt: "2026-04-18T08:18:00.000Z",
+                rationale:
+                  "Rejected because the notice was already canonicalized into the tracked pipeline.",
+                targetOpportunityTitle:
+                  "Enterprise Knowledge Management Support Services",
+              },
+            ],
+          },
           scoringProfile: {
             overview:
               "Mid-sized federal integrator focused on cloud modernization and cyber operations.",
@@ -140,11 +213,26 @@ describe("AdminConsole", () => {
       screen.getByRole("heading", { name: /organization scoring profile/i }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", { name: /source sync observability/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("heading", { name: /assigned roles/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /recent audit activity/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: /source connector health/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: /recent source sync runs/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: /failed import review/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: /retry sync/i }).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.getByRole("table", { name: /assigned roles/i }),
     ).toBeInTheDocument();
@@ -159,6 +247,9 @@ describe("AdminConsole", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText(/admin@onesource\.local/i)).toHaveLength(2);
     expect(screen.getByText(/default_capture_v1/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/rate limited/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/sam_gov_http_429/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/rejected/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/go >= 70\.00/i)).toBeInTheDocument();
     expect(screen.getByText(/risk floor >= 50\.00%/i)).toBeInTheDocument();
     expect(screen.getByText(/cloud platform engineering/i)).toBeInTheDocument();
@@ -170,6 +261,7 @@ describe("AdminConsole", () => {
   it("renders a clear empty state when the organization snapshot is unavailable", () => {
     render(
       <AdminConsole
+        retrySourceSyncAction={async () => undefined}
         sessionUser={{
           email: "admin@onesource.local",
         }}
@@ -187,6 +279,7 @@ describe("AdminConsole", () => {
 
     render(
       <AdminConsole
+        retrySourceSyncAction={async () => undefined}
         sessionUser={{
           email: "admin@onesource.local",
         }}
@@ -196,6 +289,18 @@ describe("AdminConsole", () => {
           totalUserCount: 0,
           adminUserCount: 0,
           totalAuditLogCount: 0,
+          sourceOperations: {
+            totalConnectorCount: 0,
+            activeConnectorCount: 0,
+            healthyConnectorCount: 0,
+            rateLimitedConnectorCount: 0,
+            failedImportReviewCount: 0,
+            lastSuccessfulSyncAt: null,
+            lastSuccessfulSyncSourceDisplayName: null,
+            connectorHealth: [],
+            recentSyncRuns: [],
+            failedImportReviews: [],
+          },
           scoringProfile: null,
           users: [],
           recentAuditEvents: [],
@@ -207,6 +312,15 @@ describe("AdminConsole", () => {
 
     expect(
       screen.getByText(/no organization users are available yet/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no source connectors are configured yet/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no source sync runs are recorded yet/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no failed import review items are queued/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/no organization scoring profile is available yet/i),

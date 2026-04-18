@@ -1,4 +1,12 @@
-import type { AuditActorType, UserStatus } from "@prisma/client";
+import type {
+  AuditActorType,
+  ConnectorRunStatus,
+  SourceConnectorValidationStatus,
+  SourceImportDecisionMode,
+  SourceImportDecisionStatus,
+  SourceSyncTriggerType,
+  UserStatus,
+} from "@prisma/client";
 
 export type AdminUserRoleSummary = {
   key: string;
@@ -88,6 +96,82 @@ export type AdminScoringProfileSummary = {
   scoringCriteria: AdminScoringCriterionSummary[];
 };
 
+export type AdminSourceConnectorHealthStatus =
+  | "healthy"
+  | "degraded"
+  | "rate_limited"
+  | "inactive"
+  | "unknown";
+
+export type AdminSourceConnectorHealthSummary = {
+  id: string;
+  sourceSystemKey: string;
+  sourceDisplayName: string;
+  isEnabled: boolean;
+  validationStatus: SourceConnectorValidationStatus;
+  connectorVersion: string | null;
+  savedSearchCount: number;
+  latestRetryableSavedSearchId: string | null;
+  lastValidatedAt: string | null;
+  lastValidationMessage: string | null;
+  lastSyncAttemptAt: string | null;
+  lastSuccessfulSyncAt: string | null;
+  lastSyncStatus: ConnectorRunStatus | null;
+  healthStatus: AdminSourceConnectorHealthStatus;
+  rateLimitStrategy: string | null;
+  rateLimitNotes: string | null;
+  latestRateLimitAt: string | null;
+  latestRateLimitMessage: string | null;
+};
+
+export type AdminSourceSyncRunSummary = {
+  id: string;
+  sourceDisplayName: string;
+  sourceSystemKey: string;
+  sourceSystem: string;
+  savedSearchId: string | null;
+  savedSearchName: string | null;
+  requestedAt: string;
+  completedAt: string | null;
+  status: ConnectorRunStatus;
+  triggerType: SourceSyncTriggerType;
+  recordsFetched: number;
+  recordsImported: number;
+  recordsFailed: number;
+  httpStatus: number | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  isRateLimited: boolean;
+  canRetry: boolean;
+};
+
+export type AdminFailedImportReviewSummary = {
+  id: string;
+  sourceDisplayName: string;
+  sourceSystem: string;
+  sourceRecordId: string;
+  sourceTitle: string;
+  mode: SourceImportDecisionMode;
+  status: SourceImportDecisionStatus;
+  requestedAt: string;
+  decidedAt: string | null;
+  rationale: string | null;
+  targetOpportunityTitle: string | null;
+};
+
+export type AdminSourceOperationsSnapshot = {
+  totalConnectorCount: number;
+  activeConnectorCount: number;
+  healthyConnectorCount: number;
+  rateLimitedConnectorCount: number;
+  failedImportReviewCount: number;
+  lastSuccessfulSyncAt: string | null;
+  lastSuccessfulSyncSourceDisplayName: string | null;
+  connectorHealth: AdminSourceConnectorHealthSummary[];
+  recentSyncRuns: AdminSourceSyncRunSummary[];
+  failedImportReviews: AdminFailedImportReviewSummary[];
+};
+
 export type AdminWorkspaceSnapshot = {
   organizationId: string;
   organizationName: string;
@@ -95,6 +179,7 @@ export type AdminWorkspaceSnapshot = {
   adminUserCount: number;
   totalAuditLogCount: number;
   scoringProfile: AdminScoringProfileSummary | null;
+  sourceOperations: AdminSourceOperationsSnapshot;
   users: AdminUserSummary[];
   recentAuditEvents: AdminAuditEventSummary[];
 };

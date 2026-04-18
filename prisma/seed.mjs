@@ -1073,6 +1073,17 @@ async function main() {
     },
   });
 
+  const failedSearchExecution = await upsertSearchExecution({
+    organizationId: organization.id,
+    savedSearchId: savedSearch.id,
+    requestedByUserId: null,
+    sourceConnectorConfigId: samGovConnectorConfig.id,
+    execution: {
+      ...scenario.failedSourceSearchExecution,
+      sourceSystem: scenario.sourceSavedSearch.sourceSystem,
+    },
+  });
+
   const syncRun = await upsertSyncRun({
     organizationId: organization.id,
     savedSearchId: savedSearch.id,
@@ -1080,6 +1091,16 @@ async function main() {
     requestedByUserId: adminUser.id,
     sourceConnectorConfigId: samGovConnectorConfig.id,
     syncRun: scenario.sourceSyncRun,
+    sourceSystem: scenario.sourceSavedSearch.sourceSystem,
+  });
+
+  await upsertSyncRun({
+    organizationId: organization.id,
+    savedSearchId: savedSearch.id,
+    searchExecutionId: failedSearchExecution.id,
+    requestedByUserId: null,
+    sourceConnectorConfigId: samGovConnectorConfig.id,
+    syncRun: scenario.failedSourceSyncRun,
     sourceSystem: scenario.sourceSavedSearch.sourceSystem,
   });
 
@@ -1235,6 +1256,16 @@ async function main() {
     requestedByUserId: adminUser.id,
     decidedByUserId: adminUser.id,
     decision: scenario.sourceImportDecision,
+  });
+
+  await upsertImportDecision({
+    organizationId: organization.id,
+    sourceConnectorConfigId: samGovConnectorConfig.id,
+    sourceRecordId: sourceRecord.id,
+    targetOpportunityId: importedOpportunity.id,
+    requestedByUserId: adminUser.id,
+    decidedByUserId: adminUser.id,
+    decision: scenario.rejectedSourceImportDecision,
   });
 
   await syncOpportunityVehicles({

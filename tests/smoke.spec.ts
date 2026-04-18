@@ -133,7 +133,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   });
   if (await linkButton.isVisible()) {
     await expect(
-      page.getByText(/strong duplicate/i).first(),
+      page.getByText(/strong duplicate|possible duplicate/i).first(),
     ).toBeVisible();
     await linkButton.click();
   }
@@ -196,6 +196,33 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
+      name: /source sync observability/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", {
+      name: /source connector health/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", {
+      name: /recent source sync runs/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", {
+      name: /failed import review/i,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(/sam\.gov/i).first()).toBeVisible();
+  await expect(page.getByText(/rate limited/i).first()).toBeVisible();
+  await expect(page.getByText(/rejected/i).first()).toBeVisible();
+  await page.getByRole("button", { name: /retry sync/i }).first().click();
+  await expect(
+    page.getByText(/saved search retry has been queued/i),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
       name: /organization scoring profile/i,
     }),
   ).toBeVisible();
@@ -204,7 +231,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
       name: /weighted scoring criteria/i,
     }),
   ).toBeVisible();
-  await expect(page.getByText(/default_capture_v1/i)).toBeVisible();
+  await expect(page.getByText(/model default_capture_v1/i)).toBeVisible();
   await expect(
     page.getByRole("heading", {
       name: /assigned roles/i,

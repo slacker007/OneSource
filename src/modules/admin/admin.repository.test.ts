@@ -171,10 +171,208 @@ function buildOrganizationAdminRecord(): OrganizationAdminRecord {
   };
 }
 
+function buildConnectorHealthRecords() {
+  return [
+    {
+      id: "connector_sam",
+      sourceSystemKey: "sam_gov",
+      sourceDisplayName: "SAM.gov",
+      isEnabled: true,
+      validationStatus: "VALID",
+      connectorVersion: "sam-gov.v1",
+      lastValidatedAt: new Date("2026-04-18T08:00:00.000Z"),
+      lastValidationMessage: "Public API key verified for opportunity search.",
+      rateLimitProfile: {
+        strategy: "bounded_api_key",
+        notes: "postedFrom/postedTo required; limit capped at 1000.",
+      },
+      _count: {
+        savedSearches: 1,
+      },
+      syncRuns: [
+        {
+          id: "sync_failed_429",
+          status: "FAILED",
+          requestedAt: new Date("2026-04-18T08:15:00.000Z"),
+          completedAt: new Date("2026-04-18T08:15:05.000Z"),
+          errorCode: "sam_gov_http_429",
+          errorMessage: "SAM.gov returned HTTP 429: Too many requests.",
+          savedSearch: {
+            id: "saved_search_123",
+            name: "Active Air Force Knowledge Management",
+          },
+          searchExecution: {
+            httpStatus: 429,
+            errorCode: "sam_gov_http_429",
+            errorMessage: "SAM.gov returned HTTP 429: Too many requests.",
+          },
+        },
+        {
+          id: "sync_sam_success",
+          status: "SUCCEEDED",
+          requestedAt: new Date("2026-04-18T08:05:00.000Z"),
+          completedAt: new Date("2026-04-18T08:05:12.000Z"),
+          errorCode: null,
+          errorMessage: null,
+          savedSearch: {
+            id: "saved_search_123",
+            name: "Active Air Force Knowledge Management",
+          },
+          searchExecution: {
+            httpStatus: 200,
+            errorCode: null,
+            errorMessage: null,
+          },
+        },
+      ],
+    },
+    {
+      id: "connector_usaspending",
+      sourceSystemKey: "usaspending_api",
+      sourceDisplayName: "USAspending API",
+      isEnabled: true,
+      validationStatus: "VALID",
+      connectorVersion: "usaspending.v1",
+      lastValidatedAt: new Date("2026-04-18T08:10:00.000Z"),
+      lastValidationMessage:
+        "Public award-search endpoint validated without stored credentials.",
+      rateLimitProfile: {
+        strategy: "public_post_api",
+        notes: "Award intelligence requests are body-based rather than query-only.",
+      },
+      _count: {
+        savedSearches: 1,
+      },
+      syncRuns: [
+        {
+          id: "sync_usaspending_success",
+          status: "SUCCEEDED",
+          requestedAt: new Date("2026-04-18T08:20:00.000Z"),
+          completedAt: new Date("2026-04-18T08:20:08.000Z"),
+          errorCode: null,
+          errorMessage: null,
+          savedSearch: {
+            id: "saved_search_456",
+            name: "Incumbent Award Context For KM Support",
+          },
+          searchExecution: {
+            httpStatus: 200,
+            errorCode: null,
+            errorMessage: null,
+          },
+        },
+      ],
+    },
+  ];
+}
+
+function buildRecentSyncRuns() {
+  return [
+    {
+      id: "sync_failed_429",
+      sourceSystem: "sam_gov",
+      status: "FAILED",
+      triggerType: "SCHEDULED",
+      recordsFetched: 0,
+      recordsImported: 0,
+      recordsFailed: 1,
+      requestedAt: new Date("2026-04-18T08:15:00.000Z"),
+      completedAt: new Date("2026-04-18T08:15:05.000Z"),
+      errorCode: "sam_gov_http_429",
+      errorMessage: "SAM.gov returned HTTP 429: Too many requests.",
+      connectorConfig: {
+        sourceDisplayName: "SAM.gov",
+        sourceSystemKey: "sam_gov",
+      },
+      savedSearch: {
+        id: "saved_search_123",
+        name: "Active Air Force Knowledge Management",
+      },
+      searchExecution: {
+        httpStatus: 429,
+        errorCode: "sam_gov_http_429",
+        errorMessage: "SAM.gov returned HTTP 429: Too many requests.",
+      },
+    },
+    {
+      id: "sync_usaspending_success",
+      sourceSystem: "usaspending_api",
+      status: "SUCCEEDED",
+      triggerType: "MANUAL",
+      recordsFetched: 1,
+      recordsImported: 1,
+      recordsFailed: 0,
+      requestedAt: new Date("2026-04-18T08:20:00.000Z"),
+      completedAt: new Date("2026-04-18T08:20:08.000Z"),
+      errorCode: null,
+      errorMessage: null,
+      connectorConfig: {
+        sourceDisplayName: "USAspending API",
+        sourceSystemKey: "usaspending_api",
+      },
+      savedSearch: {
+        id: "saved_search_456",
+        name: "Incumbent Award Context For KM Support",
+      },
+      searchExecution: {
+        httpStatus: 200,
+        errorCode: null,
+        errorMessage: null,
+      },
+    },
+  ];
+}
+
+function buildFailedImportReviews() {
+  return [
+    {
+      id: "import_review_1",
+      mode: "CREATE_OPPORTUNITY",
+      status: "REJECTED",
+      rationale:
+        "Rejected because the notice was already canonicalized into the tracked pipeline.",
+      requestedAt: new Date("2026-04-18T08:17:00.000Z"),
+      decidedAt: new Date("2026-04-18T08:18:00.000Z"),
+      connectorConfig: {
+        sourceDisplayName: "SAM.gov",
+      },
+      sourceRecord: {
+        sourceSystem: "sam_gov",
+        sourceRecordId: "FA4861-26-R-0001",
+        sourceImportPreviewPayload: {
+          source: {
+            title: "Enterprise Knowledge Management Support Services",
+          },
+        },
+        sourceNormalizedPayload: {
+          normalizedPayload: {
+            title: "Enterprise Knowledge Management Support Services",
+          },
+        },
+        sourceRawPayload: {
+          title: "Enterprise Knowledge Management Support Services",
+        },
+      },
+      targetOpportunity: {
+        title: "Enterprise Knowledge Management Support Services",
+      },
+    },
+  ];
+}
+
 function createRepositoryClient(record: OrganizationAdminRecord | null) {
   return {
     organization: {
       findUnique: vi.fn().mockResolvedValue(record),
+    },
+    sourceConnectorConfig: {
+      findMany: vi.fn().mockResolvedValue(buildConnectorHealthRecords()),
+    },
+    sourceSyncRun: {
+      findMany: vi.fn().mockResolvedValue(buildRecentSyncRuns()),
+    },
+    sourceImportDecision: {
+      findMany: vi.fn().mockResolvedValue(buildFailedImportReviews()),
     },
   } as unknown as AdminRepositoryClient;
 }
@@ -255,6 +453,31 @@ describe("admin.repository", () => {
       actionLabel: "Opportunity / Stage Transition",
       actorLabel: "System",
       targetLabel: "opp_123",
+    });
+    expect(snapshot?.sourceOperations).toMatchObject({
+      totalConnectorCount: 2,
+      activeConnectorCount: 2,
+      healthyConnectorCount: 1,
+      rateLimitedConnectorCount: 1,
+      failedImportReviewCount: 1,
+      lastSuccessfulSyncSourceDisplayName: "USAspending API",
+    });
+    expect(snapshot?.sourceOperations.connectorHealth[0]).toMatchObject({
+      sourceDisplayName: "SAM.gov",
+      healthStatus: "rate_limited",
+      latestRateLimitAt: "2026-04-18T08:15:00.000Z",
+      latestRetryableSavedSearchId: "saved_search_123",
+    });
+    expect(snapshot?.sourceOperations.recentSyncRuns[0]).toMatchObject({
+      sourceDisplayName: "SAM.gov",
+      canRetry: true,
+      isRateLimited: true,
+      httpStatus: 429,
+      savedSearchId: "saved_search_123",
+    });
+    expect(snapshot?.sourceOperations.failedImportReviews[0]).toMatchObject({
+      sourceTitle: "Enterprise Knowledge Management Support Services",
+      status: "REJECTED",
     });
   });
 

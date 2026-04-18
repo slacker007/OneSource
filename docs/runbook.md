@@ -185,6 +185,8 @@ The reminder and worker summaries currently include:
 - Live mode requires `SAM_GOV_API_KEY` and should be used for post-project follow-on `FP-01`, exploratory operator testing, or future scheduled-ingestion work.
 - Search executions persist outbound request envelopes plus normalized `source_records` and normalized attachment/contact/award child rows, so preview and import actions operate on retained lineage data rather than transient page-local IDs.
 - Scheduled source sync now reuses the same connector boundary through the worker and `job:source-sync`, creating `source_sync_runs` plus fresh `source_search_executions` for due saved searches.
+- The guarded `/settings` admin console now reads source connector health, recent sync runs, failed import review items, and last-success metadata from retained sync history so operators can inspect source posture without querying the database directly.
+- When a saved search is retryable, `/settings` exposes a `Retry sync` control that requeues the search for the next worker sweep by clearing `lastSyncedAt` through the guarded settings server action.
 - The current repo state does not require a credentialed live search/import run to close `P7-03`; that manual upstream exercise is intentionally deferred to post-project follow-on `FP-01` when a real `SAM_GOV_API_KEY` is available.
 
 ## Compose Test Workflows
@@ -224,8 +226,10 @@ To verify the protected-route auth and authz slices manually after the stack is 
 2. Confirm the app redirects to `/sign-in`.
 3. Sign in with the seeded admin email `admin@onesource.local` and the shared local development password.
 4. Confirm the protected shell renders, the sign-out control is visible, and the admin-console link is shown.
-5. Open `/settings` and confirm the admin console renders for the admin user with the `Organization scoring profile`, `Assigned roles`, and `Recent audit activity` sections visible.
-6. Sign out, sign back in as `avery.stone@onesource.local`, navigate directly to `/settings`, and confirm the app redirects to `/forbidden`.
+5. Open `/settings` and confirm the admin console renders for the admin user with the `Source sync observability`, `Organization scoring profile`, `Assigned roles`, and `Recent audit activity` sections visible.
+6. In the `Source sync observability` section, confirm the seeded `SAM.gov` rate-limited connector row, recent sync failure row, and failed import review row are all visible.
+7. Use one `Retry sync` control and confirm the page reloads with the queued success notice: `The saved search retry has been queued for the next sync sweep.`
+8. Sign out, sign back in as `avery.stone@onesource.local`, navigate directly to `/settings`, and confirm the app redirects to `/forbidden`.
 
 ## Host Verification Commands
 

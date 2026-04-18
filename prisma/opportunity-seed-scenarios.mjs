@@ -574,6 +574,56 @@ const SAM_GOV_SOURCE_SYNC_RUN = {
   recordsFailed: 0,
 };
 
+const SAM_GOV_RATE_LIMIT_SEARCH_EXECUTION = {
+  requestedAt: "2026-04-18T08:15:00.000Z",
+  completedAt: "2026-04-18T08:15:05.000Z",
+  status: "FAILED",
+  requestedByActorType: "SYSTEM_JOB",
+  responseLatencyMs: 913,
+  resultCount: 0,
+  totalRecords: 0,
+  httpStatus: 429,
+  connectorVersion: "sam-gov-search.v1",
+  errorCode: "sam_gov_http_429",
+  errorMessage: "SAM.gov returned HTTP 429: Too many requests.",
+  outboundRequest: {
+    endpoint: "https://api.sam.gov/opportunities/v2/search",
+    queryParams: {
+      postedFrom: "03/01/2026",
+      postedTo: "04/15/2026",
+      limit: 25,
+      offset: 0,
+      ptype: ["o", "k"],
+      title: "knowledge management support",
+      organizationName: "Air Combat Command",
+      organizationCode: "FA4861",
+      state: "NV",
+      zip: "89191",
+      ncode: "541511",
+      ccode: "D302",
+      rdlfrom: "04/01/2026",
+      rdlto: "05/31/2026",
+      status: "active",
+    },
+    credentialReference: "secret://sam-gov/public-api-key",
+  },
+};
+
+const SAM_GOV_RATE_LIMIT_SYNC_RUN = {
+  requestedAt: "2026-04-18T08:15:00.000Z",
+  startedAt: "2026-04-18T08:15:02.000Z",
+  completedAt: "2026-04-18T08:15:06.000Z",
+  status: "FAILED",
+  triggerType: "SCHEDULED",
+  requestedByActorType: "SYSTEM_JOB",
+  connectorVersion: "sam-gov-sync.v1",
+  recordsFetched: 0,
+  recordsImported: 0,
+  recordsFailed: 1,
+  errorCode: "sam_gov_http_429",
+  errorMessage: "SAM.gov returned HTTP 429: Too many requests.",
+};
+
 const IMPORTED_OPPORTUNITY = {
   title: "Enterprise Knowledge Management Support Services",
   description:
@@ -861,6 +911,22 @@ const SAM_GOV_IMPORT_DECISION = {
   decisionMetadata: {
     duplicateCandidateCount: 0,
     promotionSource: "search_result",
+  },
+  importPreviewPayload: SAM_GOV_SOURCE_NORMALIZED_PAYLOAD.importPreviewPayload,
+};
+
+const SAM_GOV_REJECTED_IMPORT_DECISION = {
+  connectorKey: "sam_gov",
+  requestedAt: "2026-04-18T08:17:00.000Z",
+  decidedAt: "2026-04-18T08:18:00.000Z",
+  requestedByActorType: "USER",
+  mode: "CREATE_OPPORTUNITY",
+  status: "REJECTED",
+  rationale:
+    "Rejected because the notice was already canonicalized into the tracked pipeline and did not need a second opportunity record.",
+  decisionMetadata: {
+    duplicateCandidateCount: 1,
+    reviewDisposition: "duplicate_rejected",
   },
   importPreviewPayload: SAM_GOV_SOURCE_NORMALIZED_PAYLOAD.importPreviewPayload,
 };
@@ -2566,7 +2632,13 @@ export function buildOpportunitySeedScenario() {
       canonicalFilters: SAM_GOV_SOURCE_SEARCH.canonicalFilters,
       sourceSpecificFilters: SAM_GOV_SOURCE_SEARCH.sourceSpecificFilters,
     },
+    failedSourceSearchExecution: {
+      ...SAM_GOV_RATE_LIMIT_SEARCH_EXECUTION,
+      canonicalFilters: SAM_GOV_SOURCE_SEARCH.canonicalFilters,
+      sourceSpecificFilters: SAM_GOV_SOURCE_SEARCH.sourceSpecificFilters,
+    },
     sourceSyncRun: SAM_GOV_SOURCE_SYNC_RUN,
+    failedSourceSyncRun: SAM_GOV_RATE_LIMIT_SYNC_RUN,
     importedOpportunity: {
       ...IMPORTED_OPPORTUNITY,
       agencyKey: AIR_FORCE_AGENCY.key,
@@ -2595,6 +2667,7 @@ export function buildOpportunitySeedScenario() {
       },
     },
     sourceImportDecision: SAM_GOV_IMPORT_DECISION,
+    rejectedSourceImportDecision: SAM_GOV_REJECTED_IMPORT_DECISION,
     workspace: OPPORTUNITY_WORKSPACE,
     manualOpportunities: MANUAL_PORTFOLIO_OPPORTUNITIES,
     secondarySourceScenario: {

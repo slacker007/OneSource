@@ -1,6 +1,12 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 
 import type { AdminWorkspaceSnapshot } from "./admin.types";
+import {
+  buildAdminSourceOperationsSnapshot,
+  type AdminFailedImportDecisionRecord,
+  type AdminRecentSourceSyncRunRecord,
+  type AdminSourceConnectorHealthRecord,
+} from "./source-operations";
 
 const organizationAdminSnapshotArgs =
   Prisma.validator<Prisma.OrganizationDefaultArgs>()({
@@ -149,10 +155,136 @@ const organizationAdminSnapshotArgs =
   },
 });
 
-export type AdminRepositoryClient = Pick<PrismaClient, "organization">;
+const sourceConnectorHealthArgs =
+  Prisma.validator<Prisma.SourceConnectorConfigDefaultArgs>()({
+  select: {
+    id: true,
+    sourceSystemKey: true,
+    sourceDisplayName: true,
+    isEnabled: true,
+    validationStatus: true,
+    connectorVersion: true,
+    lastValidatedAt: true,
+    lastValidationMessage: true,
+    rateLimitProfile: true,
+    _count: {
+      select: {
+        savedSearches: true,
+      },
+    },
+    syncRuns: {
+      orderBy: {
+        requestedAt: "desc",
+      },
+      take: 10,
+      select: {
+        id: true,
+        status: true,
+        requestedAt: true,
+        completedAt: true,
+        errorCode: true,
+        errorMessage: true,
+        savedSearch: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        searchExecution: {
+          select: {
+            httpStatus: true,
+            errorCode: true,
+            errorMessage: true,
+          },
+        },
+      },
+    },
+  },
+});
+
+const recentSourceSyncRunArgs =
+  Prisma.validator<Prisma.SourceSyncRunDefaultArgs>()({
+  select: {
+    id: true,
+    sourceSystem: true,
+    status: true,
+    triggerType: true,
+    recordsFetched: true,
+    recordsImported: true,
+    recordsFailed: true,
+    requestedAt: true,
+    completedAt: true,
+    errorCode: true,
+    errorMessage: true,
+    connectorConfig: {
+      select: {
+        sourceDisplayName: true,
+        sourceSystemKey: true,
+      },
+    },
+    savedSearch: {
+      select: {
+        id: true,
+        name: true,
+      },
+    },
+    searchExecution: {
+      select: {
+        httpStatus: true,
+        errorCode: true,
+        errorMessage: true,
+      },
+    },
+  },
+});
+
+const failedImportReviewArgs =
+  Prisma.validator<Prisma.SourceImportDecisionDefaultArgs>()({
+  select: {
+    id: true,
+    mode: true,
+    status: true,
+    rationale: true,
+    requestedAt: true,
+    decidedAt: true,
+    connectorConfig: {
+      select: {
+        sourceDisplayName: true,
+      },
+    },
+    sourceRecord: {
+      select: {
+        sourceSystem: true,
+        sourceRecordId: true,
+        sourceImportPreviewPayload: true,
+        sourceNormalizedPayload: true,
+        sourceRawPayload: true,
+      },
+    },
+    targetOpportunity: {
+      select: {
+        title: true,
+      },
+    },
+  },
+});
+
+export type AdminRepositoryClient = Pick<
+  PrismaClient,
+  "organization" | "sourceConnectorConfig" | "sourceImportDecision" | "sourceSyncRun"
+>;
 
 export type OrganizationAdminRecord = Prisma.OrganizationGetPayload<
   typeof organizationAdminSnapshotArgs
+>;
+export type SourceConnectorHealthPayload = Prisma.SourceConnectorConfigGetPayload<
+  typeof sourceConnectorHealthArgs
+>;
+export type RecentSourceSyncRunPayload = Prisma.SourceSyncRunGetPayload<
+  typeof recentSourceSyncRunArgs
+>;
+export type FailedImportReviewPayload = Prisma.SourceImportDecisionGetPayload<
+  typeof failedImportReviewArgs
 >;
 
 export async function getAdminWorkspaceSnapshot({
@@ -162,12 +294,47 @@ export async function getAdminWorkspaceSnapshot({
   db: AdminRepositoryClient;
   organizationId: string;
 }): Promise<AdminWorkspaceSnapshot | null> {
-  const organization = await db.organization.findUnique({
-    where: {
-      id: organizationId,
-    },
-    ...organizationAdminSnapshotArgs,
-  });
+  const [organization, connectorHealthRecords, recentSyncRunRecords, failedImportReviews] =
+    await Promise.all([
+      db.organization.findUnique({
+        where: {
+          id: organizationId,
+        },
+        ...organizationAdminSnapshotArgs,
+      }),
+      db.sourceConnectorConfig.findMany({
+        where: {
+          organizationId,
+        },
+        orderBy: {
+          sourceDisplayName: "asc",
+        },
+        ...sourceConnectorHealthArgs,
+      }),
+      db.sourceSyncRun.findMany({
+        where: {
+          organizationId,
+        },
+        orderBy: {
+          requestedAt: "desc",
+        },
+        take: 8,
+        ...recentSourceSyncRunArgs,
+      }),
+      db.sourceImportDecision.findMany({
+        where: {
+          organizationId,
+          status: {
+            not: "APPLIED",
+          },
+        },
+        orderBy: {
+          requestedAt: "desc",
+        },
+        take: 8,
+        ...failedImportReviewArgs,
+      }),
+    ]);
 
   if (!organization) {
     return null;
@@ -275,6 +442,13 @@ export async function getAdminWorkspaceSnapshot({
     adminUserCount,
     totalAuditLogCount: organization._count.auditLogs,
     scoringProfile,
+    sourceOperations: buildAdminSourceOperationsSnapshot({
+      connectorHealthRecords:
+        connectorHealthRecords as AdminSourceConnectorHealthRecord[],
+      failedImportDecisionRecords:
+        failedImportReviews as AdminFailedImportDecisionRecord[],
+      recentSyncRunRecords: recentSyncRunRecords as AdminRecentSourceSyncRunRecord[],
+    }),
     users,
     recentAuditEvents: organization.auditLogs.map((auditLog) => ({
       id: auditLog.id,

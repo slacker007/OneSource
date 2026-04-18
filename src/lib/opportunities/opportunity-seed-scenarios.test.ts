@@ -112,6 +112,9 @@ describe("buildOpportunitySeedScenario", () => {
     expect(scenario.sourceRecord.syncRecord.syncAction).toBe("IMPORTED");
     expect(scenario.sourceImportDecision.mode).toBe("CREATE_OPPORTUNITY");
     expect(scenario.sourceImportDecision.status).toBe("APPLIED");
+    expect(scenario.failedSourceSearchExecution.errorCode).toBe("sam_gov_http_429");
+    expect(scenario.failedSourceSyncRun.status).toBe("FAILED");
+    expect(scenario.rejectedSourceImportDecision.status).toBe("REJECTED");
   });
 
   it("retains raw, normalized, contacts, attachments, and import-preview payloads for the seeded sam.gov source record", () => {

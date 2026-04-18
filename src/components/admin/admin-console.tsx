@@ -1,6 +1,4 @@
-import type {
-  AdminWorkspaceSnapshot,
-} from "@/modules/admin/admin.types";
+import type { AdminWorkspaceSnapshot } from "@/modules/admin/admin.types";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -11,10 +9,20 @@ type AdminConsoleProps = {
     name?: string | null;
     email?: string | null;
   };
+  retrySourceSyncAction: (formData: FormData) => Promise<void>;
   snapshot: AdminWorkspaceSnapshot | null;
+  sourceSyncRetryNotice?: {
+    message: string;
+    tone: "accent" | "warning" | "danger";
+  } | null;
 };
 
-export function AdminConsole({ sessionUser, snapshot }: AdminConsoleProps) {
+export function AdminConsole({
+  sessionUser,
+  retrySourceSyncAction,
+  snapshot,
+  sourceSyncRetryNotice = null,
+}: AdminConsoleProps) {
   const viewerLabel = sessionUser.name ?? sessionUser.email ?? "Unknown admin";
 
   if (!snapshot) {
@@ -55,6 +63,14 @@ export function AdminConsole({ sessionUser, snapshot }: AdminConsoleProps) {
           error-state primitives established in `P3-02` while exposing the
           structured organization profile needed for deterministic scoring.
         </p>
+        {sourceSyncRetryNotice ? (
+          <div className="rounded-[24px] border border-border bg-white p-4">
+            <Badge tone={sourceSyncRetryNotice.tone}>Source sync retry</Badge>
+            <p className="text-muted mt-3 text-sm leading-6">
+              {sourceSyncRetryNotice.message}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
@@ -91,6 +107,335 @@ export function AdminConsole({ sessionUser, snapshot }: AdminConsoleProps) {
       </div>
 
       <div className="grid gap-6">
+        <section aria-labelledby="source-operations-heading" className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-muted text-xs tracking-[0.24em] uppercase">
+              Source operations
+            </p>
+            <h2
+              className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
+              id="source-operations-heading"
+            >
+              Source sync observability
+            </h2>
+            <p className="text-muted text-sm leading-6">
+              Connector health, last successful sync state, rate-limit posture,
+              and non-applied import reviews are surfaced here so operators can
+              inspect scheduled source behavior without leaving the guarded admin
+              surface.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <SummaryCard
+              label="Connectors"
+              value={String(snapshot.sourceOperations.totalConnectorCount)}
+              supportingText="Configured connector boundaries"
+            />
+            <SummaryCard
+              label="Active connectors"
+              value={String(snapshot.sourceOperations.activeConnectorCount)}
+              supportingText="Enabled for search or sync work"
+            />
+            <SummaryCard
+              label="Healthy connectors"
+              value={String(snapshot.sourceOperations.healthyConnectorCount)}
+              supportingText="Validated and not currently degraded"
+            />
+            <SummaryCard
+              label="Rate-limited"
+              value={String(snapshot.sourceOperations.rateLimitedConnectorCount)}
+              supportingText="Connectors waiting on upstream throttling"
+            />
+            <SummaryCard
+              label="Last successful sync"
+              value={
+                snapshot.sourceOperations.lastSuccessfulSyncSourceDisplayName ??
+                "No successful sync yet"
+              }
+              supportingText={
+                snapshot.sourceOperations.lastSuccessfulSyncAt
+                  ? formatUtcTimestamp(snapshot.sourceOperations.lastSuccessfulSyncAt)
+                  : "No completed successful sync run is recorded yet"
+              }
+            />
+          </div>
+
+          <DataTable
+            ariaLabel="Source connector health"
+            columns={[
+              {
+                key: "connector",
+                header: "Connector",
+                cell: (connector) => (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge tone={getConnectorHealthTone(connector.healthStatus)}>
+                        {formatEnumLabel(connector.healthStatus)}
+                      </Badge>
+                      <Badge tone="muted">{connector.sourceSystemKey}</Badge>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {connector.sourceDisplayName}
+                      </p>
+                      <p className="text-muted text-xs">
+                        {connector.connectorVersion ?? "No connector version recorded"}
+                      </p>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: "validation",
+                header: "Validation",
+                cell: (connector) => (
+                  <div className="space-y-2">
+                    <Badge tone={getValidationTone(connector.validationStatus)}>
+                      {formatEnumLabel(connector.validationStatus)}
+                    </Badge>
+                    <p className="text-muted text-xs leading-5">
+                      {connector.lastValidationMessage ??
+                        "No validation message is recorded yet."}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                key: "syncState",
+                header: "Sync state",
+                cell: (connector) => (
+                  <div className="space-y-2">
+                    <p className="font-medium text-foreground">
+                      {connector.lastSuccessfulSyncAt
+                        ? formatUtcTimestamp(connector.lastSuccessfulSyncAt)
+                        : "No successful sync recorded"}
+                    </p>
+                    <p className="text-muted text-xs">
+                      {connector.lastSyncStatus
+                        ? `Latest run: ${formatEnumLabel(connector.lastSyncStatus)}`
+                        : "No sync attempt has been recorded"}
+                    </p>
+                    <p className="text-muted text-xs">
+                      {connector.savedSearchCount === 1
+                        ? "1 saved search bound to this connector"
+                        : `${connector.savedSearchCount} saved searches bound to this connector`}
+                    </p>
+                    {connector.latestRetryableSavedSearchId ? (
+                      <form action={retrySourceSyncAction}>
+                        <input
+                          name="savedSearchId"
+                          type="hidden"
+                          value={connector.latestRetryableSavedSearchId}
+                        />
+                        <button
+                          className="rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-xs font-medium tracking-[0.16em] text-white uppercase"
+                          type="submit"
+                        >
+                          Retry sync
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                ),
+              },
+              {
+                key: "rateLimit",
+                header: "Rate limits",
+                cell: (connector) => (
+                  <div className="space-y-2">
+                    <Badge tone={connector.latestRateLimitAt ? "warning" : "accent"}>
+                      {connector.latestRateLimitAt ? "Rate limited" : "Clear"}
+                    </Badge>
+                    <p className="text-muted text-xs leading-5">
+                      {connector.rateLimitStrategy
+                        ? `Strategy: ${connector.rateLimitStrategy}`
+                        : "No rate-limit strategy metadata recorded."}
+                    </p>
+                    <p className="text-muted text-xs leading-5">
+                      {connector.latestRateLimitAt
+                        ? `${formatUtcTimestamp(connector.latestRateLimitAt)} · ${
+                            connector.latestRateLimitMessage ?? "Upstream rate limit recorded."
+                          }`
+                        : connector.rateLimitNotes ??
+                          "No recent rate-limit event is recorded for this connector."}
+                    </p>
+                  </div>
+                ),
+              },
+            ]}
+            emptyState={
+              <EmptyState
+                message="Connector health rows will appear here once source connectors are configured for the organization."
+                title="No source connectors are configured yet"
+              />
+            }
+            getRowKey={(connector) => connector.id}
+            rows={snapshot.sourceOperations.connectorHealth}
+          />
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            <DataTable
+              ariaLabel="Recent source sync runs"
+              columns={[
+                {
+                  key: "run",
+                  header: "Run",
+                  cell: (run) => (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge tone={getRunStatusTone(run.status)}>
+                          {formatEnumLabel(run.status)}
+                        </Badge>
+                        {run.isRateLimited ? (
+                          <Badge tone="warning">Rate limited</Badge>
+                        ) : null}
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {run.sourceDisplayName}
+                        </p>
+                        <p className="text-muted text-xs">
+                          {run.savedSearchName ?? "Manual or connector-wide sync"}
+                        </p>
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  key: "counts",
+                  header: "Counts",
+                  cell: (run) => (
+                    <div className="space-y-1 text-xs text-muted">
+                      <p>Fetched: {run.recordsFetched}</p>
+                      <p>Imported: {run.recordsImported}</p>
+                      <p>Failed: {run.recordsFailed}</p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "details",
+                  header: "Details",
+                  cell: (run) => (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted">
+                        {formatEnumLabel(run.triggerType)}
+                        {run.httpStatus ? ` · HTTP ${run.httpStatus}` : ""}
+                        {run.errorCode ? ` · ${run.errorCode}` : ""}
+                      </p>
+                      <p className="text-muted text-xs leading-5">
+                        {run.errorMessage ?? "No sync error was recorded for this run."}
+                      </p>
+                      {run.canRetry ? (
+                        <form action={retrySourceSyncAction}>
+                          <input
+                            name="savedSearchId"
+                            type="hidden"
+                            value={run.savedSearchId ?? ""}
+                          />
+                          <button
+                            className="rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-xs font-medium tracking-[0.16em] text-white uppercase"
+                            type="submit"
+                          >
+                            Retry sync
+                          </button>
+                        </form>
+                      ) : null}
+                    </div>
+                  ),
+                },
+                {
+                  key: "timing",
+                  header: "Requested",
+                  cell: (run) => (
+                    <div className="space-y-2">
+                      <p>{formatUtcTimestamp(run.requestedAt)}</p>
+                      <p className="text-muted text-xs">
+                        {run.completedAt
+                          ? `Completed ${formatUtcTimestamp(run.completedAt)}`
+                          : "No completion timestamp recorded yet"}
+                      </p>
+                    </div>
+                  ),
+                },
+              ]}
+              emptyState={
+                <EmptyState
+                  message="Sync runs will appear here after scheduled or manual connector execution."
+                  title="No source sync runs are recorded yet"
+                />
+              }
+              getRowKey={(run) => run.id}
+              rows={snapshot.sourceOperations.recentSyncRuns}
+            />
+
+            <DataTable
+              ariaLabel="Failed import review"
+              columns={[
+                {
+                  key: "source",
+                  header: "Source",
+                  cell: (review) => (
+                    <div>
+                      <p className="font-medium text-foreground">{review.sourceTitle}</p>
+                      <p className="text-muted text-xs">
+                        {review.sourceDisplayName} · {review.sourceRecordId}
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "decision",
+                  header: "Decision",
+                  cell: (review) => (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge tone={getImportReviewTone(review.status)}>
+                          {formatEnumLabel(review.status)}
+                        </Badge>
+                        <Badge tone="muted">{formatEnumLabel(review.mode)}</Badge>
+                      </div>
+                      {review.targetOpportunityTitle ? (
+                        <p className="text-muted text-xs">
+                          Target: {review.targetOpportunityTitle}
+                        </p>
+                      ) : null}
+                    </div>
+                  ),
+                },
+                {
+                  key: "rationale",
+                  header: "Rationale",
+                  cell: (review) =>
+                    review.rationale ?? "No rationale was recorded for this review item.",
+                },
+                {
+                  key: "requested",
+                  header: "Requested",
+                  cell: (review) => (
+                    <div className="space-y-2">
+                      <p>{formatUtcTimestamp(review.requestedAt)}</p>
+                      <p className="text-muted text-xs">
+                        {review.decidedAt
+                          ? `Decided ${formatUtcTimestamp(review.decidedAt)}`
+                          : "Still awaiting operator resolution"}
+                      </p>
+                    </div>
+                  ),
+                },
+              ]}
+              emptyState={
+                <EmptyState
+                  message="Rejected and pending import decisions will appear here for operator review."
+                  title="No failed import review items are queued"
+                />
+              }
+              getRowKey={(review) => review.id}
+              rows={snapshot.sourceOperations.failedImportReviews}
+            />
+          </div>
+        </section>
+
         <section
           aria-labelledby="scoring-profile-heading"
           className="space-y-4"
@@ -564,6 +909,57 @@ function ProfileBadgeGroup({
       </div>
     </article>
   );
+}
+
+function getConnectorHealthTone(status: string) {
+  switch (status) {
+    case "healthy":
+      return "accent";
+    case "rate_limited":
+      return "warning";
+    case "degraded":
+      return "danger";
+    case "inactive":
+      return "muted";
+    default:
+      return "muted";
+  }
+}
+
+function getValidationTone(status: string) {
+  switch (status) {
+    case "VALID":
+      return "accent";
+    case "INVALID":
+      return "danger";
+    default:
+      return "warning";
+  }
+}
+
+function getRunStatusTone(status: string) {
+  switch (status) {
+    case "SUCCEEDED":
+      return "accent";
+    case "PARTIAL":
+      return "warning";
+    case "FAILED":
+    case "CANCELLED":
+      return "danger";
+    default:
+      return "muted";
+  }
+}
+
+function getImportReviewTone(status: string) {
+  switch (status) {
+    case "REJECTED":
+      return "danger";
+    case "PENDING":
+      return "warning";
+    default:
+      return "muted";
+  }
 }
 
 function formatEnumLabel(value: string) {

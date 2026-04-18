@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 7 CSV-intake, document-upload, and reusable `sam.gov` connector baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 7 CSV-intake, document-upload, reusable `sam.gov` connector, and source-sync observability baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, deterministic scoring and recommendation formulas plus fallback scorecard mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, audited opportunity write flows, scheduled source-sync sweeps, queued document parsing retries, and persisted scorecard recalculation logic
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus stored-file download visibility, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` fixture-backed connector search flow plus preview-and-merge or preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with scoring-profile visibility, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus stored-file download visibility, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` fixture-backed connector search flow plus preview-and-merge or preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with source-sync observability plus scoring-profile visibility, one live retry-queue action, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -61,7 +61,8 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - upload a CSV file on `/sources`, confirm auto-detected mappings and row-level preview states render, then import one clean row and confirm it appears on the tracked opportunity list
 - navigate from the desktop shell into another primary section with the top-bar search placeholder still visible
 - open the small-screen drawer and navigate into another primary section successfully
-- allow the admin user through the restricted `/settings` route and render the seeded organization scoring profile plus assigned-role visibility and recent audit activity
+- allow the admin user through the restricted `/settings` route and render the seeded source-sync observability tables plus organization scoring profile, assigned-role visibility, and recent audit activity
+- execute one `Retry sync` action from `/settings` and observe the queued success notice on the reloaded page
 - redirect the seeded viewer user from `/settings` to `/forbidden`
 
 For the current audit slice, targeted unit verification should confirm:
@@ -75,7 +76,15 @@ For the current admin-console slice, targeted unit verification should confirm:
 
 - the admin repository maps organization-scoped users with assigned roles into typed read models
 - the admin repository maps recent audit rows into stable display fields without exposing raw Prisma records to the page
-- the admin console component renders both populated and missing-organization states
+- the admin repository maps source connector health, recent sync runs, and failed import review rows into stable admin DTOs without leaking raw Prisma records to the page
+- the admin console component renders populated and missing-organization states plus the guarded source-sync observability tables
+
+For the current Phase 7 source-sync observability slice, targeted verification should confirm:
+
+- the source-operations read model derives connector health, latest successful sync state, rate-limit posture, retryability, and failed import review rows from retained connector config, sync-run, search-execution, and import-decision history
+- the scheduled source-sync job logs upstream 429 rate limits at warning severity so the admin surface can distinguish throttling from generic connector failure
+- the guarded `/settings` surface renders connector health, recent source sync runs, failed import review rows, and the retry success banner without exposing raw database state
+- the Playwright smoke flow can queue one retry from `/settings` and observe the queued notice after the page reloads
 
 For the current Phase 6 scoring slices, targeted verification should confirm:
 

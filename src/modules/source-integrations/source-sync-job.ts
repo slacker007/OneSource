@@ -158,6 +158,34 @@ export type SourceSyncJobClient = {
       };
       take: number;
     }): Promise<SourceSyncSavedSearchRecord[]>;
+    findFirst(args: {
+      where: Prisma.SourceSavedSearchWhereInput;
+      select: {
+        id: true;
+        organizationId: true;
+        sourceSystem: true;
+        name: true;
+        canonicalFilters: true;
+        lastSyncedAt: true;
+        connectorConfig: {
+          select: {
+            id: true;
+            sourceSystemKey: true;
+            sourceDisplayName: true;
+            isEnabled: true;
+            supportsScheduledSync: true;
+            credentialReference: true;
+            connectorVersion: true;
+          };
+        };
+      };
+    }): Promise<SourceSyncSavedSearchRecord | null>;
+    update(args: {
+      where: {
+        id: string;
+      };
+      data: Prisma.SourceSavedSearchUncheckedUpdateInput;
+    }): Promise<unknown>;
   };
   sourceSyncRun: {
     create(args: {
@@ -265,6 +293,128 @@ export async function runScheduledSourceSyncSweep({
     processedRuns: dueSavedSearches.length,
     queuedSavedSearches: dueSavedSearches.length,
     succeededRuns,
+  };
+}
+
+export async function runSourceSyncForSavedSearchId({
+  db,
+  log,
+  now = new Date(),
+  organizationId,
+  savedSearchId,
+}: {
+  db: SourceSyncJobClient;
+  log?: JobLogger;
+  now?: Date;
+  organizationId: string;
+  savedSearchId: string;
+}) {
+  const savedSearch = await db.sourceSavedSearch.findFirst({
+    where: {
+      id: savedSearchId,
+      organizationId,
+      connectorConfig: {
+        is: {
+          isEnabled: true,
+          supportsScheduledSync: true,
+        },
+      },
+    },
+    select: {
+      id: true,
+      organizationId: true,
+      sourceSystem: true,
+      name: true,
+      canonicalFilters: true,
+      lastSyncedAt: true,
+      connectorConfig: {
+        select: {
+          id: true,
+          sourceSystemKey: true,
+          sourceDisplayName: true,
+          isEnabled: true,
+          supportsScheduledSync: true,
+          credentialReference: true,
+          connectorVersion: true,
+        },
+      },
+    },
+  });
+
+  if (!savedSearch) {
+    throw new Error(
+      "The requested saved search could not be retried from this workspace.",
+    );
+  }
+
+  return runScheduledSourceSync({
+    db,
+    log,
+    now,
+    savedSearch,
+  });
+}
+
+export async function queueSourceSyncRetry({
+  db,
+  organizationId,
+  savedSearchId,
+}: {
+  db: SourceSyncJobClient;
+  organizationId: string;
+  savedSearchId: string;
+}) {
+  const savedSearch = await db.sourceSavedSearch.findFirst({
+    where: {
+      id: savedSearchId,
+      organizationId,
+      connectorConfig: {
+        is: {
+          isEnabled: true,
+          supportsScheduledSync: true,
+        },
+      },
+    },
+    select: {
+      id: true,
+      organizationId: true,
+      sourceSystem: true,
+      name: true,
+      canonicalFilters: true,
+      lastSyncedAt: true,
+      connectorConfig: {
+        select: {
+          id: true,
+          sourceSystemKey: true,
+          sourceDisplayName: true,
+          isEnabled: true,
+          supportsScheduledSync: true,
+          credentialReference: true,
+          connectorVersion: true,
+        },
+      },
+    },
+  });
+
+  if (!savedSearch) {
+    throw new Error(
+      "The requested saved search could not be queued for retry from this workspace.",
+    );
+  }
+
+  await db.sourceSavedSearch.update({
+    where: {
+      id: savedSearch.id,
+    },
+    data: {
+      lastSyncedAt: null,
+    },
+  });
+
+  return {
+    savedSearchId: savedSearch.id,
+    savedSearchName: savedSearch.name,
+    status: "QUEUED" as const,
   };
 }
 
@@ -574,6 +724,8 @@ async function runScheduledSourceSync({
     };
   } catch (error) {
     if (error instanceof SamGovConnectorError) {
+      const rateLimited = isRateLimitedSamGovError(error);
+
       await db.$transaction(async (tx) => {
         const searchExecution = await tx.sourceSearchExecution.create({
           data: {
@@ -634,8 +786,10 @@ async function runScheduledSourceSync({
           savedSearchId: savedSearch.id,
           syncRunId: syncRun.id,
         },
-        level: "error",
-        message: `Scheduled sync failed for ${savedSearch.name}.`,
+        level: rateLimited ? "warn" : "error",
+        message: rateLimited
+          ? `Scheduled sync rate limited for ${savedSearch.name}.`
+          : `Scheduled sync failed for ${savedSearch.name}.`,
       });
 
       return {
@@ -814,6 +968,10 @@ function normalizeAwardAmount(value: string | number | null) {
 
   const parsed = Number.parseFloat(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isRateLimitedSamGovError(error: SamGovConnectorError) {
+  return error.httpStatus === 429 || error.code.includes("429");
 }
 
 function readNumber(value: unknown) {
