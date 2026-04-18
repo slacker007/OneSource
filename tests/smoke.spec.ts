@@ -137,8 +137,19 @@ test("authenticated homepage smoke test", async ({ page }) => {
   await expect(page).toHaveURL(/\/analytics$/);
   await expect(
     page.getByRole("heading", {
-      name: /analytics workspace/i,
+      name: /decision console/i,
     }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", { name: /decision console rankings/i }),
+  ).toBeVisible();
+  await page.locator("#decision-ranking").selectOption("risk");
+  await page.getByRole("button", { name: /apply ranking/i }).click();
+  await expect(page).toHaveURL(/\/analytics\?/);
+  await expect(page).toHaveURL(/ranking=risk/);
+  await expect(page.getByText(/risk pressure/i).first()).toBeVisible();
+  await expect(
+    page.getByText(/enterprise knowledge management support services/i).first(),
   ).toBeVisible();
   await page.getByRole("link", { name: /^Settings/i }).click();
   await expect(page).toHaveURL(/\/settings$/);

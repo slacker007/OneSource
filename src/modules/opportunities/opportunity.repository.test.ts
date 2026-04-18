@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  getDecisionConsoleSnapshot,
   getPersonalTaskBoardSnapshot,
   getOpportunityListSnapshot,
   getOpportunityWorkspaceSnapshot,
   getHomeDashboardSnapshot,
   listOpportunitySummaries,
+  parseDecisionConsoleSearchParams,
   parseOpportunityListSearchParams,
   type PersonalTaskBoardRecord,
   type PersonalTaskBoardRepositoryClient,
@@ -219,8 +221,31 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
           {
             totalScore: { toString: () => "79.50" },
             maximumScore: { toString: () => "100.00" },
+            scorePercent: { toString: () => "79.50" },
             recommendationOutcome: "GO",
+            recommendationSummary:
+              "Vehicle access and strategic alignment support pursuit.",
             calculatedAt: new Date("2026-04-15T16:00:00.000Z"),
+            factorScores: [
+              {
+                id: "alpha_factor_strategic",
+                factorKey: "strategic_alignment",
+                factorLabel: "Strategic alignment",
+                weight: { toString: () => "20.00" },
+                score: { toString: () => "18.00" },
+                maximumScore: { toString: () => "20.00" },
+                explanation: "Strong Air Force alignment.",
+              },
+              {
+                id: "alpha_factor_risk",
+                factorKey: "risk",
+                factorLabel: "Risk",
+                weight: { toString: () => "10.00" },
+                score: { toString: () => "4.50" },
+                maximumScore: { toString: () => "10.00" },
+                explanation: "Incumbent and overdue work increase pressure.",
+              },
+            ],
           },
         ],
         bidDecisions: [
@@ -303,8 +328,30 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
           {
             totalScore: { toString: () => "91.00" },
             maximumScore: { toString: () => "100.00" },
+            scorePercent: { toString: () => "91.00" },
             recommendationOutcome: "GO",
+            recommendationSummary: "Submitted proposal remains a strong fit.",
             calculatedAt: new Date("2026-04-18T20:00:00.000Z"),
+            factorScores: [
+              {
+                id: "gamma_factor_strategic",
+                factorKey: "strategic_alignment",
+                factorLabel: "Strategic alignment",
+                weight: { toString: () => "20.00" },
+                score: { toString: () => "14.00" },
+                maximumScore: { toString: () => "20.00" },
+                explanation: "Good but not top-tier strategic fit.",
+              },
+              {
+                id: "gamma_factor_risk",
+                factorKey: "risk",
+                factorLabel: "Risk",
+                weight: { toString: () => "10.00" },
+                score: { toString: () => "8.50" },
+                maximumScore: { toString: () => "10.00" },
+                explanation: "Low execution risk after submission.",
+              },
+            ],
           },
         ],
         bidDecisions: [
@@ -736,6 +783,46 @@ describe("opportunity.repository", () => {
     expect(snapshot?.topOpportunities).toHaveLength(2);
     expect(
       snapshot?.topOpportunities.map((opportunity) => opportunity.title),
+    ).not.toContain("DHS Zero Trust Assessment Support");
+  });
+
+  it("parses and applies decision-console ranking lenses", async () => {
+    const db = createRepositoryClient(buildOrganizationDashboardRecord());
+    const query = parseDecisionConsoleSearchParams({
+      ranking: "risk",
+      scope: "active",
+    });
+
+    const snapshot = await getDecisionConsoleSnapshot({
+      db,
+      now: new Date("2026-04-18T00:00:00.000Z"),
+      query,
+    });
+
+    expect(query).toEqual({
+      ranking: "risk",
+      scope: "active",
+    });
+    expect(snapshot).not.toBeNull();
+    expect(snapshot).toMatchObject({
+      comparedOpportunityCount: 2,
+      goOpportunityCount: 1,
+      urgentOpportunityCount: 1,
+      rankedOpportunities: [
+        {
+          title: "Enterprise Knowledge Management Support Services",
+          strategicValuePercent: "90.00",
+          riskPressurePercent: "55.00",
+          urgencyLabel: "14 days left",
+        },
+        {
+          title: "Army Cloud Operations Recompete",
+          urgencyLabel: "64 days left",
+        },
+      ],
+    });
+    expect(
+      snapshot?.rankedOpportunities.map((opportunity) => opportunity.title),
     ).not.toContain("DHS Zero Trust Assessment Support");
   });
 

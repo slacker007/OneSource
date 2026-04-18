@@ -17,7 +17,8 @@ The current repo includes the first live authentication, authorization, audit-em
 - JWT-backed sessions enriched with `organizationId` and `roleKeys`
 - shared role-to-permission policy helpers that can run in both server and client code
 - server-side protected-route gating in the `(app)` route group
-- server-side permission guards for restricted routes and mutating surfaces such as `/settings`, `/sources`, `/opportunities/new`, and `/opportunities/[opportunityId]/edit`, with a public permission-denied route
+- server-side permission guards for restricted routes and mutating surfaces such as `/analytics`, `/settings`, `/sources`, `/opportunities/new`, and `/opportunities/[opportunityId]/edit`, with a public permission-denied route
+- authenticated-shell navigation that hides the analytics route when the signed-in role set lacks `view_decision_support`
 - a read-only admin console that lets admins inspect current role assignments, recent audit events, and the seeded organization scoring profile without touching the database directly
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
@@ -72,7 +73,7 @@ Current audit producers are the bootstrap seed path and the shared opportunity w
 
 ## Current Risks And Pending Work
 
-- Only the initial role-based authorization slice exists today. The app shell requires authentication, `/settings` requires the admin role, source-search import actions require `manage_source_searches`, and the tracked-opportunity create/edit flows require `manage_pipeline`, but most business workflows still need finer-grained per-action and per-record enforcement.
+- Only the initial role-based authorization slice exists today. The app shell requires authentication, `/analytics` requires `view_decision_support`, `/settings` requires the admin role, source-search import actions require `manage_source_searches`, and the tracked-opportunity create/edit flows require `manage_pipeline`, but most business workflows still need finer-grained per-action and per-record enforcement.
 - The current admin console is read-only and meant for visibility, not user-role mutation or audit remediation workflows yet.
 - No auth-event or permission-failure audit emission yet
 - Auth events and permission failures still do not emit audit rows, and many future user-facing mutations have not been wired to the audited write-service boundary yet

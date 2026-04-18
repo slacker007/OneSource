@@ -48,6 +48,7 @@ const SETTINGS_NAV_ITEM: NavItem = {
 };
 
 type AuthenticatedAppShellProps = {
+  allowDecisionSupport: boolean;
   allowWorkspaceSettings: boolean;
   children: ReactNode;
   sessionUser: {
@@ -68,6 +69,7 @@ export function AuthenticatedAppShell(props: AuthenticatedAppShellProps) {
 }
 
 export function AppShellFrame({
+  allowDecisionSupport,
   allowWorkspaceSettings,
   children,
   currentPath,
@@ -75,11 +77,14 @@ export function AppShellFrame({
 }: AppShellFrameProps) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
+  const primaryNavItems = allowDecisionSupport
+    ? PRIMARY_NAV_ITEMS
+    : PRIMARY_NAV_ITEMS.filter((item) => item.href !== "/analytics");
   const secondaryNavItems = allowWorkspaceSettings ? [SETTINGS_NAV_ITEM] : [];
-  const allItems = [...PRIMARY_NAV_ITEMS, ...secondaryNavItems];
+  const allItems = [...primaryNavItems, ...secondaryNavItems];
   const activeItem =
     allItems.find((item) => isNavItemActive(item.href, currentPath)) ??
-    PRIMARY_NAV_ITEMS[0];
+    primaryNavItems[0];
   const activeLabel = activeItem.label;
 
   const displayName =
@@ -108,7 +113,7 @@ export function AppShellFrame({
 
         <NavigationList
           currentPath={currentPath}
-          items={PRIMARY_NAV_ITEMS}
+          items={primaryNavItems}
           onNavigate={() => setIsMobileNavOpen(false)}
           title="Mobile navigation"
         />
@@ -151,7 +156,7 @@ export function AppShellFrame({
 
           <NavigationList
             currentPath={currentPath}
-            items={PRIMARY_NAV_ITEMS}
+            items={primaryNavItems}
             title="Primary navigation"
           />
 

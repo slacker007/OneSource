@@ -12,6 +12,7 @@ describe("AppShellFrame", () => {
   it("renders the primary navigation and search placeholder", () => {
     render(
       <AppShellFrame
+        allowDecisionSupport
         allowWorkspaceSettings
         currentPath="/sources"
         sessionUser={{
@@ -47,6 +48,7 @@ describe("AppShellFrame", () => {
 
     render(
       <AppShellFrame
+        allowDecisionSupport={false}
         allowWorkspaceSettings={false}
         currentPath="/"
         sessionUser={{
@@ -68,6 +70,9 @@ describe("AppShellFrame", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: /^settings/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /^analytics/i }),
     ).not.toBeInTheDocument();
     expect(screen.getByText(/capture workspace/i)).toBeInTheDocument();
   });

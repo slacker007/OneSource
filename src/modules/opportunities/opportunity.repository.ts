@@ -8,6 +8,11 @@ import {
 } from "./opportunity-scoring";
 import type {
   AgencySummary,
+  DecisionConsoleItem,
+  DecisionConsoleQuery,
+  DecisionConsoleRanking,
+  DecisionConsoleScope,
+  DecisionConsoleSnapshot,
   CompetitorSummary,
   ContractVehicleSummary,
   DashboardDeadlineSummary,
@@ -64,6 +69,16 @@ const OPPORTUNITY_LIST_SORTS = [
   "title_asc",
   "stage_asc",
 ] as const satisfies OpportunityListSort[];
+const DECISION_CONSOLE_RANKINGS = [
+  "value",
+  "score",
+  "urgency",
+  "risk",
+] as const satisfies DecisionConsoleRanking[];
+const DECISION_CONSOLE_SCOPES = [
+  "active",
+  "all",
+] as const satisfies DecisionConsoleScope[];
 
 const organizationScoringProfileSelect = {
   select: {
@@ -265,8 +280,22 @@ const organizationDashboardArgs = {
           select: {
             totalScore: true,
             maximumScore: true,
+            scorePercent: true,
             recommendationOutcome: true,
+            recommendationSummary: true,
             calculatedAt: true,
+            factorScores: {
+              orderBy: [{ factorKey: "asc" }, { id: "asc" }],
+              select: {
+                id: true,
+                factorKey: true,
+                factorLabel: true,
+                weight: true,
+                score: true,
+                maximumScore: true,
+                explanation: true,
+              },
+            },
           },
         },
         bidDecisions: {
@@ -760,8 +789,19 @@ type OrganizationDashboardOpportunityRecord = {
   scorecards: Array<{
     totalScore: { toString(): string } | null;
     maximumScore: { toString(): string } | null;
+    scorePercent: { toString(): string } | null;
     recommendationOutcome: OpportunityScoreSummary["recommendationOutcome"];
+    recommendationSummary: string | null;
     calculatedAt: Date;
+    factorScores: Array<{
+      id: string;
+      factorKey: string;
+      factorLabel: string;
+      weight: { toString(): string } | null;
+      score: { toString(): string } | null;
+      maximumScore: { toString(): string } | null;
+      explanation: string | null;
+    }>;
   }>;
   bidDecisions: Array<{
     id: string;
@@ -980,6 +1020,13 @@ type ListOpportunitySummariesParams = {
   organizationSlug?: string;
 };
 
+type GetDecisionConsoleSnapshotParams = {
+  db: OpportunityRepositoryClient;
+  organizationSlug?: string;
+  query: DecisionConsoleQuery;
+  now?: Date;
+};
+
 const opportunityListSearchParamsSchema = z.object({
   agency: z
     .string()
@@ -1014,6 +1061,11 @@ const opportunityListSearchParamsSchema = z.object({
     .max(120)
     .optional()
     .transform(normalizeOptionalString),
+});
+
+const decisionConsoleSearchParamsSchema = z.object({
+  ranking: z.enum(DECISION_CONSOLE_RANKINGS).optional().default("value"),
+  scope: z.enum(DECISION_CONSOLE_SCOPES).optional().default("active"),
 });
 
 export async function listOpportunitySummaries({
@@ -1093,6 +1145,104 @@ export async function getHomeDashboardSnapshot({
     topOpportunities: [...opportunitiesForAction]
       .sort(compareTopOpportunities)
       .slice(0, TOP_OPPORTUNITY_LIMIT),
+  };
+}
+
+export function parseDecisionConsoleSearchParams(
+  searchParams:
+    | Record<string, string | string[] | undefined>
+    | undefined,
+): DecisionConsoleQuery {
+  const parsed = decisionConsoleSearchParamsSchema.parse({
+    ranking: getFirstSearchParamValue(searchParams?.ranking),
+    scope: getFirstSearchParamValue(searchParams?.scope),
+  });
+
+  return {
+    ranking: parsed.ranking,
+    scope: parsed.scope,
+  };
+}
+
+export async function getDecisionConsoleSnapshot({
+  db,
+  organizationSlug = DEFAULT_ORGANIZATION_SLUG,
+  query,
+  now = new Date(),
+}: GetDecisionConsoleSnapshotParams): Promise<DecisionConsoleSnapshot | null> {
+  const record = await loadOrganizationDashboardRecord({
+    db,
+    organizationSlug,
+  });
+
+  if (!record) {
+    return null;
+  }
+
+  const sourceDisplayLabelBySystem = buildSourceDisplayLabelMap(record);
+  const opportunities = record.opportunities.map((opportunity) =>
+    mapDecisionConsoleItem({
+      opportunity,
+      organizationProfile: record.organizationProfile,
+      referenceDate: now,
+      sourceDisplayLabelBySystem,
+    }),
+  );
+  const opportunitiesInScope =
+    query.scope === "active"
+      ? opportunities.filter((opportunity) => opportunity.isActivePipelineOpportunity)
+      : opportunities;
+  const rankedOpportunities = [...opportunitiesInScope]
+    .sort((left, right) => compareDecisionConsoleItems(left, right, query.ranking))
+    .map(stripDecisionConsoleWorkingFields);
+
+  return {
+    organization: {
+      id: record.id,
+      name: record.name,
+      slug: record.slug,
+    },
+    query,
+    comparedOpportunityCount: rankedOpportunities.length,
+    goOpportunityCount: rankedOpportunities.filter(
+      (opportunity) =>
+        opportunity.finalDecision === "GO" ||
+        (opportunity.finalDecision === null &&
+          opportunity.recommendationOutcome === "GO"),
+    ).length,
+    urgentOpportunityCount: rankedOpportunities.filter(
+      (opportunity) =>
+        opportunity.urgencyDays !== null && opportunity.urgencyDays <= 14,
+    ).length,
+    rankingOptions: [
+      {
+        label: "Value lens",
+        value: "value",
+      },
+      {
+        label: "Overall score",
+        value: "score",
+      },
+      {
+        label: "Urgency",
+        value: "urgency",
+      },
+      {
+        label: "Risk pressure",
+        value: "risk",
+      },
+    ],
+    rankedOpportunities,
+    scopeOptions: [
+      {
+        label: "Active pipeline",
+        value: "active",
+      },
+      {
+        label: "All tracked records",
+        value: "all",
+      },
+    ],
   };
 }
 
@@ -1581,6 +1731,21 @@ function mapScoreSummary(
   };
 }
 
+type ResolvedOpportunityScoringMetrics = {
+  scorePercent: number | null;
+  recommendationOutcome: OpportunityScoreSummary["recommendationOutcome"];
+  strategicValuePercent: number | null;
+  riskPressurePercent: number | null;
+};
+
+type DecisionConsoleWorkingItem = DecisionConsoleItem & {
+  isActivePipelineOpportunity: boolean;
+  scoreSortValue: number;
+  strategicValueSortValue: number;
+  riskPressureSortValue: number;
+  urgencySortValue: number;
+};
+
 function mapBidDecisionSummary(
   bidDecision:
     | OrganizationDashboardRecord["opportunities"][number]["bidDecisions"][number]
@@ -1595,6 +1760,134 @@ function mapBidDecisionSummary(
     recommendationOutcome: bidDecision.recommendationOutcome,
     finalOutcome: bidDecision.finalOutcome,
     decidedAt: toIsoString(bidDecision.decidedAt),
+  };
+}
+
+function resolveOpportunityScoringMetrics({
+  opportunity,
+  organizationProfile,
+  referenceDate,
+}: {
+  opportunity: OrganizationDashboardRecord["opportunities"][number];
+  organizationProfile: OrganizationScoringProfileRecord;
+  referenceDate: Date;
+}): ResolvedOpportunityScoringMetrics {
+  const currentScorecard = opportunity.scorecards[0];
+
+  if (currentScorecard) {
+    const scorePercent =
+      parseNumericString(currentScorecard.scorePercent?.toString()) ??
+      calculatePercentFromNumericStrings(
+        currentScorecard.totalScore?.toString(),
+        currentScorecard.maximumScore?.toString(),
+      );
+    const strategicValuePercent = calculateFactorPercent(
+      currentScorecard.factorScores,
+      "strategic_alignment",
+    );
+    const riskConfidencePercent = calculateFactorPercent(
+      currentScorecard.factorScores,
+      "risk",
+    );
+
+    return {
+      scorePercent,
+      recommendationOutcome: currentScorecard.recommendationOutcome,
+      strategicValuePercent,
+      riskPressurePercent:
+        riskConfidencePercent === null
+          ? null
+          : roundPercent(100 - riskConfidencePercent),
+    };
+  }
+
+  const calculatedScorecard = calculateOpportunityScorecard(
+    opportunity,
+    organizationProfile,
+    referenceDate,
+  );
+
+  if (!calculatedScorecard) {
+    return {
+      scorePercent: null,
+      recommendationOutcome: null,
+      strategicValuePercent: null,
+      riskPressurePercent: null,
+    };
+  }
+
+  const strategicValuePercent = calculateCalculatedFactorPercent(
+    calculatedScorecard,
+    "strategic_alignment",
+  );
+  const riskConfidencePercent = calculateCalculatedFactorPercent(
+    calculatedScorecard,
+    "risk",
+  );
+
+  return {
+    scorePercent: calculatedScorecard.scorePercent,
+    recommendationOutcome: calculatedScorecard.recommendationOutcome,
+    strategicValuePercent,
+    riskPressurePercent:
+      riskConfidencePercent === null ? null : roundPercent(100 - riskConfidencePercent),
+  };
+}
+
+function mapDecisionConsoleItem({
+  opportunity,
+  organizationProfile,
+  referenceDate,
+  sourceDisplayLabelBySystem,
+}: {
+  opportunity: OrganizationDashboardRecord["opportunities"][number];
+  organizationProfile: OrganizationScoringProfileRecord;
+  referenceDate: Date;
+  sourceDisplayLabelBySystem: Map<string, string>;
+}): DecisionConsoleWorkingItem {
+  const scoringMetrics = resolveOpportunityScoringMetrics({
+    opportunity,
+    organizationProfile,
+    referenceDate,
+  });
+  const bidDecision = mapBidDecisionSummary(opportunity.bidDecisions[0]);
+  const urgency = buildUrgencyMetrics(opportunity.responseDeadlineAt, referenceDate);
+
+  return {
+    id: opportunity.id,
+    title: opportunity.title,
+    currentStageLabel:
+      opportunity.currentStageLabel ??
+      humanizeStageKey(opportunity.currentStageKey) ??
+      "Unstaged",
+    leadAgency: mapAgencySummary(opportunity.leadAgency),
+    responseDeadlineAt: toIsoString(opportunity.responseDeadlineAt),
+    updatedAt: opportunity.updatedAt.toISOString(),
+    sourceDisplayLabel:
+      sourceDisplayLabelBySystem.get(opportunity.originSourceSystem ?? "") ??
+      humanizeSourceSystem(opportunity.originSourceSystem ?? "manual_entry"),
+    scorePercent:
+      scoringMetrics.scorePercent === null
+        ? null
+        : formatNumericScore(scoringMetrics.scorePercent),
+    strategicValuePercent:
+      scoringMetrics.strategicValuePercent === null
+        ? null
+        : formatNumericScore(scoringMetrics.strategicValuePercent),
+    riskPressurePercent:
+      scoringMetrics.riskPressurePercent === null
+        ? null
+        : formatNumericScore(scoringMetrics.riskPressurePercent),
+    urgencyScore: formatNumericScore(urgency.score),
+    urgencyDays: urgency.days,
+    urgencyLabel: urgency.label,
+    recommendationOutcome: scoringMetrics.recommendationOutcome,
+    finalDecision: bidDecision?.finalOutcome ?? null,
+    isActivePipelineOpportunity: isActiveStageKey(opportunity.currentStageKey),
+    scoreSortValue: scoringMetrics.scorePercent ?? -1,
+    strategicValueSortValue: scoringMetrics.strategicValuePercent ?? -1,
+    riskPressureSortValue: scoringMetrics.riskPressurePercent ?? -1,
+    urgencySortValue: urgency.score,
   };
 }
 
@@ -1984,11 +2277,15 @@ function requiresAttention(opportunity: OpportunitySummary) {
 }
 
 function isActivePipelineOpportunity(opportunity: OpportunitySummary) {
-  if (!opportunity.currentStageKey) {
+  return isActiveStageKey(opportunity.currentStageKey);
+}
+
+function isActiveStageKey(stageKey: string | null | undefined) {
+  if (!stageKey) {
     return true;
   }
 
-  return !CLOSED_PIPELINE_STAGE_KEYS.includes(opportunity.currentStageKey);
+  return !CLOSED_PIPELINE_STAGE_KEYS.includes(stageKey);
 }
 
 function buildUpcomingDeadlines({
@@ -2225,6 +2522,88 @@ function compareTopOpportunities(
   return left.title.localeCompare(right.title);
 }
 
+function compareDecisionConsoleItems(
+  left: DecisionConsoleWorkingItem,
+  right: DecisionConsoleWorkingItem,
+  ranking: DecisionConsoleRanking,
+) {
+  switch (ranking) {
+    case "score": {
+      const scoreComparison = right.scoreSortValue - left.scoreSortValue;
+
+      if (scoreComparison !== 0) {
+        return scoreComparison;
+      }
+
+      return compareDecisionConsoleItems(left, right, "value");
+    }
+    case "urgency": {
+      const urgencyComparison = right.urgencySortValue - left.urgencySortValue;
+
+      if (urgencyComparison !== 0) {
+        return urgencyComparison;
+      }
+
+      return compareDecisionConsoleItems(left, right, "score");
+    }
+    case "risk": {
+      const riskComparison =
+        right.riskPressureSortValue - left.riskPressureSortValue;
+
+      if (riskComparison !== 0) {
+        return riskComparison;
+      }
+
+      return compareDecisionConsoleItems(left, right, "urgency");
+    }
+    case "value":
+    default: {
+      const valueComparison =
+        right.strategicValueSortValue - left.strategicValueSortValue;
+
+      if (valueComparison !== 0) {
+        return valueComparison;
+      }
+
+      const scoreComparison = right.scoreSortValue - left.scoreSortValue;
+
+      if (scoreComparison !== 0) {
+        return scoreComparison;
+      }
+
+      const urgencyComparison = right.urgencySortValue - left.urgencySortValue;
+
+      if (urgencyComparison !== 0) {
+        return urgencyComparison;
+      }
+
+      return left.title.localeCompare(right.title);
+    }
+  }
+}
+
+function stripDecisionConsoleWorkingFields(
+  item: DecisionConsoleWorkingItem,
+): DecisionConsoleItem {
+  return {
+    id: item.id,
+    title: item.title,
+    currentStageLabel: item.currentStageLabel,
+    leadAgency: item.leadAgency,
+    responseDeadlineAt: item.responseDeadlineAt,
+    updatedAt: item.updatedAt,
+    sourceDisplayLabel: item.sourceDisplayLabel,
+    scorePercent: item.scorePercent,
+    strategicValuePercent: item.strategicValuePercent,
+    riskPressurePercent: item.riskPressurePercent,
+    urgencyScore: item.urgencyScore,
+    urgencyDays: item.urgencyDays,
+    urgencyLabel: item.urgencyLabel,
+    recommendationOutcome: item.recommendationOutcome,
+    finalDecision: item.finalDecision,
+  };
+}
+
 function getScoreValue(score: string | null | undefined) {
   if (!score) {
     return -1;
@@ -2310,6 +2689,131 @@ function compareMilestoneSummaries(
   right: OpportunityMilestoneSummary,
 ) {
   return left.targetDate.localeCompare(right.targetDate);
+}
+
+function buildUrgencyMetrics(deadlineAt: Date | null, now: Date) {
+  if (!deadlineAt) {
+    return {
+      days: null,
+      label: "No deadline",
+      score: 0,
+    };
+  }
+
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const days = Math.ceil((deadlineAt.getTime() - now.getTime()) / msPerDay);
+
+  if (days <= 0) {
+    return {
+      days,
+      label: "Overdue",
+      score: 100,
+    };
+  }
+
+  if (days <= 7) {
+    return {
+      days,
+      label: `${days} day${days === 1 ? "" : "s"} left`,
+      score: 90,
+    };
+  }
+
+  if (days <= 14) {
+    return {
+      days,
+      label: `${days} days left`,
+      score: 75,
+    };
+  }
+
+  if (days <= 30) {
+    return {
+      days,
+      label: `${days} days left`,
+      score: 55,
+    };
+  }
+
+  if (days <= 60) {
+    return {
+      days,
+      label: `${days} days left`,
+      score: 30,
+    };
+  }
+
+  return {
+    days,
+    label: `${days} days left`,
+    score: 10,
+  };
+}
+
+function calculateFactorPercent(
+  factors: Array<{
+    factorKey: string;
+    score: { toString(): string } | null;
+    maximumScore: { toString(): string } | null;
+  }>,
+  factorKey: string,
+) {
+  const factor = factors.find((candidate) => candidate.factorKey === factorKey);
+
+  if (!factor) {
+    return null;
+  }
+
+  return calculatePercentFromNumericStrings(
+    factor.score?.toString(),
+    factor.maximumScore?.toString(),
+  );
+}
+
+function calculateCalculatedFactorPercent(
+  scorecard: CalculatedOpportunityScorecard,
+  factorKey: string,
+) {
+  const factor = scorecard.factors.find(
+    (candidate) => candidate.factorKey === factorKey,
+  );
+
+  if (!factor || factor.maximumScore <= 0) {
+    return null;
+  }
+
+  return roundPercent((factor.score / factor.maximumScore) * 100);
+}
+
+function calculatePercentFromNumericStrings(
+  numerator: string | null | undefined,
+  denominator: string | null | undefined,
+) {
+  const parsedNumerator = parseNumericString(numerator);
+  const parsedDenominator = parseNumericString(denominator);
+
+  if (
+    parsedNumerator === null ||
+    parsedDenominator === null ||
+    parsedDenominator <= 0
+  ) {
+    return null;
+  }
+
+  return roundPercent((parsedNumerator / parsedDenominator) * 100);
+}
+
+function parseNumericString(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function roundPercent(value: number) {
+  return Math.round(value * 100) / 100;
 }
 
 function filterOpportunitySummaries({

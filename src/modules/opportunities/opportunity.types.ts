@@ -382,3 +382,47 @@ export type HomeDashboardSnapshot = {
   upcomingDeadlines: DashboardDeadlineSummary[];
   topOpportunities: OpportunitySummary[];
 };
+
+export type DecisionConsoleRanking = "value" | "score" | "urgency" | "risk";
+
+export type DecisionConsoleScope = "active" | "all";
+
+export type DecisionConsoleQuery = {
+  ranking: DecisionConsoleRanking;
+  scope: DecisionConsoleScope;
+};
+
+export type DecisionConsoleItem = {
+  id: string;
+  title: string;
+  currentStageLabel: string;
+  leadAgency: AgencySummary | null;
+  responseDeadlineAt: string | null;
+  updatedAt: string;
+  sourceDisplayLabel: string;
+  scorePercent: string | null;
+  strategicValuePercent: string | null;
+  riskPressurePercent: string | null;
+  urgencyScore: string;
+  urgencyDays: number | null;
+  urgencyLabel: string;
+  recommendationOutcome: BidDecisionOutcome | null;
+  finalDecision: BidDecisionOutcome | null;
+};
+
+export type DecisionConsoleSnapshot = {
+  organization: OrganizationSummary;
+  query: DecisionConsoleQuery;
+  comparedOpportunityCount: number;
+  goOpportunityCount: number;
+  urgentOpportunityCount: number;
+  rankingOptions: Array<{
+    label: string;
+    value: DecisionConsoleRanking;
+  }>;
+  rankedOpportunities: DecisionConsoleItem[];
+  scopeOptions: Array<{
+    label: string;
+    value: DecisionConsoleScope;
+  }>;
+};

@@ -10,6 +10,10 @@ export default async function AuthenticatedAppLayout({
   children: React.ReactNode;
 }>) {
   const session = await requireAuthenticatedAppSession();
+  const allowDecisionSupport = hasAppPermission(
+    session.user.roleKeys,
+    "view_decision_support",
+  );
   const allowWorkspaceSettings = hasAppPermission(
     session.user.roleKeys,
     "manage_workspace_settings",
@@ -17,6 +21,7 @@ export default async function AuthenticatedAppLayout({
 
   return (
     <AuthenticatedAppShell
+      allowDecisionSupport={allowDecisionSupport}
       allowWorkspaceSettings={allowWorkspaceSettings}
       sessionUser={{
         email: session.user.email,
