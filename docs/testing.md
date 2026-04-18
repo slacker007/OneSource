@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 3 dashboard baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 4 opportunity-list baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/sources` preview dialog, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/sources` preview dialog, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -43,6 +43,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - redirect anonymous requests for `/` to `/sign-in`
 - submit seeded local credentials through the credentials provider
 - land back on the protected shell with the authenticated-session UI visible
+- navigate into `/opportunities`, apply real source and stage filters, and observe the URL plus result set update together
 - navigate from the desktop shell into another primary section with the top-bar search placeholder still visible
 - open the shared `/sources` import-preview dialog successfully
 - open the small-screen drawer and navigate into another primary section successfully
@@ -68,6 +69,12 @@ For the current Phase 3 dashboard slice, targeted unit verification should confi
 - the authenticated shell still opens the mobile drawer through the shared drawer primitive
 - the source-intake preview renders the shared form, table, empty-state, and error-state patterns
 - the source-intake preview can open the shared dialog without breaking page rendering
+
+For the current Phase 4 opportunities-list slice, targeted unit verification should confirm:
+
+- the typed opportunity repository parses URL search params into a normalized query object with bounded defaults
+- the typed opportunity repository filters, sorts, paginates, and labels seeded opportunities without leaking raw Prisma payloads into the page layer
+- the rendered opportunity list page shows URL-synced control values, result rows, pagination state, and a truthful empty state
 
 When the changed area includes Prisma schema or seed logic, also run:
 

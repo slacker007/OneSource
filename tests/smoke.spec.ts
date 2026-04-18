@@ -55,6 +55,30 @@ test("authenticated homepage smoke test", async ({ page }) => {
     page.getByRole("searchbox", { name: /global search/i }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
+  await page.getByRole("link", { name: /^Opportunities/i }).click();
+  await expect(page).toHaveURL(/\/opportunities$/);
+  await expect(
+    page.getByRole("heading", {
+      name: /opportunity pipeline/i,
+    }),
+  ).toBeVisible();
+  await page.locator("#opportunity-source").selectOption("manual_entry");
+  await page
+    .locator("#opportunity-stage")
+    .selectOption("proposal_in_development");
+  await page.getByRole("button", { name: /apply filters/i }).click();
+  await expect(page).toHaveURL(/\/opportunities\?/);
+  await expect(page).toHaveURL(/source=manual_entry/);
+  await expect(page).toHaveURL(/stage=proposal_in_development/);
+  await expect(
+    page.getByRole("table", { name: /opportunity pipeline results/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/va claims intake automation bpa/i),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/enterprise knowledge management support services/i),
+  ).not.toBeVisible();
   await page.getByRole("link", { name: /^Sources/i }).click();
   await expect(page).toHaveURL(/\/sources$/);
   await expect(
@@ -119,6 +143,9 @@ test.describe("mobile navigation", () => {
       page.getByRole("heading", {
         name: /opportunity pipeline/i,
       }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("table", { name: /opportunity pipeline results/i }),
     ).toBeVisible();
     await expect(
       page.getByRole("searchbox", { name: /global search/i }),

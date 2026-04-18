@@ -95,6 +95,7 @@ export type OpportunityBidDecisionSummary = {
 export type OpportunitySummary = {
   id: string;
   title: string;
+  solicitationNumber: string | null;
   leadAgency: AgencySummary | null;
   currentStageKey: string | null;
   currentStageLabel: string;
@@ -102,12 +103,72 @@ export type OpportunitySummary = {
   originSourceSystem: string | null;
   naicsCode: string | null;
   sourceSummaryText: string | null;
+  updatedAt: string;
   score: OpportunityScoreSummary | null;
   bidDecision: OpportunityBidDecisionSummary | null;
   vehicles: ContractVehicleSummary[];
   competitors: CompetitorSummary[];
   tasks: OpportunityTaskSummary[];
   milestones: OpportunityMilestoneSummary[];
+};
+
+export type OpportunityListDueWindow =
+  | "all"
+  | "overdue"
+  | "next_30_days"
+  | "next_60_days"
+  | "no_deadline";
+
+export type OpportunityListSort =
+  | "updated_desc"
+  | "deadline_asc"
+  | "deadline_desc"
+  | "title_asc"
+  | "stage_asc";
+
+export type OpportunityListQuery = {
+  query: string | null;
+  agencyId: string | null;
+  naicsCode: string | null;
+  stageKey: string | null;
+  sourceSystem: string | null;
+  dueWindow: OpportunityListDueWindow;
+  sort: OpportunityListSort;
+  page: number;
+  pageSize: number;
+};
+
+export type OpportunityListFilterOption = {
+  count: number;
+  label: string;
+  value: string;
+};
+
+export type OpportunityListItemSummary = OpportunitySummary & {
+  sourceDisplayLabel: string;
+};
+
+export type OpportunityListSnapshot = {
+  availableFilterCount: number;
+  filterOptions: {
+    agencies: OpportunityListFilterOption[];
+    dueWindows: Array<{
+      label: string;
+      value: OpportunityListDueWindow;
+    }>;
+    sortOptions: Array<{
+      label: string;
+      value: OpportunityListSort;
+    }>;
+    sources: OpportunityListFilterOption[];
+    stages: OpportunityListFilterOption[];
+  };
+  organization: OrganizationSummary;
+  pageCount: number;
+  pageResultCount: number;
+  query: OpportunityListQuery;
+  results: OpportunityListItemSummary[];
+  totalCount: number;
 };
 
 export type OpportunityStageSummary = {

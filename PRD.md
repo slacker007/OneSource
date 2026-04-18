@@ -630,7 +630,7 @@ This section is mandatory for every future coding iteration because conversation
 
 ### Phase 4: Opportunity Management
 
-- [ ] P4-01 Build the opportunities list page with search, sort, filter, pagination, and URL-synced query state.
+- [x] P4-01 Build the opportunities list page with search, sort, filter, pagination, and URL-synced query state.
       Done when: users can filter by agency, NAICS or capability tag, stage, due date, and source.
       Verify with: list query tests and one Playwright Chromium filter flow.
 
@@ -789,8 +789,8 @@ This section is mandatory for every future coding iteration because conversation
 
 Update this section at the end of every coding loop.
 
-- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, `P2-03`, `P2-04`, `P3-01`, `P3-02`, and `P3-03` are complete. This loop replaced the preview-only homepage module with a real seeded dashboard landing page backed by the typed opportunity repository and live Prisma access, including tracked and active pursuit counts, stage distribution, upcoming deadlines, and ranked top opportunities.
-- Next recommended item: `P4-01 Build the opportunities list page with search, sort, filter, pagination, and URL-synced query state.`
-- Blockers: No product blocker for `P4-01`. Unrelated repo sync blocker remains: the earlier local history rewrite still has not been force-pushed to `origin` from this environment because the remote is SSH-based and this runtime lacks an authenticated SSH path.
-- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/testing.md`, `src/app/(app)/page.tsx`, `src/components/home/app-shell-preview.test.tsx`, `src/components/home/app-shell-preview.tsx` (removed), `src/components/home/dashboard-landing.tsx`, `src/modules/opportunities/opportunity.repository.ts`, `src/modules/opportunities/opportunity.repository.test.ts`, `src/modules/opportunities/opportunity.types.ts`, and `tests/smoke.spec.ts`.
-- Tests run in latest loop: `npm test -- src/modules/opportunities/opportunity.repository.test.ts src/components/home/app-shell-preview.test.tsx`; `npm run lint`; `npm run build`; `docker compose up -d db`; `npm run prisma:validate`; `npm run db:seed`; `npm run lint`; `npm test`; `npm run build`; `npm run e2e`; `make compose-test-lint`; `make compose-test`; `make compose-test-build`; `make compose-test-e2e`; `make compose-down`; and `git diff --check`. Verification used Docker and Playwright.
+- Current status: `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, `P2-03`, `P2-04`, `P3-01`, `P3-02`, `P3-03`, and `P4-01` are complete. This loop replaced the `/opportunities` placeholder with a real server-rendered pipeline page backed by the typed opportunity repository, including URL-synced keyword search, agency/NAICS/stage/source/due-date filtering, sorting, pagination, and a truthful empty state.
+- Next recommended item: `P4-01a Build an external source search page for connectors such as sam.gov with keyword and structured filters.`
+- Blockers: No product blocker for `P4-01a`. Unrelated repo sync blocker remains: the earlier local history rewrite still has not been force-pushed to `origin` from this environment because the remote is SSH-based and this runtime lacks an authenticated SSH path.
+- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/testing.md`, `src/app/(app)/opportunities/page.tsx`, `src/components/home/app-shell-preview.test.tsx`, `src/components/opportunities/opportunity-list.tsx`, `src/components/opportunities/opportunity-list.test.tsx`, `src/modules/opportunities/opportunity.repository.ts`, `src/modules/opportunities/opportunity.repository.test.ts`, `src/modules/opportunities/opportunity.types.ts`, and `tests/smoke.spec.ts`.
+- Tests run in latest loop: `npm test -- src/modules/opportunities/opportunity.repository.test.ts src/components/opportunities/opportunity-list.test.tsx src/components/home/app-shell-preview.test.tsx`; `npm run lint`; `npm run build`; `docker compose up -d db`; `npm run prisma:validate`; `npm run db:seed`; `npm run lint`; `npm test`; `npm run build`; `npm run e2e`; `make compose-test-lint`; `make compose-test`; `make compose-test-build`; `make compose-test-e2e`; `make compose-down`; and `git diff --check`. Verification used Docker and Playwright.

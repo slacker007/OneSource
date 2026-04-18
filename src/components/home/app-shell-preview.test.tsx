@@ -64,6 +64,7 @@ const snapshot: HomeDashboardSnapshot = {
     {
       id: "opp_123",
       title: "Enterprise Knowledge Management Support Services",
+      solicitationNumber: "FA4861-26-R-0012",
       leadAgency: {
         id: "agency_1",
         name: "99th Contracting Squadron",
@@ -75,6 +76,7 @@ const snapshot: HomeDashboardSnapshot = {
       originSourceSystem: "sam_gov",
       naicsCode: "541511",
       sourceSummaryText: "Knowledge management support.",
+      updatedAt: "2026-04-18T02:00:00.000Z",
       score: {
         totalScore: "79.50",
         maximumScore: "100.00",

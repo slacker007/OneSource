@@ -1,6 +1,6 @@
 # OneSource
 
-OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold, all current Phase 1 foundation slices, the first four Phase 2 access-control and auditability slices, and the first three Phase 3 slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, Auth.js credentials sign-in, a shared authenticated app shell with responsive navigation, a reusable UI-pattern kit for tables, forms, badges, drawers, dialogs, empty states, and error states, a real dashboard landing page backed by typed Prisma queries, protected routes, role-based permission helpers, a server-guarded admin console for role visibility and audit inspection, a truthful source-intake preview surface, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, typed opportunity and admin read-model modules, transactional opportunity write services with built-in audit emission, expanded realistic demo seed data, boot-time environment validation, and a placeholder worker process.
+OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold, all current Phase 1 foundation slices, the first four Phase 2 access-control and auditability slices, the first three Phase 3 slices, and the first Phase 4 slice: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, Auth.js credentials sign-in, a shared authenticated app shell with responsive navigation, a reusable UI-pattern kit for tables, forms, badges, drawers, dialogs, empty states, and error states, a real dashboard landing page backed by typed Prisma queries, a real opportunities list with URL-synced filters and pagination, protected routes, role-based permission helpers, a server-guarded admin console for role visibility and audit inspection, a truthful source-intake preview surface, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, typed opportunity and admin read-model modules, transactional opportunity write services with built-in audit emission, expanded realistic demo seed data, boot-time environment validation, and a placeholder worker process.
 
 ## Current Status
 
@@ -8,8 +8,8 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - Implementation scope, checklist sequencing, and current handoff state live in `PRD.md`.
 - Engineering and verification rules live in `AGENTS.md`.
 - Active loop notes and crash-recovery context live in `NOTES.md`.
-- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, `P2-03`, `P2-04`, `P3-01`, `P3-02`, and `P3-03` are complete.
-- The next recommended item is `P4-01`, which builds the opportunities list page with search, sort, filter, pagination, and URL-synced query state.
+- `P0-01`, `P0-02`, `P0-02a`, `P0-03`, `P0-04`, `P1-01`, `P1-02`, `P1-02a`, `P1-03`, `P1-04`, `P1-05`, `P2-01`, `P2-02`, `P2-03`, `P2-04`, `P3-01`, `P3-02`, `P3-03`, and `P4-01` are complete.
+- The next recommended item is `P4-01a`, which builds the external source search page for connectors such as `sam.gov`.
 
 ## Stack In Repo Today
 
@@ -118,7 +118,7 @@ npm run db:seed
 
 The current seed creates a default organization, the canonical system role set, seven realistic local users spanning admin, executive, BD, capture, proposal, contributor, and viewer roles, deterministic local password hashes for those seeded users, five agencies, five contract vehicles, five competitors, connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`, one imported `sam.gov` opportunity with retained raw and normalized payloads plus attachment and contact child records, one applied import decision that created the canonical opportunity, one `usaspending_api` enrichment search and retained award-centric source record with an applied link-to-existing import decision, and four additional manual opportunities spanning `qualified`, `capture_active`, `proposal_in_development`, `submitted`, and `no_bid` stages with `GO`, `DEFER`, and `NO_GO` score or decision outcomes.
 
-The typed opportunity repository under `src/modules/opportunities/` exposes shared DTOs plus typed query functions for dashboard summaries and opportunity cards. The typed admin repository under `src/modules/admin/` exposes organization-scoped user-role visibility plus recent audit-log inspection for the guarded `/settings` route. The authenticated `(app)` route group now renders through a shared shell with a desktop sidebar, sticky top bar, read-only global search placeholder, and reusable mobile navigation drawer. The `/` dashboard route now renders a real landing page with tracked and active pursuit counts, stage distribution, upcoming deadlines, and ranked opportunities from seeded data. The `/sources` route hosts a truthful source-intake preview that exercises the shared form, badge, table, dialog, empty-state, and error-state patterns, while `/opportunities`, `/tasks`, and `/analytics` remain protected placeholders for later phase work.
+The typed opportunity repository under `src/modules/opportunities/` exposes shared DTOs plus typed query functions for dashboard summaries and URL-synced opportunity-list snapshots. The typed admin repository under `src/modules/admin/` exposes organization-scoped user-role visibility plus recent audit-log inspection for the guarded `/settings` route. The authenticated `(app)` route group now renders through a shared shell with a desktop sidebar, sticky top bar, read-only global search placeholder, and reusable mobile navigation drawer. The `/` dashboard route now renders a real landing page with tracked and active pursuit counts, stage distribution, upcoming deadlines, and ranked opportunities from seeded data. The `/opportunities` route now renders a real opportunity pipeline page with keyword search, agency/NAICS/stage/source/due-date filters, sort controls, pagination, and URL-synced query state. The `/sources` route hosts a truthful source-intake preview that exercises the shared form, badge, table, dialog, empty-state, and error-state patterns, while `/tasks` and `/analytics` remain protected placeholders for later phase work.
 
 ## Optional Local Docker Dependency Cache
 
@@ -166,7 +166,7 @@ The committed `.env.example` contains the canonical development defaults.
 - Compose logs: `docker compose logs -f web worker`
 - Compose teardown: `make compose-down`
 
-`npm run e2e` starts the app automatically through the Playwright `webServer` configuration and injects a default local `DATABASE_URL` when one is not already set. When `PLAYWRIGHT_BASE_URL` is provided, Playwright skips the internal web server and targets the existing app instance instead. The current Chromium smoke suite covers the seeded dashboard widgets, desktop shell navigation, the source-intake preview dialog, the small-screen navigation drawer, admin access to `/settings`, and viewer denial on direct `/settings` navigation.
+`npm run e2e` starts the app automatically through the Playwright `webServer` configuration and injects a default local `DATABASE_URL` when one is not already set. When `PLAYWRIGHT_BASE_URL` is provided, Playwright skips the internal web server and targets the existing app instance instead. The current Chromium smoke suite covers the seeded dashboard widgets, the opportunities filter flow, desktop shell navigation, the source-intake preview dialog, the small-screen navigation drawer, admin access to `/settings`, and viewer denial on direct `/settings` navigation.
 
 See `docs/testing.md` for the durable verification workflow.
 See `docs/architecture.md`, `docs/runbook.md`, and `docs/security.md` for the current system design, operator procedures, and security baseline.
@@ -186,7 +186,7 @@ The canonical loop is now:
 
 ## Known Gaps
 
-- The authenticated shell, shared UI-pattern kit, seeded dashboard landing page, source-intake preview, protected placeholder sections, and `/settings` admin console now exist, but most business actions still need per-action authorization and real feature modules behind those routes
+- The authenticated shell, shared UI-pattern kit, seeded dashboard landing page, real opportunity list, source-intake preview, protected placeholder sections, and `/settings` admin console now exist, but most business actions still need per-action authorization and the remaining Phase 4+ feature modules behind those routes
 - Audit emission now exists in the shared opportunity write-service boundary, but auth events, permission failures, and user-facing mutation routes are not wired to it yet
 - No production job runner beyond the placeholder worker heartbeat
 

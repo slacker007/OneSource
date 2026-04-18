@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  getOpportunityListSnapshot,
   getHomeDashboardSnapshot,
   listOpportunitySummaries,
+  parseOpportunityListSearchParams,
   type OpportunityRepositoryClient,
   type OrganizationDashboardRecord,
 } from "@/modules/opportunities/opportunity.repository";
@@ -51,6 +53,7 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
       {
         id: "opp_alpha",
         title: "Enterprise Knowledge Management Support Services",
+        solicitationNumber: "FA4861-26-R-0012",
         currentStageKey: "capture_active",
         currentStageLabel: "Capture Active",
         responseDeadlineAt: new Date("2026-05-01T17:00:00.000Z"),
@@ -58,6 +61,7 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         naicsCode: "541511",
         sourceSummaryText:
           "Enterprise knowledge management and workflow modernization support.",
+        updatedAt: new Date("2026-04-18T01:00:00.000Z"),
         leadAgency: {
           id: "agency_1",
           name: "99th Contracting Squadron",
@@ -138,12 +142,14 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
       {
         id: "opp_beta",
         title: "Army Cloud Operations Recompete",
+        solicitationNumber: "W91QUZ-26-R-1042",
         currentStageKey: null,
         currentStageLabel: null,
         responseDeadlineAt: new Date("2026-06-20T17:00:00.000Z"),
         originSourceSystem: "sam_gov",
         naicsCode: "541512",
         sourceSummaryText: "Cloud operations and sustainment support.",
+        updatedAt: new Date("2026-04-17T01:00:00.000Z"),
         leadAgency: null,
         vehicles: [],
         competitors: [],
@@ -155,12 +161,14 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
       {
         id: "opp_gamma",
         title: "DHS Zero Trust Assessment Support",
+        solicitationNumber: "70RCSJ-26-R-ZT01",
         currentStageKey: "submitted",
         currentStageLabel: "Submitted",
         responseDeadlineAt: new Date("2026-04-18T21:00:00.000Z"),
         originSourceSystem: "manual_entry",
         naicsCode: "541519",
         sourceSummaryText: "Submitted cyber support pursuit.",
+        updatedAt: new Date("2026-04-18T02:00:00.000Z"),
         leadAgency: {
           id: "agency_2",
           name: "CISA OCPO",
@@ -228,6 +236,7 @@ describe("opportunity.repository", () => {
     expect(summaries).toHaveLength(3);
     expect(summaries[0]).toMatchObject({
       title: "Enterprise Knowledge Management Support Services",
+      solicitationNumber: "FA4861-26-R-0012",
       currentStageLabel: "Capture Active",
       leadAgency: {
         name: "99th Contracting Squadron",
@@ -309,6 +318,58 @@ describe("opportunity.repository", () => {
     expect(
       snapshot?.topOpportunities.map((opportunity) => opportunity.title),
     ).not.toContain("DHS Zero Trust Assessment Support");
+  });
+
+  it("parses and applies URL-synced opportunity list filters", async () => {
+    const db = createRepositoryClient(buildOrganizationDashboardRecord());
+    const query = parseOpportunityListSearchParams({
+      due: "next_30_days",
+      naics: "541511",
+      page: "9",
+      q: "knowledge",
+      sort: "deadline_asc",
+      source: "sam_gov",
+      stage: "capture_active",
+    });
+
+    const snapshot = await getOpportunityListSnapshot({
+      db,
+      now: new Date("2026-04-18T00:00:00.000Z"),
+      query,
+    });
+
+    expect(query).toMatchObject({
+      query: "knowledge",
+      naicsCode: "541511",
+      stageKey: "capture_active",
+      sourceSystem: "sam_gov",
+      dueWindow: "next_30_days",
+      sort: "deadline_asc",
+      page: 9,
+      pageSize: 4,
+    });
+    expect(snapshot).not.toBeNull();
+    expect(snapshot?.totalCount).toBe(1);
+    expect(snapshot?.pageCount).toBe(1);
+    expect(snapshot?.query.page).toBe(1);
+    expect(snapshot?.availableFilterCount).toBe(6);
+    expect(snapshot?.results).toHaveLength(1);
+    expect(snapshot?.results[0]).toMatchObject({
+      title: "Enterprise Knowledge Management Support Services",
+      sourceDisplayLabel: "SAM.gov",
+    });
+    expect(snapshot?.filterOptions.sources).toEqual([
+      {
+        count: 1,
+        label: "Manual entry",
+        value: "manual_entry",
+      },
+      {
+        count: 2,
+        label: "SAM.gov",
+        value: "sam_gov",
+      },
+    ]);
   });
 
   it("returns null when the requested organization is missing", async () => {
