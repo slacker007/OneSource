@@ -695,11 +695,22 @@ function PreviewPanel({
   previewSnapshot: SourceImportPreviewSnapshot;
   returnPath: string;
 }) {
-  const { alreadyTrackedOpportunity, connector, duplicateCandidates, importPreview, result } =
-    previewSnapshot;
+  const {
+    alreadyTrackedOpportunity,
+    connector,
+    duplicateCandidates,
+    importPreview,
+    result,
+    shouldAutoCanonicalize,
+    suggestedTargetOpportunityId,
+  } = previewSnapshot;
   const linkableCandidates = duplicateCandidates.filter(
     (candidate) => candidate.matchKind !== "exact_source",
   );
+  const recommendedCandidate =
+    linkableCandidates.find(
+      (candidate) => candidate.opportunityId === suggestedTargetOpportunityId,
+    ) ?? linkableCandidates[0] ?? null;
 
   return (
     <div className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]">
@@ -744,6 +755,20 @@ function PreviewPanel({
           </p>
           <p className="mt-2 text-sm text-[rgb(16,66,57)]">
             Stage: {alreadyTrackedOpportunity.currentStageLabel ?? "Unstaged"}.
+          </p>
+        </div>
+      ) : null}
+
+      {!alreadyTrackedOpportunity && shouldAutoCanonicalize && recommendedCandidate ? (
+        <div className="mt-5 rounded-[24px] border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.07)] px-4 py-4">
+          <p className="text-sm font-semibold text-[rgb(16,66,57)]">
+            Canonical merge recommended
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[rgb(16,66,57)]">
+            The import service will merge this result into{" "}
+            <span className="font-semibold">{recommendedCandidate.title}</span>{" "}
+            because the duplicate signals are strong enough to avoid creating a
+            second canonical opportunity.
           </p>
         </div>
       ) : null}
@@ -793,24 +818,26 @@ function PreviewPanel({
 
       {!alreadyTrackedOpportunity ? (
         <div className="mt-5 space-y-4">
-          <form action={importAction} className="space-y-3 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4">
-            <input name="mode" type="hidden" value="CREATE_OPPORTUNITY" />
-            <input name="sourceRecordId" type="hidden" value={result.id} />
-            <input name="returnPath" type="hidden" value={returnPath} />
-            <p className="text-sm font-semibold text-foreground">
-              Create a new tracked opportunity
-            </p>
-            <p className="text-muted text-sm leading-6">
-              Use this when the source result is net new or the duplicate
-              candidates do not represent the same pursuit.
-            </p>
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
-              type="submit"
-            >
-              Create tracked opportunity
-            </button>
-          </form>
+          {!shouldAutoCanonicalize ? (
+            <form action={importAction} className="space-y-3 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4">
+              <input name="mode" type="hidden" value="CREATE_OPPORTUNITY" />
+              <input name="sourceRecordId" type="hidden" value={result.id} />
+              <input name="returnPath" type="hidden" value={returnPath} />
+              <p className="text-sm font-semibold text-foreground">
+                Create a new tracked opportunity
+              </p>
+              <p className="text-muted text-sm leading-6">
+                Use this when the source result is net new or the duplicate
+                candidates do not represent the same pursuit.
+              </p>
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
+                type="submit"
+              >
+                Create tracked opportunity
+              </button>
+            </form>
+          ) : null}
 
           {linkableCandidates.length > 0 ? (
             <form
@@ -822,12 +849,14 @@ function PreviewPanel({
               <input name="returnPath" type="hidden" value={returnPath} />
               <div>
                 <p className="text-sm font-semibold text-foreground">
-                  Link to an existing tracked opportunity
+                  {shouldAutoCanonicalize
+                    ? "Merge into the canonical opportunity"
+                    : "Link to an existing tracked opportunity"}
                 </p>
                 <p className="text-muted mt-1 text-sm leading-6">
-                  Use the duplicate analysis to attach this source result to an
-                  already-tracked pursuit instead of creating a second canonical
-                  record.
+                  {shouldAutoCanonicalize
+                    ? "The strongest duplicate candidate is treated as the canonical pursuit. The import path will attach this source result and backfill missing canonical fields on the existing opportunity."
+                    : "Use the duplicate analysis to attach this source result to an already-tracked pursuit instead of creating a second canonical record."}
                 </p>
               </div>
 
@@ -840,7 +869,10 @@ function PreviewPanel({
                     key={candidate.opportunityId}
                   >
                     <input
-                      defaultChecked={index === 0}
+                      defaultChecked={
+                        candidate.opportunityId === suggestedTargetOpportunityId ||
+                        (suggestedTargetOpportunityId === null && index === 0)
+                      }
                       id={`target-${candidate.opportunityId}`}
                       name="targetOpportunityId"
                       type="radio"
@@ -871,7 +903,9 @@ function PreviewPanel({
                 className="inline-flex min-h-11 items-center justify-center rounded-full border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.08)] px-4 py-2 text-sm font-medium text-[rgb(19,78,68)]"
                 type="submit"
               >
-                Link to selected opportunity
+                {shouldAutoCanonicalize
+                  ? "Merge into selected opportunity"
+                  : "Link to selected opportunity"}
               </button>
             </form>
           ) : null}
@@ -1093,6 +1127,8 @@ function formatImportStatus(status: string) {
   switch (status) {
     case "created":
       return "Created a tracked opportunity from the selected external result.";
+    case "merged":
+      return "Merged the selected external result into the existing canonical opportunity.";
     case "linked":
       return "Linked the selected external result to an existing tracked opportunity.";
     case "already_tracked":
@@ -1106,6 +1142,8 @@ function formatMatchLabel(matchKind: SourceImportDuplicateCandidate["matchKind"]
   switch (matchKind) {
     case "exact_source":
       return "Exact source match";
+    case "exact_notice":
+      return "Exact notice match";
     case "strong_candidate":
       return "Strong duplicate";
     case "possible_candidate":

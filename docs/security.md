@@ -42,9 +42,10 @@ The current local credentials flow uses the shared development password document
 
 - External source payloads are treated as untrusted input and are stored in `source_records` as raw JSON plus normalized JSON for traceability.
 - The executable `sam.gov` connector now persists outbound request envelopes in `source_search_executions`, retains normalized `source_records`, and materializes normalized attachment/contact/award child rows before any preview or import action is allowed.
+- Source-import canonicalization now distinguishes exact source matches, exact notice matches, and weighted fuzzy duplicates on the server so strong duplicate imports merge into one canonical opportunity while every retained `source_record` still preserves its own lineage row.
 - The seed path demonstrates raw payload retention, normalized payload retention, import-preview payload retention, attachment/contact retention for `sam.gov`, award-enrichment retention for `usaspending_api`, and multiple manual opportunities with varied stage and decision outcomes for development-only dashboard work.
 - Search lineage and sync lineage are persisted separately through `source_search_results` and `source_sync_run_records` so later workflows can explain how a source record entered the system.
-- Promotion decisions are stored separately in `source_import_decisions`, which preserves whether a source record created a new canonical opportunity or only linked enrichment data to an existing one.
+- Promotion decisions are stored separately in `source_import_decisions`, which preserves whether a source record created a new canonical opportunity or only linked enrichment data to an existing one, and now records requested-versus-applied import mode metadata when deduplication auto-merges a create request into an existing canonical opportunity.
 - Workspace documents now support extracted text retention. Treat those rows as potentially sensitive because the extracted content can contain customer requirements, solution details, or partner information.
 
 ## Secrets And Configuration
@@ -75,7 +76,7 @@ The `audit_logs` table is the durable sink for future security-relevant activity
 - optional IP address and user-agent capture
 - immutable occurrence timestamp
 
-Current audit producers are the bootstrap seed path and the shared opportunity write service under `src/modules/opportunities/opportunity-write.service.ts`. That write boundary emits structured audit rows for representative create, update, delete, import-decision, stage-transition, and bid-decision flows.
+Current audit producers are the bootstrap seed path, the shared opportunity write service under `src/modules/opportunities/opportunity-write.service.ts`, and the source-import canonicalization flow under `src/modules/source-integrations/source-import.service.ts`. Those boundaries emit structured audit rows for representative create, update, delete, import-decision, stage-transition, bid-decision, and canonical merge refresh flows.
 
 ## Current Risks And Pending Work
 

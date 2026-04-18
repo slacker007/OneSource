@@ -15,6 +15,10 @@ import type { SourceSearchResultSummary } from "./source-search.service";
 
 const DEFAULT_ORGANIZATION_SLUG = "default-org";
 const IMPORT_MATCH_THRESHOLD = 60;
+const AUTO_CANONICALIZE_MATCH_KINDS = new Set<SourceImportMatchKind>([
+  "exact_notice",
+  "strong_candidate",
+]);
 
 const organizationSourceImportArgs = {
   select: {
@@ -44,6 +48,7 @@ const organizationSourceImportArgs = {
         solicitationNumber: true,
         naicsCode: true,
         originSourceSystem: true,
+        postedAt: true,
         responseDeadlineAt: true,
         leadAgency: {
           select: {
@@ -92,6 +97,7 @@ type OrganizationSourceImportRecord = {
     solicitationNumber: string | null;
     naicsCode: string | null;
     originSourceSystem: string | null;
+    postedAt: Date | null;
     responseDeadlineAt: Date | null;
     leadAgency: {
       name: string;
@@ -135,11 +141,100 @@ type SourceRecordPreviewRecord = {
   } | null;
 };
 
+const opportunityCanonicalizationSelect = {
+  id: true,
+  organizationId: true,
+  title: true,
+  description: true,
+  importedFromSourceRecordId: true,
+  originSourceSystem: true,
+  leadAgencyId: true,
+  externalNoticeId: true,
+  solicitationNumber: true,
+  sourceSummaryText: true,
+  sourceSummaryUrl: true,
+  postedAt: true,
+  postedDateRaw: true,
+  responseDeadlineAt: true,
+  responseDeadlineRaw: true,
+  procurementTypeLabel: true,
+  procurementBaseTypeLabel: true,
+  archiveType: true,
+  archivedAt: true,
+  archiveDateRaw: true,
+  sourceStatus: true,
+  naicsCode: true,
+  classificationCode: true,
+  setAsideCode: true,
+  setAsideDescription: true,
+  organizationType: true,
+  officeCity: true,
+  officeState: true,
+  officePostalCode: true,
+  officeCountryCode: true,
+  placeOfPerformanceStreet1: true,
+  placeOfPerformanceStreet2: true,
+  placeOfPerformanceCityCode: true,
+  placeOfPerformanceCityName: true,
+  placeOfPerformanceStateCode: true,
+  placeOfPerformanceStateName: true,
+  placeOfPerformancePostalCode: true,
+  placeOfPerformanceCountryCode: true,
+  additionalInfoUrl: true,
+  uiLink: true,
+  apiSelfLink: true,
+} as const;
+
+type OpportunityCanonicalizationRecord = {
+  id: string;
+  organizationId: string;
+  title: string;
+  description: string | null;
+  importedFromSourceRecordId: string | null;
+  originSourceSystem: string | null;
+  leadAgencyId: string | null;
+  externalNoticeId: string | null;
+  solicitationNumber: string | null;
+  sourceSummaryText: string | null;
+  sourceSummaryUrl: string | null;
+  postedAt: Date | null;
+  postedDateRaw: string | null;
+  responseDeadlineAt: Date | null;
+  responseDeadlineRaw: string | null;
+  procurementTypeLabel: string | null;
+  procurementBaseTypeLabel: string | null;
+  archiveType: string | null;
+  archivedAt: Date | null;
+  archiveDateRaw: string | null;
+  sourceStatus: string | null;
+  naicsCode: string | null;
+  classificationCode: string | null;
+  setAsideCode: string | null;
+  setAsideDescription: string | null;
+  organizationType: string | null;
+  officeCity: string | null;
+  officeState: string | null;
+  officePostalCode: string | null;
+  officeCountryCode: string | null;
+  placeOfPerformanceStreet1: string | null;
+  placeOfPerformanceStreet2: string | null;
+  placeOfPerformanceCityCode: string | null;
+  placeOfPerformanceCityName: string | null;
+  placeOfPerformanceStateCode: string | null;
+  placeOfPerformanceStateName: string | null;
+  placeOfPerformancePostalCode: string | null;
+  placeOfPerformanceCountryCode: string | null;
+  additionalInfoUrl: string | null;
+  uiLink: string | null;
+  apiSelfLink: string | null;
+};
+
 export type SourceImportRepositoryClient = {
   organization: {
-    findUnique(args: {
+    findFirst(args: {
       where: {
-        slug: string;
+        id?: string;
+        slug?: string;
       };
     } & typeof organizationSourceImportArgs): Promise<OrganizationSourceImportRecord | null>;
   };
@@ -216,14 +311,15 @@ type SourceImportTransactionClient = AuditLogWriter & {
         id: string;
         organizationId: string;
       };
-      select: {
-        id: true;
-        title: true;
+      select: typeof opportunityCanonicalizationSelect;
+    }): Promise<OpportunityCanonicalizationRecord | null>;
+    update(args: {
+      where: {
+        id: string;
       };
-    }): Promise<{
-      id: string;
-      title: string;
-    } | null>;
+      data: Prisma.OpportunityUncheckedUpdateInput;
+      select: typeof opportunityCanonicalizationSelect;
+    }): Promise<OpportunityCanonicalizationRecord>;
   };
   sourceImportDecision: {
     create(args: {
@@ -244,6 +340,7 @@ type SourceImportTransactionClient = AuditLogWriter & {
 
 export type SourceImportMatchKind =
   | "exact_source"
+  | "exact_notice"
   | "strong_candidate"
   | "possible_candidate";
 
@@ -281,7 +378,9 @@ export type SourceImportPreviewSnapshot = {
   } | null;
   duplicateCandidates: SourceImportDuplicateCandidate[];
   importPreview: SourceImportPreview;
+  recommendedMode: SourceImportDecisionMode | null;
   result: SourceSearchResultSummary;
+  shouldAutoCanonicalize: boolean;
   suggestedTargetOpportunityId: string | null;
 };
 
@@ -295,7 +394,7 @@ export type ApplySourceImportInput = {
 };
 
 export type ApplySourceImportResult = {
-  action: "already_tracked" | "created" | "linked";
+  action: "already_tracked" | "created" | "linked" | "merged";
   sourceRecordId: string;
   targetOpportunityId: string;
   targetOpportunityTitle: string;
@@ -310,7 +409,7 @@ export async function getSourceImportPreviewSnapshot({
   organizationSlug?: string;
   sourceRecordId: string;
 }): Promise<SourceImportPreviewSnapshot | null> {
-  const organization = await db.organization.findUnique({
+  const organization = await db.organization.findFirst({
     where: {
       slug: organizationSlug,
     },
@@ -384,6 +483,9 @@ export function buildSourceImportPreviewSnapshot({
   const exactSourceRecord = organization.sourceRecords.find(
     (record) => record.id === sourceRecord.id && record.opportunity,
   );
+  const canonicalDuplicateCandidate = selectCanonicalDuplicateCandidate(
+    duplicateCandidates,
+  );
 
   return {
     alreadyTrackedOpportunity: exactSourceRecord?.opportunity ?? null,
@@ -396,11 +498,18 @@ export function buildSourceImportPreviewSnapshot({
       ) ?? null,
     duplicateCandidates,
     importPreview,
+    recommendedMode:
+      exactSourceRecord?.opportunity || canonicalDuplicateCandidate
+        ? "LINK_TO_EXISTING"
+        : "CREATE_OPPORTUNITY",
     result,
+    shouldAutoCanonicalize: canonicalDuplicateCandidate !== null,
     suggestedTargetOpportunityId:
       duplicateCandidates[0]?.matchKind === "exact_source"
         ? duplicateCandidates[0].opportunityId
-        : duplicateCandidates[0]?.opportunityId ?? null,
+        : canonicalDuplicateCandidate?.opportunityId ??
+          duplicateCandidates[0]?.opportunityId ??
+          null,
   };
 }
 
@@ -453,6 +562,25 @@ export async function applySourceImport({
     throw new Error("Selected source result could not be normalized for import.");
   }
 
+  const organization = await db.organization.findFirst({
+    where: {
+      id: input.actor.organizationId,
+    },
+    ...organizationSourceImportArgs,
+  });
+
+  if (!organization) {
+    throw new Error("The source-import workspace organization could not be loaded.");
+  }
+
+  const previewSnapshot = buildSourceImportPreviewSnapshot({
+    organization,
+    sourceRecord: previewSourceRecord,
+  });
+  const canonicalDuplicateCandidate = previewSnapshot
+    ? selectCanonicalDuplicateCandidate(previewSnapshot.duplicateCandidates)
+    : null;
+
   return db.$transaction(async (tx) => {
     const connector = await tx.sourceConnectorConfig.findFirst({
       where: {
@@ -486,10 +614,7 @@ export async function applySourceImport({
           id: existingSourceRecord.opportunityId,
           organizationId: input.actor.organizationId,
         },
-        select: {
-          id: true,
-          title: true,
-        },
+        select: opportunityCanonicalizationSelect,
       });
 
       if (!existingOpportunity) {
@@ -512,11 +637,21 @@ export async function applySourceImport({
       result,
     });
     const occurredAt = new Date();
-    let targetOpportunityId = input.targetOpportunityId ?? null;
+    const requestedMode = input.mode;
+    const effectiveMode =
+      requestedMode === "CREATE_OPPORTUNITY" && canonicalDuplicateCandidate
+        ? "LINK_TO_EXISTING"
+        : requestedMode;
+    let targetOpportunityId =
+      input.targetOpportunityId ??
+      (effectiveMode === "LINK_TO_EXISTING"
+        ? canonicalDuplicateCandidate?.opportunityId ?? null
+        : null);
     let targetOpportunityTitle: string;
     let action: ApplySourceImportResult["action"];
+    let canonicalizedFieldKeys: string[] = [];
 
-    if (input.mode === "CREATE_OPPORTUNITY") {
+    if (effectiveMode === "CREATE_OPPORTUNITY") {
       const createdOpportunity = await tx.opportunity.create({
         data: buildOpportunityCreateInput({
           agencyId,
@@ -584,10 +719,7 @@ export async function applySourceImport({
           id: targetOpportunityId,
           organizationId: input.actor.organizationId,
         },
-        select: {
-          id: true,
-          title: true,
-        },
+        select: opportunityCanonicalizationSelect,
       });
 
       if (!linkedOpportunity) {
@@ -613,9 +745,57 @@ export async function applySourceImport({
         },
       });
 
-      targetOpportunityId = linkedOpportunity.id;
-      targetOpportunityTitle = linkedOpportunity.title;
-      action = "linked";
+      const canonicalizationPatch = buildCanonicalOpportunityUpdateInput({
+        agencyId,
+        existingOpportunity: linkedOpportunity,
+        preview,
+        result,
+        sourceRecordId: existingSourceRecord.id,
+      });
+
+      const canonicalizedOpportunity =
+        Object.keys(canonicalizationPatch.data).length > 0
+          ? await tx.opportunity.update({
+              where: {
+                id: linkedOpportunity.id,
+              },
+              data: canonicalizationPatch.data,
+              select: opportunityCanonicalizationSelect,
+            })
+          : linkedOpportunity;
+
+      if (canonicalizationPatch.changedFields.length > 0) {
+        canonicalizedFieldKeys = canonicalizationPatch.changedFields.map(
+          (change) => change.field,
+        );
+        await recordAuditEvent({
+          db: tx,
+          event: {
+            action: AUDIT_ACTIONS.opportunityUpdate,
+            actor: input.actor,
+            metadata: {
+              canonicalizedFromSourceRecordId: existingSourceRecord.id,
+              changedFields: canonicalizationPatch.changedFields,
+              sourceSystem: result.sourceSystem,
+            },
+            occurredAt,
+            organizationId: input.actor.organizationId,
+            summary: `Canonicalized opportunity ${canonicalizedOpportunity.title} with source data from ${result.sourceSystem}:${result.noticeId}.`,
+            target: {
+              type: "opportunity",
+              id: canonicalizedOpportunity.id,
+              display: canonicalizedOpportunity.title,
+            },
+          },
+        });
+      }
+
+      targetOpportunityId = canonicalizedOpportunity.id;
+      targetOpportunityTitle = canonicalizedOpportunity.title;
+      action =
+        requestedMode === "CREATE_OPPORTUNITY" && canonicalDuplicateCandidate
+          ? "merged"
+          : "linked";
     }
 
     const importDecision = await tx.sourceImportDecision.create({
@@ -624,14 +804,21 @@ export async function applySourceImport({
         decidedByUserId:
           input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
         decisionMetadata: asJsonValue({
+          autoCanonicalized:
+            requestedMode === "CREATE_OPPORTUNITY" &&
+            canonicalDuplicateCandidate !== null,
+          canonicalizedFieldKeys,
           connectorDisplayName: connector?.sourceDisplayName ?? "Unknown connector",
           duplicateDetectionApplied: true,
+          requestedMode,
         }),
         importPreviewPayload: asJsonValue(preview.importPreviewPayload),
-        mode: input.mode,
+        mode: effectiveMode,
         organizationId: input.actor.organizationId,
         rationale:
-          input.mode === "CREATE_OPPORTUNITY"
+          action === "merged"
+            ? "Automatically merged the duplicate source result into the existing canonical opportunity."
+            : effectiveMode === "CREATE_OPPORTUNITY"
             ? "Promoted the persisted source result into a new tracked opportunity."
             : "Linked the persisted source result to an existing tracked opportunity after duplicate review.",
         requestedAt: occurredAt,
@@ -654,7 +841,8 @@ export async function applySourceImport({
         action: AUDIT_ACTIONS.sourceImportDecisionRecord,
         actor: input.actor,
         metadata: {
-          mode: input.mode,
+          mode: effectiveMode,
+          requestedMode,
           sourceRecordId: existingSourceRecord.id,
           sourceSystem: result.sourceSystem,
           targetOpportunityId,
@@ -662,7 +850,9 @@ export async function applySourceImport({
         occurredAt,
         organizationId: input.actor.organizationId,
         summary:
-          input.mode === "CREATE_OPPORTUNITY"
+          action === "merged"
+            ? `Recorded canonical merge import decision for ${result.sourceSystem}:${result.noticeId}.`
+            : effectiveMode === "CREATE_OPPORTUNITY"
             ? `Recorded create-opportunity import decision for ${result.sourceSystem}:${result.noticeId}.`
             : `Recorded link-to-existing import decision for ${result.sourceSystem}:${result.noticeId}.`,
         target: {
@@ -680,13 +870,16 @@ export async function applySourceImport({
         actorUserId:
           input.actor.type === AuditActorType.USER ? input.actor.userId ?? null : null,
         description:
-          input.mode === "CREATE_OPPORTUNITY"
+          action === "merged"
+            ? `Merged ${result.noticeId} from ${result.sourceSystem} into the existing tracked opportunity after canonical duplicate detection.`
+            : effectiveMode === "CREATE_OPPORTUNITY"
             ? `Imported ${result.noticeId} from ${result.sourceSystem} into a new tracked opportunity.`
             : `Linked ${result.noticeId} from ${result.sourceSystem} to the existing tracked opportunity after duplicate review.`,
         eventType: "source_import_applied",
         metadata: {
           importDecisionId: importDecision.id,
-          mode: input.mode,
+          mode: effectiveMode,
+          requestedMode,
           sourceRecordId: existingSourceRecord.id,
         },
         occurredAt,
@@ -695,7 +888,9 @@ export async function applySourceImport({
         relatedEntityId: importDecision.id,
         relatedEntityType: "source_import_decision",
         title:
-          input.mode === "CREATE_OPPORTUNITY"
+          action === "merged"
+            ? "Source result merged into the canonical opportunity"
+            : effectiveMode === "CREATE_OPPORTUNITY"
             ? "Source result promoted into the pipeline"
             : "Source result linked to an existing opportunity",
       },
@@ -786,6 +981,11 @@ function buildResultSummary(sourceRecord: SourceRecordPreviewRecord): SourceSear
       readString(rawPayload.organizationName) ??
       readString(normalizedPayload.agencyOfficeName) ??
       "Unknown organization",
+    organizationPathName:
+      readString(normalizedPayload.agencyPathName) ??
+      readString(rawPayload.fullParentPathName) ??
+      readString(rawPayload.organizationName) ??
+      readString(normalizedPayload.agencyOfficeName),
     placeOfPerformanceState:
       readString(normalizedPayload.placeOfPerformanceStateCode) ??
       readNestedString(rawPayload, ["placeOfPerformance", "state", "code"]),
@@ -886,19 +1086,28 @@ function buildDuplicateCandidate({
     } satisfies SourceImportDuplicateCandidate;
   }
 
-  let matchScore = 0;
-  const matchReasons: string[] = [];
-  const normalizedOpportunityTitle = normalizeForComparison(opportunity.title);
-  const normalizedResultTitle = normalizeForComparison(result.title);
-
   if (
     opportunity.externalNoticeId &&
     normalizeForComparison(opportunity.externalNoticeId) ===
       normalizeForComparison(result.noticeId)
   ) {
-    matchScore += 95;
-    matchReasons.push("External notice ID already matches.");
+    return {
+      currentStageLabel: opportunity.currentStageLabel,
+      matchKind: "exact_notice",
+      matchReasons: [
+        "External notice ID already matches the canonical opportunity.",
+      ],
+      matchScore: 100,
+      opportunityId: opportunity.id,
+      originSourceSystem: opportunity.originSourceSystem,
+      title: opportunity.title,
+    } satisfies SourceImportDuplicateCandidate;
   }
+
+  let matchScore = 0;
+  const matchReasons: string[] = [];
+  const normalizedOpportunityTitle = normalizeForComparison(opportunity.title);
+  const normalizedResultTitle = normalizeForComparison(result.title);
 
   if (
     opportunity.solicitationNumber &&
@@ -906,18 +1115,18 @@ function buildDuplicateCandidate({
     normalizeForComparison(opportunity.solicitationNumber) ===
       normalizeForComparison(result.solicitationNumber)
   ) {
-    matchScore += 55;
+    matchScore += 36;
     matchReasons.push("Solicitation number matches.");
   }
 
   if (normalizedOpportunityTitle === normalizedResultTitle) {
-    matchScore += 65;
+    matchScore += 40;
     matchReasons.push("Opportunity title matches exactly.");
   } else if (
     normalizedOpportunityTitle.includes(normalizedResultTitle) ||
     normalizedResultTitle.includes(normalizedOpportunityTitle)
   ) {
-    matchScore += 45;
+    matchScore += 26;
     matchReasons.push("Opportunity title is highly similar.");
   }
 
@@ -927,8 +1136,17 @@ function buildDuplicateCandidate({
     normalizeForComparison(opportunity.leadAgency.organizationCode) ===
       normalizeForComparison(result.organizationCode)
   ) {
-    matchScore += 12;
+    matchScore += 15;
     matchReasons.push("Agency organization code matches.");
+  } else if (
+    opportunity.leadAgency?.name &&
+    result.organizationPathName &&
+    normalizeForComparison(result.organizationPathName).includes(
+      normalizeForComparison(opportunity.leadAgency.name),
+    )
+  ) {
+    matchScore += 14;
+    matchReasons.push("Organization path aligns with the lead agency.");
   } else if (
     opportunity.leadAgency?.name &&
     normalizeForComparison(opportunity.leadAgency.name) ===
@@ -946,6 +1164,14 @@ function buildDuplicateCandidate({
   ) {
     matchScore += 10;
     matchReasons.push("NAICS code matches.");
+  }
+
+  if (
+    opportunity.postedAt &&
+    isSameIsoDate(opportunity.postedAt, result.postedDate)
+  ) {
+    matchScore += 12;
+    matchReasons.push("Posted date matches.");
   }
 
   if (
@@ -971,6 +1197,442 @@ function buildDuplicateCandidate({
     originSourceSystem: opportunity.originSourceSystem,
     title: opportunity.title,
   } satisfies SourceImportDuplicateCandidate;
+}
+
+function selectCanonicalDuplicateCandidate(
+  duplicateCandidates: SourceImportDuplicateCandidate[],
+) {
+  return (
+    duplicateCandidates.find((candidate) =>
+      AUTO_CANONICALIZE_MATCH_KINDS.has(candidate.matchKind),
+    ) ?? null
+  );
+}
+
+function buildCanonicalOpportunityUpdateInput({
+  agencyId,
+  existingOpportunity,
+  preview,
+  result,
+  sourceRecordId,
+}: {
+  agencyId: string | null;
+  existingOpportunity: OpportunityCanonicalizationRecord;
+  preview: SourceImportPreview;
+  result: SourceSearchResultSummary;
+  sourceRecordId: string;
+}) {
+  const createInput = buildOpportunityCreateInput({
+    agencyId,
+    occurredAt: new Date("1970-01-01T00:00:00.000Z"),
+    organizationId: existingOpportunity.organizationId,
+    preview,
+    result,
+    sourceRecordId,
+  });
+  const data: Prisma.OpportunityUncheckedUpdateInput = {};
+  const changedFields: Array<{
+    field: string;
+    from: string | null;
+    to: string | null;
+  }> = [];
+
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.importedFromSourceRecordId,
+    field: "importedFromSourceRecordId",
+    nextValue:
+      existingOpportunity.importedFromSourceRecordId === null
+        ? createInput.importedFromSourceRecordId
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.originSourceSystem,
+    field: "originSourceSystem",
+    nextValue:
+      existingOpportunity.originSourceSystem === null
+        ? createInput.originSourceSystem
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.leadAgencyId,
+    field: "leadAgencyId",
+    nextValue: existingOpportunity.leadAgencyId === null ? createInput.leadAgencyId : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.externalNoticeId,
+    field: "externalNoticeId",
+    nextValue:
+      isBlankText(existingOpportunity.externalNoticeId)
+        ? createInput.externalNoticeId
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.solicitationNumber,
+    field: "solicitationNumber",
+    nextValue:
+      isBlankText(existingOpportunity.solicitationNumber)
+        ? createInput.solicitationNumber
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.description,
+    field: "description",
+    nextValue:
+      isBlankText(existingOpportunity.description) ? createInput.description : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.sourceSummaryText,
+    field: "sourceSummaryText",
+    nextValue:
+      isBlankText(existingOpportunity.sourceSummaryText)
+        ? createInput.sourceSummaryText
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.sourceSummaryUrl,
+    field: "sourceSummaryUrl",
+    nextValue:
+      isBlankText(existingOpportunity.sourceSummaryUrl)
+        ? createInput.sourceSummaryUrl
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.postedAt,
+    field: "postedAt",
+    nextValue: existingOpportunity.postedAt === null ? createInput.postedAt : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.postedDateRaw,
+    field: "postedDateRaw",
+    nextValue:
+      isBlankText(existingOpportunity.postedDateRaw) ? createInput.postedDateRaw : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.responseDeadlineAt,
+    field: "responseDeadlineAt",
+    nextValue:
+      existingOpportunity.responseDeadlineAt === null
+        ? createInput.responseDeadlineAt
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.responseDeadlineRaw,
+    field: "responseDeadlineRaw",
+    nextValue:
+      isBlankText(existingOpportunity.responseDeadlineRaw)
+        ? createInput.responseDeadlineRaw
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.procurementTypeLabel,
+    field: "procurementTypeLabel",
+    nextValue:
+      isBlankText(existingOpportunity.procurementTypeLabel)
+        ? createInput.procurementTypeLabel
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.procurementBaseTypeLabel,
+    field: "procurementBaseTypeLabel",
+    nextValue:
+      isBlankText(existingOpportunity.procurementBaseTypeLabel)
+        ? createInput.procurementBaseTypeLabel
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.archiveType,
+    field: "archiveType",
+    nextValue:
+      isBlankText(existingOpportunity.archiveType) ? createInput.archiveType : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.archivedAt,
+    field: "archivedAt",
+    nextValue:
+      existingOpportunity.archivedAt === null ? createInput.archivedAt : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.archiveDateRaw,
+    field: "archiveDateRaw",
+    nextValue:
+      isBlankText(existingOpportunity.archiveDateRaw)
+        ? createInput.archiveDateRaw
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.sourceStatus,
+    field: "sourceStatus",
+    nextValue:
+      isBlankText(existingOpportunity.sourceStatus) ? createInput.sourceStatus : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.naicsCode,
+    field: "naicsCode",
+    nextValue:
+      isBlankText(existingOpportunity.naicsCode) ? createInput.naicsCode : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.classificationCode,
+    field: "classificationCode",
+    nextValue:
+      isBlankText(existingOpportunity.classificationCode)
+        ? createInput.classificationCode
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.setAsideCode,
+    field: "setAsideCode",
+    nextValue:
+      isBlankText(existingOpportunity.setAsideCode)
+        ? createInput.setAsideCode
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.setAsideDescription,
+    field: "setAsideDescription",
+    nextValue:
+      isBlankText(existingOpportunity.setAsideDescription)
+        ? createInput.setAsideDescription
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.organizationType,
+    field: "organizationType",
+    nextValue:
+      isBlankText(existingOpportunity.organizationType)
+        ? createInput.organizationType
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.officeCity,
+    field: "officeCity",
+    nextValue:
+      isBlankText(existingOpportunity.officeCity) ? createInput.officeCity : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.officeState,
+    field: "officeState",
+    nextValue:
+      isBlankText(existingOpportunity.officeState) ? createInput.officeState : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.officePostalCode,
+    field: "officePostalCode",
+    nextValue:
+      isBlankText(existingOpportunity.officePostalCode)
+        ? createInput.officePostalCode
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.officeCountryCode,
+    field: "officeCountryCode",
+    nextValue:
+      isBlankText(existingOpportunity.officeCountryCode)
+        ? createInput.officeCountryCode
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.placeOfPerformanceStreet1,
+    field: "placeOfPerformanceStreet1",
+    nextValue:
+      isBlankText(existingOpportunity.placeOfPerformanceStreet1)
+        ? createInput.placeOfPerformanceStreet1
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.placeOfPerformanceStreet2,
+    field: "placeOfPerformanceStreet2",
+    nextValue:
+      isBlankText(existingOpportunity.placeOfPerformanceStreet2)
+        ? createInput.placeOfPerformanceStreet2
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.placeOfPerformanceCityCode,
+    field: "placeOfPerformanceCityCode",
+    nextValue:
+      isBlankText(existingOpportunity.placeOfPerformanceCityCode)
+        ? createInput.placeOfPerformanceCityCode
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.placeOfPerformanceCityName,
+    field: "placeOfPerformanceCityName",
+    nextValue:
+      isBlankText(existingOpportunity.placeOfPerformanceCityName)
+        ? createInput.placeOfPerformanceCityName
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.placeOfPerformanceStateCode,
+    field: "placeOfPerformanceStateCode",
+    nextValue:
+      isBlankText(existingOpportunity.placeOfPerformanceStateCode)
+        ? createInput.placeOfPerformanceStateCode
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.placeOfPerformanceStateName,
+    field: "placeOfPerformanceStateName",
+    nextValue:
+      isBlankText(existingOpportunity.placeOfPerformanceStateName)
+        ? createInput.placeOfPerformanceStateName
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.placeOfPerformancePostalCode,
+    field: "placeOfPerformancePostalCode",
+    nextValue:
+      isBlankText(existingOpportunity.placeOfPerformancePostalCode)
+        ? createInput.placeOfPerformancePostalCode
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.placeOfPerformanceCountryCode,
+    field: "placeOfPerformanceCountryCode",
+    nextValue:
+      isBlankText(existingOpportunity.placeOfPerformanceCountryCode)
+        ? createInput.placeOfPerformanceCountryCode
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.additionalInfoUrl,
+    field: "additionalInfoUrl",
+    nextValue:
+      isBlankText(existingOpportunity.additionalInfoUrl)
+        ? createInput.additionalInfoUrl
+        : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.uiLink,
+    field: "uiLink",
+    nextValue: isBlankText(existingOpportunity.uiLink) ? createInput.uiLink : null,
+  });
+  applyCanonicalField({
+    data,
+    changedFields,
+    existingValue: existingOpportunity.apiSelfLink,
+    field: "apiSelfLink",
+    nextValue:
+      isBlankText(existingOpportunity.apiSelfLink)
+        ? createInput.apiSelfLink
+        : null,
+  });
+
+  return {
+    data,
+    changedFields,
+  };
+}
+
+function applyCanonicalField({
+  data,
+  changedFields,
+  existingValue,
+  field,
+  nextValue,
+}: {
+  data: Prisma.OpportunityUncheckedUpdateInput;
+  changedFields: Array<{
+    field: string;
+    from: string | null;
+    to: string | null;
+  }>;
+  existingValue: Date | string | null;
+  field: keyof Prisma.OpportunityUncheckedUpdateInput;
+  nextValue: Date | string | null | undefined;
+}) {
+  if (nextValue === undefined || nextValue === null) {
+    return;
+  }
+
+  const existingSerialized = serializeMergeValue(existingValue);
+  const nextSerialized = serializeMergeValue(nextValue);
+
+  if (existingSerialized === nextSerialized) {
+    return;
+  }
+
+  data[field] = nextValue;
+  changedFields.push({
+    field,
+    from: existingSerialized,
+    to: nextSerialized,
+  });
 }
 
 function buildOpportunityCreateInput({
@@ -1118,6 +1780,22 @@ function normalizeForComparison(value: string) {
 
 function isSameIsoDate(date: Date, isoDate: string) {
   return date.toISOString().slice(0, 10) === isoDate;
+}
+
+function isBlankText(value: string | null | undefined) {
+  return value === null || value === undefined || value.trim().length === 0;
+}
+
+function serializeMergeValue(value: Date | string | null | undefined) {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return null;
 }
 
 function parseNullableDate(value: string | null | undefined) {

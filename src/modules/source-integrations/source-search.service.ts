@@ -87,6 +87,7 @@ export type SourceSearchResultSummary = {
   noticeId: string;
   organizationCode: string | null;
   organizationName: string;
+  organizationPathName?: string | null;
   placeOfPerformanceState: string | null;
   placeOfPerformanceZip: string | null;
   postedDate: string;

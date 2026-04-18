@@ -188,7 +188,9 @@ const previewSnapshot: SourceImportPreviewSnapshot = {
       "Mock preview uses deterministic detail payloads until the live sam.gov detail adapter lands.",
     ],
   },
+  recommendedMode: "LINK_TO_EXISTING",
   result: snapshot.results[0],
+  shouldAutoCanonicalize: true,
   suggestedTargetOpportunityId: "opp_army",
 };
 
@@ -268,10 +270,16 @@ describe("SourceSearch", () => {
       screen.getByText(/^duplicate candidates$/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /create tracked opportunity/i }),
+      screen.getByText(/canonical merge recommended/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /link to selected opportunity/i }),
+      screen.queryByRole("button", { name: /create tracked opportunity/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /merge into selected opportunity/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /spreadsheet import workspace/i }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/87 \/ 100/i)).toHaveLength(2);
   });

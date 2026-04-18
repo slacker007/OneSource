@@ -30,6 +30,7 @@ const organizationRecord = {
       solicitationNumber: "FA4861-26-R-0001",
       naicsCode: "541511",
       originSourceSystem: "sam_gov",
+      postedAt: new Date("2026-04-12T00:00:00.000Z"),
       responseDeadlineAt: new Date("2026-05-04T21:00:00.000Z"),
       leadAgency: {
         name: "99th Contracting Squadron",
@@ -45,6 +46,7 @@ const organizationRecord = {
       solicitationNumber: "W91QUZ-26-R-0042",
       naicsCode: "541512",
       originSourceSystem: "manual_entry",
+      postedAt: new Date("2026-04-08T00:00:00.000Z"),
       responseDeadlineAt: new Date("2026-05-20T21:00:00.000Z"),
       leadAgency: {
         name: "PEO Enterprise Information Systems",
@@ -133,6 +135,53 @@ const actor = {
   organizationId: "org_123",
 };
 
+function buildCanonicalOpportunityRecord(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "opp_army",
+    organizationId: "org_123",
+    title: "Army Cloud Operations Recompete",
+    description: null,
+    importedFromSourceRecordId: null,
+    originSourceSystem: "manual_entry",
+    leadAgencyId: null,
+    externalNoticeId: null,
+    solicitationNumber: "W91QUZ-26-R-0042",
+    sourceSummaryText: null,
+    sourceSummaryUrl: null,
+    postedAt: new Date("2026-04-08T00:00:00.000Z"),
+    postedDateRaw: null,
+    responseDeadlineAt: new Date("2026-05-20T21:00:00.000Z"),
+    responseDeadlineRaw: null,
+    procurementTypeLabel: null,
+    procurementBaseTypeLabel: null,
+    archiveType: null,
+    archivedAt: null,
+    archiveDateRaw: null,
+    sourceStatus: null,
+    naicsCode: "541512",
+    classificationCode: null,
+    setAsideCode: null,
+    setAsideDescription: null,
+    organizationType: null,
+    officeCity: null,
+    officeState: null,
+    officePostalCode: null,
+    officeCountryCode: null,
+    placeOfPerformanceStreet1: null,
+    placeOfPerformanceStreet2: null,
+    placeOfPerformanceCityCode: null,
+    placeOfPerformanceCityName: null,
+    placeOfPerformanceStateCode: null,
+    placeOfPerformanceStateName: null,
+    placeOfPerformancePostalCode: null,
+    placeOfPerformanceCountryCode: null,
+    additionalInfoUrl: null,
+    uiLink: null,
+    apiSelfLink: null,
+    ...overrides,
+  };
+}
+
 describe("source-import.service preview", () => {
   it("flags exact source matches as already tracked", () => {
     const preview = buildSourceImportPreviewSnapshot({
@@ -176,6 +225,29 @@ describe("source-import.service preview", () => {
       matchKind: "exact_source",
       opportunityId: "opp_imported",
     });
+    expect(preview?.recommendedMode).toBe("LINK_TO_EXISTING");
+  });
+
+  it("flags exact notice matches across different sources as canonical duplicates", () => {
+    const preview = buildSourceImportPreviewSnapshot({
+      organization: {
+        ...organizationRecord,
+        opportunities: [
+          {
+            ...organizationRecord.opportunities[1],
+            externalNoticeId: "W91QUZ-26-R-1042",
+          },
+        ],
+      },
+      sourceRecord: sourceRecordArmy,
+    });
+
+    expect(preview?.duplicateCandidates[0]).toMatchObject({
+      matchKind: "exact_notice",
+      opportunityId: "opp_army",
+    });
+    expect(preview?.shouldAutoCanonicalize).toBe(true);
+    expect(preview?.suggestedTargetOpportunityId).toBe("opp_army");
   });
 
   it("ranks manual opportunities as strong duplicate candidates", () => {
@@ -190,7 +262,8 @@ describe("source-import.service preview", () => {
       opportunityId: "opp_army",
       title: "Army Cloud Operations Recompete",
     });
-    expect(preview?.duplicateCandidates[0].matchScore).toBeGreaterThanOrEqual(80);
+    expect(preview?.duplicateCandidates[0].matchScore).toBeGreaterThanOrEqual(60);
+    expect(preview?.shouldAutoCanonicalize).toBe(true);
   });
 });
 
@@ -295,6 +368,95 @@ describe("source-import.service apply", () => {
     expect(db.__tx.auditLog.create).toHaveBeenCalledTimes(2);
   });
 
+  it("automatically merges create requests into the canonical opportunity for strong duplicates", async () => {
+    const db = createMockImportClient({
+      previewSourceRecord: sourceRecordArmy,
+    });
+
+    vi.mocked(db.__tx.sourceConnectorConfig.findFirst).mockResolvedValue({
+      id: "connector_sam",
+      sourceDisplayName: "SAM.gov",
+    });
+    vi.mocked(db.__tx.agency.findFirst).mockResolvedValue({
+      id: "agency_army",
+    });
+    vi.mocked(db.__tx.sourceRecord.findFirst).mockResolvedValue({
+      id: "source_army",
+      opportunityId: null,
+    });
+    vi.mocked(db.__tx.sourceRecord.update).mockResolvedValue({
+      id: "source_army",
+      opportunityId: "opp_army",
+    });
+    vi.mocked(db.__tx.opportunity.findFirst).mockResolvedValue(
+      buildCanonicalOpportunityRecord(),
+    );
+    vi.mocked(db.__tx.opportunity.update).mockResolvedValue(
+      buildCanonicalOpportunityRecord({
+        apiSelfLink: "https://api.sam.gov/prod/opportunities/v2/W91QUZ-26-R-1042",
+        externalNoticeId: "W91QUZ-26-R-1042",
+        importedFromSourceRecordId: "source_army",
+        leadAgencyId: "agency_army",
+        sourceSummaryText:
+          "Cloud operations, sustainment, and platform engineering support for Army enterprise systems.",
+        sourceSummaryUrl: "https://sam.gov/opp/W91QUZ-26-R-1042/view",
+        sourceStatus: "active",
+        uiLink: "https://sam.gov/opp/W91QUZ-26-R-1042/view",
+      }),
+    );
+    vi.mocked(db.__tx.sourceImportDecision.create).mockResolvedValue({
+      id: "decision_army",
+    });
+
+    const result = await applySourceImport({
+      db,
+      input: {
+        actor,
+        mode: "CREATE_OPPORTUNITY",
+        sourceRecordId: "source_army",
+      },
+    });
+
+    expect(result).toMatchObject({
+      action: "merged",
+      targetOpportunityId: "opp_army",
+      targetOpportunityTitle: "Army Cloud Operations Recompete",
+    });
+    expect(db.__tx.opportunity.create).not.toHaveBeenCalled();
+    expect(db.__tx.opportunity.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          apiSelfLink: "https://api.sam.gov/prod/opportunities/v2/W91QUZ-26-R-1042",
+          externalNoticeId: "W91QUZ-26-R-1042",
+          importedFromSourceRecordId: "source_army",
+          leadAgencyId: "agency_army",
+          sourceSummaryText:
+            "Cloud operations, sustainment, and platform engineering support for Army enterprise systems.",
+          sourceSummaryUrl: "https://sam.gov/opp/W91QUZ-26-R-1042/view",
+          sourceStatus: "active",
+          uiLink: "https://sam.gov/opp/W91QUZ-26-R-1042/view",
+        }),
+      }),
+    );
+    expect(db.__tx.sourceRecord.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          opportunityId: "opp_army",
+        }),
+      }),
+    );
+    expect(db.__tx.sourceImportDecision.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          mode: "LINK_TO_EXISTING",
+          rationale:
+            "Automatically merged the duplicate source result into the existing canonical opportunity.",
+          targetOpportunityId: "opp_army",
+        }),
+      }),
+    );
+  });
+
   it("links a persisted source result to an existing opportunity", async () => {
     const db = createMockImportClient({
       previewSourceRecord: sourceRecordArmy,
@@ -315,10 +477,17 @@ describe("source-import.service apply", () => {
       id: "source_army",
       opportunityId: "opp_army",
     });
-    vi.mocked(db.__tx.opportunity.findFirst).mockResolvedValue({
-      id: "opp_army",
-      title: "Army Cloud Operations Recompete",
-    });
+    vi.mocked(db.__tx.opportunity.findFirst).mockResolvedValue(
+      buildCanonicalOpportunityRecord(),
+    );
+    vi.mocked(db.__tx.opportunity.update).mockResolvedValue(
+      buildCanonicalOpportunityRecord({
+        apiSelfLink: "https://api.sam.gov/prod/opportunities/v2/W91QUZ-26-R-1042",
+        externalNoticeId: "W91QUZ-26-R-1042",
+        importedFromSourceRecordId: "source_army",
+        leadAgencyId: "agency_army",
+      }),
+    );
     vi.mocked(db.__tx.sourceImportDecision.create).mockResolvedValue({
       id: "decision_army",
     });
@@ -339,13 +508,6 @@ describe("source-import.service apply", () => {
       targetOpportunityTitle: "Army Cloud Operations Recompete",
     });
     expect(db.__tx.opportunity.create).not.toHaveBeenCalled();
-    expect(db.__tx.sourceRecord.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          opportunityId: "opp_army",
-        }),
-      }),
-    );
     expect(db.__tx.sourceImportDecision.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -373,6 +535,7 @@ function createMockImportClient({
     opportunity: {
       create: vi.fn(),
       findFirst: vi.fn(),
+      update: vi.fn(),
     },
     opportunityActivityEvent: {
       create: vi.fn(),
@@ -394,7 +557,7 @@ function createMockImportClient({
 
   const db = {
     organization: {
-      findUnique: vi.fn().mockResolvedValue(organizationRecord),
+      findFirst: vi.fn().mockResolvedValue(organizationRecord),
     },
     ...tx,
     sourceRecord: {

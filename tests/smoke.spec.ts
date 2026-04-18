@@ -129,7 +129,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     }),
   ).toBeVisible();
   const linkButton = page.getByRole("button", {
-    name: /link to selected opportunity/i,
+    name: /merge into selected opportunity|link to selected opportunity/i,
   });
   if (await linkButton.isVisible()) {
     await expect(
