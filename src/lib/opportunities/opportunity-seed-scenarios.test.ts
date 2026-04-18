@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { buildOpportunitySeedScenario } from "../../../prisma/opportunity-seed-scenarios.mjs";
 
 describe("buildOpportunitySeedScenario", () => {
-  it("provides source-agnostic connector metadata for sam.gov, USAspending, and GSA eBuy", () => {
+  it("provides source-agnostic connector metadata for API, session, and file-import sources", () => {
     const scenario = buildOpportunitySeedScenario();
 
-    expect(scenario.connectorConfigs).toHaveLength(3);
+    expect(scenario.connectorConfigs).toHaveLength(4);
     expect(scenario.teamMembers).toHaveLength(7);
 
     expect(scenario.connectorConfigs).toEqual(
@@ -26,6 +26,11 @@ describe("buildOpportunitySeedScenario", () => {
           sourceSystemKey: "gsa_ebuy",
           authType: "SESSION",
           supportsDocumentFetch: true,
+        }),
+        expect.objectContaining({
+          sourceSystemKey: "csv_upload",
+          authType: "FILE_IMPORT",
+          supportsResultPreview: true,
         }),
       ]),
     );

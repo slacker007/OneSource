@@ -1,3 +1,5 @@
+import { CsvImportWorkspace } from "./csv-import-workspace";
+
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +9,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import type { CsvImportWorkspaceSnapshot } from "@/modules/source-integrations/csv-import.service";
 import type {
   SourceImportDuplicateCandidate,
   SourceImportPreviewSnapshot,
@@ -17,6 +20,14 @@ import type {
 } from "@/modules/source-integrations/source-search.service";
 
 type SourceSearchProps = {
+  csvImportAction: (formData: FormData) => Promise<void>;
+  csvImportFeedback: {
+    error: string | null;
+    importedCount: number | null;
+    skippedCount: number | null;
+    status: string | null;
+  };
+  csvImportSnapshot: CsvImportWorkspaceSnapshot | null;
   importAction: (formData: FormData) => Promise<void>;
   importFeedback: {
     error: string | null;
@@ -29,6 +40,9 @@ type SourceSearchProps = {
 };
 
 export function SourceSearch({
+  csvImportAction,
+  csvImportFeedback,
+  csvImportSnapshot,
   importAction,
   importFeedback,
   previewSnapshot,
@@ -428,6 +442,12 @@ export function SourceSearch({
           </div>
         </form>
       </section>
+
+      <CsvImportWorkspace
+        action={csvImportAction}
+        feedback={csvImportFeedback}
+        workspaceSnapshot={csvImportSnapshot}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <section className="space-y-4">

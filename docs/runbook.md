@@ -96,7 +96,7 @@ Apply the current seed defaults:
 npm run db:seed
 ```
 
-The current seed is idempotent enough for local development. It upserts the default organization, system roles, and seven realistic local users; persists one organization scoring profile with target NAICS codes, focus agencies, relationship agencies, capability inventory rows, certification rows, selected vehicles, and six weighted scoring criteria; persists five agencies, five contract vehicles, and five competitors; creates connector configs for `sam.gov`, `usaspending_api`, and `gsa_ebuy`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; seeds four additional manual opportunities across `qualified`, `proposal_in_development`, `submitted`, and `no_bid`; seeds realistic workspace data with varied tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, and activity events; then runs the same deadline-reminder sweep used by the worker so the app opens with truthful overdue and upcoming reminder state before appending the bootstrap audit-log record.
+The current seed is idempotent enough for local development. It upserts the default organization, system roles, and seven realistic local users; persists one organization scoring profile with target NAICS codes, focus agencies, relationship agencies, capability inventory rows, certification rows, selected vehicles, and six weighted scoring criteria; persists five agencies, five contract vehicles, and five competitors; creates connector configs for `sam.gov`, `usaspending_api`, `gsa_ebuy`, and `csv_upload`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; seeds four additional manual opportunities across `qualified`, `proposal_in_development`, `submitted`, and `no_bid`; seeds realistic workspace data with varied tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, and activity events; then runs the same deadline-reminder sweep used by the worker so the app opens with truthful overdue and upcoming reminder state before appending the bootstrap audit-log record.
 
 The same seed also writes deterministic local password hashes for all seven users so the credentials-provider sign-in flow works immediately in development. Use the admin email `admin@onesource.local` or the viewer email `avery.stone@onesource.local` plus the shared local development password documented in [src/lib/auth/local-demo-auth.mjs](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/local-demo-auth.mjs:1) for smoke verification only.
 
@@ -159,7 +159,7 @@ Chromium Playwright against the compose-managed app:
 make compose-test-e2e
 ```
 
-The Playwright container waits for the `web` health check before running tests.
+The Playwright container waits for the `web` health check before running tests. Browser execution is intentionally serialized because the smoke suite mutates one shared seeded database.
 
 If the local `.env` predates the reminder worker slice and does not include `DEADLINE_REMINDER_LOOKAHEAD_DAYS`, either refresh `.env` from `.env.example` or prefix the compose command with `DEADLINE_REMINDER_LOOKAHEAD_DAYS=7`.
 
@@ -284,7 +284,7 @@ Recovery:
 1. Inspect the report artifacts in `playwright-report/` and `test-results/`.
 2. Confirm `web` is healthy with `docker compose ps` or `curl /api/health`.
 3. If the failure is in the host-side Playwright web server and the error references Turbopack cache corruption, clear the generated cache with `rm -rf .next`.
-4. Re-run either the host-side `npm run e2e` flow or the compose Playwright workflow depending on the failing environment.
+4. Re-run either the host-side `npm run e2e` flow or the compose Playwright workflow depending on the failing environment. If you changed Playwright assertions around `/sources`, reseed first with `npm run db:seed` so duplicate-sensitive CSV checks start from a known state.
 
 ## Operational Gaps
 

@@ -26,6 +26,15 @@ function formatDateInputValue(date: Date) {
 }
 
 test("authenticated homepage smoke test", async ({ page }) => {
+  const csvImportSeed = Date.now();
+  const csvImportTitle = `Zero Trust Boundary Engineering Bridge ${csvImportSeed}`;
+  const csvImportSolicitation = `DHS-CISA-26-${csvImportSeed}`;
+  const csvImportFixture = `Opportunity Title,Agency,Solicitation Number,Response Deadline,NAICS Code,Description
+${csvImportTitle},Department of Homeland Security,${csvImportSolicitation},2026-07-15,541512,Security engineering and transition support for a zero trust bridge effort.
+Enterprise Knowledge Management Support Services,99th Contracting Squadron,FA4861-26-R-0001,2026-05-04,541511,Existing Air Force pursuit that should be detected as a duplicate.
+Cloud Intake Pilot,Department of Veterans Affairs,VA-26-009,13/45/2026,5415X,This row should stay invalid because the deadline and NAICS code are malformed.
+Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,541512,Title and aligned key fields should force manual review instead of direct import.`;
+
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
 
   await expect(page).toHaveURL(/\/$/);
@@ -132,6 +141,33 @@ test("authenticated homepage smoke test", async ({ page }) => {
     page.getByText(
       /this source notice is already linked to the tracked opportunity army cloud operations recompete/i,
     ),
+  ).toBeVisible();
+  await page.getByLabel(/upload csv file/i).setInputFiles({
+    buffer: Buffer.from(csvImportFixture, "utf8"),
+    mimeType: "text/csv",
+    name: "opportunity-import-sample.csv",
+  });
+  await expect(
+    page.getByRole("table", { name: /csv import preview rows/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /import 1 clean row/i }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: /import 1 clean row/i }).click();
+  await expect(
+    page.getByText(/imported 1 row into the tracked pipeline/i),
+  ).toBeVisible();
+  await page.getByRole("link", { name: /^Opportunities/i }).click();
+  await expect(page).toHaveURL(/\/opportunities$/);
+  await page
+    .locator("#opportunity-query")
+    .fill(csvImportTitle);
+  await page.getByRole("button", { name: /apply filters/i }).click();
+  await expect(page).toHaveURL(/\/opportunities\?/);
+  await expect(
+    page.getByRole("heading", {
+      name: new RegExp(csvImportTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+    }),
   ).toBeVisible();
   await page.getByRole("link", { name: /^Analytics/i }).click();
   await expect(page).toHaveURL(/\/analytics$/);

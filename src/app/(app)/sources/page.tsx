@@ -1,7 +1,15 @@
-import { applySourceImportAction } from "./actions";
+import {
+  applySourceImportAction,
+  importCsvOpportunitiesAction,
+} from "./actions";
 
 import { SourceSearch } from "@/components/sources/source-search";
+import { requireAuthenticatedAppSession } from "@/lib/auth/authorization";
 import { prisma } from "@/lib/prisma";
+import {
+  getCsvImportWorkspaceSnapshot,
+  type CsvImportWorkspaceRepositoryClient,
+} from "@/modules/source-integrations/csv-import.service";
 import {
   getSourceSearchSnapshot,
   type SourceSearchRepositoryClient,
@@ -18,11 +26,18 @@ type SourcesPageProps = {
 };
 
 export default async function SourcesPage({ searchParams }: SourcesPageProps) {
+  const session = await requireAuthenticatedAppSession();
   const resolvedSearchParams = await searchParams;
-  const snapshot = await getSourceSearchSnapshot({
-    db: prisma as unknown as SourceSearchRepositoryClient,
-    searchParams: resolvedSearchParams,
-  });
+  const [snapshot, csvImportSnapshot] = await Promise.all([
+    getSourceSearchSnapshot({
+      db: prisma as unknown as SourceSearchRepositoryClient,
+      searchParams: resolvedSearchParams,
+    }),
+    getCsvImportWorkspaceSnapshot({
+      db: prisma as unknown as CsvImportWorkspaceRepositoryClient,
+      organizationId: session.user.organizationId,
+    }),
+  ]);
   const previewId = getFirstSearchParamValue(resolvedSearchParams?.preview);
   const previewSnapshot = previewId
     ? await getSourceImportPreviewSnapshot({
@@ -34,6 +49,18 @@ export default async function SourcesPage({ searchParams }: SourcesPageProps) {
 
   return (
     <SourceSearch
+      csvImportAction={importCsvOpportunitiesAction}
+      csvImportFeedback={{
+        error: getFirstSearchParamValue(resolvedSearchParams?.csvImportError),
+        importedCount: readNumericSearchParam(
+          getFirstSearchParamValue(resolvedSearchParams?.csvImportedCount),
+        ),
+        skippedCount: readNumericSearchParam(
+          getFirstSearchParamValue(resolvedSearchParams?.csvSkippedCount),
+        ),
+        status: getFirstSearchParamValue(resolvedSearchParams?.csvImportStatus),
+      }}
+      csvImportSnapshot={csvImportSnapshot}
       importAction={applySourceImportAction}
       importFeedback={{
         error: getFirstSearchParamValue(resolvedSearchParams?.importError),
@@ -72,4 +99,13 @@ function getFirstSearchParamValue(value: string | string[] | undefined) {
   }
 
   return value ?? null;
+}
+
+function readNumericSearchParam(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
 }

@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { SourceSearch } from "./source-search";
+import type { CsvImportWorkspaceSnapshot } from "@/modules/source-integrations/csv-import.service";
 import type { SourceImportPreviewSnapshot } from "@/modules/source-integrations/source-import.service";
 import type { SourceSearchSnapshot } from "@/modules/source-integrations/source-search.service";
 
@@ -189,10 +190,53 @@ const previewSnapshot: SourceImportPreviewSnapshot = {
   suggestedTargetOpportunityId: "opp_army",
 };
 
+const csvImportSnapshot: CsvImportWorkspaceSnapshot = {
+  agencies: [
+    {
+      id: "agency_1",
+      label: "99th Contracting Squadron (FA4861)",
+      name: "99th Contracting Squadron",
+      organizationCode: "FA4861",
+    },
+  ],
+  connector: {
+    id: "connector_csv",
+    isEnabled: true,
+    sourceDisplayName: "CSV Upload",
+    sourceSystemKey: "csv_upload",
+  },
+  opportunities: [
+    {
+      currentStageLabel: "Capture Active",
+      externalNoticeId: "FA4861-26-R-0001",
+      id: "opp_imported",
+      leadAgencyName: "99th Contracting Squadron",
+      leadAgencyOrganizationCode: "FA4861",
+      naicsCode: "541511",
+      responseDeadlineAt: "2026-05-04T12:00:00.000Z",
+      solicitationNumber: "FA4861-26-R-0001",
+      title: "Enterprise Knowledge Management Support Services",
+    },
+  ],
+  organization: {
+    id: "org_123",
+    name: "Default Organization",
+    slug: "default-org",
+  },
+};
+
 describe("SourceSearch", () => {
   it("renders the preview panel with duplicate detection and import actions", () => {
     render(
       <SourceSearch
+        csvImportAction={vi.fn(async () => undefined)}
+        csvImportFeedback={{
+          error: null,
+          importedCount: null,
+          skippedCount: null,
+          status: null,
+        }}
+        csvImportSnapshot={csvImportSnapshot}
         importAction={vi.fn(async () => undefined)}
         importFeedback={{
           error: null,
@@ -215,6 +259,9 @@ describe("SourceSearch", () => {
       screen.getByRole("heading", { name: /source-result preview/i }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", { name: /spreadsheet import workspace/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(/^duplicate candidates$/i),
     ).toBeInTheDocument();
     expect(
@@ -229,6 +276,14 @@ describe("SourceSearch", () => {
   it("renders validation guidance when the query is invalid", () => {
     render(
       <SourceSearch
+        csvImportAction={vi.fn(async () => undefined)}
+        csvImportFeedback={{
+          error: null,
+          importedCount: null,
+          skippedCount: null,
+          status: null,
+        }}
+        csvImportSnapshot={csvImportSnapshot}
         importAction={vi.fn(async () => undefined)}
         importFeedback={{
           error: null,

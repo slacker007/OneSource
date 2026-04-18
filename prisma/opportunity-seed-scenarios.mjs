@@ -458,6 +458,39 @@ const SOURCE_CONNECTOR_CONFIGS = [
     lastValidationMessage:
       "Session-backed connector prepared for future validation workflow.",
   },
+  {
+    sourceSystemKey: "csv_upload",
+    sourceDisplayName: "CSV Upload",
+    sourceCategory: "INTERNAL",
+    authType: "FILE_IMPORT",
+    isEnabled: true,
+    supportsSearch: false,
+    supportsScheduledSync: false,
+    supportsDetailFetch: false,
+    supportsDocumentFetch: false,
+    supportsResultPreview: true,
+    supportsSavedSearches: false,
+    supportsIncrementalSync: false,
+    supportsWebhooks: false,
+    supportsAttachments: false,
+    supportsAwardData: false,
+    defaultPageSize: null,
+    maxPageSize: null,
+    rateLimitProfile: {
+      strategy: "browser_local_file",
+      notes: "Manual CSV upload with preview, mapping, validation, and dedupe.",
+    },
+    credentialReference: null,
+    configData: {
+      acceptedExtensions: [".csv"],
+      importMode: "manual_file_upload",
+    },
+    connectorVersion: "csv-upload.v1",
+    validationStatus: "VALID",
+    lastValidatedAt: "2026-04-18T08:00:00.000Z",
+    lastValidationMessage:
+      "Manual file-import connector enabled for guarded CSV opportunity intake.",
+  },
 ];
 
 const SAM_GOV_SOURCE_SEARCH = {

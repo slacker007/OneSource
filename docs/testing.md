@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 6 scoring-and-decision-support baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 7 CSV-intake baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, deterministic scoring and recommendation formulas plus fallback scorecard mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, and audited opportunity write flows
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` external-search flow with mocked connector responses plus preview-and-link import behavior, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with scoring-profile visibility, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` mocked external-search flow plus preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with scoring-profile visibility, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -54,6 +54,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - open `/opportunities/new`, restore a browser-local draft, create a tracked opportunity through the guarded form path, then edit that opportunity through the guarded update flow
 - navigate into `/sources`, submit a structured mocked `sam.gov` search, and observe the URL plus mocked result set update together
 - open a source-result preview, inspect duplicate detection, and either link the result into the existing tracked opportunity or confirm the already-linked state on reruns
+- upload a CSV file on `/sources`, confirm auto-detected mappings and row-level preview states render, then import one clean row and confirm it appears on the tracked opportunity list
 - navigate from the desktop shell into another primary section with the top-bar search placeholder still visible
 - open the small-screen drawer and navigate into another primary section successfully
 - allow the admin user through the restricted `/settings` route and render the seeded organization scoring profile plus assigned-role visibility and recent audit activity
@@ -186,6 +187,8 @@ rm -rf .next
 npm run e2e
 ```
 
+The current Playwright smoke suite is intentionally serialized through `playwright.config.ts` because it mutates one shared seeded database. Do not re-enable fully parallel browser execution unless the browser tests are rewritten to isolate their data.
+
 ## Compose Verification Commands
 
 The compose-managed Playwright workflow does not require a host browser install because it uses the official Playwright image.
@@ -214,7 +217,7 @@ Chromium Playwright against the live compose app:
 make compose-test-e2e
 ```
 
-The Playwright workflow automatically starts PostgreSQL and the web app, waits for the app health check, then runs Chromium from the dedicated Playwright container.
+The Playwright workflow automatically starts PostgreSQL and the web app, waits for the app health check, then runs Chromium from the dedicated Playwright container. Compose-backed browser execution uses the same serialized Playwright configuration as host-side `npm run e2e`.
 If the local `.env` is missing `DEADLINE_REMINDER_LOOKAHEAD_DAYS`, prefix the compose command with `DEADLINE_REMINDER_LOOKAHEAD_DAYS=7`.
 
 ## Runtime Support Commands
