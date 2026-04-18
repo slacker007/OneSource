@@ -14,19 +14,18 @@ This document records the canonical verification workflows for the repo as of th
 
 Integration tests do not exist yet. When database-backed integration tests are added, the compose `test` service is the canonical place to run them because it joins the same network as PostgreSQL and receives the compose-managed `DATABASE_URL`.
 
-## Offline Container Dependency Strategy
+## Optional Offline Container Dependency Strategy
 
-Docker containers in this environment still cannot reach `registry.npmjs.org` directly. To keep compose workflows self-sufficient anyway, the repo commits `vendor/npm-offline-cache.tar.gz`, which contains the exact npm tarballs required by the current lockfile on the Linux development target.
+Compose builds now default to normal `npm ci`. If the container environment cannot reach the npm registry, you can generate local fallback archives under `vendor/`; those artifacts are intentionally ignored by git and are not part of the committed repo state.
 
-Docker builds unpack that archive and run `npm ci --offline`, so compose verification does not require a host-side `node_modules` tree.
+When `vendor/npm-offline-cache.tar.gz` exists locally, the Docker dependency stage unpacks it and runs `npm ci --offline` automatically. When `vendor/prisma-client.tar.gz` exists locally, the same stage overlays that generated Prisma client after install.
 
-The Docker dependency stage also copies `prisma/` plus `prisma.config.ts` before `npm ci` so clean container builds can generate the Prisma client during the offline install step.
-
-Refresh the archive whenever `package-lock.json` changes:
+Generate or refresh the local fallback archives whenever `package-lock.json` changes or a Docker build needs offline inputs:
 
 ```bash
 npm install
 npm run cache:npm:refresh
+npm run cache:prisma:refresh
 ```
 
 ## Host Verification Commands

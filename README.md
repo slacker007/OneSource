@@ -1,6 +1,6 @@
 # OneSource
 
-OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold plus the first six Phase 1 foundation slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, a typed opportunity-domain repository layer with shared DTOs, expanded realistic demo seed data, boot-time environment validation, a placeholder worker process, and an offline npm cache archive that makes Docker builds self-sufficient in this environment.
+OneSource is a capture intelligence platform for government contracting teams. The repo now has the full Phase 0 scaffold plus the first six Phase 1 foundation slices: a Next.js app with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, Playwright, PostgreSQL, Prisma ORM, auth and audit tables, opportunity and source-lineage schema, source connector metadata and multi-source import-decision persistence, opportunity workspace execution persistence, a typed opportunity-domain repository layer with shared DTOs, expanded realistic demo seed data, boot-time environment validation, and a placeholder worker process.
 
 ## Current Status
 
@@ -58,7 +58,13 @@ cp .env.example .env
 npm install
 ```
 
-Host dependency installation is not required for the compose-managed runtime or test workflows because Docker builds now use the committed offline npm cache archive at `vendor/npm-offline-cache.tar.gz`.
+Host dependency installation is not required for compose workflows when Docker can reach the npm registry. If container builds cannot reach the registry in a given environment, generate local cache archives under `vendor/` before rebuilding:
+
+```bash
+npm install
+npm run cache:npm:refresh
+npm run cache:prisma:refresh
+```
 
 3. Install the Chromium browser used by host-side Playwright runs:
 
@@ -112,20 +118,19 @@ The current seed creates a default organization, the canonical system role set, 
 
 The typed opportunity repository under `src/modules/opportunities/` exposes shared DTOs plus typed query functions for dashboard-style summaries and opportunity cards. The homepage remains a static shell for now so compose builds do not depend on a runtime Prisma client yet, but future persisted read models should use these module boundaries instead of raw model payloads.
 
-## Offline Docker Dependency Cache
+## Optional Local Docker Dependency Cache
 
-This repo includes `vendor/npm-offline-cache.tar.gz`, a curated archive of the npm tarballs needed by the current lockfile on the Linux development target. Docker images install dependencies with `npm ci --offline`, so compose workflows do not depend on a repo-local `node_modules` tree or live npm registry access from containers.
+Developer-generated cache archives under `vendor/` are not committed to the repo. Docker images install dependencies with normal `npm ci` by default, but the build will switch to `npm ci --offline` automatically when `vendor/npm-offline-cache.tar.gz` is present locally.
 
-The Docker dependency stage also copies `prisma/` plus `prisma.config.ts` before `npm ci` so the offline install can generate the Prisma client required by clean container builds.
-
-When dependency versions change:
+If Docker cannot reach the npm registry in your environment, generate the optional local archives first:
 
 ```bash
 npm install
 npm run cache:npm:refresh
+npm run cache:prisma:refresh
 ```
 
-Run those commands on the host before rebuilding images so the committed archive stays aligned with `package-lock.json`.
+`vendor/prisma-client.tar.gz` is also an optional local artifact. When present, the Docker dependency stage overlays it after install so compose builds can reuse a host-generated Prisma client if the environment needs that fallback.
 
 ## Required Environment Variables
 

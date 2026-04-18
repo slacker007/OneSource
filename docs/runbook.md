@@ -26,13 +26,14 @@ cp .env.example .env
 npm install
 ```
 
-Compose workflows do not depend on host `node_modules`; Docker images install from the committed offline archive at `vendor/npm-offline-cache.tar.gz`.
+Compose workflows do not depend on host `node_modules`. Docker images install with normal `npm ci` by default and can fall back to optional local cache archives under `vendor/` when container registry access is unavailable.
 
-3. When dependency versions change, refresh the offline cache archive before rebuilding images:
+3. When dependency versions change, or when a Docker environment needs offline install inputs, refresh the optional local cache archives before rebuilding images:
 
 ```bash
 npm install
 npm run cache:npm:refresh
+npm run cache:prisma:refresh
 ```
 
 ## Boot The Default Stack
@@ -235,12 +236,13 @@ Only use reset for disposable local development data.
 Symptoms:
 
 - image builds or test containers fail before Next.js or Vitest starts
-- `npm ci --offline` reports a missing cached tarball
+- `npm ci` fails before Next.js or Vitest starts
+- `npm ci --offline` reports a missing cached tarball when using local fallback archives
 
 Recovery:
 
-1. Confirm `vendor/npm-offline-cache.tar.gz` exists in the repo.
-2. Refresh it with `npm install && npm run cache:npm:refresh` if `package-lock.json` changed.
+1. If the environment should support online installs, confirm the container runtime can reach the npm registry and re-run the compose command.
+2. If the environment needs offline inputs, generate fresh local archives with `npm install`, `npm run cache:npm:refresh`, and `npm run cache:prisma:refresh`.
 3. Re-run the compose test command.
 
 ### Browser Tests Fail

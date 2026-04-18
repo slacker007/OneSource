@@ -47,3 +47,6 @@ next-env.d.ts
 /tmp-app
 /.docker/postgres-data
 /.tmp*
+
+# generated local build caches
+/vendor/*.tar.gz

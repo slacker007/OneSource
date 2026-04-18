@@ -15,7 +15,7 @@ Current runtime components:
 - `worker`: placeholder Node.js process that validates env, connects to PostgreSQL, and emits structured heartbeat logs
 - `playwright`: profile-gated Chromium test container used only for compose-backed browser verification
 
-The compose images are intentionally built from a repo-contained offline npm cache archive rather than a copied host `node_modules` tree. This keeps the stack deterministic even though Docker containers in this environment cannot reach `registry.npmjs.org` directly.
+The compose images install dependencies inside Docker rather than copying a host `node_modules` tree. By default the dependency stage runs `npm ci`, but it will switch to optional local offline archives under `vendor/` when those files have been generated for an environment that cannot reach the npm registry from containers.
 
 ## Repository Layout
 
@@ -130,7 +130,7 @@ Environment configuration is injected through `.env` / compose variables and val
 - `POSTGRES_PASSWORD`
 - `WORKER_POLL_INTERVAL_MS`
 
-Docker dependency installation is performed offline from `vendor/npm-offline-cache.tar.gz`. That archive is generated from the lockfile plus the host npm cache by `npm run cache:npm:refresh` and is part of the repo’s durable build inputs.
+Docker dependency installation defaults to online `npm ci`. Optional local fallback archives can be generated with `npm run cache:npm:refresh` and `npm run cache:prisma:refresh` when a specific environment needs offline container inputs, but those tarballs are intentionally ignored and are not durable repo inputs.
 
 ## Testing Architecture
 

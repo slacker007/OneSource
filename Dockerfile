@@ -3,11 +3,21 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY package.json package-lock.json prisma.config.ts ./
 COPY prisma ./prisma
-COPY vendor/npm-offline-cache.tar.gz /tmp/npm-offline-cache.tar.gz
-RUN mkdir -p /tmp/npm-offline-cache \
-  && tar -xzf /tmp/npm-offline-cache.tar.gz -C /tmp/npm-offline-cache \
-  && npm ci --offline --cache /tmp/npm-offline-cache \
-  && rm -rf /tmp/npm-offline-cache /tmp/npm-offline-cache.tar.gz
+COPY vendor ./vendor
+RUN if [ -f vendor/npm-offline-cache.tar.gz ]; then \
+    mkdir -p /tmp/npm-offline-cache \
+    && tar -xzf vendor/npm-offline-cache.tar.gz -C /tmp/npm-offline-cache \
+    && npm ci --offline --cache /tmp/npm-offline-cache; \
+  else \
+    npm ci; \
+  fi \
+  && if [ -f vendor/prisma-client.tar.gz ]; then \
+    mkdir -p /app/node_modules/.prisma \
+    && tar -xzf vendor/prisma-client.tar.gz -C /app/node_modules/.prisma; \
+  else \
+    npm run prisma:generate; \
+  fi \
+  && rm -rf /tmp/npm-offline-cache /app/vendor
 
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
