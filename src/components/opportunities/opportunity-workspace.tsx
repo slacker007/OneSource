@@ -174,7 +174,8 @@ export function OpportunityWorkspace({
             label="Score"
             supportingText={
               snapshot.scorecard?.recommendationSummary ??
-              "Scoring engine configuration ships in later PRD slices."
+              snapshot.scorecard?.summary ??
+              "No deterministic score has been calculated yet."
             }
             value={
               snapshot.scorecard?.totalScore
@@ -419,7 +420,7 @@ function ScoringSection({
       ) : (
         <EmptyState
           className="mt-6 border-white/15 bg-white/5 text-white"
-          message="The seeded workspace does not have a current scorecard yet."
+          message="A current scorecard is not available for this opportunity yet."
           title="No scoring context yet"
         />
       )}

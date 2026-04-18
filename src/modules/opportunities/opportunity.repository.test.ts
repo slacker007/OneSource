@@ -15,11 +15,87 @@ import {
   type OpportunityWorkspaceRepositoryClient,
 } from "@/modules/opportunities/opportunity.repository";
 
+function buildOrganizationProfileRecord() {
+  return {
+    activeScoringModelKey: "default_capture_v1",
+    activeScoringModelVersion: "2026-04-18",
+    strategicFocus:
+      "Prioritize Air Force and Army workflow modernization pursuits with vehicle access already in place.",
+    targetNaicsCodes: ["541511", "541512"],
+    priorityAgencyIds: ["agency_1"],
+    relationshipAgencyIds: ["agency_1"],
+    capabilities: [
+      {
+        capabilityKey: "knowledge-management",
+        capabilityLabel: "Knowledge management",
+        capabilityCategory: "data",
+        capabilityKeywords: ["knowledge management", "workflow modernization"],
+      },
+      {
+        capabilityKey: "cloud-operations",
+        capabilityLabel: "Cloud operations",
+        capabilityCategory: "cloud",
+        capabilityKeywords: ["cloud operations", "sustainment support"],
+      },
+    ],
+    certifications: [
+      {
+        certificationKey: "iso-27001",
+        certificationLabel: "ISO 27001",
+        certificationCode: "ISO-27001",
+      },
+    ],
+    selectedVehicles: [
+      {
+        isPreferred: true,
+        vehicle: {
+          id: "vehicle_1",
+          code: "OASIS-PLUS-UNR",
+          name: "OASIS+ Unrestricted",
+        },
+      },
+    ],
+    scoringCriteria: [
+      {
+        factorKey: "capability_fit",
+        factorLabel: "Capability fit",
+        weight: { toString: () => "30.00" },
+      },
+      {
+        factorKey: "strategic_alignment",
+        factorLabel: "Strategic alignment",
+        weight: { toString: () => "20.00" },
+      },
+      {
+        factorKey: "vehicle_access",
+        factorLabel: "Vehicle access",
+        weight: { toString: () => "15.00" },
+      },
+      {
+        factorKey: "relationship_strength",
+        factorLabel: "Relationship strength",
+        weight: { toString: () => "15.00" },
+      },
+      {
+        factorKey: "schedule_realism",
+        factorLabel: "Schedule realism",
+        weight: { toString: () => "10.00" },
+      },
+      {
+        factorKey: "risk",
+        factorLabel: "Risk",
+        weight: { toString: () => "10.00" },
+      },
+    ],
+  };
+}
+
 function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
   return {
     id: "org_123",
     name: "Default Organization",
     slug: "default-org",
+    organizationProfile: buildOrganizationProfileRecord(),
     sourceConnectorConfigs: [
       {
         id: "connector_1",
@@ -67,6 +143,8 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         naicsCode: "541511",
         sourceSummaryText:
           "Enterprise knowledge management and workflow modernization support.",
+        isActiveSourceRecord: true,
+        isArchivedSourceRecord: false,
         updatedAt: new Date("2026-04-18T01:00:00.000Z"),
         leadAgency: {
           id: "agency_1",
@@ -161,6 +239,8 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         originSourceSystem: "sam_gov",
         naicsCode: "541512",
         sourceSummaryText: "Cloud operations and sustainment support.",
+        isActiveSourceRecord: true,
+        isArchivedSourceRecord: false,
         updatedAt: new Date("2026-04-17T01:00:00.000Z"),
         leadAgency: null,
         vehicles: [],
@@ -180,6 +260,8 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         originSourceSystem: "manual_entry",
         naicsCode: "541519",
         sourceSummaryText: "Submitted cyber support pursuit.",
+        isActiveSourceRecord: true,
+        isArchivedSourceRecord: false,
         updatedAt: new Date("2026-04-18T02:00:00.000Z"),
         leadAgency: {
           id: "agency_2",
@@ -250,6 +332,7 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
       id: "org_123",
       name: "Default Organization",
       slug: "default-org",
+      organizationProfile: buildOrganizationProfileRecord(),
       users: [
         {
           id: "user_admin",
@@ -275,6 +358,8 @@ function buildOpportunityWorkspaceRecord(): OpportunityWorkspaceRecord {
     responseDeadlineAt: new Date("2026-05-01T17:00:00.000Z"),
     originSourceSystem: "sam_gov",
     naicsCode: "541511",
+    isActiveSourceRecord: true,
+    isArchivedSourceRecord: false,
     classificationCode: "D302",
     setAsideDescription: "Small Business Set-Aside",
     currentStageKey: "capture_active",
@@ -559,6 +644,10 @@ describe("opportunity.repository", () => {
       priority: "CRITICAL",
     });
     expect(summaries[1].currentStageLabel).toBe("Unstaged");
+    expect(summaries[1].score).toMatchObject({
+      maximumScore: "100.00",
+      recommendationOutcome: null,
+    });
     expect(summaries[2]).toMatchObject({
       title: "DHS Zero Trust Assessment Support",
       currentStageLabel: "Submitted",
@@ -698,6 +787,27 @@ describe("opportunity.repository", () => {
         },
       ],
     });
+  });
+
+  it("calculates a workspace scorecard when no persisted current scorecard exists", async () => {
+    const record = buildOpportunityWorkspaceRecord();
+
+    record.scorecards = [];
+
+    const db = createWorkspaceRepositoryClient(record);
+    const snapshot = await getOpportunityWorkspaceSnapshot({
+      db,
+      opportunityId: "opp_alpha",
+    });
+
+    expect(snapshot?.scorecard).toMatchObject({
+      scoringModelKey: "default_capture_v1",
+      scoringModelVersion: "2026-04-18",
+      maximumScore: "100.00",
+      recommendationOutcome: null,
+    });
+    expect(snapshot?.scorecard?.factors).toHaveLength(6);
+    expect(snapshot?.opportunity.score?.maximumScore).toBe("100.00");
   });
 
   it("builds a personal assigned-task board snapshot with opportunity linkage", async () => {

@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+import {
+  calculateOpportunityScore,
+  type CalculatedOpportunityScorecard,
+  type OrganizationScoringProfileInput,
+  SCORING_FACTOR_KEYS,
+} from "./opportunity-scoring";
 import type {
   AgencySummary,
   CompetitorSummary,
@@ -59,6 +65,64 @@ const OPPORTUNITY_LIST_SORTS = [
   "stage_asc",
 ] as const satisfies OpportunityListSort[];
 
+const organizationScoringProfileSelect = {
+  select: {
+    activeScoringModelKey: true,
+    activeScoringModelVersion: true,
+    strategicFocus: true,
+    targetNaicsCodes: true,
+    priorityAgencyIds: true,
+    relationshipAgencyIds: true,
+    capabilities: {
+      where: {
+        isActive: true,
+      },
+      orderBy: [{ sortOrder: "asc" }, { capabilityLabel: "asc" }],
+      select: {
+        capabilityKey: true,
+        capabilityLabel: true,
+        capabilityCategory: true,
+        capabilityKeywords: true,
+      },
+    },
+    certifications: {
+      where: {
+        isActive: true,
+      },
+      orderBy: [{ sortOrder: "asc" }, { certificationLabel: "asc" }],
+      select: {
+        certificationKey: true,
+        certificationLabel: true,
+        certificationCode: true,
+      },
+    },
+    selectedVehicles: {
+      orderBy: [{ isPreferred: "desc" }, { sortOrder: "asc" }],
+      select: {
+        isPreferred: true,
+        vehicle: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+      },
+    },
+    scoringCriteria: {
+      where: {
+        isActive: true,
+      },
+      orderBy: [{ sortOrder: "asc" }, { factorLabel: "asc" }],
+      select: {
+        factorKey: true,
+        factorLabel: true,
+        weight: true,
+      },
+    },
+  },
+} as const;
+
 const ACTIVE_TASK_STATUSES = [
   "NOT_STARTED",
   "IN_PROGRESS",
@@ -75,6 +139,7 @@ const organizationDashboardArgs = {
     id: true,
     name: true,
     slug: true,
+    organizationProfile: organizationScoringProfileSelect,
     sourceConnectorConfigs: {
       orderBy: {
         sourceDisplayName: "asc",
@@ -103,6 +168,8 @@ const organizationDashboardArgs = {
         originSourceSystem: true,
         naicsCode: true,
         sourceSummaryText: true,
+        isActiveSourceRecord: true,
+        isArchivedSourceRecord: true,
         updatedAt: true,
         leadAgency: {
           select: {
@@ -232,6 +299,8 @@ const opportunityWorkspaceArgs = {
     responseDeadlineAt: true,
     originSourceSystem: true,
     naicsCode: true,
+    isActiveSourceRecord: true,
+    isArchivedSourceRecord: true,
     classificationCode: true,
     setAsideDescription: true,
     currentStageKey: true,
@@ -250,6 +319,7 @@ const opportunityWorkspaceArgs = {
         id: true,
         name: true,
         slug: true,
+        organizationProfile: organizationScoringProfileSelect,
         users: {
           where: {
             status: {
@@ -588,6 +658,39 @@ type OrganizationDashboardConnectorRecord = {
   connectorVersion: string | null;
 };
 
+type OrganizationScoringProfileRecord = {
+  activeScoringModelKey: string;
+  activeScoringModelVersion: string;
+  strategicFocus: string | null;
+  targetNaicsCodes: string[];
+  priorityAgencyIds: string[];
+  relationshipAgencyIds: string[];
+  capabilities: Array<{
+    capabilityKey: string;
+    capabilityLabel: string;
+    capabilityCategory: string | null;
+    capabilityKeywords: string[];
+  }>;
+  certifications: Array<{
+    certificationKey: string;
+    certificationLabel: string;
+    certificationCode: string | null;
+  }>;
+  selectedVehicles: Array<{
+    isPreferred: boolean;
+    vehicle: {
+      id: string;
+      code: string;
+      name: string;
+    };
+  }>;
+  scoringCriteria: Array<{
+    factorKey: string;
+    factorLabel: string;
+    weight: { toString(): string };
+  }>;
+} | null;
+
 type OrganizationDashboardOpportunityRecord = {
   id: string;
   title: string;
@@ -598,6 +701,8 @@ type OrganizationDashboardOpportunityRecord = {
   originSourceSystem: string | null;
   naicsCode: string | null;
   sourceSummaryText: string | null;
+  isActiveSourceRecord: boolean;
+  isArchivedSourceRecord: boolean;
   updatedAt: Date;
   leadAgency: OrganizationDashboardLeadAgencyRecord;
   vehicles: Array<{
@@ -658,6 +763,7 @@ export type OrganizationDashboardRecord = {
   id: string;
   name: string;
   slug: string;
+  organizationProfile: OrganizationScoringProfileRecord;
   sourceConnectorConfigs: OrganizationDashboardConnectorRecord[];
   opportunities: OrganizationDashboardOpportunityRecord[];
 };
@@ -668,6 +774,7 @@ export type OpportunityWorkspaceRecord = {
     id: string;
     name: string;
     slug: string;
+    organizationProfile: OrganizationScoringProfileRecord;
     users: Array<{
       id: string;
       name: string | null;
@@ -684,6 +791,8 @@ export type OpportunityWorkspaceRecord = {
   responseDeadlineAt: Date | null;
   originSourceSystem: string | null;
   naicsCode: string | null;
+  isActiveSourceRecord: boolean;
+  isArchivedSourceRecord: boolean;
   classificationCode: string | null;
   setAsideDescription: string | null;
   currentStageKey: string | null;
@@ -903,8 +1012,14 @@ export async function listOpportunitySummaries({
     return [];
   }
 
+  const referenceDate = new Date();
+
   return record.opportunities.map((opportunity) =>
-    mapOpportunitySummary(opportunity),
+    mapOpportunitySummary({
+      opportunity,
+      organizationProfile: record.organizationProfile,
+      referenceDate,
+    }),
   );
 }
 
@@ -923,7 +1038,12 @@ export async function getHomeDashboardSnapshot({
   }
 
   const opportunities: OpportunitySummary[] = record.opportunities.map(
-    (opportunity) => mapOpportunitySummary(opportunity),
+    (opportunity) =>
+      mapOpportunitySummary({
+        opportunity,
+        organizationProfile: record.organizationProfile,
+        referenceDate: now,
+      }),
   );
   const connectors: SourceConnectorSummary[] = record.sourceConnectorConfigs.map(
     (connector) => mapConnectorSummary(connector),
@@ -1009,7 +1129,12 @@ export async function getOpportunityListSnapshot({
   }
 
   const opportunities: OpportunitySummary[] = record.opportunities.map(
-    (opportunity) => mapOpportunitySummary(opportunity),
+    (opportunity) =>
+      mapOpportunitySummary({
+        opportunity,
+        organizationProfile: record.organizationProfile,
+        referenceDate: now,
+      }),
   );
   const filteredOpportunities = filterOpportunitySummaries({
     opportunities,
@@ -1098,14 +1223,24 @@ export async function getOpportunityWorkspaceSnapshot({
     return null;
   }
 
+  const referenceDate = new Date();
+  const resolvedScorecard = resolveWorkspaceScorecard({
+    opportunity: record,
+    organizationProfile: record.organization.organizationProfile,
+    referenceDate,
+  });
+
   return {
     organization: {
       id: record.organization.id,
       name: record.organization.name,
       slug: record.organization.slug,
     },
-    opportunity: mapOpportunityWorkspaceSummary(record),
-    scorecard: mapWorkspaceScorecard(record.scorecards[0]),
+    opportunity: mapOpportunityWorkspaceSummary({
+      opportunity: record,
+      scoreSummary: mapScoreSummary(record.scorecards[0], resolvedScorecard),
+    }),
+    scorecard: mapWorkspaceScorecard(record.scorecards[0], resolvedScorecard),
     bidDecision: mapWorkspaceBidDecision(record.bidDecisions[0]),
     taskAssigneeOptions: record.organization.users.map(mapTaskAssigneeOption),
     tasks: record.tasks.map(mapWorkspaceTask),
@@ -1297,20 +1432,118 @@ function mapMilestoneSummary(
   };
 }
 
-function mapScoreSummary(
-  scorecard:
-    | OrganizationDashboardRecord["opportunities"][number]["scorecards"][number]
-    | undefined,
-): OpportunityScoreSummary | null {
-  if (!scorecard) {
+function mapOrganizationScoringProfile(
+  profile: OrganizationScoringProfileRecord,
+): OrganizationScoringProfileInput | null {
+  if (!profile) {
     return null;
   }
 
   return {
-    totalScore: scorecard.totalScore?.toString() ?? null,
-    maximumScore: scorecard.maximumScore?.toString() ?? null,
-    recommendationOutcome: scorecard.recommendationOutcome,
-    calculatedAt: scorecard.calculatedAt.toISOString(),
+    activeScoringModelKey: profile.activeScoringModelKey,
+    activeScoringModelVersion: profile.activeScoringModelVersion,
+    strategicFocus: profile.strategicFocus,
+    targetNaicsCodes: profile.targetNaicsCodes,
+    priorityAgencyIds: profile.priorityAgencyIds,
+    relationshipAgencyIds: profile.relationshipAgencyIds,
+    capabilities: profile.capabilities.map((capability) => ({
+      key: capability.capabilityKey,
+      label: capability.capabilityLabel,
+      category: capability.capabilityCategory,
+      keywords: capability.capabilityKeywords,
+    })),
+    certifications: profile.certifications.map((certification) => ({
+      key: certification.certificationKey,
+      label: certification.certificationLabel,
+      code: certification.certificationCode,
+    })),
+    selectedVehicles: profile.selectedVehicles.map((selection) => ({
+      id: selection.vehicle.id,
+      code: selection.vehicle.code,
+      name: selection.vehicle.name,
+      isPreferred: selection.isPreferred,
+    })),
+    scoringCriteria: profile.scoringCriteria
+      .map((criterion) => {
+        if (!SCORING_FACTOR_KEYS.includes(criterion.factorKey as never)) {
+          return null;
+        }
+
+        return {
+          key: criterion.factorKey as (typeof SCORING_FACTOR_KEYS)[number],
+          label: criterion.factorLabel,
+          weight: Number.parseFloat(criterion.weight.toString()),
+        };
+      })
+      .filter((criterion) => criterion !== null),
+  };
+}
+
+function calculateOpportunityScorecard(
+  opportunity:
+    | OrganizationDashboardRecord["opportunities"][number]
+    | OpportunityWorkspaceRecord,
+  organizationProfile: OrganizationScoringProfileRecord,
+  referenceDate: Date,
+) {
+  return calculateOpportunityScore({
+    opportunity: {
+      id: opportunity.id,
+      title: opportunity.title,
+      description: "description" in opportunity ? opportunity.description : null,
+      sourceSummaryText: opportunity.sourceSummaryText,
+      responseDeadlineAt: toIsoString(opportunity.responseDeadlineAt),
+      currentStageKey: opportunity.currentStageKey,
+      naicsCode: opportunity.naicsCode,
+      leadAgency: opportunity.leadAgency
+        ? {
+            id: opportunity.leadAgency.id,
+            name: opportunity.leadAgency.name,
+            organizationCode: opportunity.leadAgency.organizationCode,
+          }
+        : null,
+      isActiveSourceRecord: opportunity.isActiveSourceRecord,
+      isArchivedSourceRecord: opportunity.isArchivedSourceRecord,
+      vehicles: opportunity.vehicles.map((vehicleLink) => ({
+        id: vehicleLink.vehicle.id,
+        code: vehicleLink.vehicle.code,
+        name: vehicleLink.vehicle.name,
+        isPrimary: vehicleLink.isPrimary,
+      })),
+      competitors: opportunity.competitors.map((competitorLink) => ({
+        name: competitorLink.competitor.name,
+        role: competitorLink.role,
+      })),
+    },
+    profile: mapOrganizationScoringProfile(organizationProfile),
+    referenceDate,
+  });
+}
+
+function mapScoreSummary(
+  scorecard:
+    | OrganizationDashboardRecord["opportunities"][number]["scorecards"][number]
+    | undefined,
+  calculatedScorecard?: CalculatedOpportunityScorecard | null,
+): OpportunityScoreSummary | null {
+  if (scorecard) {
+    return {
+      totalScore: scorecard.totalScore?.toString() ?? null,
+      maximumScore: scorecard.maximumScore?.toString() ?? null,
+      recommendationOutcome: scorecard.recommendationOutcome,
+      calculatedAt: scorecard.calculatedAt.toISOString(),
+    };
+  }
+
+  if (!calculatedScorecard) {
+    return null;
+  }
+
+  return {
+    totalScore: formatNumericScore(calculatedScorecard.totalScore),
+    maximumScore: formatNumericScore(calculatedScorecard.maximumScore),
+    recommendationOutcome: calculatedScorecard.recommendationOutcome,
+    calculatedAt: calculatedScorecard.calculatedAt,
   };
 }
 
@@ -1331,9 +1564,19 @@ function mapBidDecisionSummary(
   };
 }
 
-function mapOpportunitySummary(
-  opportunity: OrganizationDashboardRecord["opportunities"][number],
-): OpportunitySummary {
+function mapOpportunitySummary({
+  opportunity,
+  organizationProfile,
+  referenceDate,
+}: {
+  opportunity: OrganizationDashboardRecord["opportunities"][number];
+  organizationProfile: OrganizationScoringProfileRecord;
+  referenceDate: Date;
+}): OpportunitySummary {
+  const calculatedScorecard = opportunity.scorecards[0]
+    ? null
+    : calculateOpportunityScorecard(opportunity, organizationProfile, referenceDate);
+
   return {
     id: opportunity.id,
     title: opportunity.title,
@@ -1349,7 +1592,10 @@ function mapOpportunitySummary(
     naicsCode: opportunity.naicsCode,
     sourceSummaryText: opportunity.sourceSummaryText,
     updatedAt: opportunity.updatedAt.toISOString(),
-    score: mapScoreSummary(opportunity.scorecards[0]),
+    score: mapScoreSummary(
+      opportunity.scorecards[0],
+      opportunity.scorecards[0] ? null : calculatedScorecard,
+    ),
     bidDecision: mapBidDecisionSummary(opportunity.bidDecisions[0]),
     vehicles: opportunity.vehicles.map(mapVehicleSummary),
     competitors: opportunity.competitors.map(mapCompetitorSummary),
@@ -1362,9 +1608,13 @@ function mapOpportunitySummary(
   };
 }
 
-function mapOpportunityWorkspaceSummary(
-  opportunity: OpportunityWorkspaceRecord,
-): OpportunityWorkspaceSnapshot["opportunity"] {
+function mapOpportunityWorkspaceSummary({
+  opportunity,
+  scoreSummary,
+}: {
+  opportunity: OpportunityWorkspaceRecord;
+  scoreSummary: OpportunityScoreSummary | null;
+}): OpportunityWorkspaceSnapshot["opportunity"] {
   return {
     id: opportunity.id,
     title: opportunity.title,
@@ -1380,7 +1630,7 @@ function mapOpportunityWorkspaceSummary(
     naicsCode: opportunity.naicsCode,
     sourceSummaryText: opportunity.sourceSummaryText,
     updatedAt: opportunity.updatedAt.toISOString(),
-    score: mapScoreSummary(opportunity.scorecards[0]),
+    score: scoreSummary,
     bidDecision: mapBidDecisionSummary(opportunity.bidDecisions[0]),
     vehicles: opportunity.vehicles.map(mapVehicleSummary),
     competitors: opportunity.competitors.map(mapCompetitorSummary),
@@ -1493,25 +1743,80 @@ function mapWorkspaceScoreFactor(
   };
 }
 
-function mapWorkspaceScorecard(
-  scorecard: OpportunityWorkspaceRecord["scorecards"][number] | undefined,
-): OpportunityWorkspaceScorecard | null {
-  if (!scorecard) {
+function resolveWorkspaceScorecard({
+  opportunity,
+  organizationProfile,
+  referenceDate,
+}: {
+  opportunity: OpportunityWorkspaceRecord;
+  organizationProfile: OrganizationScoringProfileRecord;
+  referenceDate: Date;
+}) {
+  if (opportunity.scorecards[0]) {
     return null;
   }
 
+  return calculateOpportunityScorecard(
+    opportunity,
+    organizationProfile,
+    referenceDate,
+  );
+}
+
+function mapWorkspaceScorecard(
+  scorecard: OpportunityWorkspaceRecord["scorecards"][number] | undefined,
+  calculatedScorecard?: CalculatedOpportunityScorecard | null,
+): OpportunityWorkspaceScorecard | null {
+  if (!scorecard && !calculatedScorecard) {
+    return null;
+  }
+
+  if (scorecard) {
+    return {
+      scoringModelKey: scorecard.scoringModelKey,
+      scoringModelVersion: scorecard.scoringModelVersion,
+      totalScore: scorecard.totalScore?.toString() ?? null,
+      maximumScore: scorecard.maximumScore?.toString() ?? null,
+      scorePercent: scorecard.scorePercent?.toString() ?? null,
+      recommendationOutcome: scorecard.recommendationOutcome,
+      recommendationSummary: scorecard.recommendationSummary,
+      summary: scorecard.summary,
+      calculatedAt: scorecard.calculatedAt.toISOString(),
+      factors: scorecard.factorScores.map(mapWorkspaceScoreFactor),
+    };
+  }
+
   return {
-    scoringModelKey: scorecard.scoringModelKey,
-    scoringModelVersion: scorecard.scoringModelVersion,
-    totalScore: scorecard.totalScore?.toString() ?? null,
-    maximumScore: scorecard.maximumScore?.toString() ?? null,
-    scorePercent: scorecard.scorePercent?.toString() ?? null,
-    recommendationOutcome: scorecard.recommendationOutcome,
-    recommendationSummary: scorecard.recommendationSummary,
-    summary: scorecard.summary,
-    calculatedAt: scorecard.calculatedAt.toISOString(),
-    factors: scorecard.factorScores.map(mapWorkspaceScoreFactor),
+    scoringModelKey: calculatedScorecard?.scoringModelKey ?? null,
+    scoringModelVersion: calculatedScorecard?.scoringModelVersion ?? null,
+    totalScore: calculatedScorecard
+      ? formatNumericScore(calculatedScorecard.totalScore)
+      : null,
+    maximumScore: calculatedScorecard
+      ? formatNumericScore(calculatedScorecard.maximumScore)
+      : null,
+    scorePercent: calculatedScorecard
+      ? formatNumericScore(calculatedScorecard.scorePercent)
+      : null,
+    recommendationOutcome: calculatedScorecard?.recommendationOutcome ?? null,
+    recommendationSummary: calculatedScorecard?.recommendationSummary ?? null,
+    summary: calculatedScorecard?.summary ?? null,
+    calculatedAt: calculatedScorecard?.calculatedAt ?? "",
+    factors:
+      calculatedScorecard?.factors.map((factor) => ({
+        id: factor.id,
+        factorKey: factor.factorKey,
+        factorLabel: factor.factorLabel,
+        weight: formatNumericScore(factor.weight),
+        score: formatNumericScore(factor.score),
+        maximumScore: formatNumericScore(factor.maximumScore),
+        explanation: factor.explanation,
+      })) ?? [],
   };
+}
+
+function formatNumericScore(value: number) {
+  return value.toFixed(2);
 }
 
 function mapWorkspaceBidDecision(
