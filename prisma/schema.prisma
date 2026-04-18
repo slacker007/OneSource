@@ -155,6 +155,12 @@ enum BidDecisionOutcome {
   DEFER
 }
 
+enum KnowledgeAssetType {
+  PAST_PERFORMANCE_SNIPPET
+  BOILERPLATE_CONTENT
+  WIN_THEME
+}
+
 model Organization {
   id                          String                         @id @default(cuid()) @map("id")
   name                        String                         @map("name")
@@ -188,6 +194,9 @@ model Organization {
   opportunityTransitions      OpportunityStageTransition[]
   opportunityScorecards       OpportunityScorecard[]
   bidDecisions                BidDecision[]
+  knowledgeAssets             KnowledgeAsset[]
+  knowledgeAssetTags          KnowledgeAssetTag[]
+  knowledgeAssetOpportunities KnowledgeAssetOpportunity[]
 
   @@map("organizations")
 }
@@ -224,6 +233,8 @@ model User {
   calculatedOpportunityScorecards OpportunityScorecard[]       @relation("OpportunityScorecardCalculator")
   recommendedBidDecisions         BidDecision[]                @relation("BidDecisionRecommender")
   decidedBidDecisions             BidDecision[]                @relation("BidDecisionDecider")
+  createdKnowledgeAssets          KnowledgeAsset[]             @relation("KnowledgeAssetCreator")
+  updatedKnowledgeAssets          KnowledgeAsset[]             @relation("KnowledgeAssetUpdater")
 
   @@index([organizationId], map: "users_organization_id_idx")
   @@map("users")
@@ -539,6 +550,7 @@ model Opportunity {
   stageTransitions              OpportunityStageTransition[]
   scorecards                    OpportunityScorecard[]
   bidDecisions                  BidDecision[]
+  knowledgeAssets               KnowledgeAssetOpportunity[]
 
   @@index([organizationId, title], map: "opportunities_organization_id_title_idx")
   @@index([organizationId, leadAgencyId], map: "opportunities_organization_id_lead_agency_id_idx")
@@ -985,6 +997,64 @@ model OpportunityDocument {
   @@index([sourceRecordId], map: "opportunity_documents_source_record_id_idx")
   @@index([uploadedByUserId], map: "opportunity_documents_uploaded_by_user_id_idx")
   @@map("opportunity_documents")
+}
+
+model KnowledgeAsset {
+  id               String                       @id @default(cuid()) @map("id")
+  organizationId   String                       @map("organization_id")
+  createdByUserId  String?                      @map("created_by_user_id")
+  updatedByUserId  String?                      @map("updated_by_user_id")
+  assetType        KnowledgeAssetType           @map("asset_type")
+  title            String                       @map("title")
+  summary          String?                      @map("summary") @db.Text
+  body             String                       @map("body") @db.Text
+  contentFormat    String                       @default("markdown") @map("content_format")
+  isArchived       Boolean                      @default(false) @map("is_archived")
+  createdAt        DateTime                     @default(now()) @map("created_at")
+  updatedAt        DateTime                     @updatedAt @map("updated_at")
+  organization     Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdByUser    User?                        @relation("KnowledgeAssetCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser    User?                        @relation("KnowledgeAssetUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  tags             KnowledgeAssetTag[]
+  linkedOpportunities KnowledgeAssetOpportunity[]
+
+  @@index([organizationId, assetType, updatedAt], map: "knowledge_assets_org_type_updated_at_idx")
+  @@index([organizationId, isArchived], map: "knowledge_assets_org_is_archived_idx")
+  @@index([createdByUserId], map: "knowledge_assets_created_by_user_id_idx")
+  @@index([updatedByUserId], map: "knowledge_assets_updated_by_user_id_idx")
+  @@map("knowledge_assets")
+}
+
+model KnowledgeAssetTag {
+  id               String         @id @default(cuid()) @map("id")
+  organizationId   String         @map("organization_id")
+  knowledgeAssetId String         @map("knowledge_asset_id")
+  label            String         @map("label")
+  normalizedLabel  String         @map("normalized_label")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  knowledgeAsset   KnowledgeAsset @relation(fields: [knowledgeAssetId], references: [id], onDelete: Cascade)
+
+  @@unique([knowledgeAssetId, normalizedLabel], map: "knowledge_asset_tags_asset_id_normalized_label_key")
+  @@index([organizationId, normalizedLabel], map: "knowledge_asset_tags_org_normalized_label_idx")
+  @@index([knowledgeAssetId], map: "knowledge_asset_tags_asset_id_idx")
+  @@map("knowledge_asset_tags")
+}
+
+model KnowledgeAssetOpportunity {
+  knowledgeAssetId String         @map("knowledge_asset_id")
+  opportunityId    String         @map("opportunity_id")
+  organizationId   String         @map("organization_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  knowledgeAsset   KnowledgeAsset @relation(fields: [knowledgeAssetId], references: [id], onDelete: Cascade)
+  opportunity      Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@id([knowledgeAssetId, opportunityId])
+  @@index([organizationId, opportunityId], map: "knowledge_asset_opportunities_org_opportunity_id_idx")
+  @@index([opportunityId], map: "knowledge_asset_opportunities_opportunity_id_idx")
+  @@map("knowledge_asset_opportunities")
 }
 
 model OpportunityStageTransition {

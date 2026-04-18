@@ -621,6 +621,71 @@ async function syncOpportunityWorkspace({
   }
 }
 
+async function syncKnowledgeAssets({
+  knowledgeAssets,
+  organizationId,
+  usersByKey,
+}) {
+  await prisma.knowledgeAsset.deleteMany({
+    where: { organizationId },
+  });
+
+  const opportunities = await prisma.opportunity.findMany({
+    where: { organizationId },
+    select: {
+      id: true,
+      title: true,
+    },
+  });
+  const opportunitiesByTitle = new Map(
+    opportunities.map((opportunity) => [opportunity.title, opportunity]),
+  );
+
+  for (const asset of knowledgeAssets) {
+    const author = usersByKey.get(asset.authorUserKey);
+
+    if (!author) {
+      throw new Error(`Missing seeded knowledge asset author ${asset.authorUserKey}`);
+    }
+
+    const linkedOpportunities = asset.linkedOpportunityTitles.map((title) => {
+      const opportunity = opportunitiesByTitle.get(title);
+
+      if (!opportunity) {
+        throw new Error(`Missing seeded opportunity for knowledge asset link ${title}`);
+      }
+
+      return opportunity;
+    });
+
+    await prisma.knowledgeAsset.create({
+      data: {
+        organizationId,
+        createdByUserId: author.id,
+        updatedByUserId: author.id,
+        assetType: asset.assetType,
+        title: asset.title,
+        summary: asset.summary,
+        body: asset.body,
+        contentFormat: "markdown",
+        tags: {
+          create: asset.tags.map((tag) => ({
+            organizationId,
+            label: tag,
+            normalizedLabel: tag.trim().toLowerCase(),
+          })),
+        },
+        linkedOpportunities: {
+          create: linkedOpportunities.map((opportunity) => ({
+            organizationId,
+            opportunityId: opportunity.id,
+          })),
+        },
+      },
+    });
+  }
+}
+
 async function main() {
   const scenario = buildOpportunitySeedScenario();
 
@@ -1550,6 +1615,12 @@ async function main() {
     });
   }
 
+  await syncKnowledgeAssets({
+    knowledgeAssets: scenario.knowledgeAssets,
+    organizationId: organization.id,
+    usersByKey,
+  });
+
   await prisma.auditLog.create({
     data: {
       organizationId: organization.id,
@@ -1574,6 +1645,7 @@ async function main() {
           scenario.organizationScoringProfile.selectedVehicleKeys.length,
         seededScoringCriterionCount:
           scenario.organizationScoringProfile.scoringCriteria.length,
+        seededKnowledgeAssetCount: scenario.knowledgeAssets.length,
         seededOpportunityTitles: [
           importedOpportunity.title,
           ...scenario.manualOpportunities.map(

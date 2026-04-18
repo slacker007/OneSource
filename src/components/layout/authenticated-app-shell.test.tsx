@@ -33,6 +33,9 @@ describe("AppShellFrame", () => {
       "page",
     );
     expect(
+      screen.getByRole("link", { name: /^knowledge/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("searchbox", { name: /global search/i }),
     ).toHaveAttribute(
       "placeholder",

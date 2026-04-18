@@ -25,6 +25,11 @@ const PRIMARY_NAV_ITEMS: NavItem[] = [
     description: "Pipeline records",
   },
   {
+    href: "/knowledge",
+    label: "Knowledge",
+    description: "Reusable content",
+  },
+  {
     href: "/sources",
     label: "Sources",
     description: "External intake",

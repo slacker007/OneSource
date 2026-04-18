@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document records the canonical verification workflows for the repo as of the current Phase 7 CSV-intake, document-upload, reusable `sam.gov` connector, and source-sync observability baseline. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
+This document records the canonical verification workflows for the repo as of the current Phase 8 knowledge-library baseline on top of the completed Phase 7 intake and observability work. Use these commands instead of ad hoc local setup so the next loop can reproduce the same results without relying on chat history.
 
 ## Current Coverage
 
 - Unit tests: Vitest with Testing Library for UI, shared UI primitives through routed feature usage, runtime helpers, Auth.js callback behavior, credential authentication, password verification, typed repository mapping, deterministic scoring and recommendation formulas plus fallback scorecard mapping, stage-policy coverage, permission-policy coverage, admin-console rendering, audit payload shaping, audited opportunity write flows, scheduled source-sync sweeps, queued document parsing retries, and persisted scorecard recalculation logic
 - Seed-fixture tests: deterministic multi-source and workspace fixture coverage under `src/lib/opportunities/`
-- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus stored-file download visibility, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/sources` fixture-backed connector search flow plus preview-and-merge or preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with source-sync observability plus scoring-profile visibility, one live retry-queue action, and viewer denial on direct `/settings` navigation
+- Browser tests: Playwright Chromium smoke coverage in `tests/`, including redirect-to-sign-in, seeded dashboard widget visibility, authenticated-shell access, the `/opportunities` filter flow, the `/analytics` decision-console ranking flow, the seeded opportunity workspace route plus visible overdue and upcoming reminder badges, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus stored-file download visibility, and a live stage transition, the guarded tracked-opportunity create/edit flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/knowledge` browse/create/filter flow, the `/sources` fixture-backed connector search flow plus preview-and-merge or preview-and-link import behavior, the `/sources` CSV upload flow with preview, mapping, validation, and import confirmation, desktop shell navigation, mobile drawer navigation, admin access to the `/settings` admin console with source-sync observability plus scoring-profile visibility, one live retry-queue action, and viewer denial on direct `/settings` navigation
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
@@ -56,6 +56,7 @@ For the current auth and authz slices, the Playwright smoke test is expected to:
 - create a note from the workspace with title, pinned state, and body content, then confirm that note appears in the notes section and history feed
 - upload a text document from the workspace, confirm the success state plus queued extraction status render, and confirm a stored-file download link is visible on the resulting document card
 - open `/opportunities/new`, restore a browser-local draft, create a tracked opportunity through the guarded form path, then edit that opportunity through the guarded update flow
+- navigate into `/knowledge`, filter the seeded library, create a reusable knowledge asset with freeform tags and linked opportunities, then return to the library and confirm the created asset can be filtered back down
 - navigate into `/sources`, submit a structured fixture-backed `sam.gov` search, and observe the URL plus connector-backed result set update together
 - open a source-result preview, inspect duplicate detection, and either link the result into the existing tracked opportunity or confirm the already-linked state on reruns
 - upload a CSV file on `/sources`, confirm auto-detected mappings and row-level preview states render, then import one clean row and confirm it appears on the tracked opportunity list
@@ -71,6 +72,14 @@ For the current audit slice, targeted unit verification should confirm:
 - the transactional opportunity write service emits audit rows for create, update, delete, task-create, task-update, task-delete, import-decision, stage-transition, and bid-decision operations
 - the transactional opportunity write service emits audit rows plus workspace activity for document uploads, including stored metadata and extraction status
 - update audits persist field-diff metadata rather than only a generic action label
+
+For the current Phase 8 knowledge slice, targeted verification should confirm:
+
+- the knowledge form schema validates asset type, title, summary, body, freeform tags, and linked opportunities into a stable typed write payload
+- the typed knowledge repository parses URL search params into bounded list filters and maps organization-scoped list plus form snapshots without leaking raw Prisma payloads into the page layer
+- the audited knowledge write service creates, updates, and deletes knowledge assets while syncing tags plus opportunity links and appending audit-log rows
+- the rendered `/knowledge` surface shows summary counts, truthful empty states, URL-synced filters, and create/edit affordances guarded by `manage_pipeline`
+- the browser smoke flow can browse `/knowledge`, create one asset, and find it again through the library filter state
 
 For the current admin-console slice, targeted unit verification should confirm:
 
@@ -186,6 +195,20 @@ npm run db:seed
 ```
 
 When a schema item depends on seeded relationships, verify the persisted graph directly with a narrow Prisma query before closing the loop.
+
+For the current Phase 8 knowledge slice, host verification is expected to include:
+
+```bash
+docker compose up -d db
+npm run prisma:migrate:dev -- --name add_knowledge_assets
+npm run db:seed
+npm run prisma:validate
+npm run lint
+npm test
+npm run build
+npm run db:seed
+npm run e2e
+```
 
 When the changed area adds typed repository or DTO mapping logic, keep those tests deterministic by injecting a fake database client into the repository module rather than depending on a generated Prisma client in unit-test environments.
 

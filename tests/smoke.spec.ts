@@ -29,6 +29,7 @@ test("authenticated homepage smoke test", async ({ page }) => {
   const csvImportSeed = Date.now();
   const csvImportTitle = `Zero Trust Boundary Engineering Bridge ${csvImportSeed}`;
   const csvImportSolicitation = `DHS-CISA-26-${csvImportSeed}`;
+  const knowledgeAssetTitle = `Transition Narrative ${csvImportSeed}`;
   const csvImportFixture = `Opportunity Title,Agency,Solicitation Number,Response Deadline,NAICS Code,Description
 ${csvImportTitle},Department of Homeland Security,${csvImportSolicitation},2026-07-15,541512,Security engineering and transition support for a zero trust bridge effort.
 Enterprise Knowledge Management Support Services,99th Contracting Squadron,FA4861-26-R-0001,2026-05-04,541511,Existing Air Force pursuit that should be detected as a duplicate.
@@ -92,6 +93,60 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByText(/enterprise knowledge management support services/i),
   ).not.toBeVisible();
+  await page.getByRole("link", { name: /^Knowledge/i }).click();
+  await expect(page).toHaveURL(/\/knowledge$/);
+  await expect(
+    page.getByRole("heading", {
+      name: /knowledge library/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", { name: /knowledge asset results/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/air force operational planning past performance/i),
+  ).toBeVisible();
+  await page.locator("#knowledge-type").selectOption("WIN_THEME");
+  await page.getByRole("button", { name: /apply filters/i }).click();
+  await expect(page).toHaveURL(/\/knowledge\?/);
+  await expect(page).toHaveURL(/type=WIN_THEME/);
+  await expect(
+    page.getByText(/army cloud transition win theme/i),
+  ).toBeVisible();
+  await page.getByRole("link", { name: /create knowledge asset/i }).click();
+  await expect(page).toHaveURL(/\/knowledge\/new$/);
+  await page.locator("#knowledge-asset-type").selectOption("WIN_THEME");
+  await page.getByLabel(/asset title/i).fill(knowledgeAssetTitle);
+  await page.getByLabel(/summary/i).fill(
+    "Reusable zero-trust transition narrative.",
+  );
+  await page.getByLabel(/reusable content/i).fill(
+    "This reusable win theme explains how to stabilize a zero-trust transition while improving operational visibility and keeping disruption low for the mission team.",
+  );
+  await page.getByLabel(/tags/i).fill("zero trust, transition");
+  await page
+    .getByRole("checkbox", { name: /army cloud operations recompete/i })
+    .check();
+  await page.getByRole("button", { name: /create knowledge asset/i }).click();
+  await expect(page).toHaveURL(/\/knowledge\/.+\/edit\?created=1$/);
+  await expect(page.getByText(/knowledge asset created/i)).toBeVisible();
+  await page.getByRole("link", { name: /return to library/i }).click();
+  await expect(page).toHaveURL(/\/knowledge$/);
+  await page.locator("#knowledge-query").fill(knowledgeAssetTitle);
+  await page.getByRole("button", { name: /apply filters/i }).click();
+  await expect(page).toHaveURL(/\/knowledge\?/);
+  await expect(
+    page
+      .getByRole("table", { name: /knowledge asset results/i })
+      .getByText(
+        new RegExp(knowledgeAssetTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+      ),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("table", { name: /knowledge asset results/i })
+      .getByText(/army cloud operations recompete/i),
+  ).toBeVisible();
   await page.getByRole("link", { name: /^Sources/i }).click();
   await expect(page).toHaveURL(/\/sources$/);
   await expect(

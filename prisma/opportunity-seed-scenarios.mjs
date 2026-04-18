@@ -2612,6 +2612,48 @@ const MANUAL_PORTFOLIO_OPPORTUNITIES = [
   },
 ];
 
+const KNOWLEDGE_ASSETS = [
+  {
+    key: "air-force-km-past-performance",
+    assetType: "PAST_PERFORMANCE_SNIPPET",
+    title: "Air Force operational planning past performance",
+    summary:
+      "Reusable past-performance proof point for enterprise knowledge management and workflow modernization work inside Air Force operational planning organizations.",
+    body:
+      "Delivered enterprise knowledge management modernization for an Air Force operational planning customer by consolidating fragmented SharePoint workflows, automating approval routing, and deploying role-aware analytics dashboards. The team reduced manual coordination time, improved document traceability across planning cells, and transitioned the customer onto a governed content model that proposal reviewers can cite as a direct analogue for future workflow modernization work.",
+    tags: ["air force", "knowledge management", "workflow modernization"],
+    linkedOpportunityTitles: ["Enterprise Knowledge Management Support Services"],
+    authorUserKey: "alex-morgan",
+  },
+  {
+    key: "va-claims-boilerplate",
+    assetType: "BOILERPLATE_CONTENT",
+    title: "Claims intake modernization boilerplate",
+    summary:
+      "Baseline narrative for claims-intake workflow modernization, queue management, and human-centered service delivery.",
+    body:
+      "Our delivery approach modernizes claims intake by pairing domain-informed journey mapping with queue instrumentation, service blueprints, and secure workflow automation. The team establishes measurable intake-service baselines, reduces manual handoffs, and gives program leaders a repeatable operating picture for throughput, aging, and exception management across the full intake pipeline.",
+    tags: ["veterans affairs", "claims intake", "workflow automation"],
+    linkedOpportunityTitles: ["VA Claims Intake Automation BPA"],
+    authorUserKey: "morgan-patel",
+  },
+  {
+    key: "army-cloud-win-theme",
+    assetType: "WIN_THEME",
+    title: "Army cloud transition win theme",
+    summary:
+      "Reusable win-theme narrative for pursuits where the customer needs a low-disruption transition from incumbent operations into a more resilient cloud operating model.",
+    body:
+      "OneSource can position around controlled transition risk: the team already has contract-vehicle access, can stand up cleared platform engineering support quickly, and can show a disciplined migration path that preserves operational continuity while improving observability and release cadence. That lets the customer buy modernization without accepting unnecessary delivery turbulence during the first performance months.",
+    tags: ["army", "cloud operations", "transition strategy"],
+    linkedOpportunityTitles: [
+      "Army Cloud Operations Recompete",
+      "DHS Zero Trust Assessment Support",
+    ],
+    authorUserKey: "taylor-reed",
+  },
+];
+
 export function buildOpportunitySeedScenario() {
   return {
     teamMembers: TEAM_MEMBERS,
@@ -2669,6 +2711,7 @@ export function buildOpportunitySeedScenario() {
     sourceImportDecision: SAM_GOV_IMPORT_DECISION,
     rejectedSourceImportDecision: SAM_GOV_REJECTED_IMPORT_DECISION,
     workspace: OPPORTUNITY_WORKSPACE,
+    knowledgeAssets: KNOWLEDGE_ASSETS,
     manualOpportunities: MANUAL_PORTFOLIO_OPPORTUNITIES,
     secondarySourceScenario: {
       sourceSavedSearch: USA_SPENDING_SOURCE_SEARCH,

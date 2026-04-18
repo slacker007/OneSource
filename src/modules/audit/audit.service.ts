@@ -17,6 +17,9 @@ export const AUDIT_ACTIONS = {
   opportunityStageTransition: "opportunity.stage_transition",
   opportunityDecisionRecord: "opportunity.decision.record",
   sourceImportDecisionRecord: "source_import_decision.record",
+  knowledgeAssetCreate: "knowledge_asset.create",
+  knowledgeAssetUpdate: "knowledge_asset.update",
+  knowledgeAssetDelete: "knowledge_asset.delete",
 } as const;
 
 export type AuditAction =
