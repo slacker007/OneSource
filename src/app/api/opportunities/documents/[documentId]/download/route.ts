@@ -2,10 +2,16 @@ import { NextResponse } from "next/server";
 
 import { getServerAuthSession } from "@/lib/auth/auth-options";
 import { hasAppPermission } from "@/lib/auth/permissions";
+import {
+  createStructuredLogger,
+  serializeError,
+} from "@/lib/observability/logger";
 import { prisma } from "@/lib/prisma";
 import { readStoredOpportunityDocument } from "@/modules/opportunities/opportunity-document-storage";
 
 export const runtime = "nodejs";
+
+const log = createStructuredLogger("web");
 
 export async function GET(
   _request: Request,
@@ -18,6 +24,7 @@ export async function GET(
   const session = await getServerAuthSession();
 
   if (!session?.user?.id) {
+    log("warn", "Rejected opportunity document download for anonymous request.");
     return NextResponse.json(
       { error: "Authentication is required." },
       { status: 401 },
@@ -25,6 +32,10 @@ export async function GET(
   }
 
   if (!hasAppPermission(session.user.roleKeys, "view_dashboard")) {
+    log("warn", "Rejected opportunity document download for unauthorized user.", {
+      documentId: (await context.params).documentId,
+      userId: session.user.id,
+    });
     return NextResponse.json(
       { error: "You do not have permission to download opportunity documents." },
       { status: 403 },
@@ -48,6 +59,11 @@ export async function GET(
   });
 
   if (!document) {
+    log("warn", "Requested opportunity document was not found in scope.", {
+      documentId,
+      organizationId: session.user.organizationId,
+      userId: session.user.id,
+    });
     return NextResponse.json({ error: "Document not found." }, { status: 404 });
   }
 
@@ -64,7 +80,13 @@ export async function GET(
           "X-Content-Type-Options": "nosniff",
         },
       });
-    } catch {
+    } catch (error) {
+      log("error", "Stored opportunity document could not be read from disk.", {
+        documentId,
+        organizationId: session.user.organizationId,
+        userId: session.user.id,
+        ...serializeError(error),
+      });
       return NextResponse.json(
         { error: "The stored file could not be read from local disk." },
         { status: 404 },
@@ -75,6 +97,12 @@ export async function GET(
   if (document.sourceUrl) {
     return NextResponse.redirect(document.sourceUrl, 307);
   }
+
+  log("warn", "Opportunity document has no downloadable file target.", {
+    documentId,
+    organizationId: session.user.organizationId,
+    userId: session.user.id,
+  });
 
   return NextResponse.json(
     { error: "This document does not have a stored file or external source URL." },

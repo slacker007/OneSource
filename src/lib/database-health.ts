@@ -7,6 +7,7 @@ export async function checkDatabaseConnection() {
   const client = new Client({
     connectionString: env.DATABASE_URL,
   });
+  const startedAt = Date.now();
 
   try {
     await client.connect();
@@ -15,11 +16,13 @@ export async function checkDatabaseConnection() {
     return {
       ok: true as const,
       checkedAt: new Date().toISOString(),
+      latencyMs: Date.now() - startedAt,
     };
   } catch (error) {
     return {
       ok: false as const,
       checkedAt: new Date().toISOString(),
+      latencyMs: Date.now() - startedAt,
       message:
         error instanceof Error ? error.message : "Unknown database failure",
     };

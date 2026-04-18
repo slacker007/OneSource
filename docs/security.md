@@ -18,6 +18,7 @@ The current repo includes the first live authentication, authorization, audit-em
 - shared role-to-permission policy helpers that can run in both server and client code
 - server-side protected-route gating in the `(app)` route group
 - server-side permission guards for restricted routes and mutating surfaces such as `/analytics`, `/settings`, source import actions under `/sources`, and `/opportunities/new` plus `/opportunities/[opportunityId]/edit`, with a public permission-denied route
+- structured JSON logging for degraded health checks plus opportunity-document download authentication, authorization, and local-disk failure paths
 - authenticated-shell navigation that hides the analytics route when the signed-in role set lacks `view_decision_support`
 - an admin console that lets admins inspect current role assignments, recent audit events, source-sync health, and the seeded organization scoring profile, and lets only `manage_workspace_settings` users recalibrate scoring weights and thresholds with audited server-side writes
 - database-backed role assignments rather than hard-coded role enums in application code

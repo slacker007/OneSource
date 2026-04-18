@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
 import { getServerEnv } from "@/lib/env";
+import { createStructuredLogger } from "@/lib/observability/logger";
 
 export function createWorkerPrisma() {
   const env = getServerEnv();
@@ -15,26 +16,5 @@ export function createWorkerPrisma() {
 }
 
 export function createWorkerLogger(service = "worker") {
-  return (
-    level: "error" | "info" | "warn",
-    message: string,
-    detail?: Record<string, unknown>,
-  ) => {
-    const payload = {
-      timestamp: new Date().toISOString(),
-      service,
-      level,
-      message,
-      ...(detail ? { detail } : {}),
-    };
-
-    const line = JSON.stringify(payload);
-
-    if (level === "error") {
-      console.error(line);
-      return;
-    }
-
-    console.log(line);
-  };
+  return createStructuredLogger(service);
 }

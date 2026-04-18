@@ -75,14 +75,29 @@ Expected healthy response shape:
 ```json
 {
   "status": "ok",
+  "checkedAt": "2026-04-18T00:00:00.000Z",
+  "service": "web",
+  "uptimeSeconds": 120,
+  "environment": {
+    "nodeEnv": "development",
+    "samGovFixtureMode": false
+  },
   "database": {
     "ok": true,
-    "checkedAt": "2026-04-17T00:00:00.000Z"
+    "checkedAt": "2026-04-18T00:00:00.000Z",
+    "latencyMs": 12
+  },
+  "documentStorage": {
+    "ok": true,
+    "checkedAt": "2026-04-18T00:00:00.000Z",
+    "metadata": {
+      "storageRoot": "/app/.data/opportunity-documents"
+    }
   }
 }
 ```
 
-If PostgreSQL is unavailable, the route returns HTTP `503` with `status: "degraded"` and the database error message.
+If PostgreSQL or the configured document-storage root is unavailable, the route returns HTTP `503` with `status: "degraded"` and the failing dependency details.
 
 ## Prisma Workflows
 
@@ -149,13 +164,15 @@ Follow the web and worker logs:
 docker compose logs -f web worker
 ```
 
-Worker logs are structured JSON with:
+Web and worker logs are structured JSON with:
 
 - `timestamp`
 - `service`
 - `level`
 - `message`
 - optional `detail`
+
+Web-route failure logs currently cover degraded health checks plus document-download authentication, authorization, missing-record, and local-disk read failures.
 
 The reminder and worker summaries currently include:
 
@@ -217,6 +234,22 @@ make compose-test-e2e
 
 The Playwright container waits for the `web` health check before running tests. Browser execution is intentionally serialized because the smoke suite mutates one shared seeded database.
 The `make compose-test*` targets force `SAM_GOV_USE_FIXTURES=true` so connector-backed `/sources` verification stays deterministic.
+
+## Manual Runtime Validation
+
+Healthy runtime snapshot:
+
+```bash
+curl http://127.0.0.1:3000/api/health
+```
+
+Unauthenticated operational error path:
+
+```bash
+curl -i http://127.0.0.1:3000/api/opportunities/documents/not-a-real-id/download
+```
+
+Expected result: HTTP `401` with JSON `{"error":"Authentication is required."}` and a structured warning log in the web container output.
 
 ## Auth And Authz Smoke Check
 
