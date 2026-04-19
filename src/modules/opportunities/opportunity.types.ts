@@ -130,6 +130,12 @@ export type OpportunityListDueWindow =
   | "next_60_days"
   | "no_deadline";
 
+export type OpportunityListSavedViewKey =
+  | "all"
+  | "due_soon"
+  | "qualified"
+  | "proposal_sprint";
+
 export type OpportunityListSort =
   | "updated_desc"
   | "deadline_asc"
@@ -138,6 +144,7 @@ export type OpportunityListSort =
   | "stage_asc";
 
 export type OpportunityListQuery = {
+  savedViewKey: OpportunityListSavedViewKey | null;
   query: string | null;
   agencyId: string | null;
   naicsCode: string | null;
@@ -157,6 +164,13 @@ export type OpportunityListFilterOption = {
 
 export type OpportunityListItemSummary = OpportunitySummary & {
   sourceDisplayLabel: string;
+};
+
+export type OpportunityListSavedViewSummary = {
+  count: number;
+  key: OpportunityListSavedViewKey;
+  label: string;
+  supportingText: string;
 };
 
 export type OpportunityListSnapshot = {
@@ -179,6 +193,7 @@ export type OpportunityListSnapshot = {
   pageResultCount: number;
   query: OpportunityListQuery;
   results: OpportunityListItemSummary[];
+  savedViews: OpportunityListSavedViewSummary[];
   totalCount: number;
 };
 

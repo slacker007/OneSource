@@ -238,6 +238,11 @@ Primary files:
 - Shared table and preview primitives
 - Opportunity list read models only if new saved-view or preview DTOs are needed
 
+Implemented baseline:
+- `src/modules/opportunities/opportunity.types.ts` and `src/modules/opportunities/opportunity.repository.ts` now extend the list query and snapshot with URL-backed saved-view keys plus server-shaped saved-view counts so the route can expose named queues without client-only state.
+- `src/components/opportunities/opportunity-list.tsx` now renders as a dense list-detail workspace with a header-level saved-view strip, mobile filter drawer, sticky desktop filter rail, server-backed sort links, active filter chips, sticky results table headers, and a sticky preview panel with an explicit workspace-open action.
+- `tests/smoke.spec.ts` now enters the opportunity workspace through the preview-first list interaction, while the route-level component and repository suites cover the additive saved-view and query-shaping behavior.
+
 Key outcomes:
 - Dense result scan
 - Filter rail or drawer

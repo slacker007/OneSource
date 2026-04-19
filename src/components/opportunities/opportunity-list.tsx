@@ -28,6 +28,7 @@ import type {
   OpportunityListDueWindow,
   OpportunityListItemSummary,
   OpportunityListQuery,
+  OpportunityListSavedViewKey,
   OpportunityListSnapshot,
 } from "@/modules/opportunities/opportunity.types";
 
@@ -73,487 +74,576 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
     ) ??
     snapshot.results[0] ??
     null;
+  const activeSavedView = resolveActiveSavedView(snapshot);
   const activeFilterChips = buildActiveFilterChips(snapshot.query, viewState);
-  const savedViewItems = buildSavedViewItems(snapshot.query, viewState);
+  const savedViewItems = buildSavedViewItems(snapshot, viewState);
   const densityOptions = buildDensityOptions(snapshot.query, viewState);
+  const sortOptions = buildSortOptions(snapshot.query, viewState);
+  const resetHref = buildOpportunityListHref(snapshot.query, viewState, {
+    agencyId: null,
+    dueWindow: "all",
+    naicsCode: null,
+    page: 1,
+    previewOpportunityId: null,
+    query: null,
+    savedViewKey: null,
+    sort: "updated_desc",
+    sourceSystem: null,
+    stageKey: null,
+  });
 
   return (
     <section className="space-y-6">
       <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
               <Badge>Opportunities</Badge>
-              <Badge tone="muted">Pipeline triage</Badge>
-              <Badge tone="accent">Preview-ready</Badge>
+              <Badge tone="muted">List-detail workspace</Badge>
+              <Badge tone="accent">Preview-first</Badge>
             </div>
-            <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-              Opportunity pipeline
-            </h1>
-            <p className="text-muted max-w-3xl text-sm leading-7">
-              Scan active pursuits, pivot between standard views, and open a
-              quick brief without leaving the working list. Filters stay in the
-              URL so the current queue can still be shared and revisited.
-            </p>
+            <div className="space-y-2">
+              <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
+                Opportunity pipeline
+              </h1>
+              <p className="text-muted max-w-3xl text-sm leading-7">
+                Work the pursuit queue from one operational surface: move
+                between named views, refine the list with a filter rail, and
+                keep the current pursuit brief visible while deciding whether to
+                open the full workspace.
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="flex flex-col items-start gap-3 xl:items-end">
             <Link
               className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
               href="/opportunities/new"
             >
               Create tracked opportunity
             </Link>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <SummaryCard
-                label="Results"
-                value={String(snapshot.totalCount)}
-                supportingText={`${showingFrom}-${showingTo} on this page`}
-              />
-              <SummaryCard
-                label="Active filters"
-                value={String(snapshot.availableFilterCount)}
-                supportingText={
-                  snapshot.availableFilterCount > 0
-                    ? "Focused on a narrowed queue"
-                    : "Showing the standard workspace view"
-                }
-              />
-              <SummaryCard
-                label="Workspace"
-                value={snapshot.organization.name}
-                supportingText={`Page ${snapshot.query.page} of ${snapshot.pageCount}`}
-              />
-            </div>
+            <p className="text-right text-sm text-muted">
+              Organization workspace:{" "}
+              <span className="font-medium text-foreground">
+                {snapshot.organization.name}
+              </span>
+            </p>
           </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard
+            label="Saved view"
+            value={activeSavedView?.label ?? "Custom queue"}
+            supportingText={
+              activeSavedView
+                ? `${activeSavedView.count} pursuits in this named view`
+                : `${snapshot.totalCount} pursuits in the current scan`
+            }
+          />
+          <SummaryCard
+            label="Results"
+            value={`${showingFrom}-${showingTo}`}
+            supportingText={`Showing ${snapshot.totalCount} total matches`}
+          />
+          <SummaryCard
+            label="Active filters"
+            value={String(snapshot.availableFilterCount)}
+            supportingText={
+              snapshot.availableFilterCount > 0
+                ? "Manual filters layered on the queue"
+                : "No extra narrowing beyond the selected view"
+            }
+          />
+          <SummaryCard
+            label="Preview"
+            value={selectedOpportunity ? "Ready" : "Table first"}
+            supportingText={
+              selectedOpportunity
+                ? "One pursuit brief stays visible beside the list"
+                : "Select a row to restore the side brief"
+            }
+          />
+        </div>
+
+        <div className="mt-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <SavedViewControls
+            items={savedViewItems}
+            label="Saved views"
+          />
+          <DensityToggle label="Row density" options={densityOptions} />
         </div>
       </header>
 
-      <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-muted text-xs tracking-[0.24em] uppercase">
-                Queue controls
-              </p>
-              <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
-                Move between focused pursuit views
-              </h2>
-              <p className="text-muted max-w-2xl text-sm leading-6">
-                Start from standard pipeline views, then narrow by agency,
-                stage, deadline, or NAICS without losing your place in the
-                current scan.
-              </p>
-            </div>
-
-            <SavedViewControls items={savedViewItems} label="Standard views" />
-          </div>
-
-          <DensityToggle options={densityOptions} />
+      <details className="border-border bg-surface rounded-[24px] border px-5 py-4 shadow-[0_14px_36px_rgba(20,37,34,0.06)] xl:hidden">
+        <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+          Open filters and sort
+        </summary>
+        <div className="mt-4">
+          <OpportunityFilterRail
+            idPrefix="mobile"
+            query={snapshot.query}
+            resetHref={resetHref}
+            snapshot={snapshot}
+            viewState={viewState}
+          />
         </div>
+      </details>
 
-        <form action="/opportunities" className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-          <input name="density" type="hidden" value={viewState.density} />
-
-          <FormField
-            hint="Matches title, solicitation number, agency name, and summary text."
-            htmlFor="opportunity-query"
-            label="Search"
-          >
-            <Input
-              defaultValue={snapshot.query.query ?? ""}
-              id="opportunity-query"
-              name="q"
-              placeholder="Search pursuits"
-              type="search"
+      <div className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_24rem]">
+        <aside className="hidden xl:block">
+          <div className="sticky top-24">
+            <OpportunityFilterRail
+              idPrefix="desktop"
+              query={snapshot.query}
+              resetHref={resetHref}
+              snapshot={snapshot}
+              viewState={viewState}
             />
-          </FormField>
-
-          <FormField
-            hint="Use NAICS codes now; capability tags are planned later in the PRD."
-            htmlFor="opportunity-naics"
-            label="NAICS"
-          >
-            <Input
-              defaultValue={snapshot.query.naicsCode ?? ""}
-              id="opportunity-naics"
-              name="naics"
-              placeholder="541512"
-            />
-          </FormField>
-
-          <FormField htmlFor="opportunity-agency" label="Agency">
-            <Select
-              defaultValue={snapshot.query.agencyId ?? ""}
-              id="opportunity-agency"
-              name="agency"
-            >
-              <option value="">All agencies</option>
-              {snapshot.filterOptions.agencies.map((agency) => (
-                <option key={agency.value} value={agency.value}>
-                  {agency.label} ({agency.count})
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <FormField htmlFor="opportunity-stage" label="Stage">
-            <Select
-              defaultValue={snapshot.query.stageKey ?? ""}
-              id="opportunity-stage"
-              name="stage"
-            >
-              <option value="">All stages</option>
-              {snapshot.filterOptions.stages.map((stage) => (
-                <option key={stage.value} value={stage.value}>
-                  {stage.label} ({stage.count})
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <FormField htmlFor="opportunity-source" label="Source">
-            <Select
-              defaultValue={snapshot.query.sourceSystem ?? ""}
-              id="opportunity-source"
-              name="source"
-            >
-              <option value="">All sources</option>
-              {snapshot.filterOptions.sources.map((source) => (
-                <option key={source.value} value={source.value}>
-                  {source.label} ({source.count})
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <FormField htmlFor="opportunity-due" label="Due date">
-            <Select
-              defaultValue={snapshot.query.dueWindow}
-              id="opportunity-due"
-              name="due"
-            >
-              {snapshot.filterOptions.dueWindows.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <FormField htmlFor="opportunity-sort" label="Sort">
-            <Select
-              defaultValue={snapshot.query.sort}
-              id="opportunity-sort"
-              name="sort"
-            >
-              {snapshot.filterOptions.sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <div className="flex items-end">
-            <button
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-              type="submit"
-            >
-              Apply filters
-            </button>
           </div>
-        </form>
+        </aside>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <ActiveFilterChipBar
-            chips={activeFilterChips}
-            clearHref={buildOpportunityListHref(snapshot.query, viewState, {
-              agencyId: null,
-              dueWindow: "all",
-              naicsCode: null,
-              page: 1,
-              previewOpportunityId: null,
-              query: null,
-              sort: "updated_desc",
-              sourceSystem: null,
-              stageKey: null,
-            })}
-            emptyLabel="No filters applied. Showing the standard pipeline queue."
+        <section className="space-y-4">
+          <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                    Result queue
+                  </p>
+                  <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+                    Showing {showingFrom}-{showingTo} of {snapshot.totalCount} pursuits
+                  </h2>
+                  <p className="mt-2 text-sm text-muted">
+                    Sticky headers keep scan context intact while the side brief
+                    stays locked on the currently selected pursuit.
+                  </p>
+                </div>
+
+                <div className="space-y-2 lg:text-right">
+                  <p className="text-muted text-xs tracking-[0.2em] uppercase">
+                    Server-backed sort
+                  </p>
+                  <div
+                    aria-label="Server-backed sort options"
+                    className="flex flex-wrap gap-2 lg:justify-end"
+                  >
+                    {sortOptions.map((option) => (
+                      <Link
+                        aria-current={option.active ? "page" : undefined}
+                        className={
+                          option.active
+                            ? "inline-flex min-h-9 items-center rounded-[var(--radius-pill)] border border-accent bg-accent-soft px-3 py-2 text-sm font-medium text-foreground"
+                            : "inline-flex min-h-9 items-center rounded-[var(--radius-pill)] border border-border bg-surface-strong px-3 py-2 text-sm text-muted transition hover:border-border-strong hover:text-foreground"
+                        }
+                        href={option.href}
+                        key={option.label}
+                      >
+                        {option.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <ActiveFilterChipBar
+                chips={activeFilterChips}
+                clearHref={resetHref}
+                emptyLabel="No active chips beyond the selected saved view."
+              />
+            </div>
+          </section>
+
+          <DataTable
+            ariaLabel="Opportunity pipeline results"
+            caption="Opportunity results with deadline, source, stage, and score details."
+            columns={[
+              {
+                key: "opportunity",
+                header: buildSortHeader({
+                  label: "Opportunity",
+                  query: snapshot.query,
+                  sort: "title_asc",
+                  viewState,
+                }),
+                className: "min-w-[20rem]",
+                sortDirection:
+                  snapshot.query.sort === "title_asc" ? "asc" : null,
+                cell: (opportunity) => (
+                  <OpportunityCell
+                    opportunity={opportunity}
+                    previewHref={buildOpportunityListHref(
+                      snapshot.query,
+                      viewState,
+                      {
+                        page: snapshot.query.page,
+                        previewOpportunityId: opportunity.id,
+                      },
+                    )}
+                  />
+                ),
+              },
+              {
+                key: "deadline",
+                header: buildSortHeader({
+                  label: "Deadline",
+                  query: snapshot.query,
+                  sort: "deadline_asc",
+                  viewState,
+                }),
+                className: "min-w-[9rem]",
+                sortDirection:
+                  snapshot.query.sort === "deadline_asc"
+                    ? "asc"
+                    : snapshot.query.sort === "deadline_desc"
+                      ? "desc"
+                      : null,
+                cell: (opportunity) => (
+                  <div className="space-y-2">
+                    <p className="font-medium text-foreground">
+                      {opportunity.responseDeadlineAt
+                        ? formatShortDate(opportunity.responseDeadlineAt)
+                        : "Not set"}
+                    </p>
+                    <Badge tone={getDueBadgeTone(opportunity.responseDeadlineAt)}>
+                      {getDueLabel(opportunity.responseDeadlineAt)}
+                    </Badge>
+                  </div>
+                ),
+              },
+              {
+                key: "stage",
+                header: buildSortHeader({
+                  label: "Stage",
+                  query: snapshot.query,
+                  sort: "stage_asc",
+                  viewState,
+                }),
+                className: "min-w-[10rem]",
+                sortDirection:
+                  snapshot.query.sort === "stage_asc" ? "asc" : null,
+                cell: (opportunity) => (
+                  <div className="space-y-2">
+                    <Badge tone="muted">{opportunity.currentStageLabel}</Badge>
+                    <p className="text-xs text-muted">
+                      Updated {formatShortDate(opportunity.updatedAt)}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                key: "source",
+                header: "Source",
+                className: "min-w-[10rem]",
+                cell: (opportunity) => (
+                  <div className="space-y-2">
+                    <Badge tone="warning">{opportunity.sourceDisplayLabel}</Badge>
+                    <p className="text-xs text-muted">
+                      {opportunity.leadAgency?.organizationCode ?? "No agency code"}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                key: "score",
+                header: "Score",
+                className: "min-w-[10rem]",
+                cell: (opportunity) => (
+                  <div className="space-y-2">
+                    <p className="font-medium text-foreground">
+                      {opportunity.score?.totalScore
+                        ? `${opportunity.score.totalScore}/100`
+                        : "Unscored"}
+                    </p>
+                    <Badge tone="accent">
+                      {opportunity.bidDecision?.finalOutcome ??
+                        opportunity.score?.recommendationOutcome ??
+                        "Pending"}
+                    </Badge>
+                  </div>
+                ),
+              },
+            ]}
+            density={viewState.density}
+            emptyState={
+              <EmptyState
+                action={
+                  <Link
+                    className="inline-flex rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
+                    href={resetHref}
+                  >
+                    Reset to all opportunities
+                  </Link>
+                }
+                message="Adjust the current filters or return to the default saved view to restore the tracked pipeline."
+                title="No opportunities match this filter set"
+              />
+            }
+            getRowKey={(opportunity) => opportunity.id}
+            rows={snapshot.results}
+            selectedRowId={selectedOpportunity?.id ?? null}
           />
 
-          <Link
-            className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-            href={buildOpportunityListHref(snapshot.query, viewState, {
-              agencyId: null,
-              dueWindow: "all",
-              naicsCode: null,
-              page: 1,
-              previewOpportunityId: null,
-              query: null,
-              sort: "updated_desc",
-              sourceSystem: null,
-              stageKey: null,
-            })}
-          >
-            Reset filters
-          </Link>
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Results
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted">
+              Page {snapshot.query.page} of {snapshot.pageCount}
             </p>
-            <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-              Showing {showingFrom}-{showingTo} of {snapshot.totalCount} pursuits
-            </h2>
-          </div>
 
-          <p className="text-sm text-muted">
-            {viewState.density === "compact"
-              ? "Compact density for faster scan speed"
-              : "Comfortable density for longer briefs"}
-          </p>
-        </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <PaginationLink
+                disabled={snapshot.query.page <= 1}
+                href={buildOpportunityListHref(snapshot.query, viewState, {
+                  page: snapshot.query.page - 1,
+                  previewOpportunityId: null,
+                })}
+              >
+                Previous
+              </PaginationLink>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="space-y-4">
-            <DataTable
-              ariaLabel="Opportunity pipeline results"
-              caption="Opportunity results with stage, deadline, source, and score details."
-              columns={[
-                {
-                  key: "opportunity",
-                  header: "Opportunity",
-                  className: "min-w-[22rem]",
-                  sortDirection:
-                    snapshot.query.sort === "title_asc" ? "asc" : null,
-                  cell: (opportunity) => (
-                    <OpportunityCell
-                      opportunity={opportunity}
-                      previewHref={buildOpportunityListHref(
-                        snapshot.query,
-                        viewState,
-                        {
-                          page: snapshot.query.page,
-                          previewOpportunityId: opportunity.id,
-                        },
-                      )}
-                    />
-                  ),
-                },
-                {
-                  key: "stage",
-                  header: "Stage",
-                  className: "min-w-[10rem]",
-                  sortDirection:
-                    snapshot.query.sort === "stage_asc" ? "asc" : null,
-                  cell: (opportunity) => (
-                    <div className="space-y-2">
-                      <Badge tone="muted">{opportunity.currentStageLabel}</Badge>
-                      <p className="text-muted text-xs">
-                        Updated {formatShortDate(opportunity.updatedAt)}
-                      </p>
-                    </div>
-                  ),
-                },
-                {
-                  key: "deadline",
-                  header: "Deadline",
-                  className: "min-w-[10rem]",
-                  sortDirection:
-                    snapshot.query.sort === "deadline_asc"
-                      ? "asc"
-                      : snapshot.query.sort === "deadline_desc"
-                        ? "desc"
-                        : null,
-                  cell: (opportunity) => (
-                    <div className="space-y-2">
-                      <p className="font-medium text-foreground">
-                        {opportunity.responseDeadlineAt
-                          ? formatShortDate(opportunity.responseDeadlineAt)
-                          : "Not set"}
-                      </p>
-                      <Badge tone={getDueBadgeTone(opportunity.responseDeadlineAt)}>
-                        {getDueLabel(opportunity.responseDeadlineAt)}
-                      </Badge>
-                    </div>
-                  ),
-                },
-                {
-                  key: "source",
-                  header: "Source",
-                  className: "min-w-[10rem]",
-                  cell: (opportunity) => (
-                    <div className="space-y-2">
-                      <Badge tone="warning">{opportunity.sourceDisplayLabel}</Badge>
-                      <p className="text-muted text-xs">
-                        {opportunity.leadAgency?.organizationCode ?? "No agency code"}
-                      </p>
-                    </div>
-                  ),
-                },
-                {
-                  key: "score",
-                  header: "Score",
-                  className: "min-w-[10rem]",
-                  cell: (opportunity) => (
-                    <div className="space-y-2">
-                      <p className="font-medium text-foreground">
-                        {opportunity.score?.totalScore
-                          ? `${opportunity.score.totalScore}/100`
-                          : "Unscored"}
-                      </p>
-                      <Badge tone="accent">
-                        {opportunity.bidDecision?.finalOutcome ??
-                          opportunity.score?.recommendationOutcome ??
-                          "Pending"}
-                      </Badge>
-                    </div>
-                  ),
-                },
-              ]}
-              density={viewState.density}
-              emptyState={
-                <EmptyState
-                  action={
-                    <Link
-                      className="inline-flex rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
-                      href={buildOpportunityListHref(snapshot.query, viewState, {
-                        agencyId: null,
-                        dueWindow: "all",
-                        naicsCode: null,
-                        page: 1,
-                        previewOpportunityId: null,
-                        query: null,
-                        sort: "updated_desc",
-                        sourceSystem: null,
-                        stageKey: null,
-                      })}
-                    >
-                      Reset to all opportunities
-                    </Link>
-                  }
-                  message="Adjust the current filters or clear the query string to restore the full seeded pipeline."
-                  title="No opportunities match this filter set"
-                />
-              }
-              getRowKey={(opportunity) => opportunity.id}
-              rows={snapshot.results}
-              selectedRowId={selectedOpportunity?.id ?? null}
-            />
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-muted text-sm">
-                Page {snapshot.query.page} of {snapshot.pageCount}
-              </p>
-
-              <div className="flex flex-wrap items-center gap-2">
+              {Array.from(
+                { length: snapshot.pageCount },
+                (_, index) => index + 1,
+              ).map((pageNumber) => (
                 <PaginationLink
-                  disabled={snapshot.query.page <= 1}
+                  active={pageNumber === snapshot.query.page}
                   href={buildOpportunityListHref(snapshot.query, viewState, {
-                    page: snapshot.query.page - 1,
+                    page: pageNumber,
                     previewOpportunityId: null,
                   })}
+                  key={pageNumber}
                 >
-                  Previous
+                  {String(pageNumber)}
                 </PaginationLink>
+              ))}
 
-                {Array.from(
-                  { length: snapshot.pageCount },
-                  (_, index) => index + 1,
-                ).map((pageNumber) => (
-                  <PaginationLink
-                    active={pageNumber === snapshot.query.page}
-                    href={buildOpportunityListHref(snapshot.query, viewState, {
-                      page: pageNumber,
-                      previewOpportunityId: null,
-                    })}
-                    key={pageNumber}
-                  >
-                    {String(pageNumber)}
-                  </PaginationLink>
-                ))}
-
-                <PaginationLink
-                  disabled={snapshot.query.page >= snapshot.pageCount}
-                  href={buildOpportunityListHref(snapshot.query, viewState, {
-                    page: snapshot.query.page + 1,
-                    previewOpportunityId: null,
-                  })}
-                >
-                  Next
-                </PaginationLink>
-              </div>
+              <PaginationLink
+                disabled={snapshot.query.page >= snapshot.pageCount}
+                href={buildOpportunityListHref(snapshot.query, viewState, {
+                  page: snapshot.query.page + 1,
+                  previewOpportunityId: null,
+                })}
+              >
+                Next
+              </PaginationLink>
             </div>
           </div>
+        </section>
 
-          {selectedOpportunity ? (
-            <PreviewPanel
-              actions={
-                <>
-                  <Link
-                    className="inline-flex min-h-10 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.2)] transition hover:bg-[rgb(16,66,57)]"
-                    href={`/opportunities/${selectedOpportunity.id}`}
-                  >
-                    Open workspace
-                  </Link>
-                  <Link
-                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-border-strong hover:bg-surface-muted"
-                    href={`/opportunities/${selectedOpportunity.id}/edit`}
-                  >
-                    Edit record
-                  </Link>
-                </>
-              }
-              description={
-                selectedOpportunity.sourceSummaryText ??
-                "Open the workspace for scoring, stage movement, tasks, and documents."
-              }
-              eyebrow="Preview"
-              metadata={buildPreviewMetadata(selectedOpportunity)}
-              title={selectedOpportunity.title}
-            >
-              <section className="space-y-3">
-                <h3 className="text-sm font-semibold tracking-[0.02em] text-foreground">
-                  Capture brief
-                </h3>
-                <ul className="space-y-2 text-sm text-muted">
-                  <li>
-                    Recommendation:{" "}
-                    <span className="font-medium text-foreground">
-                      {selectedOpportunity.bidDecision?.finalOutcome ??
-                        selectedOpportunity.score?.recommendationOutcome ??
-                        "Pending review"}
-                    </span>
-                  </li>
-                  <li>
-                    Vehicles:{" "}
-                    <span className="font-medium text-foreground">
-                      {selectedOpportunity.vehicles.length > 0
-                        ? selectedOpportunity.vehicles
-                            .map((vehicle) => vehicle.code)
-                            .join(", ")
-                        : "No vehicle recorded"}
-                    </span>
-                  </li>
-                  <li>
-                    Open work:{" "}
-                    <span className="font-medium text-foreground">
-                      {selectedOpportunity.tasks.length} tasks and{" "}
-                      {selectedOpportunity.milestones.length} milestones
-                    </span>
-                  </li>
-                </ul>
-              </section>
-            </PreviewPanel>
-          ) : null}
+        {selectedOpportunity ? (
+          <PreviewPanel
+            actions={
+              <>
+                <Link
+                  className="inline-flex min-h-10 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.2)] transition hover:bg-[rgb(16,66,57)]"
+                  href={`/opportunities/${selectedOpportunity.id}`}
+                >
+                  Open workspace
+                </Link>
+                <Link
+                  className="inline-flex min-h-10 items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-border-strong hover:bg-surface-muted"
+                  href={`/opportunities/${selectedOpportunity.id}/edit`}
+                >
+                  Edit record
+                </Link>
+              </>
+            }
+            className="xl:sticky xl:top-24"
+            description={
+              selectedOpportunity.sourceSummaryText ??
+              "Open the workspace for scoring, stage movement, tasks, and documents."
+            }
+            eyebrow="Selected pursuit"
+            metadata={buildPreviewMetadata(selectedOpportunity)}
+            title={selectedOpportunity.title}
+          >
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold tracking-[0.02em] text-foreground">
+                Capture brief
+              </h3>
+              <ul className="space-y-2 text-sm text-muted">
+                <li>
+                  Recommendation:{" "}
+                  <span className="font-medium text-foreground">
+                    {selectedOpportunity.bidDecision?.finalOutcome ??
+                      selectedOpportunity.score?.recommendationOutcome ??
+                      "Pending review"}
+                  </span>
+                </li>
+                <li>
+                  Vehicles:{" "}
+                  <span className="font-medium text-foreground">
+                    {selectedOpportunity.vehicles.length > 0
+                      ? selectedOpportunity.vehicles
+                          .map((vehicle) => vehicle.code)
+                          .join(", ")
+                      : "No vehicle recorded"}
+                  </span>
+                </li>
+                <li>
+                  Open work:{" "}
+                  <span className="font-medium text-foreground">
+                    {selectedOpportunity.tasks.length} tasks and{" "}
+                    {selectedOpportunity.milestones.length} milestones
+                  </span>
+                </li>
+              </ul>
+            </section>
+          </PreviewPanel>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function OpportunityFilterRail({
+  idPrefix,
+  query,
+  resetHref,
+  snapshot,
+  viewState,
+}: {
+  idPrefix: string;
+  query: OpportunityListQuery;
+  resetHref: string;
+  snapshot: OpportunityListSnapshot;
+  viewState: OpportunityListViewState;
+}) {
+  return (
+    <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+      <div className="space-y-2">
+        <p className="text-muted text-xs tracking-[0.22em] uppercase">
+          Filter rail
+        </p>
+        <h2 className="font-heading text-xl font-semibold tracking-[-0.03em] text-foreground">
+          Refine the queue
+        </h2>
+        <p className="text-sm leading-6 text-muted">
+          Narrow the current saved view by agency, stage, source, due window,
+          and query terms. The resulting queue stays fully shareable in the URL.
+        </p>
+      </div>
+
+      <form action="/opportunities" className="mt-5 space-y-4">
+        <input name="density" type="hidden" value={viewState.density} />
+        {query.savedViewKey && query.savedViewKey !== "all" ? (
+          <input name="view" type="hidden" value={query.savedViewKey} />
+        ) : null}
+
+        <FormField
+          hint="Matches title, solicitation number, agency name, and summary text."
+          htmlFor={`${idPrefix}-opportunity-query`}
+          label="Search"
+        >
+          <Input
+            defaultValue={query.query ?? ""}
+            id={`${idPrefix}-opportunity-query`}
+            name="q"
+            placeholder="Search pursuits"
+            type="search"
+          />
+        </FormField>
+
+        <FormField
+          hint="Use NAICS codes now; capability tags are planned later in the PRD."
+          htmlFor={`${idPrefix}-opportunity-naics`}
+          label="NAICS"
+        >
+          <Input
+            defaultValue={query.naicsCode ?? ""}
+            id={`${idPrefix}-opportunity-naics`}
+            name="naics"
+            placeholder="541512"
+          />
+        </FormField>
+
+        <FormField htmlFor={`${idPrefix}-opportunity-agency`} label="Agency">
+          <Select
+            defaultValue={query.agencyId ?? ""}
+            id={`${idPrefix}-opportunity-agency`}
+            name="agency"
+          >
+            <option value="">All agencies</option>
+            {snapshot.filterOptions.agencies.map((agency) => (
+              <option key={agency.value} value={agency.value}>
+                {agency.label} ({agency.count})
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField htmlFor={`${idPrefix}-opportunity-stage`} label="Stage">
+          <Select
+            defaultValue={query.stageKey ?? ""}
+            id={`${idPrefix}-opportunity-stage`}
+            name="stage"
+          >
+            <option value="">All stages</option>
+            {snapshot.filterOptions.stages.map((stage) => (
+              <option key={stage.value} value={stage.value}>
+                {stage.label} ({stage.count})
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField htmlFor={`${idPrefix}-opportunity-source`} label="Source">
+          <Select
+            defaultValue={query.sourceSystem ?? ""}
+            id={`${idPrefix}-opportunity-source`}
+            name="source"
+          >
+            <option value="">All sources</option>
+            {snapshot.filterOptions.sources.map((source) => (
+              <option key={source.value} value={source.value}>
+                {source.label} ({source.count})
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField htmlFor={`${idPrefix}-opportunity-due`} label="Due date">
+          <Select
+            defaultValue={query.dueWindow}
+            id={`${idPrefix}-opportunity-due`}
+            name="due"
+          >
+            {snapshot.filterOptions.dueWindows.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField htmlFor={`${idPrefix}-opportunity-sort`} label="Sort">
+          <Select
+            defaultValue={query.sort}
+            id={`${idPrefix}-opportunity-sort`}
+            name="sort"
+          >
+            {snapshot.filterOptions.sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <div className="flex flex-col gap-3">
+          <button
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
+            type="submit"
+          >
+            Apply filters
+          </button>
+          <Link
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-border-strong hover:bg-surface-muted"
+            href={resetHref}
+          >
+            Reset to all opportunities
+          </Link>
         </div>
-      </section>
+      </form>
     </section>
   );
 }
@@ -588,6 +678,9 @@ function OpportunityCell({
             {vehicle.code}
           </Badge>
         ))}
+        {opportunity.tasks.length > 0 ? (
+          <Badge tone="muted">{opportunity.tasks.length} active tasks</Badge>
+        ) : null}
       </div>
 
       {opportunity.sourceSummaryText ? (
@@ -599,7 +692,7 @@ function OpportunityCell({
           className="inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
           href={previewHref}
         >
-          Preview brief
+          Open brief
         </Link>
         <Link
           className="inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
@@ -677,6 +770,25 @@ function buildActiveFilterChips(
   viewState: OpportunityListViewState,
 ) {
   const chips: ActiveFilterChip[] = [];
+
+  if (query.savedViewKey && query.savedViewKey !== "all") {
+    chips.push({
+      href: buildOpportunityListHref(query, viewState, {
+        agencyId: null,
+        dueWindow: "all",
+        naicsCode: null,
+        page: 1,
+        previewOpportunityId: null,
+        query: null,
+        savedViewKey: null,
+        sort: "updated_desc",
+        sourceSystem: null,
+        stageKey: null,
+      }),
+      label: `View · ${getSavedViewLabel(query.savedViewKey)}`,
+    });
+  }
+
   if (query.query) {
     chips.push({
       href: buildOpportunityListHref(query, viewState, {
@@ -776,6 +888,10 @@ function buildOpportunityListHref(
       : viewState.previewOpportunityId;
   const params = new URLSearchParams();
 
+  if (nextQuery.savedViewKey && nextQuery.savedViewKey !== "all") {
+    params.set("view", nextQuery.savedViewKey);
+  }
+
   if (nextQuery.query) {
     params.set("q", nextQuery.query);
   }
@@ -823,40 +939,22 @@ function buildOpportunityListHref(
 }
 
 function buildSavedViewItems(
-  query: OpportunityListQuery,
+  snapshot: OpportunityListSnapshot,
   viewState: OpportunityListViewState,
 ) {
-  const items: SavedViewControlItem[] = [
-    {
-      active: queryMatchesPreset(query, "all"),
-      href: buildOpportunityListHref(query, viewState, {
-        ...buildPresetQuery(query, "all"),
-        previewOpportunityId: null,
-      }),
-      label: "All pursuits",
-      supportingText: "Default",
-    },
-    {
-      active: queryMatchesPreset(query, "due_soon"),
-      href: buildOpportunityListHref(query, viewState, {
-        ...buildPresetQuery(query, "due_soon"),
-        previewOpportunityId: null,
-      }),
-      label: "Due soon",
-      supportingText: "30 days",
-    },
-    {
-      active: queryMatchesPreset(query, "qualified"),
-      href: buildOpportunityListHref(query, viewState, {
-        ...buildPresetQuery(query, "qualified"),
-        previewOpportunityId: null,
-      }),
-      label: "Qualified",
-      supportingText: "Review",
-    },
-  ];
+  const activeSavedViewKey = resolveActiveSavedViewKey(snapshot.query);
 
-  return items;
+  return snapshot.savedViews.map(
+    (savedView): SavedViewControlItem => ({
+      active: savedView.key === activeSavedViewKey,
+      href: buildOpportunityListHref(snapshot.query, viewState, {
+        ...buildPresetQuery(snapshot.query, savedView.key),
+        previewOpportunityId: null,
+      }),
+      label: savedView.label,
+      supportingText: `${savedView.count} · ${savedView.supportingText}`,
+    }),
+  );
 }
 
 function buildDensityOptions(
@@ -879,6 +977,66 @@ function buildDensityOptions(
       label: "Comfortable",
     },
   ];
+}
+
+function buildSortOptions(
+  query: OpportunityListQuery,
+  viewState: OpportunityListViewState,
+) {
+  return [
+    {
+      active: query.sort === "updated_desc",
+      href: buildOpportunityListHref(query, viewState, {
+        page: 1,
+        previewOpportunityId: null,
+        sort: "updated_desc",
+      }),
+      label: "Recently updated",
+    },
+    {
+      active: query.sort === "deadline_asc",
+      href: buildOpportunityListHref(query, viewState, {
+        page: 1,
+        previewOpportunityId: null,
+        sort: "deadline_asc",
+      }),
+      label: "Soonest deadline",
+    },
+    {
+      active: query.sort === "stage_asc",
+      href: buildOpportunityListHref(query, viewState, {
+        page: 1,
+        previewOpportunityId: null,
+        sort: "stage_asc",
+      }),
+      label: "Stage",
+    },
+  ];
+}
+
+function buildSortHeader({
+  label,
+  query,
+  sort,
+  viewState,
+}: {
+  label: string;
+  query: OpportunityListQuery;
+  sort: OpportunityListQuery["sort"];
+  viewState: OpportunityListViewState;
+}) {
+  return (
+    <Link
+      className="underline-offset-4 hover:underline"
+      href={buildOpportunityListHref(query, viewState, {
+        page: 1,
+        previewOpportunityId: null,
+        sort,
+      })}
+    >
+      {label}
+    </Link>
+  );
 }
 
 function buildPreviewMetadata(
@@ -908,9 +1066,10 @@ function buildPreviewMetadata(
 
 function buildPresetQuery(
   query: OpportunityListQuery,
-  preset: "all" | "due_soon" | "qualified",
+  savedViewKey: OpportunityListSavedViewKey,
 ): OpportunityListQuery {
   const baseQuery: OpportunityListQuery = {
+    savedViewKey,
     agencyId: null,
     dueWindow: "all",
     naicsCode: null,
@@ -922,7 +1081,7 @@ function buildPresetQuery(
     stageKey: null,
   };
 
-  switch (preset) {
+  switch (savedViewKey) {
     case "due_soon":
       return {
         ...baseQuery,
@@ -934,17 +1093,51 @@ function buildPresetQuery(
         ...baseQuery,
         stageKey: "qualified",
       };
+    case "proposal_sprint":
+      return {
+        ...baseQuery,
+        stageKey: "proposal_in_development",
+        sort: "deadline_asc",
+      };
     case "all":
     default:
       return baseQuery;
   }
 }
 
+function resolveActiveSavedView(snapshot: OpportunityListSnapshot) {
+  const activeSavedViewKey = resolveActiveSavedViewKey(snapshot.query);
+
+  return (
+    snapshot.savedViews.find((savedView) => savedView.key === activeSavedViewKey) ??
+    null
+  );
+}
+
+function resolveActiveSavedViewKey(query: OpportunityListQuery) {
+  if (query.savedViewKey) {
+    return query.savedViewKey;
+  }
+
+  const candidateKeys: OpportunityListSavedViewKey[] = [
+    "all",
+    "due_soon",
+    "qualified",
+    "proposal_sprint",
+  ];
+
+  return (
+    candidateKeys.find((savedViewKey) =>
+      queryMatchesPreset(query, savedViewKey),
+    ) ?? null
+  );
+}
+
 function queryMatchesPreset(
   query: OpportunityListQuery,
-  preset: "all" | "due_soon" | "qualified",
+  savedViewKey: OpportunityListSavedViewKey,
 ) {
-  const presetQuery = buildPresetQuery(query, preset);
+  const presetQuery = buildPresetQuery(query, savedViewKey);
 
   return (
     query.query === presetQuery.query &&
@@ -979,6 +1172,20 @@ function getDueLabel(responseDeadlineAt: string | null) {
   }
 
   return new Date(responseDeadlineAt) < new Date() ? "Overdue" : "Scheduled";
+}
+
+function getSavedViewLabel(savedViewKey: OpportunityListSavedViewKey) {
+  switch (savedViewKey) {
+    case "due_soon":
+      return "Due soon";
+    case "qualified":
+      return "Qualified review";
+    case "proposal_sprint":
+      return "Proposal sprint";
+    case "all":
+    default:
+      return "All pursuits";
+  }
 }
 
 function humanizeDueWindow(dueWindow: OpportunityListDueWindow) {

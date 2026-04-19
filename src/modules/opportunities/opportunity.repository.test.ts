@@ -1488,6 +1488,7 @@ describe("opportunity.repository", () => {
       sort: "deadline_asc",
       source: "sam_gov",
       stage: "capture_active",
+      view: "due_soon",
     });
 
     const snapshot = await getOpportunityListSnapshot({
@@ -1497,6 +1498,7 @@ describe("opportunity.repository", () => {
     });
 
     expect(query).toMatchObject({
+      savedViewKey: "due_soon",
       query: "knowledge",
       naicsCode: "541511",
       stageKey: "capture_active",
@@ -1516,6 +1518,32 @@ describe("opportunity.repository", () => {
       title: "Enterprise Knowledge Management Support Services",
       sourceDisplayLabel: "SAM.gov",
     });
+    expect(snapshot?.savedViews).toEqual([
+      {
+        count: 3,
+        key: "all",
+        label: "All pursuits",
+        supportingText: "Default queue",
+      },
+      {
+        count: 2,
+        key: "due_soon",
+        label: "Due soon",
+        supportingText: "30-day window",
+      },
+      {
+        count: 0,
+        key: "qualified",
+        label: "Qualified review",
+        supportingText: "Triage next",
+      },
+      {
+        count: 0,
+        key: "proposal_sprint",
+        label: "Proposal sprint",
+        supportingText: "Proposal stage",
+      },
+    ]);
     expect(snapshot?.filterOptions.sources).toEqual([
       {
         count: 1,

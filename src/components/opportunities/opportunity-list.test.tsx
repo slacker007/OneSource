@@ -11,6 +11,7 @@ const snapshot: OpportunityListSnapshot = {
     slug: "default-org",
   },
   query: {
+    savedViewKey: "due_soon",
     query: "cloud",
     agencyId: null,
     naicsCode: "541512",
@@ -25,6 +26,32 @@ const snapshot: OpportunityListSnapshot = {
   pageCount: 1,
   pageResultCount: 1,
   availableFilterCount: 5,
+  savedViews: [
+    {
+      count: 7,
+      key: "all",
+      label: "All pursuits",
+      supportingText: "Default queue",
+    },
+    {
+      count: 3,
+      key: "due_soon",
+      label: "Due soon",
+      supportingText: "30-day window",
+    },
+    {
+      count: 2,
+      key: "qualified",
+      label: "Qualified review",
+      supportingText: "Triage next",
+    },
+    {
+      count: 1,
+      key: "proposal_sprint",
+      label: "Proposal sprint",
+      supportingText: "Proposal stage",
+    },
+  ],
   filterOptions: {
     agencies: [],
     dueWindows: [{ label: "Next 30 days", value: "next_30_days" }],
@@ -91,16 +118,18 @@ describe("OpportunityList", () => {
     expect(
       screen.getAllByText(/army cloud operations recompete/i),
     ).toHaveLength(2);
+    expect(screen.getByText(/view · due soon/i)).toBeInTheDocument();
     expect(screen.getByText(/search · cloud/i)).toBeInTheDocument();
-    expect(screen.getByDisplayValue(/541512/i)).toBeInTheDocument();
+    expect(screen.getAllByDisplayValue(/541512/i)).toHaveLength(2);
+    expect(screen.getByText(/3 · 30-day window/i)).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /create tracked opportunity/i }),
     ).toHaveAttribute("href", "/opportunities/new");
     expect(
-      screen.getByRole("link", { name: /preview brief/i }),
+      screen.getByRole("link", { name: /open brief/i }),
     ).toHaveAttribute(
       "href",
-      "/opportunities?q=cloud&naics=541512&stage=qualified&source=manual_entry&due=next_30_days&sort=deadline_asc&density=compact&preview=opp_123",
+      "/opportunities?view=due_soon&q=cloud&naics=541512&stage=qualified&source=manual_entry&due=next_30_days&sort=deadline_asc&density=compact&preview=opp_123",
     );
     expect(
       screen.getAllByRole("link", { name: /open workspace/i }),
@@ -118,8 +147,11 @@ describe("OpportunityList", () => {
     ).toHaveLength(2);
     expect(screen.getByText(/capture brief/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /due soon/i }),
-    ).toHaveAttribute("href", "/opportunities?due=next_30_days&sort=deadline_asc&density=compact");
+      screen.getByRole("link", { name: /due soon.*30-day window/i }),
+    ).toHaveAttribute(
+      "href",
+      "/opportunities?view=due_soon&due=next_30_days&sort=deadline_asc&density=compact",
+    );
     expect(
       screen.getByRole("link", { name: /compact/i }),
     ).toHaveAttribute("aria-current", "page");
@@ -146,7 +178,9 @@ describe("OpportunityList", () => {
       screen.getByText(/no opportunities match this filter set/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /reset to all opportunities/i }),
-    ).toHaveAttribute("href", "/opportunities");
+      screen
+        .getAllByRole("link", { name: /reset to all opportunities/i })
+        .every((link) => link.getAttribute("href") === "/opportunities"),
+    ).toBe(true);
   });
 });

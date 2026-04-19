@@ -45,6 +45,8 @@ import type {
   OpportunityWorkspaceDocument,
   OpportunityListDueWindow,
   OpportunityListQuery,
+  OpportunityListSavedViewKey,
+  OpportunityListSavedViewSummary,
   OpportunityListSnapshot,
   OpportunityListSort,
   OpportunityWorkspaceMilestone,
@@ -127,6 +129,12 @@ const OPPORTUNITY_LIST_SORTS = [
   "title_asc",
   "stage_asc",
 ] as const satisfies OpportunityListSort[];
+const OPPORTUNITY_LIST_SAVED_VIEW_KEYS = [
+  "all",
+  "due_soon",
+  "qualified",
+  "proposal_sprint",
+] as const satisfies OpportunityListSavedViewKey[];
 const DECISION_CONSOLE_RANKINGS = [
   "value",
   "score",
@@ -1429,7 +1437,7 @@ const opportunityListSearchParamsSchema = z.object({
     .max(120)
     .optional()
     .transform(normalizeOptionalString),
-  due: z.enum(OPPORTUNITY_LIST_DUE_WINDOWS).optional().default("all"),
+  due: z.enum(OPPORTUNITY_LIST_DUE_WINDOWS).optional(),
   naics: z
     .string()
     .trim()
@@ -1438,7 +1446,7 @@ const opportunityListSearchParamsSchema = z.object({
     .transform(normalizeOptionalString),
   page: z.coerce.number().int().min(1).max(999).optional().default(1),
   q: z.string().trim().max(160).optional().transform(normalizeOptionalString),
-  sort: z.enum(OPPORTUNITY_LIST_SORTS).optional().default("updated_desc"),
+  sort: z.enum(OPPORTUNITY_LIST_SORTS).optional(),
   source: z
     .string()
     .trim()
@@ -1451,6 +1459,10 @@ const opportunityListSearchParamsSchema = z.object({
     .max(120)
     .optional()
     .transform(normalizeOptionalString),
+  view: z
+    .enum(OPPORTUNITY_LIST_SAVED_VIEW_KEYS)
+    .optional()
+    .transform((value) => value ?? null),
 });
 
 const decisionConsoleSearchParamsSchema = z.object({
@@ -1676,16 +1688,20 @@ export function parseOpportunityListSearchParams(
     sort: getFirstSearchParamValue(searchParams?.sort),
     source: getFirstSearchParamValue(searchParams?.source),
     stage: getFirstSearchParamValue(searchParams?.stage),
+    view: getFirstSearchParamValue(searchParams?.view),
   });
+  const baseQuery = buildOpportunityListBaseQuery(parsed.view);
 
   return {
-    query: parsed.q,
-    agencyId: parsed.agency,
-    naicsCode: parsed.naics,
-    stageKey: parsed.stage,
-    sourceSystem: parsed.source,
-    dueWindow: parsed.due,
-    sort: parsed.sort,
+    ...baseQuery,
+    savedViewKey: parsed.view,
+    query: parsed.q ?? baseQuery.query,
+    agencyId: parsed.agency ?? baseQuery.agencyId,
+    naicsCode: parsed.naics ?? baseQuery.naicsCode,
+    stageKey: parsed.stage ?? baseQuery.stageKey,
+    sourceSystem: parsed.source ?? baseQuery.sourceSystem,
+    dueWindow: parsed.due ?? baseQuery.dueWindow,
+    sort: parsed.sort ?? baseQuery.sort,
     page: parsed.page,
     pageSize: OPPORTUNITY_LIST_PAGE_SIZE,
   };
@@ -1762,6 +1778,10 @@ export async function getOpportunityListSnapshot({
           sourceDisplayLabelBySystem,
         }),
       })),
+    savedViews: buildOpportunityListSavedViews({
+      opportunities,
+      now,
+    }),
     filterOptions: {
       agencies: buildAgencyFilterOptions(opportunities),
       stages: buildStageFilterOptions(opportunities),
@@ -3452,6 +3472,33 @@ function countActiveOpportunityListFilters(query: OpportunityListQuery) {
   return count;
 }
 
+function buildOpportunityListSavedViews({
+  opportunities,
+  now,
+}: {
+  opportunities: OpportunitySummary[];
+  now: Date;
+}): OpportunityListSavedViewSummary[] {
+  return OPPORTUNITY_LIST_SAVED_VIEW_KEYS.map((savedViewKey) => {
+    const presetQuery = buildOpportunityListBaseQuery(savedViewKey);
+    const count =
+      savedViewKey === "all"
+        ? opportunities.length
+        : filterOpportunitySummaries({
+            opportunities,
+            query: presetQuery,
+            now,
+          }).length;
+
+    return {
+      count,
+      key: savedViewKey,
+      label: getOpportunityListSavedViewLabel(savedViewKey),
+      supportingText: getOpportunityListSavedViewSupportingText(savedViewKey),
+    };
+  });
+}
+
 function compareDashboardDeadlines(
   left: DashboardDeadlineSummary,
   right: DashboardDeadlineSummary,
@@ -4098,6 +4145,79 @@ function filterOpportunitySummaries({
 
 function getFirstSearchParamValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function buildOpportunityListBaseQuery(
+  savedViewKey: OpportunityListSavedViewKey | null,
+): OpportunityListQuery {
+  const baseQuery: OpportunityListQuery = {
+    savedViewKey,
+    query: null,
+    agencyId: null,
+    naicsCode: null,
+    stageKey: null,
+    sourceSystem: null,
+    dueWindow: "all",
+    sort: "updated_desc",
+    page: 1,
+    pageSize: OPPORTUNITY_LIST_PAGE_SIZE,
+  };
+
+  switch (savedViewKey) {
+    case "due_soon":
+      return {
+        ...baseQuery,
+        dueWindow: "next_30_days",
+        sort: "deadline_asc",
+      };
+    case "qualified":
+      return {
+        ...baseQuery,
+        stageKey: "qualified",
+      };
+    case "proposal_sprint":
+      return {
+        ...baseQuery,
+        stageKey: "proposal_in_development",
+        sort: "deadline_asc",
+      };
+    case "all":
+    case null:
+    default:
+      return baseQuery;
+  }
+}
+
+function getOpportunityListSavedViewLabel(
+  savedViewKey: OpportunityListSavedViewKey,
+) {
+  switch (savedViewKey) {
+    case "due_soon":
+      return "Due soon";
+    case "qualified":
+      return "Qualified review";
+    case "proposal_sprint":
+      return "Proposal sprint";
+    case "all":
+    default:
+      return "All pursuits";
+  }
+}
+
+function getOpportunityListSavedViewSupportingText(
+  savedViewKey: OpportunityListSavedViewKey,
+) {
+  switch (savedViewKey) {
+    case "due_soon":
+      return "30-day window";
+    case "qualified":
+      return "Triage next";
+    case "proposal_sprint":
+      return "Proposal stage";
+    case "all":
+    default:
+      return "Default queue";
+  }
 }
 
 function matchesDueWindow(

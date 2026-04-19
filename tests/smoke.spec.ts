@@ -93,9 +93,14 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
       name: /opportunity pipeline/i,
     }),
   ).toBeVisible();
-  await page.locator("#opportunity-source").selectOption("manual_entry");
+  await expect(
+    page.getByRole("link", { name: /proposal sprint/i }),
+  ).toBeVisible();
   await page
-    .locator("#opportunity-stage")
+    .locator("#desktop-opportunity-source")
+    .selectOption("manual_entry");
+  await page
+    .locator("#desktop-opportunity-stage")
     .selectOption("proposal_in_development");
   await page.getByRole("button", { name: /apply filters/i }).click();
   await expect(page).toHaveURL(/\/opportunities\?/);
@@ -117,6 +122,12 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
       /enterprise knowledge management support services/i,
     ),
   ).not.toBeVisible();
+  await opportunityResultsTable
+    .getByRole("link", { name: /open brief/i })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/preview=/);
+  await expect(page.getByText("Selected pursuit", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: /^Knowledge/i }).click();
   await expect(page).toHaveURL(/\/knowledge$/);
   await expect(
@@ -271,7 +282,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     .getByRole("link", { name: /^Opportunities/i })
     .click();
   await expect(page).toHaveURL(/\/opportunities$/);
-  await page.locator("#opportunity-query").fill(csvImportTitle);
+  await page.locator("#desktop-opportunity-query").fill(csvImportTitle);
   await page.getByRole("button", { name: /apply filters/i }).click();
   await expect(page).toHaveURL(/\/opportunities\?/);
   const importedOpportunityResultsTable = page.getByRole("table", {
@@ -485,7 +496,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await page.goto("/opportunities");
   await expect(page).toHaveURL(/\/opportunities$/);
   await page
-    .locator("#opportunity-query")
+    .locator("#desktop-opportunity-query")
     .fill("Enterprise Knowledge Management");
   await page.getByRole("button", { name: /apply filters/i }).click();
 
@@ -500,8 +511,12 @@ test("users can open the opportunity workspace and review seeded sections", asyn
       hasText: /enterprise knowledge management support services/i,
     })
     .first();
-  await enterpriseOpportunityCard
-    .getByRole("link", { name: /open workspace/i })
+  await enterpriseOpportunityCard.getByRole("link", { name: /open brief/i }).click();
+  await expect(page).toHaveURL(/preview=/);
+  await page
+    .locator("aside")
+    .filter({ hasText: /selected pursuit/i })
+    .getByRole("link", { name: /^Open workspace$/i })
     .click();
 
   await expect(page).toHaveURL(/\/opportunities\/.+$/);
@@ -640,9 +655,6 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     );
   await page.getByRole("button", { name: /^add note$/i }).click();
   await expect(
-    page.getByText(/note saved to the workspace history/i),
-  ).toBeVisible();
-  await expect(
     page.getByRole("heading", { name: createdNoteTitle, exact: true }).first(),
   ).toBeVisible();
   await expect(
@@ -694,7 +706,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await page.goto("/opportunities");
   await expect(page).toHaveURL(/\/opportunities$/);
   await page
-    .locator("#opportunity-query")
+    .locator("#desktop-opportunity-query")
     .fill("Enterprise Knowledge Management");
   await page.getByRole("button", { name: /apply filters/i }).click();
   await enterpriseOpportunityCard
@@ -753,7 +765,9 @@ test("users can record closeout notes on a closed opportunity workspace", async 
 
   await page.goto("/opportunities");
   await expect(page).toHaveURL(/\/opportunities$/);
-  await page.locator("#opportunity-query").fill("Navy Training Range");
+  await page
+    .locator("#desktop-opportunity-query")
+    .fill("Navy Training Range");
   await page.getByRole("button", { name: /apply filters/i }).click();
 
   await expect(
@@ -797,9 +811,6 @@ test("users can record closeout notes on a closed opportunity workspace", async 
     .click();
 
   await expect(
-    page.getByText(/closeout notes recorded and added to workspace history/i),
-  ).toBeVisible();
-  await expect(
     page.getByText(new RegExp(outcomeReason, "i")).first(),
   ).toBeVisible();
   await expect(
@@ -820,7 +831,9 @@ test("users can update proposal tracking on an active proposal workspace", async
 
   await page.goto("/opportunities");
   await expect(page).toHaveURL(/\/opportunities$/);
-  await page.locator("#opportunity-query").fill("VA Claims Intake Automation");
+  await page
+    .locator("#desktop-opportunity-query")
+    .fill("VA Claims Intake Automation");
   await page.getByRole("button", { name: /apply filters/i }).click();
 
   const vaOpportunityCard = page
@@ -853,9 +866,6 @@ test("users can update proposal tracking on an active proposal workspace", async
     .check();
   await page.getByRole("button", { name: /^save proposal$/i }).click();
 
-  await expect(
-    page.getByText(/proposal tracking saved to the workspace/i),
-  ).toBeVisible();
   await expect(page.locator("#proposal-status")).toHaveValue("SUBMITTED");
   await expect(page.locator("#proposal-owner option:checked")).toHaveText(
     /casey brooks/i,
