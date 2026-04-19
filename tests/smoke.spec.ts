@@ -339,7 +339,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     page.getByRole("table", { name: /decision console rankings/i }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /bid volume and alignment/i }),
+    page.getByRole("heading", { name: /decision posture/i }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /score bands/i }),
@@ -347,7 +347,13 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByRole("heading", { name: /effort versus outcome/i }),
   ).toBeVisible();
-  await expect(page.getByText(/recommendation alignment/i)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /stage conversion funnel/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /stage aging/i }),
+  ).toBeVisible();
+  await expect(page.getByText(/recommendation alignment/i).first()).toBeVisible();
   await expect(page.getByText(/85%\+/i)).toBeVisible();
   await page.locator("#decision-ranking").selectOption("risk");
   await page.getByRole("button", { name: /apply ranking/i }).click();
@@ -356,6 +362,11 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page.getByText(/risk pressure/i).first()).toBeVisible();
   await expect(
     page.getByText(/enterprise knowledge management support services/i).first(),
+  ).toBeVisible();
+  await page.getByRole("link", { name: /view capture active queue/i }).click();
+  await expect(page).toHaveURL(/\/opportunities\?stage=capture_active/);
+  await expect(
+    page.getByRole("table", { name: /opportunity pipeline results/i }),
   ).toBeVisible();
   await page.getByRole("link", { name: /^Settings/i }).click();
   await expect(page).toHaveURL(/\/settings$/);

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,10 @@ import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
 import type {
   BidDecisionOutcome,
+  DecisionConsoleItem,
   DecisionConsoleSnapshot,
+  PipelineConversionSummary,
+  PipelineStageAgingSummary,
 } from "@/modules/opportunities/opportunity.types";
 
 type DecisionConsoleProps = {
@@ -40,397 +44,719 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
   const scopeLabel =
     snapshot.scopeOptions.find((option) => option.value === snapshot.query.scope)
       ?.label ?? "Active pipeline";
+  const recommendationOnlyExamples = snapshot.rankedOpportunities.filter(
+    (opportunity) =>
+      opportunity.finalDecision === null &&
+      opportunity.recommendationOutcome !== null,
+  );
+  const overrideExamples = snapshot.rankedOpportunities.filter(
+    (opportunity) =>
+      opportunity.finalDecision !== null &&
+      opportunity.recommendationOutcome !== null &&
+      opportunity.finalDecision !== opportunity.recommendationOutcome,
+  );
 
   return (
     <section className="space-y-6">
-      <header className="rounded-[28px] border border-border bg-white px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
               <Badge>Analytics</Badge>
               <Badge tone="muted">{snapshot.organization.name}</Badge>
-              <Badge tone="warning">{rankingLabel}</Badge>
+              <Badge tone="accent">{rankingLabel}</Badge>
+              <Badge tone="muted">{scopeLabel}</Badge>
             </div>
-            <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-              Decision console
-            </h1>
-            <p className="max-w-3xl text-sm leading-7 text-muted">
-              Compare active pursuits through one deterministic leadership view.
-              The current value lens uses the strategic-alignment score factor
-              until a later PRD slice adds a true contract-value field.
-            </p>
+            <div className="space-y-2">
+              <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
+                Decision console
+              </h1>
+              <p className="text-muted max-w-3xl text-sm leading-7">
+                Compare ranking, decision posture, score bands, funnel
+                conversion, stage aging, and execution effort from one
+                comparison-first workspace. The current value lens uses the
+                strategic-alignment score factor until a later PRD slice adds a
+                dedicated contract-value field.
+              </p>
+            </div>
           </div>
 
-          <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,249,239,0.72)] px-5 py-5 text-sm">
-            <p className="text-xs tracking-[0.2em] text-muted uppercase">
-              Current scope
+          <div className="rounded-[24px] border border-border bg-surface-muted px-5 py-4 text-sm">
+            <p className="text-muted text-xs tracking-[0.2em] uppercase">
+              Current ranking scope
             </p>
-            <p className="mt-3 text-lg font-semibold text-foreground">
+            <p className="text-foreground mt-3 text-lg font-semibold">
               {scopeLabel}
             </p>
-            <p className="mt-2 text-sm text-muted">
-              {snapshot.comparedOpportunityCount} opportunities ranked
+            <p className="text-muted mt-2">
+              {snapshot.comparedOpportunityCount} opportunities in the current
+              comparison set
             </p>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <SummaryCard
             label="Compared pursuits"
+            supportingText="Current ranking set"
             value={String(snapshot.comparedOpportunityCount)}
           />
           <SummaryCard
             label="Current go calls"
+            supportingText="Human final calls or active recommendations"
             value={String(snapshot.goOpportunityCount)}
           />
           <SummaryCard
             label="Urgent deadlines"
+            supportingText="Due inside the next 14 days"
             value={String(snapshot.urgentOpportunityCount)}
           />
+          <SummaryCard
+            label="Reviewed pursuits"
+            supportingText="Portfolio records with score or decision coverage"
+            value={String(snapshot.decisionAnalytics.reviewedOpportunityCount)}
+          />
+          <SummaryCard
+            label="Recommendation alignment"
+            supportingText="Final decisions aligned to the latest recommendation"
+            value={formatPercent(snapshot.decisionAnalytics.recommendationAlignmentPercent)}
+          />
+        </div>
+
+        <div className="mt-6 rounded-[24px] border border-border bg-surface-muted px-5 py-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div className="space-y-2">
+              <p className="text-muted text-xs tracking-[0.22em] uppercase">
+                Ranking controls
+              </p>
+              <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
+                Re-rank the comparison set
+              </h2>
+              <p className="text-muted max-w-2xl text-sm leading-6">
+                Keep the comparison surface dense while switching between value,
+                overall score, urgency, and risk pressure.
+              </p>
+            </div>
+
+            <form
+              action="/analytics"
+              className="grid gap-4 md:grid-cols-3 xl:min-w-[38rem]"
+            >
+              <FormField
+                hint="Value is currently the strategic-alignment factor from the deterministic scorecard."
+                htmlFor="decision-ranking"
+                label="Rank by"
+              >
+                <Select
+                  defaultValue={snapshot.query.ranking}
+                  id="decision-ranking"
+                  name="ranking"
+                >
+                  {snapshot.rankingOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+
+              <FormField htmlFor="decision-scope" label="Scope">
+                <Select
+                  defaultValue={snapshot.query.scope}
+                  id="decision-scope"
+                  name="scope"
+                >
+                  {snapshot.scopeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+
+              <div className="flex items-end">
+                <button
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-[var(--radius-pill)] bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white transition hover:bg-[rgb(16,66,57)]"
+                  type="submit"
+                >
+                  Apply ranking
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </header>
 
-      <section className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,250,244,1),rgba(246,239,228,0.92))] px-6 py-6 shadow-[0_20px_60px_rgba(67,49,33,0.08)] sm:px-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs tracking-[0.24em] text-[#8b6e56] uppercase">
-              Ranking lens
-            </p>
-            <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
-              Re-rank the pipeline
-            </h2>
-            <p className="max-w-2xl text-sm leading-6 text-muted">
-              Switch between strategic value, overall score, deadline urgency,
-              and risk pressure without leaving the protected analytics route.
-            </p>
-          </div>
-        </div>
-
-        <form action="/analytics" className="mt-6 grid gap-4 md:grid-cols-2 xl:max-w-3xl">
-          <FormField
-            hint="Value is currently the strategic-alignment factor from the deterministic scorecard."
-            htmlFor="decision-ranking"
-            label="Rank by"
+      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.18fr)_minmax(22rem,0.82fr)]">
+        <section className="space-y-4">
+          <AnalyticsSection
+            description="Scan the current comparison set, then drill into the workspace or the matching stage queue without leaving analytics."
+            eyebrow="Ranking queue"
+            title="Current pursuit comparison"
           >
-            <Select
-              defaultValue={snapshot.query.ranking}
-              id="decision-ranking"
-              name="ranking"
+            <DataTable
+              ariaLabel="Decision console rankings"
+              caption="Comparison-first ranking view with decision posture, pressure signals, effort indicators, and drill-through actions."
+              columns={[
+                {
+                  key: "opportunity",
+                  header: "Opportunity",
+                  className: "min-w-[19rem]",
+                  cell: (opportunity) => (
+                    <OpportunityCell opportunity={opportunity} />
+                  ),
+                },
+                {
+                  key: "decision",
+                  header: "Current call",
+                  cell: (opportunity) => (
+                    <DecisionCell opportunity={opportunity} />
+                  ),
+                },
+                {
+                  key: "fit",
+                  header: "Fit",
+                  cell: (opportunity) => (
+                    <MetricValue
+                      detail={`Score ${formatPercent(opportunity.scorePercent)}`}
+                      value={formatPercent(opportunity.strategicValuePercent)}
+                    />
+                  ),
+                },
+                {
+                  key: "pressure",
+                  header: "Pressure",
+                  cell: (opportunity) => (
+                    <MetricValue
+                      detail={`Risk ${formatPercent(opportunity.riskPressurePercent)}`}
+                      value={opportunity.urgencyLabel}
+                    />
+                  ),
+                },
+                {
+                  key: "effort",
+                  header: "Effort",
+                  cell: (opportunity) => (
+                    <MetricValue
+                      detail={`Tasks ${opportunity.effortTaskCount} / Milestones ${opportunity.effortMilestoneCount} / Artifacts ${opportunity.effortArtifactCount}`}
+                      value={`${opportunity.effortUnits} units`}
+                    />
+                  ),
+                },
+              ]}
+              emptyState={
+                <EmptyState
+                  message="The current ranking lens and scope did not return any opportunities."
+                  title="No pursuits to compare"
+                />
+              }
+              getRowKey={(row) => row.id}
+              rows={snapshot.rankedOpportunities}
+            />
+          </AnalyticsSection>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <AnalyticsSection
+              description="Each score band shows current call mix plus the leading pursuits available for direct follow-up."
+              eyebrow="Score distribution"
+              title="Score bands"
             >
-              {snapshot.rankingOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
+              <ScoreDistributionTable snapshot={snapshot} />
+            </AnalyticsSection>
 
-          <FormField htmlFor="decision-scope" label="Scope">
-            <Select
-              defaultValue={snapshot.query.scope}
-              id="decision-scope"
-              name="scope"
+            <AnalyticsSection
+              description={snapshot.decisionAnalytics.effortSignalLabel}
+              eyebrow="Effort versus outcome"
+              title="Effort versus outcome"
             >
-              {snapshot.scopeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <div className="flex items-end">
-            <button
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-              type="submit"
-            >
-              Apply ranking
-            </button>
+              <EffortOutcomeTable snapshot={snapshot} />
+            </AnalyticsSection>
           </div>
-        </form>
-      </section>
+        </section>
 
-      <div className="grid gap-4 xl:grid-cols-[1.02fr_0.98fr]">
-        <article className="rounded-[28px] border border-border bg-white px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
-          <div className="space-y-2">
-            <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Decision quality
-            </p>
-            <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
-              Bid volume and alignment
-            </h2>
-            <p className="max-w-2xl text-sm leading-6 text-muted">
-              These portfolio-wide metrics use the latest final decision when it
-              exists, otherwise the current deterministic recommendation.
-            </p>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <SummaryCard
-              label="Reviewed pursuits"
-              value={String(snapshot.decisionAnalytics.reviewedOpportunityCount)}
+        <aside className="space-y-4">
+          <AnalyticsSection
+            description="Compare final-call coverage, recommendation-only backlog, and override activity without leaving the ranking surface."
+            eyebrow="Decision alignment"
+            title="Decision posture"
+          >
+            <DecisionAlignmentPanel
+              analytics={snapshot.decisionAnalytics}
+              overrideExamples={overrideExamples}
+              recommendationOnlyExamples={recommendationOnlyExamples}
             />
-            <SummaryCard
-              label="Finalized calls"
-              value={String(snapshot.decisionAnalytics.finalDecisionCount)}
-            />
-            <SummaryCard
-              label="Recent decision volume"
-              value={`${snapshot.decisionAnalytics.recentDecisionVolume} in 30 days`}
-            />
-            <SummaryCard
-              label="Recommendation alignment"
-              value={formatPercent(
-                snapshot.decisionAnalytics.recommendationAlignmentPercent,
-              )}
-            />
-          </div>
+          </AnalyticsSection>
 
-          <p className="mt-5 text-sm leading-6 text-muted">
-            {snapshot.decisionAnalytics.recommendationOnlyCount} pursuits still
-            have recommendation-only posture and need a human call recorded.
-          </p>
-        </article>
+          <AnalyticsSection
+            description="Pipeline conversion keeps stage-to-stage math visible and links each stage step back to the underlying queue."
+            eyebrow="Funnel"
+            title="Stage conversion funnel"
+          >
+            <FunnelTable summaries={snapshot.pipelineConversionSummaries} />
+          </AnalyticsSection>
 
-        <article className="rounded-[28px] border border-border bg-[linear-gradient(135deg,rgba(32,95,85,0.97),rgba(16,58,53,1))] px-6 py-6 text-white shadow-[0_22px_60px_rgba(16,58,53,0.28)] sm:px-8">
-          <div className="space-y-2">
-            <p className="text-xs tracking-[0.24em] text-white/70 uppercase">
-              Decision mix
-            </p>
-            <h2 className="font-heading text-2xl font-semibold tracking-[-0.03em]">
-              Go or no-go posture
-            </h2>
-            <p className="max-w-2xl text-sm leading-6 text-white/75">
-              Use this mix to see whether the pipeline is concentrating effort
-              into strong pursuits or spreading work across too many marginal
-              opportunities.
-            </p>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {snapshot.decisionAnalytics.outcomeSummaries.map((summary) => (
-              <OutcomeMixCard key={summary.outcome} summary={summary} />
-            ))}
-          </div>
-        </article>
+          <AnalyticsSection
+            description="Active-stage dwell time highlights where pursuits are aging and lets operators jump directly to the oldest work."
+            eyebrow="Stage aging"
+            title="Stage aging"
+          >
+            <StageAgingTable summaries={snapshot.pipelineStageAgingSummaries} />
+          </AnalyticsSection>
+        </aside>
       </div>
-
-      <div className="grid gap-4 xl:grid-cols-[0.98fr_1.02fr]">
-        <article className="rounded-[28px] border border-border bg-[linear-gradient(180deg,rgba(244,250,247,1),rgba(232,244,239,0.96))] px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
-          <div className="space-y-2">
-            <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Score distribution
-            </p>
-            <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
-              Score bands
-            </h2>
-            <p className="max-w-2xl text-sm leading-6 text-muted">
-              The current score spread shows whether decisions are clustering
-              around strong, marginal, or weak pursuits.
-            </p>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {snapshot.decisionAnalytics.scoreDistributionBuckets.map((bucket) => (
-              <ScoreDistributionCard key={bucket.key} bucket={bucket} />
-            ))}
-          </div>
-        </article>
-
-        <article className="rounded-[28px] border border-border bg-[#f6efe4] px-6 py-6 shadow-[0_16px_40px_rgba(67,49,33,0.08)] sm:px-8">
-          <div className="space-y-2">
-            <p className="text-xs tracking-[0.24em] text-[#8b6e56] uppercase">
-              Effort versus current call
-            </p>
-            <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
-              Effort versus outcome
-            </h2>
-            <p className="max-w-2xl text-sm leading-6 text-muted">
-              {snapshot.decisionAnalytics.effortSignalLabel}
-            </p>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {snapshot.decisionAnalytics.effortOutcomeSummaries.map((summary) => (
-              <EffortOutcomeCard key={summary.outcome} summary={summary} />
-            ))}
-          </div>
-        </article>
-      </div>
-
-      <DataTable
-        ariaLabel="Decision console rankings"
-        columns={[
-          {
-            key: "opportunity",
-            header: "Opportunity",
-            className: "min-w-[18rem]",
-            cell: (opportunity) => (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  <Badge tone="warning">{opportunity.currentStageLabel}</Badge>
-                  <Badge tone="muted">{opportunity.sourceDisplayLabel}</Badge>
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-foreground">
-                    {opportunity.title}
-                  </h2>
-                  <p className="text-sm text-muted">
-                    {opportunity.leadAgency?.name ?? "Agency not assigned"}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
-                  <span>
-                    Deadline:{" "}
-                    {opportunity.responseDeadlineAt
-                      ? formatDate(opportunity.responseDeadlineAt)
-                      : "Not set"}
-                  </span>
-                  <Link
-                    className="font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-                    href={`/opportunities/${opportunity.id}`}
-                  >
-                    Open workspace
-                  </Link>
-                </div>
-              </div>
-            ),
-          },
-          {
-            key: "value",
-            header: "Value lens",
-            cell: (opportunity) => (
-              <MetricValue
-                detail="Strategic alignment"
-                value={formatPercent(opportunity.strategicValuePercent)}
-              />
-            ),
-          },
-          {
-            key: "score",
-            header: "Score",
-            cell: (opportunity) => (
-              <MetricValue
-                detail="Overall fit"
-                value={formatPercent(opportunity.scorePercent)}
-              />
-            ),
-          },
-          {
-            key: "urgency",
-            header: "Urgency",
-            cell: (opportunity) => (
-              <MetricValue
-                detail={opportunity.urgencyDays === null ? "No due date" : "Response window"}
-                value={opportunity.urgencyLabel}
-              />
-            ),
-          },
-          {
-            key: "risk",
-            header: "Risk pressure",
-            cell: (opportunity) => (
-              <MetricValue
-                detail="Higher is riskier"
-                value={formatPercent(opportunity.riskPressurePercent)}
-              />
-            ),
-          },
-          {
-            key: "decision",
-            header: "Decision",
-            cell: (opportunity) => (
-              <div className="space-y-2">
-                <Badge tone={decisionTone(opportunity.finalDecision ?? opportunity.recommendationOutcome)}>
-                  {humanizeDecision(
-                    opportunity.finalDecision ?? opportunity.recommendationOutcome,
-                  )}
-                </Badge>
-                <p className="text-sm text-muted">
-                  {opportunity.finalDecision
-                    ? "Human decision recorded"
-                    : "Recommendation only"}
-                </p>
-              </div>
-            ),
-          },
-        ]}
-        emptyState={
-          <EmptyState
-            message="The current ranking lens and scope did not return any opportunities."
-            title="No pursuits to compare"
-          />
-        }
-        getRowKey={(row) => row.id}
-        rows={snapshot.rankedOpportunities}
-      />
     </section>
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
+function AnalyticsSection({
+  children,
+  description,
+  eyebrow,
+  title,
+}: {
+  children: ReactNode;
+  description: string;
+  eyebrow: string;
+  title: string;
+}) {
   return (
-    <div className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,249,239,0.72)] px-5 py-5">
-      <p className="text-xs tracking-[0.24em] text-muted uppercase">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-foreground">{value}</p>
+    <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6">
+      <div className="space-y-2">
+        <p className="text-muted text-xs tracking-[0.22em] uppercase">
+          {eyebrow}
+        </p>
+        <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
+          {title}
+        </h2>
+        <p className="text-muted text-sm leading-6">{description}</p>
+      </div>
+
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+function SummaryCard({
+  label,
+  supportingText,
+  value,
+}: {
+  label: string;
+  supportingText: string;
+  value: string;
+}) {
+  return (
+    <div className="border-border bg-surface-muted rounded-[22px] border px-5 py-4">
+      <p className="text-muted text-xs tracking-[0.2em] uppercase">{label}</p>
+      <p className="text-foreground mt-3 text-3xl font-semibold">{value}</p>
+      <p className="text-muted mt-2 text-sm leading-6">{supportingText}</p>
     </div>
   );
 }
 
-function OutcomeMixCard({
-  summary,
+function OpportunityCell({
+  opportunity,
 }: {
-  summary: DecisionConsoleSnapshot["decisionAnalytics"]["outcomeSummaries"][number];
+  opportunity: DecisionConsoleItem;
 }) {
   return (
-    <div className="rounded-[22px] border border-white/10 bg-white/8 px-5 py-5">
-      <Badge className="border-white/15 bg-white/10 text-white" tone="muted">
-        {summary.label}
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <Badge tone="muted">{opportunity.currentStageLabel}</Badge>
+        <Badge tone="muted">{opportunity.sourceDisplayLabel}</Badge>
+      </div>
+
+      <div className="space-y-1">
+        <h3 className="text-base font-semibold text-foreground">
+          {opportunity.title}
+        </h3>
+        <p className="text-sm text-muted">
+          {opportunity.leadAgency?.name ?? "Agency not assigned"}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-3 text-sm text-muted">
+        <span>
+          Deadline:{" "}
+          {opportunity.responseDeadlineAt
+            ? formatDate(opportunity.responseDeadlineAt)
+            : "Not set"}
+        </span>
+        <span>Updated {formatDate(opportunity.updatedAt)}</span>
+      </div>
+
+      <div className="flex flex-wrap gap-3 text-sm">
+        <Link
+          className="font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+          href={buildOpportunityHref(opportunity.id)}
+        >
+          Open workspace
+        </Link>
+        {opportunity.currentStageKey ? (
+          <Link
+            className="font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+            href={buildStageQueueHref(opportunity.currentStageKey)}
+          >
+            View stage queue
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function DecisionCell({
+  opportunity,
+}: {
+  opportunity: DecisionConsoleItem;
+}) {
+  return (
+    <div className="space-y-2">
+      <Badge tone={decisionTone(opportunity.currentOutcome)}>
+        {humanizeDecision(opportunity.currentOutcome)}
       </Badge>
-      <p className="mt-4 text-3xl font-semibold">{summary.opportunityCount}</p>
-      <p className="mt-2 text-sm text-white/80">{summary.percentage}% of current calls</p>
-    </div>
-  );
-}
-
-function ScoreDistributionCard({
-  bucket,
-}: {
-  bucket: DecisionConsoleSnapshot["decisionAnalytics"]["scoreDistributionBuckets"][number];
-}) {
-  return (
-    <div className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-white/75 px-5 py-5">
-      <p className="text-xs tracking-[0.22em] text-muted uppercase">{bucket.label}</p>
-      <p className="mt-3 text-3xl font-semibold text-foreground">
-        {bucket.opportunityCount}
-      </p>
-      <p className="mt-3 text-sm text-muted">
-        Go {bucket.currentCallCounts.GO} / Defer {bucket.currentCallCounts.DEFER} /
-        No-go {bucket.currentCallCounts.NO_GO}
+      <p className="text-sm text-muted">
+        {opportunity.finalDecision
+          ? "Final decision recorded"
+          : opportunity.recommendationOutcome
+            ? "Recommendation awaiting final call"
+            : "Awaiting recommendation"}
       </p>
     </div>
   );
 }
 
-function EffortOutcomeCard({
-  summary,
+function ScoreDistributionTable({
+  snapshot,
 }: {
-  summary: DecisionConsoleSnapshot["decisionAnalytics"]["effortOutcomeSummaries"][number];
+  snapshot: DecisionConsoleSnapshot;
 }) {
   return (
-    <div className="rounded-[22px] border border-[rgba(67,49,33,0.08)] bg-white/70 px-5 py-5">
-      <Badge tone={decisionTone(summary.outcome)}>{summary.label}</Badge>
-      <p className="mt-4 text-3xl font-semibold text-foreground">
-        {summary.averageEffortUnits}
-      </p>
-      <p className="mt-2 text-sm text-muted">
-        Avg effort units across {summary.opportunityCount} pursuits
-      </p>
-      <p className="mt-4 text-sm text-muted">
-        Tasks {summary.averageTaskCount} / Milestones {summary.averageMilestoneCount} /
-        Artifacts {summary.averageArtifactCount}
-      </p>
+    <ComparisonTable
+      ariaLabel="Score band comparison"
+      headers={["Band", "Current calls", "Top pursuits"]}
+      rows={snapshot.decisionAnalytics.scoreDistributionBuckets.map((bucket) => {
+        const examples = snapshot.rankedOpportunities.filter((opportunity) =>
+          isOpportunityInScoreBucket(opportunity, bucket.key),
+        );
+
+        return [
+          <div className="space-y-1" key={`${bucket.key}-label`}>
+            <p className="font-semibold text-foreground">{bucket.label}</p>
+            <p className="text-sm text-muted">
+              {bucket.opportunityCount}{" "}
+              {bucket.opportunityCount === 1 ? "pursuit" : "pursuits"}
+            </p>
+          </div>,
+          <p className="text-sm text-muted" key={`${bucket.key}-mix`}>
+            Go {bucket.currentCallCounts.GO} / Defer{" "}
+            {bucket.currentCallCounts.DEFER} / No-go{" "}
+            {bucket.currentCallCounts.NO_GO}
+          </p>,
+          <OpportunityLinkList
+            emptyLabel="No ranked pursuits in this score band."
+            items={examples.slice(0, 2)}
+            key={`${bucket.key}-examples`}
+          />,
+        ];
+      })}
+    />
+  );
+}
+
+function EffortOutcomeTable({
+  snapshot,
+}: {
+  snapshot: DecisionConsoleSnapshot;
+}) {
+  return (
+    <ComparisonTable
+      ariaLabel="Effort versus outcome comparison"
+      headers={["Call", "Average effort", "Sample pursuits"]}
+      rows={snapshot.decisionAnalytics.effortOutcomeSummaries.map((summary) => {
+        const examples = snapshot.rankedOpportunities
+          .filter((opportunity) => opportunity.currentOutcome === summary.outcome)
+          .sort((left, right) => {
+            if (right.effortUnits !== left.effortUnits) {
+              return right.effortUnits - left.effortUnits;
+            }
+
+            return left.title.localeCompare(right.title);
+          });
+
+        return [
+          <div className="space-y-2" key={`${summary.outcome}-label`}>
+            <Badge tone={decisionTone(summary.outcome)}>{summary.label}</Badge>
+            <p className="text-sm text-muted">
+              {summary.opportunityCount}{" "}
+              {summary.opportunityCount === 1 ? "pursuit" : "pursuits"}
+            </p>
+          </div>,
+          <div className="space-y-1" key={`${summary.outcome}-effort`}>
+            <p className="font-semibold text-foreground">
+              {summary.averageEffortUnits} units
+            </p>
+            <p className="text-sm text-muted">
+              Tasks {summary.averageTaskCount} / Milestones{" "}
+              {summary.averageMilestoneCount} / Artifacts{" "}
+              {summary.averageArtifactCount}
+            </p>
+          </div>,
+          <OpportunityLinkList
+            emptyLabel="No ranked pursuits currently match this call."
+            items={examples.slice(0, 2)}
+            key={`${summary.outcome}-examples`}
+          />,
+        ];
+      })}
+    />
+  );
+}
+
+function DecisionAlignmentPanel({
+  analytics,
+  overrideExamples,
+  recommendationOnlyExamples,
+}: {
+  analytics: DecisionConsoleSnapshot["decisionAnalytics"];
+  overrideExamples: DecisionConsoleItem[];
+  recommendationOnlyExamples: DecisionConsoleItem[];
+}) {
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <DecisionMetric
+          label="Finalized calls"
+          supportingText="Human-recorded decisions"
+          value={String(analytics.finalDecisionCount)}
+        />
+        <DecisionMetric
+          label="Recommendation-only"
+          supportingText="Needs human review"
+          value={String(analytics.recommendationOnlyCount)}
+        />
+        <DecisionMetric
+          label="Recent decision volume"
+          supportingText="Final calls in the last 30 days"
+          value={String(analytics.recentDecisionVolume)}
+        />
+        <DecisionMetric
+          label="Recommendation alignment"
+          supportingText="Final decision matched the recommendation"
+          value={formatPercent(analytics.recommendationAlignmentPercent)}
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <OpportunityWatchlist
+          emptyLabel="No recommendation-only pursuits are visible in the current ranking set."
+          items={recommendationOnlyExamples.slice(0, 3)}
+          title="Needs human call"
+        />
+        <OpportunityWatchlist
+          emptyLabel="No recommendation overrides are visible in the current ranking set."
+          items={overrideExamples.slice(0, 3)}
+          title="Recorded overrides"
+        />
+      </div>
     </div>
+  );
+}
+
+function DecisionMetric({
+  label,
+  supportingText,
+  value,
+}: {
+  label: string;
+  supportingText: string;
+  value: string;
+}) {
+  return (
+    <div className="border-border bg-surface-muted rounded-[20px] border px-4 py-4">
+      <p className="text-muted text-[0.68rem] tracking-[0.18em] uppercase">
+        {label}
+      </p>
+      <p className="text-foreground mt-3 text-2xl font-semibold">{value}</p>
+      <p className="text-muted mt-2 text-sm leading-6">{supportingText}</p>
+    </div>
+  );
+}
+
+function OpportunityWatchlist({
+  emptyLabel,
+  items,
+  title,
+}: {
+  emptyLabel: string;
+  items: DecisionConsoleItem[];
+  title: string;
+}) {
+  return (
+    <div className="space-y-3 rounded-[22px] border border-border bg-surface-muted px-4 py-4">
+      <div className="space-y-1">
+        <p className="text-muted text-[0.68rem] tracking-[0.18em] uppercase">
+          {title}
+        </p>
+        <p className="text-sm text-muted">
+          Direct links keep the underlying opportunities one click away.
+        </p>
+      </div>
+
+      <OpportunityLinkList emptyLabel={emptyLabel} items={items} />
+    </div>
+  );
+}
+
+function FunnelTable({
+  summaries,
+}: {
+  summaries: PipelineConversionSummary[];
+}) {
+  return (
+    <ComparisonTable
+      ariaLabel="Pipeline conversion funnel"
+      headers={["Stage step", "Conversion", "Drill-through"]}
+      rows={summaries.map((summary) => [
+        <div className="space-y-1" key={`${summary.key}-label`}>
+          <p className="font-semibold text-foreground">{summary.label}</p>
+          <p className="text-sm text-muted">
+            {summary.numerator}/{summary.denominator}
+          </p>
+        </div>,
+        <p className="font-semibold text-foreground" key={`${summary.key}-rate`}>
+          {formatNumericPercent(summary.ratePercent)}
+        </p>,
+        <Link
+          className="font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+          href={buildStageQueueHref(summary.numeratorStageKey)}
+          key={`${summary.key}-href`}
+        >
+          View {humanizeStageKey(summary.numeratorStageKey)} queue
+        </Link>,
+      ])}
+    />
+  );
+}
+
+function StageAgingTable({
+  summaries,
+}: {
+  summaries: PipelineStageAgingSummary[];
+}) {
+  return (
+    <ComparisonTable
+      ariaLabel="Stage aging comparison"
+      headers={["Stage", "Current dwell", "Drill-through"]}
+      rows={summaries.map((summary) => [
+        <div className="space-y-1" key={`${summary.stageKey}-label`}>
+          <p className="font-semibold text-foreground">{summary.stageLabel}</p>
+          <p className="text-sm text-muted">
+            {summary.opportunityCount}{" "}
+            {summary.opportunityCount === 1 ? "pursuit" : "pursuits"}
+          </p>
+        </div>,
+        <div className="space-y-1" key={`${summary.stageKey}-age`}>
+          <p className="font-semibold text-foreground">
+            Avg {formatDayCount(summary.averageAgeDays)}
+          </p>
+          <p className="text-sm text-muted">
+            Oldest {formatDayCount(summary.oldestAgeDays)}
+          </p>
+        </div>,
+        <div className="flex flex-col gap-2 text-sm" key={`${summary.stageKey}-links`}>
+          <Link
+            className="font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+            href={buildOpportunityHref(summary.oldestOpportunityId)}
+          >
+            Open oldest pursuit
+          </Link>
+          <Link
+            className="font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+            href={buildStageQueueHref(summary.stageKey)}
+          >
+            View {summary.stageLabel} queue
+          </Link>
+        </div>,
+      ])}
+    />
+  );
+}
+
+function ComparisonTable({
+  ariaLabel,
+  headers,
+  rows,
+}: {
+  ariaLabel: string;
+  headers: string[];
+  rows: ReactNode[][];
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table
+        aria-label={ariaLabel}
+        className="min-w-full border-collapse text-left text-sm"
+      >
+        <thead>
+          <tr className="border-b border-border">
+            {headers.map((header) => (
+              <th
+                className="px-0 py-3 pr-4 text-[0.72rem] font-medium tracking-[0.18em] text-muted uppercase"
+                key={header}
+                scope="col"
+              >
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr
+              className={rowIndex === rows.length - 1 ? "" : "border-b border-border"}
+              key={rowIndex}
+            >
+              {row.map((cell, cellIndex) => (
+                <td className="px-0 py-4 pr-4 align-top" key={cellIndex}>
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function OpportunityLinkList({
+  emptyLabel,
+  items,
+}: {
+  emptyLabel: string;
+  items: DecisionConsoleItem[];
+}) {
+  if (items.length === 0) {
+    return <p className="text-sm text-muted">{emptyLabel}</p>;
+  }
+
+  return (
+    <ul className="space-y-2">
+      {items.map((item) => (
+        <li key={item.id}>
+          <Link
+            className="font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+            href={buildOpportunityHref(item.id)}
+          >
+            {item.title}
+          </Link>
+          <p className="text-sm text-muted">
+            {item.currentStageLabel} · {humanizeDecision(item.currentOutcome)}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -443,8 +769,57 @@ function MetricValue({ detail, value }: { detail: string; value: string }) {
   );
 }
 
+function buildOpportunityHref(opportunityId: string) {
+  return `/opportunities/${opportunityId}`;
+}
+
+function buildStageQueueHref(stageKey: string) {
+  return `/opportunities?stage=${encodeURIComponent(stageKey)}`;
+}
+
+function isOpportunityInScoreBucket(
+  opportunity: DecisionConsoleItem,
+  bucketKey: string,
+) {
+  const scorePercent = parseNumericString(opportunity.scorePercent);
+
+  if (scorePercent === null) {
+    return false;
+  }
+
+  switch (bucketKey) {
+    case "under_50":
+      return scorePercent < 50;
+    case "50_to_69":
+      return scorePercent >= 50 && scorePercent < 70;
+    case "70_to_84":
+      return scorePercent >= 70 && scorePercent < 85;
+    case "85_plus":
+      return scorePercent >= 85;
+    default:
+      return false;
+  }
+}
+
+function parseNumericString(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function formatPercent(value: string | null) {
   return value ? `${value}%` : "Unavailable";
+}
+
+function formatNumericPercent(value: number) {
+  return `${value.toFixed(Number.isInteger(value) ? 0 : 2)}%`;
+}
+
+function formatDayCount(value: number) {
+  return `${value} ${value === 1 ? "day" : "days"}`;
 }
 
 function humanizeDecision(value: BidDecisionOutcome | null) {
@@ -453,6 +828,13 @@ function humanizeDecision(value: BidDecisionOutcome | null) {
   }
 
   return value === "NO_GO" ? "No Go" : value.replace("_", " ");
+}
+
+function humanizeStageKey(value: string) {
+  return value
+    .split("_")
+    .map((segment) => `${segment.charAt(0).toUpperCase()}${segment.slice(1)}`)
+    .join(" ");
 }
 
 function decisionTone(value: BidDecisionOutcome | null) {

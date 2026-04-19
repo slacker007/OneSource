@@ -1748,6 +1748,13 @@ export async function getDecisionConsoleSnapshot({
         opportunity.urgencyDays !== null && opportunity.urgencyDays <= 14,
     ).length,
     decisionAnalytics,
+    pipelineConversionSummaries: buildPipelineConversionSummaries(
+      record.opportunities,
+    ),
+    pipelineStageAgingSummaries: buildPipelineStageAgingSummaries({
+      opportunities: record.opportunities,
+      now,
+    }),
     rankingOptions: [
       {
         label: "Value lens",
@@ -2540,6 +2547,7 @@ function mapDecisionConsoleItem({
   return {
     id: opportunity.id,
     title: opportunity.title,
+    currentStageKey: opportunity.currentStageKey,
     currentStageLabel:
       opportunity.currentStageLabel ??
       humanizeStageKey(opportunity.currentStageKey) ??
@@ -3257,6 +3265,8 @@ function buildPipelineConversionSummaries(
     return {
       key: definition.key,
       label: definition.label,
+      numeratorStageKey: definition.numeratorStageKey,
+      denominatorStageKey: definition.denominatorStageKey,
       numerator,
       denominator,
       ratePercent:
@@ -3280,6 +3290,7 @@ function buildPipelineStageAgingSummaries({
       opportunityCount: number;
       totalAgeDays: number;
       oldestAgeDays: number;
+      oldestOpportunityId: string;
       oldestOpportunityTitle: string;
     }
   >();
@@ -3307,6 +3318,7 @@ function buildPipelineStageAgingSummaries({
 
       if (ageDays > existing.oldestAgeDays) {
         existing.oldestAgeDays = ageDays;
+        existing.oldestOpportunityId = opportunity.id;
         existing.oldestOpportunityTitle = opportunity.title;
       }
 
@@ -3319,6 +3331,7 @@ function buildPipelineStageAgingSummaries({
       opportunityCount: 1,
       totalAgeDays: ageDays,
       oldestAgeDays: ageDays,
+      oldestOpportunityId: opportunity.id,
       oldestOpportunityTitle: opportunity.title,
     });
   }
@@ -3332,6 +3345,7 @@ function buildPipelineStageAgingSummaries({
         summary.totalAgeDays / summary.opportunityCount,
       ),
       oldestAgeDays: summary.oldestAgeDays,
+      oldestOpportunityId: summary.oldestOpportunityId,
       oldestOpportunityTitle: summary.oldestOpportunityTitle,
     }))
     .sort((left, right) => {
@@ -4064,6 +4078,7 @@ function stripDecisionConsoleWorkingFields(
   return {
     id: item.id,
     title: item.title,
+    currentStageKey: item.currentStageKey,
     currentStageLabel: item.currentStageLabel,
     leadAgency: item.leadAgency,
     responseDeadlineAt: item.responseDeadlineAt,
@@ -4077,6 +4092,11 @@ function stripDecisionConsoleWorkingFields(
     urgencyLabel: item.urgencyLabel,
     recommendationOutcome: item.recommendationOutcome,
     finalDecision: item.finalDecision,
+    currentOutcome: item.currentOutcome,
+    effortTaskCount: item.effortTaskCount,
+    effortMilestoneCount: item.effortMilestoneCount,
+    effortArtifactCount: item.effortArtifactCount,
+    effortUnits: item.effortUnits,
   };
 }
 

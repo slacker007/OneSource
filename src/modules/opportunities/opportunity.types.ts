@@ -531,6 +531,8 @@ export type OpportunityStageSummary = {
 export type PipelineConversionSummary = {
   key: "qualification" | "approval" | "proposal" | "submission";
   label: string;
+  numeratorStageKey: string;
+  denominatorStageKey: string | null;
   numerator: number;
   denominator: number;
   ratePercent: number;
@@ -542,6 +544,7 @@ export type PipelineStageAgingSummary = {
   opportunityCount: number;
   averageAgeDays: number;
   oldestAgeDays: number;
+  oldestOpportunityId: string;
   oldestOpportunityTitle: string;
 };
 
@@ -634,6 +637,7 @@ export type DecisionConsoleQuery = {
 export type DecisionConsoleItem = {
   id: string;
   title: string;
+  currentStageKey: string | null;
   currentStageLabel: string;
   leadAgency: AgencySummary | null;
   responseDeadlineAt: string | null;
@@ -647,6 +651,11 @@ export type DecisionConsoleItem = {
   urgencyLabel: string;
   recommendationOutcome: BidDecisionOutcome | null;
   finalDecision: BidDecisionOutcome | null;
+  currentOutcome: BidDecisionOutcome | null;
+  effortTaskCount: number;
+  effortMilestoneCount: number;
+  effortArtifactCount: number;
+  effortUnits: number;
 };
 
 export type DecisionAnalyticsOutcomeSummary = {
@@ -692,6 +701,8 @@ export type DecisionConsoleSnapshot = {
   goOpportunityCount: number;
   urgentOpportunityCount: number;
   decisionAnalytics: DecisionAnalyticsSnapshot;
+  pipelineConversionSummaries: PipelineConversionSummary[];
+  pipelineStageAgingSummaries: PipelineStageAgingSummary[];
   rankingOptions: Array<{
     label: string;
     value: DecisionConsoleRanking;

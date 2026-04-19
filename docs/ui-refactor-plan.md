@@ -318,11 +318,17 @@ Key outcomes:
 
 Primary files:
 - `src/components/analytics/decision-console.tsx`
+- `src/modules/opportunities/opportunity.repository.ts`
+
+Implemented baseline:
+- `src/components/analytics/decision-console.tsx` now renders as a comparison-first analytics workspace with a denser ranking queue, compact decision-posture metrics, score-band comparison, stage-conversion funnel, active-stage aging, and effort-versus-outcome modules instead of the earlier decorative card stack.
+- `src/modules/opportunities/opportunity.repository.ts` and `opportunity.types.ts` now expose additive analytics drill-through metadata for stage-queue links, oldest-stage opportunity jumps, and richer ranked-opportunity effort detail without creating a second analytics query path.
+- The Chromium smoke flow plus analytics component and repository coverage now validate ranking control changes, section rendering, and at least one analytics drill-through jump into the underlying tracked-opportunity route.
 
 Key outcomes:
 - Comparison-first module layout
-- Denser ranking and charts
-- Drill-through from charts and tables
+- Denser ranking and comparison tables
+- Drill-through from analytics modules and tables
 - Reduced decorative framing
 
 ### UI-12 Admin And Settings

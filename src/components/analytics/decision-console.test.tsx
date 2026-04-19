@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { DecisionConsole } from "./decision-console";
@@ -107,6 +107,37 @@ const snapshot: DecisionConsoleSnapshot = {
       },
     ],
   },
+  pipelineConversionSummaries: [
+    {
+      key: "qualification",
+      label: "Qualification rate",
+      numeratorStageKey: "qualified",
+      denominatorStageKey: null,
+      numerator: 3,
+      denominator: 4,
+      ratePercent: 75,
+    },
+    {
+      key: "approval",
+      label: "Pursuit approval rate",
+      numeratorStageKey: "pursuit_approved",
+      denominatorStageKey: "qualified",
+      numerator: 2,
+      denominator: 3,
+      ratePercent: 66.67,
+    },
+  ],
+  pipelineStageAgingSummaries: [
+    {
+      stageKey: "capture_active",
+      stageLabel: "Capture Active",
+      opportunityCount: 2,
+      averageAgeDays: 14,
+      oldestAgeDays: 21,
+      oldestOpportunityId: "opp_alpha",
+      oldestOpportunityTitle: "Enterprise Knowledge Management Support Services",
+    },
+  ],
   rankingOptions: [
     {
       label: "Value lens",
@@ -139,6 +170,7 @@ const snapshot: DecisionConsoleSnapshot = {
     {
       id: "opp_alpha",
       title: "Enterprise Knowledge Management Support Services",
+      currentStageKey: "capture_active",
       currentStageLabel: "Capture Active",
       leadAgency: {
         id: "agency_1",
@@ -156,11 +188,17 @@ const snapshot: DecisionConsoleSnapshot = {
       urgencyLabel: "13 days left",
       recommendationOutcome: "GO",
       finalDecision: "GO",
+      currentOutcome: "GO",
+      effortTaskCount: 2,
+      effortMilestoneCount: 1,
+      effortArtifactCount: 7,
+      effortUnits: 10,
     },
     {
       id: "opp_beta",
       title: "Army Cloud Operations Recompete",
-      currentStageLabel: "Unstaged",
+      currentStageKey: "qualified",
+      currentStageLabel: "Qualified",
       leadAgency: null,
       responseDeadlineAt: null,
       updatedAt: "2026-04-17T01:00:00.000Z",
@@ -173,23 +211,25 @@ const snapshot: DecisionConsoleSnapshot = {
       urgencyLabel: "No deadline",
       recommendationOutcome: "DEFER",
       finalDecision: null,
+      currentOutcome: "DEFER",
+      effortTaskCount: 0,
+      effortMilestoneCount: 0,
+      effortArtifactCount: 0,
+      effortUnits: 0,
     },
   ],
 };
 
 describe("DecisionConsole", () => {
-  it("renders ranked opportunity comparisons and active ranking controls", () => {
+  it("renders comparison modules, controls, and drill-through links", () => {
     render(<DecisionConsole snapshot={snapshot} />);
 
     expect(
       screen.getByRole("heading", { name: /decision console/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/current value lens uses the strategic-alignment/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/recommendation alignment/i)).toHaveLength(2);
     expect(
       screen.getByRole("table", { name: /decision console rankings/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /bid volume and alignment/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /score bands/i }),
@@ -198,20 +238,39 @@ describe("DecisionConsole", () => {
       screen.getByRole("heading", { name: /effort versus outcome/i }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", { name: /stage conversion funnel/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /stage aging/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("combobox", { name: /rank by/i }),
     ).toHaveValue("risk");
+    expect(screen.getByRole("combobox", { name: /scope/i })).toHaveValue(
+      "active",
+    );
     expect(
-      screen.getByRole("combobox", { name: /scope/i }),
-    ).toHaveValue("active");
+      screen.getAllByText(/enterprise knowledge management support services/i)
+        .length,
+    ).toBeGreaterThan(0);
     expect(
-      screen.getByText(/enterprise knowledge management support services/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/55.00%/i)).toBeInTheDocument();
-    expect(screen.getByText(/100.00%/i)).toBeInTheDocument();
-    expect(screen.getByText(/85%\+/i)).toBeInTheDocument();
+      screen.getByRole("link", { name: /view capture active queue/i }),
+    ).toHaveAttribute("href", "/opportunities?stage=capture_active");
     expect(
-      screen.getAllByRole("link", { name: /open workspace/i })[0],
+      screen.getByRole("link", { name: /view qualified queue/i }),
+    ).toHaveAttribute("href", "/opportunities?stage=qualified");
+    expect(
+      screen.getByRole("link", { name: /open oldest pursuit/i }),
     ).toHaveAttribute("href", "/opportunities/opp_alpha");
+
+    const scoreBandTable = screen.getByRole("table", {
+      name: /score band comparison/i,
+    });
+    expect(within(scoreBandTable).getByText(/85%\+/i)).toBeInTheDocument();
+    expect(
+      within(scoreBandTable).getAllByText(/go 1 \/ defer 0 \/ no-go 0/i)
+        .length,
+    ).toBeGreaterThan(0);
   });
 
   it("renders a truthful empty state when no pursuits match the current view", () => {
@@ -231,6 +290,11 @@ describe("DecisionConsole", () => {
     expect(
       screen.getByText(
         /the current ranking lens and scope did not return any opportunities/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /no recommendation-only pursuits are visible in the current ranking set/i,
       ),
     ).toBeInTheDocument();
   });
