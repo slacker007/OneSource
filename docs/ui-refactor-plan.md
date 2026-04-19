@@ -181,6 +181,12 @@ Primary files:
 - New shared primitives under `src/components/ui`
 - Route consumers updated only as needed to prove reuse
 
+Implemented baseline:
+- `src/components/ui/data-table.tsx` now supports sticky headers, visible sort-state indicators, selected-row treatment, and keyboard-focusable row scaffolding.
+- `src/components/ui/active-filter-chip-bar.tsx`, `saved-view-controls.tsx`, `density-toggle.tsx`, `preview-panel.tsx`, `table-skeleton.tsx`, and `preview-panel-skeleton.tsx` now provide the reusable interaction kit for later list-heavy route refactors.
+- `src/components/opportunities/opportunity-list.tsx` is the first proving consumer: it now uses standard view presets, removable filter chips, density-aware results, selected-row preview state, and the shared preview shell without changing the underlying repository query model.
+- `src/app/(app)/opportunities/loading.tsx` is the first loading-state consumer of the new shared table and preview skeleton patterns.
+
 Key outcomes:
 - Sticky sortable tables
 - Preview-panel shell

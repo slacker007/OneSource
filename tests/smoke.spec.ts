@@ -96,11 +96,18 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByRole("table", { name: /opportunity pipeline results/i }),
   ).toBeVisible();
+  const opportunityResultsTable = page.getByRole("table", {
+    name: /opportunity pipeline results/i,
+  });
   await expect(
-    page.getByText(/va claims intake automation bpa/i),
+    opportunityResultsTable.getByRole("heading", {
+      name: /va claims intake automation bpa/i,
+    }),
   ).toBeVisible();
   await expect(
-    page.getByText(/enterprise knowledge management support services/i),
+    opportunityResultsTable.getByText(
+      /enterprise knowledge management support services/i,
+    ),
   ).not.toBeVisible();
   await page.getByRole("link", { name: /^Knowledge/i }).click();
   await expect(page).toHaveURL(/\/knowledge$/);
@@ -258,8 +265,11 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await page.locator("#opportunity-query").fill(csvImportTitle);
   await page.getByRole("button", { name: /apply filters/i }).click();
   await expect(page).toHaveURL(/\/opportunities\?/);
+  const importedOpportunityResultsTable = page.getByRole("table", {
+    name: /opportunity pipeline results/i,
+  });
   await expect(
-    page.getByRole("heading", {
+    importedOpportunityResultsTable.getByRole("heading", {
       name: new RegExp(
         csvImportTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
         "i",
@@ -434,8 +444,13 @@ test("users can create and edit tracked opportunities from the app", async ({
   ).toBeVisible();
   await page.getByRole("link", { name: /back to opportunity list/i }).click();
   await expect(page).toHaveURL(/\/opportunities$/);
+  const refreshedOpportunityResultsTable = page.getByRole("table", {
+    name: /opportunity pipeline results/i,
+  });
   await expect(
-    page.getByRole("heading", { name: updatedOpportunityTitle }),
+    refreshedOpportunityResultsTable.getByRole("heading", {
+      name: updatedOpportunityTitle,
+    }),
   ).toBeVisible();
 });
 

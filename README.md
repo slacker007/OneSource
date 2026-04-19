@@ -8,8 +8,8 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - Implementation scope, checklist sequencing, and current handoff state live in `PRD.md`.
 - Engineering and verification rules live in `AGENTS.md`.
 - Active loop notes and crash-recovery context live in `NOTES.md`.
-- `P0-01` through `P10-04` are complete, and the MVP, Beta, and Pilot release gates in `PRD.md` are now met.
-- No checklist items or deferred follow-ons remain. The manual live `sam.gov` `/sources` verification run completed on `2026-04-19`.
+- `P0-01` through `P10-04` are complete, the MVP, Beta, and Pilot release gates in `PRD.md` are met, and deferred follow-on `FP-01` remains complete.
+- The post-completion UI refactor program is active. `UI-01` and `UI-02` are complete; `UI-03` through `UI-13` remain in `PRD.md`.
 
 ## Stack In Repo Today
 
