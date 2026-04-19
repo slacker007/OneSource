@@ -24,6 +24,10 @@ export async function applySourceImportAction(formData: FormData) {
   const sourceRecordId = readRequiredString(formData.get("sourceRecordId"));
   const mode = readRequiredString(formData.get("mode"));
   const targetOpportunityId = readOptionalString(formData.get("targetOpportunityId"));
+  let redirectPath = buildReturnPath(returnPath, {
+    importError: "Source import could not be applied.",
+    preview: sourceRecordId,
+  });
 
   try {
     const result = await applySourceImport({
@@ -42,24 +46,22 @@ export async function applySourceImportAction(formData: FormData) {
       },
     });
 
-    redirect(
-      buildReturnPath(returnPath, {
-        importStatus: result.action,
-        opportunityId: result.targetOpportunityId,
-        preview: sourceRecordId,
-      }),
-    );
+    redirectPath = buildReturnPath(returnPath, {
+      importStatus: result.action,
+      opportunityId: result.targetOpportunityId,
+      preview: sourceRecordId,
+    });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Source import could not be applied.";
-
-    redirect(
-      buildReturnPath(returnPath, {
-        importError: message,
-        preview: sourceRecordId,
-      }),
-    );
+    redirectPath = buildReturnPath(returnPath, {
+      importError:
+        error instanceof Error
+          ? error.message
+          : "Source import could not be applied.",
+      preview: sourceRecordId,
+    });
   }
+
+  redirect(redirectPath);
 }
 
 export async function importCsvOpportunitiesAction(formData: FormData) {
