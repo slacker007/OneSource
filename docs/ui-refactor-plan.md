@@ -210,9 +210,10 @@ Implemented baseline for `UI-03`:
 - Recent-work persistence now uses localStorage snapshots plus a `useSyncExternalStore` subscription so the server-rendered shell stays hydration-safe while recent destinations still update immediately after shell navigation.
 
 Remaining `UI-04` outcomes:
-- Command palette
-- Quick-create actions from the command surface
-- Cross-entity recent items and pinned views
+- `src/modules/shell/app-shell.repository.ts` plus `app-shell.types.ts` now provide the additive shell snapshot for server-backed command sections and notification summaries without leaking route-level queries into the client shell.
+- The sticky header now launches a real command-center dialog with a searchable result list, keyboard open support on `Ctrl/Cmd+K`, arrow-key result movement, `Enter` navigation, quick-create actions, shell views, recent items, pinned work, and server-backed cross-entity sections for opportunities, assigned tasks, knowledge assets, and saved searches.
+- Pinned-work persistence is now explicit beside the existing recent-work persistence, both stay hydration-safe through the shared localStorage plus `useSyncExternalStore` pattern, and the same state appears in the desktop rail and mobile drawer.
+- The shell now exposes a notification entry point backed by overdue or upcoming task reminders plus recent failed saved-search sync runs, while keeping all resulting navigation permission-governed by the existing server routes.
 - Notifications entry point
 
 ### UI-05 Dashboard

@@ -2,17 +2,35 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useDeferredValue,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from "react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { Dialog } from "@/components/ui/dialog";
 import { Drawer } from "@/components/ui/drawer";
 import { hasAppPermission } from "@/lib/auth/permissions";
 import { cn } from "@/lib/cn";
+import type {
+  AppShellCommandCategory,
+  AppShellCommandItem,
+  AppShellSnapshot,
+  AppShellWorkbenchItem,
+} from "@/modules/shell/app-shell.types";
 
 const SHELL_COLLAPSE_STORAGE_KEY = "onesource.shell.is-collapsed";
+const SHELL_PINNED_ITEMS_STORAGE_KEY = "onesource.shell.pinned-items";
+const SHELL_PREFERENCES_EVENT = "onesource.shell.preferences-changed";
 const SHELL_RECENT_DESTINATIONS_STORAGE_KEY =
   "onesource.shell.recent-destinations";
-const SHELL_PREFERENCES_EVENT = "onesource.shell.preferences-changed";
+const SHELL_PINNED_ITEM_LIMIT = 6;
 const SHELL_RECENT_DESTINATION_LIMIT = 4;
 
 type NavItem = {
@@ -33,13 +51,6 @@ type ShellRouteDefinition = {
   matcher: string;
   navHref: string;
   requires?: "decision_support" | "workspace_settings";
-};
-
-type RecentDestination = {
-  description: string;
-  href: string;
-  label: string;
-  navHref: string;
 };
 
 const BASE_NAV_GROUPS: NavGroup[] = [
@@ -177,8 +188,11 @@ type AuthenticatedAppShellProps = {
   sessionUser: {
     email?: string | null;
     name?: string | null;
+    organizationId: string;
     roleKeys: string[];
+    userId: string;
   };
+  shellSnapshot: AppShellSnapshot;
 };
 
 type AppShellFrameProps = AuthenticatedAppShellProps & {
@@ -197,21 +211,42 @@ export function AppShellFrame({
   children,
   currentPath,
   sessionUser,
+  shellSnapshot,
 }: AppShellFrameProps) {
+  const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
   const collapsedRailSnapshot = useSyncExternalStore(
     subscribeToShellPreferenceChanges,
     readCollapsedRailPreferenceSnapshot,
     () => "0",
   );
-  const recentDestinationsSnapshot = useSyncExternalStore(
+  const recentItemsSnapshot = useSyncExternalStore(
     subscribeToShellPreferenceChanges,
-    readRecentDestinationsSnapshot,
+    readRecentWorkbenchItemsSnapshot,
     () => "[]",
   );
+  const pinnedItemsSnapshot = useSyncExternalStore(
+    subscribeToShellPreferenceChanges,
+    readPinnedWorkbenchItemsSnapshot,
+    () => "[]",
+  );
+  const commandInputRef = useRef<HTMLInputElement>(null);
+  const commandListboxId = useId();
+  const commandOptionIdPrefix = useId();
+  const deferredCommandQuery = useDeferredValue(commandQuery);
+  const [activeCommandItemId, setActiveCommandItemId] = useState<string | null>(
+    null,
+  );
   const isRailCollapsed = collapsedRailSnapshot === "1";
-  const recentDestinations = parseRecentDestinationsSnapshot(
-    recentDestinationsSnapshot,
+  const pinnedItems = parseWorkbenchItemsSnapshot(
+    pinnedItemsSnapshot,
+    SHELL_PINNED_ITEM_LIMIT,
+  );
+  const recentItems = parseWorkbenchItemsSnapshot(
+    recentItemsSnapshot,
+    SHELL_RECENT_DESTINATION_LIMIT,
   );
 
   const canManagePipeline = hasAppPermission(
@@ -233,7 +268,7 @@ export function AppShellFrame({
       allowDecisionSupport,
       allowWorkspaceSettings,
       currentPath,
-    }) ?? createDestination(navItems[0]);
+    }) ?? createWorkbenchItemFromNavItem(navItems[0]);
   const activeNavItem =
     navItems.find((item) => item.href === activeDestination.navHref) ?? navItems[0];
   const activeGroup =
@@ -246,9 +281,50 @@ export function AppShellFrame({
     canManagePipeline,
     canManageSourceSearches,
   });
-  const visibleRecentDestinations = recentDestinations.filter(
-    (destination) => destination.href !== currentPath,
-  );
+  const visibleRecentItems = recentItems.filter((item) => item.href !== currentPath);
+  const quickCreateItems = buildQuickCreateItems({
+    allowDecisionSupport,
+    allowWorkspaceSettings,
+    canManagePipeline,
+    canManageSourceSearches,
+  });
+  const shellViewItems = buildShellViewCommandItems({
+    navGroups,
+    quickLinks,
+  });
+  const commandSections = filterCommandSections({
+    query: deferredCommandQuery,
+    sections: [
+      {
+        key: "quick_create",
+        label: "Quick create",
+        items: quickCreateItems,
+      },
+      {
+        key: "pinned",
+        label: "Pinned work",
+        items: pinnedItems.map(createCommandItemFromWorkbenchItem),
+      },
+      {
+        key: "recent",
+        label: "Recent work",
+        items: visibleRecentItems.map(createCommandItemFromWorkbenchItem),
+      },
+      {
+        key: "views",
+        label: "Shell views",
+        items: shellViewItems,
+      },
+      ...shellSnapshot.commandSections,
+    ],
+  });
+  const flatCommandItems = commandSections.flatMap((section) => section.items);
+  const resolvedActiveCommandItemId = flatCommandItems.some(
+    (item) => item.id === activeCommandItemId,
+  )
+    ? activeCommandItemId
+    : flatCommandItems[0]?.id ?? null;
+  const notificationCount = shellSnapshot.notifications.totalCount;
 
   const displayName =
     sessionUser.name ?? sessionUser.email ?? "Authenticated user";
@@ -257,34 +333,142 @@ export function AppShellFrame({
       ? sessionUser.roleKeys.join(", ")
       : "No roles assigned";
 
-  function rememberDestination(href: string) {
-    const destination = getCurrentDestination({
-      allowDecisionSupport,
-      allowWorkspaceSettings,
-      currentPath: href,
-    });
-
-    if (!destination) {
+  useEffect(() => {
+    if (!isCommandOpen) {
       return;
     }
 
-    const nextDestinations = [destination, ...recentDestinations].filter(
-      (item, index, items) =>
-        items.findIndex((candidate) => candidate.href === item.href) === index,
-    );
-    const trimmedDestinations = nextDestinations.slice(
-      0,
-      SHELL_RECENT_DESTINATION_LIMIT,
+    const timeoutId = window.setTimeout(() => {
+      commandInputRef.current?.focus();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isCommandOpen]);
+
+  useEffect(() => {
+    function handleKeyboardShortcut(event: globalThis.KeyboardEvent) {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "k"
+      ) {
+        event.preventDefault();
+        setIsCommandOpen(true);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyboardShortcut);
+    };
+  }, []);
+
+  function rememberRecentItem(item: AppShellWorkbenchItem) {
+    const nextItems = [item, ...recentItems].filter(
+      (candidate, index, items) =>
+        items.findIndex((entry) => entry.href === candidate.href) === index,
     );
 
-    try {
-      window.localStorage.setItem(
-        SHELL_RECENT_DESTINATIONS_STORAGE_KEY,
-        JSON.stringify(trimmedDestinations),
+    writeWorkbenchItemsPreference({
+      key: SHELL_RECENT_DESTINATIONS_STORAGE_KEY,
+      limit: SHELL_RECENT_DESTINATION_LIMIT,
+      items: nextItems,
+    });
+  }
+
+  function togglePinnedItem(item: AppShellWorkbenchItem) {
+    const existingPinnedItem = pinnedItems.find(
+      (candidate) => candidate.href === item.href,
+    );
+
+    if (existingPinnedItem) {
+      writeWorkbenchItemsPreference({
+        key: SHELL_PINNED_ITEMS_STORAGE_KEY,
+        limit: SHELL_PINNED_ITEM_LIMIT,
+        items: pinnedItems.filter((candidate) => candidate.href !== item.href),
+      });
+      return;
+    }
+
+    writeWorkbenchItemsPreference({
+      key: SHELL_PINNED_ITEMS_STORAGE_KEY,
+      limit: SHELL_PINNED_ITEM_LIMIT,
+      items: [item, ...pinnedItems],
+    });
+  }
+
+  function closeCommandSurface() {
+    setIsCommandOpen(false);
+    setCommandQuery("");
+    setActiveCommandItemId(null);
+  }
+
+  function handleCommandItemSelection(item: AppShellWorkbenchItem) {
+    rememberRecentItem(item);
+    closeCommandSurface();
+  }
+
+  function focusCommandItem(itemId: string) {
+    const link = document.getElementById(getCommandLinkId(commandOptionIdPrefix, itemId));
+    link?.focus();
+  }
+
+  function moveCommandSelection(direction: "next" | "previous") {
+    if (flatCommandItems.length === 0) {
+      return;
+    }
+
+    const currentIndex = flatCommandItems.findIndex(
+      (item) => item.id === resolvedActiveCommandItemId,
+    );
+    const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex =
+      direction === "next"
+        ? (safeIndex + 1) % flatCommandItems.length
+        : (safeIndex - 1 + flatCommandItems.length) % flatCommandItems.length;
+    const nextItem = flatCommandItems[nextIndex];
+
+    if (!nextItem) {
+      return;
+    }
+
+    setActiveCommandItemId(nextItem.id);
+    focusCommandItem(nextItem.id);
+  }
+
+  function handleCommandInputKeyDown(
+    event: ReactKeyboardEvent<HTMLInputElement>,
+  ) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveCommandSelection("next");
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveCommandSelection("previous");
+      return;
+    }
+
+    if (event.key === "Enter") {
+      if (!resolvedActiveCommandItemId) {
+        return;
+      }
+
+      event.preventDefault();
+      const link = document.getElementById(
+        getCommandLinkId(commandOptionIdPrefix, resolvedActiveCommandItemId),
       );
-      emitShellPreferenceChange();
-    } catch {
-      // Ignore storage failures; recent work should not block navigation.
+      link?.click();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeCommandSurface();
     }
   }
 
@@ -308,9 +492,9 @@ export function AppShellFrame({
                   Capture command, discovery, and execution in one rail.
                 </p>
                 <p className="text-sm leading-6 text-stone-300">
-                  Grouped navigation keeps operators oriented while quick links
-                  and recent work stay attached to the shell instead of drifting
-                  into page-specific shortcuts.
+                  Grouped navigation now feeds a command center with pinned work,
+                  recent context, and alert review instead of leaving the shell as
+                  a passive frame.
                 </p>
               </div>
             ) : null}
@@ -341,7 +525,7 @@ export function AppShellFrame({
           collapsed={isRailCollapsed}
           currentPath={currentPath}
           groups={navGroups}
-          onRememberDestination={rememberDestination}
+          onRememberItem={rememberRecentItem}
           title="Primary navigation"
         />
 
@@ -349,12 +533,20 @@ export function AppShellFrame({
           collapsed={isRailCollapsed}
           currentPath={currentPath}
           links={quickLinks}
-          onRememberDestination={rememberDestination}
+          onRememberItem={rememberRecentItem}
+        />
+
+        <PinnedWorkPanel
+          collapsed={isRailCollapsed}
+          items={pinnedItems}
+          onRememberItem={rememberRecentItem}
+          onTogglePinnedItem={togglePinnedItem}
         />
 
         <RecentWorkPanel
           collapsed={isRailCollapsed}
-          destinations={visibleRecentDestinations}
+          items={visibleRecentItems}
+          onRememberItem={rememberRecentItem}
         />
       </div>
 
@@ -377,7 +569,7 @@ export function AppShellFrame({
   return (
     <div className="relative flex min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(32,95,85,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(168,93,42,0.1),transparent_24%)]">
       <Drawer
-        description="Responsive grouped navigation now keeps quick links and recent work in the mobile shell instead of scattering them across individual routes."
+        description="Responsive grouped navigation now keeps quick links, pinned work, and recent work in the mobile shell instead of scattering them across individual routes."
         eyebrow="OneSource"
         onClose={() => setIsMobileNavOpen(false)}
         open={isMobileNavOpen}
@@ -395,7 +587,7 @@ export function AppShellFrame({
           currentPath={currentPath}
           groups={navGroups}
           onNavigate={() => setIsMobileNavOpen(false)}
-          onRememberDestination={rememberDestination}
+          onRememberItem={rememberRecentItem}
           title="Mobile navigation"
         />
 
@@ -403,16 +595,207 @@ export function AppShellFrame({
           currentPath={currentPath}
           links={quickLinks}
           mobile
-          onRememberDestination={rememberDestination}
+          onRememberItem={rememberRecentItem}
+        />
+
+        <PinnedWorkPanel
+          items={pinnedItems}
+          mobile
+          onNavigate={() => setIsMobileNavOpen(false)}
+          onRememberItem={rememberRecentItem}
+          onTogglePinnedItem={togglePinnedItem}
         />
 
         <RecentWorkPanel
-          destinations={visibleRecentDestinations}
+          items={visibleRecentItems}
           mobile
           onNavigate={() => setIsMobileNavOpen(false)}
-          onRememberDestination={rememberDestination}
+          onRememberItem={rememberRecentItem}
         />
       </Drawer>
+
+      <Dialog
+        description="Use the keyboard or the result list to jump to core views, quick-create flows, active pursuits, assigned tasks, saved searches, or recent knowledge."
+        footer={
+          <div className="flex flex-col gap-2 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+            <p>Use ↑ and ↓ to move, then press Enter to open the selected result.</p>
+            <p>{flatCommandItems.length} items available in the shell command center.</p>
+          </div>
+        }
+        onClose={closeCommandSurface}
+        open={isCommandOpen}
+        title="Command center"
+      >
+        <div className="space-y-4">
+          <label className="block">
+            <span className="sr-only">Command search</span>
+            <input
+              aria-activedescendant={
+                resolvedActiveCommandItemId
+                  ? getCommandOptionId(
+                      commandOptionIdPrefix,
+                      resolvedActiveCommandItemId,
+                    )
+                  : undefined
+              }
+              aria-controls={commandListboxId}
+              aria-label="Command search"
+              className="border-border text-foreground w-full rounded-[24px] border bg-white px-4 py-3 text-sm shadow-[0_12px_28px_rgba(20,37,34,0.06)] transition outline-none focus:border-[rgba(32,95,85,0.4)]"
+              onChange={(event) => setCommandQuery(event.target.value)}
+              onKeyDown={handleCommandInputKeyDown}
+              placeholder="Search workspaces, tasks, knowledge, or saved searches"
+              ref={commandInputRef}
+              type="search"
+              value={commandQuery}
+            />
+          </label>
+
+          {flatCommandItems.length > 0 ? (
+            <div
+              aria-label="Command results"
+              className="max-h-[28rem] space-y-4 overflow-y-auto pr-1"
+              id={commandListboxId}
+              role="listbox"
+            >
+              {commandSections.map((section) => (
+                <section key={section.key} className="space-y-2">
+                  <p className="text-muted text-xs tracking-[0.22em] uppercase">
+                    {section.label}
+                  </p>
+                  <div className="space-y-2">
+                    {section.items.map((item) => {
+                      const optionId = getCommandOptionId(
+                        commandOptionIdPrefix,
+                        item.id,
+                      );
+                      const isPinned = pinnedItems.some(
+                        (pinnedItem) => pinnedItem.href === item.href,
+                      );
+                      const workbenchItem =
+                        createWorkbenchItemFromCommandItem(item);
+
+                      return (
+                        <div
+                          aria-selected={resolvedActiveCommandItemId === item.id}
+                          className={cn(
+                            "rounded-[24px] border bg-white/72 p-2 transition",
+                            resolvedActiveCommandItemId === item.id
+                              ? "border-[rgba(32,95,85,0.28)] shadow-[0_16px_36px_rgba(20,37,34,0.12)]"
+                              : "border-[rgba(15,28,31,0.08)]",
+                          )}
+                          id={optionId}
+                          key={item.id}
+                          onMouseEnter={() => setActiveCommandItemId(item.id)}
+                          role="option"
+                        >
+                          <div className="flex items-start gap-2">
+                            <Link
+                              className="flex-1 rounded-[20px] px-3 py-3 transition hover:bg-[rgba(32,95,85,0.06)] focus:bg-[rgba(32,95,85,0.08)] focus:outline-none"
+                              href={item.href}
+                              id={getCommandLinkId(commandOptionIdPrefix, item.id)}
+                              onClick={() => handleCommandItemSelection(workbenchItem)}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-sm font-medium text-foreground">
+                                  {item.label}
+                                </span>
+                                <span className="text-muted text-[0.68rem] tracking-[0.18em] uppercase">
+                                  {formatCommandCategoryLabel(item.category)}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-sm leading-6 text-muted">
+                                {item.description}
+                              </p>
+                              {item.supportingText ? (
+                                <p className="mt-2 text-xs tracking-[0.16em] text-muted uppercase">
+                                  {item.supportingText}
+                                </p>
+                              ) : null}
+                            </Link>
+                            <button
+                              aria-label={
+                                isPinned
+                                  ? `Remove ${item.label} from pinned work`
+                                  : `Pin ${item.label} to pinned work`
+                              }
+                              className={cn(
+                                "rounded-full border px-3 py-2 text-xs font-medium tracking-[0.16em] uppercase transition",
+                                isPinned
+                                  ? "border-[rgba(32,95,85,0.22)] bg-[rgba(32,95,85,0.12)] text-foreground"
+                                  : "border-border bg-white text-muted hover:border-[rgba(32,95,85,0.2)] hover:text-foreground",
+                              )}
+                              onClick={() => togglePinnedItem(workbenchItem)}
+                              type="button"
+                            >
+                              {isPinned ? "Pinned" : "Pin"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[24px] border border-dashed border-border bg-white/70 px-5 py-8 text-sm leading-6 text-muted">
+              No shell results match the current command query. Try a pursuit
+              title, task name, knowledge asset, or saved search.
+            </div>
+          )}
+        </div>
+      </Dialog>
+
+      <Dialog
+        description="Review high-signal reminders and connector issues without leaving the shell."
+        onClose={() => setIsNotificationsOpen(false)}
+        open={isNotificationsOpen}
+        title="Notifications"
+      >
+        {shellSnapshot.notifications.items.length > 0 ? (
+          <div className="space-y-3">
+            {shellSnapshot.notifications.items.map((notification) => (
+              <Link
+                className="block rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-white px-5 py-4 transition hover:border-[rgba(32,95,85,0.2)] hover:bg-[rgba(32,95,85,0.04)]"
+                href={notification.href}
+                key={notification.id}
+                onClick={() => setIsNotificationsOpen(false)}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-foreground">
+                    {notification.title}
+                  </p>
+                  <span
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-[0.68rem] tracking-[0.16em] uppercase",
+                      notification.tone === "danger"
+                        ? "bg-[rgba(173,70,49,0.12)] text-[#8f3422]"
+                        : notification.tone === "warning"
+                          ? "bg-[rgba(220,161,103,0.16)] text-[#8b5e2d]"
+                          : "bg-[rgba(32,95,85,0.12)] text-[#1b5f53]",
+                    )}
+                  >
+                    {notification.tone}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  {notification.summary}
+                </p>
+                {notification.timestamp ? (
+                  <p className="mt-2 text-xs tracking-[0.16em] text-muted uppercase">
+                    {formatDateTime(notification.timestamp)}
+                  </p>
+                ) : null}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[24px] border border-dashed border-border bg-white/70 px-5 py-8 text-sm leading-6 text-muted">
+            No active alerts are queued in the shell right now. Overdue tasks,
+            upcoming reminders, and saved-search issues will appear here.
+          </div>
+        )}
+      </Dialog>
 
       {desktopShell}
 
@@ -458,28 +841,47 @@ export function AppShellFrame({
                 </p>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center xl:min-w-[42rem] xl:justify-end">
-                <label className="relative block sm:flex-1 xl:max-w-xl">
-                  <span className="sr-only">Global search</span>
-                  <input
-                    aria-label="Global search"
-                    className="border-border text-foreground w-full rounded-full border bg-white px-4 py-3 pr-16 text-sm shadow-[0_12px_28px_rgba(20,37,34,0.06)] transition outline-none focus:border-[rgba(32,95,85,0.4)]"
-                    placeholder="Search opportunities, agencies, or notice IDs"
-                    readOnly
-                    type="search"
-                  />
-                  <span className="text-muted pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 rounded-full border border-[rgba(18,33,40,0.12)] bg-[rgba(18,33,40,0.04)] px-2 py-1 text-[0.68rem] tracking-[0.18em] uppercase">
-                    Shell
-                  </span>
-                </label>
-                <div className="hidden text-right sm:block">
-                  <p className="text-foreground text-sm font-medium">
-                    {displayName}
-                  </p>
-                  <p className="text-muted text-xs">{sessionUser.email}</p>
+              <div className="flex flex-col gap-3 xl:min-w-[42rem] xl:items-end">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center xl:w-full xl:justify-end">
+                  <button
+                    aria-expanded={isCommandOpen}
+                    aria-haspopup="dialog"
+                    aria-label="Open command search"
+                    className="border-border flex flex-1 items-center justify-between rounded-full border bg-white px-4 py-3 text-left shadow-[0_12px_28px_rgba(20,37,34,0.06)] transition hover:border-[rgba(32,95,85,0.22)] xl:max-w-xl"
+                    onClick={() => setIsCommandOpen(true)}
+                    type="button"
+                  >
+                    <span className="text-sm text-muted">
+                      Search work, tasks, knowledge, or saved searches
+                    </span>
+                    <span className="rounded-full border border-[rgba(18,33,40,0.12)] bg-[rgba(18,33,40,0.04)] px-2 py-1 text-[0.68rem] tracking-[0.18em] uppercase text-muted">
+                      Cmd K
+                    </span>
+                  </button>
+                  <button
+                    aria-expanded={isNotificationsOpen}
+                    aria-haspopup="dialog"
+                    aria-label="Open notifications"
+                    className="border-border inline-flex items-center justify-center gap-2 rounded-full border bg-white px-4 py-3 text-sm font-medium shadow-[0_12px_28px_rgba(20,37,34,0.06)] transition hover:border-[rgba(32,95,85,0.22)]"
+                    onClick={() => setIsNotificationsOpen(true)}
+                    type="button"
+                  >
+                    Alerts
+                    <span className="rounded-full bg-[rgba(32,95,85,0.12)] px-2 py-1 text-xs text-foreground">
+                      {notificationCount}
+                    </span>
+                  </button>
                 </div>
-                <div className="hidden sm:block">
-                  <SignOutButton />
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                  <div className="text-right">
+                    <p className="text-foreground text-sm font-medium">
+                      {displayName}
+                    </p>
+                    <p className="text-muted text-xs">{sessionUser.email}</p>
+                  </div>
+                  <div className="hidden sm:block">
+                    <SignOutButton />
+                  </div>
                 </div>
               </div>
             </div>
@@ -499,14 +901,14 @@ function NavigationMenu({
   currentPath,
   groups,
   onNavigate,
-  onRememberDestination,
+  onRememberItem,
   title,
 }: {
   collapsed?: boolean;
   currentPath: string;
   groups: NavGroup[];
   onNavigate?: () => void;
-  onRememberDestination?: (href: string) => void;
+  onRememberItem?: (item: AppShellWorkbenchItem) => void;
   title: string;
 }) {
   return (
@@ -540,7 +942,7 @@ function NavigationMenu({
                   href={item.href}
                   onClick={() => {
                     onNavigate?.();
-                    onRememberDestination?.(item.href);
+                    onRememberItem?.(createWorkbenchItemFromNavItem(item));
                   }}
                 >
                   <span className="block text-sm font-medium">{item.label}</span>
@@ -564,13 +966,13 @@ function QuickLinksPanel({
   currentPath,
   links,
   mobile = false,
-  onRememberDestination,
+  onRememberItem,
 }: {
   collapsed?: boolean;
   currentPath: string;
   links: NavItem[];
   mobile?: boolean;
-  onRememberDestination?: (href: string) => void;
+  onRememberItem?: (item: AppShellWorkbenchItem) => void;
 }) {
   return (
     <section
@@ -602,7 +1004,7 @@ function QuickLinksPanel({
                   : "border-transparent text-stone-300 hover:border-white/10 hover:bg-white/6 hover:text-white",
               )}
               href={link.href}
-              onClick={() => onRememberDestination?.(link.href)}
+              onClick={() => onRememberItem?.(createWorkbenchItemFromNavItem(link))}
             >
               <span className="block text-sm font-medium">{link.label}</span>
               {!collapsed ? (
@@ -618,18 +1020,102 @@ function QuickLinksPanel({
   );
 }
 
-function RecentWorkPanel({
+function PinnedWorkPanel({
   collapsed = false,
-  destinations,
+  items,
   mobile = false,
   onNavigate,
-  onRememberDestination,
+  onRememberItem,
+  onTogglePinnedItem,
 }: {
   collapsed?: boolean;
-  destinations: RecentDestination[];
+  items: AppShellWorkbenchItem[];
   mobile?: boolean;
   onNavigate?: () => void;
-  onRememberDestination?: (href: string) => void;
+  onRememberItem?: (item: AppShellWorkbenchItem) => void;
+  onTogglePinnedItem: (item: AppShellWorkbenchItem) => void;
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-[24px] border border-white/10 bg-white/5 px-4 py-4",
+        mobile ? "mt-5" : "",
+      )}
+    >
+      <p className="text-xs tracking-[0.24em] text-stone-400 uppercase">
+        Pinned work
+      </p>
+      {!collapsed ? (
+        <p className="mt-1 text-xs leading-5 text-stone-500">
+          Keep recurring pursuits, saved views, and quick return points visible in
+          the shell.
+        </p>
+      ) : null}
+
+      {items.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {items.map((item) => (
+            <div
+              className="rounded-[18px] border border-transparent px-3 py-3 transition hover:border-white/10 hover:bg-white/6"
+              key={item.href}
+            >
+              <div className="flex items-start gap-2">
+                <Link
+                  className="flex-1 text-stone-300 transition hover:text-white"
+                  href={item.href}
+                  onClick={() => {
+                    onNavigate?.();
+                    onRememberItem?.(item);
+                  }}
+                >
+                  <span className="block text-sm font-medium">{item.label}</span>
+                  {!collapsed ? (
+                    <>
+                      <span className="mt-1 block text-xs leading-5 text-current/72">
+                        {item.description}
+                      </span>
+                      {item.supportingText ? (
+                        <span className="mt-2 block text-[0.68rem] tracking-[0.16em] text-current/56 uppercase">
+                          {item.supportingText}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : null}
+                </Link>
+                <button
+                  aria-label={`Remove ${item.label} from pinned work`}
+                  className="rounded-full border border-white/10 bg-white/5 px-2.5 py-2 text-[0.68rem] tracking-[0.16em] uppercase text-stone-300 transition hover:bg-white/10 hover:text-white"
+                  onClick={() => onTogglePinnedItem(item)}
+                  type="button"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm leading-6 text-stone-400">
+          Pin a pursuit or view from the command center and it will stay visible
+          here.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function RecentWorkPanel({
+  collapsed = false,
+  items,
+  mobile = false,
+  onNavigate,
+  onRememberItem,
+}: {
+  collapsed?: boolean;
+  items: AppShellWorkbenchItem[];
+  mobile?: boolean;
+  onNavigate?: () => void;
+  onRememberItem?: (item: AppShellWorkbenchItem) => void;
 }) {
   return (
     <section
@@ -643,36 +1129,42 @@ function RecentWorkPanel({
       </p>
       {!collapsed ? (
         <p className="mt-1 text-xs leading-5 text-stone-500">
-          Resume the most recent shell destinations without page-specific links.
+          Resume the most recent shell views, pursuits, and quick-return items.
         </p>
       ) : null}
 
-      {destinations.length > 0 ? (
+      {items.length > 0 ? (
         <div className="mt-3 space-y-2">
-          {destinations.map((destination) => (
+          {items.map((item) => (
             <Link
-              key={destination.href}
+              key={item.href}
               className="block rounded-[18px] border border-transparent px-3 py-3 text-stone-300 transition hover:border-white/10 hover:bg-white/6 hover:text-white"
-              href={destination.href}
+              href={item.href}
               onClick={() => {
                 onNavigate?.();
-                onRememberDestination?.(destination.href);
+                onRememberItem?.(item);
               }}
             >
-              <span className="block text-sm font-medium">
-                {destination.label}
-              </span>
+              <span className="block text-sm font-medium">{item.label}</span>
               {!collapsed ? (
-                <span className="mt-1 block text-xs leading-5 text-current/72">
-                  {destination.description}
-                </span>
+                <>
+                  <span className="mt-1 block text-xs leading-5 text-current/72">
+                    {item.description}
+                  </span>
+                  {item.supportingText ? (
+                    <span className="mt-2 block text-[0.68rem] tracking-[0.16em] text-current/56 uppercase">
+                      {item.supportingText}
+                    </span>
+                  ) : null}
+                </>
               ) : null}
             </Link>
           ))}
         </div>
       ) : (
         <p className="mt-3 text-sm leading-6 text-stone-400">
-          Visit another workspace area and it will appear here for quick return.
+          Open a route or jump to work from the command center and it will appear
+          here for quick return.
         </p>
       )}
     </section>
@@ -759,6 +1251,164 @@ function buildQuickLinks({
   return quickLinks;
 }
 
+function buildQuickCreateItems({
+  allowDecisionSupport,
+  allowWorkspaceSettings,
+  canManagePipeline,
+  canManageSourceSearches,
+}: {
+  allowDecisionSupport: boolean;
+  allowWorkspaceSettings: boolean;
+  canManagePipeline: boolean;
+  canManageSourceSearches: boolean;
+}) {
+  const items: AppShellCommandItem[] = [];
+
+  if (canManagePipeline) {
+    items.push({
+      id: "quick-create-pursuit",
+      category: "quick_create",
+      description: "Open the validated tracked-opportunity creation workflow.",
+      href: "/opportunities/new",
+      label: "Create pursuit",
+      navHref: "/opportunities",
+      keywords: ["create", "new", "pursuit", "opportunity"],
+      supportingText: "Quick create",
+    });
+    items.push({
+      id: "quick-create-knowledge",
+      category: "quick_create",
+      description: "Capture reusable narrative, win themes, or past performance.",
+      href: "/knowledge/new",
+      label: "Create knowledge asset",
+      navHref: "/knowledge",
+      keywords: ["create", "knowledge", "asset", "win theme"],
+      supportingText: "Quick create",
+    });
+  }
+
+  if (canManageSourceSearches) {
+    items.push({
+      id: "quick-create-source-search",
+      category: "quick_create",
+      description: "Open external discovery with the current shell context intact.",
+      href: "/sources",
+      label: "Run source search",
+      navHref: "/sources",
+      keywords: ["search", "sources", "discovery", "sam.gov"],
+      supportingText: "Quick action",
+    });
+  }
+
+  if (allowDecisionSupport) {
+    items.push({
+      id: "quick-open-decision-console",
+      category: "quick_create",
+      description: "Jump to ranked pursuit review and portfolio decision support.",
+      href: "/analytics",
+      label: "Open decision console",
+      navHref: "/analytics",
+      keywords: ["decision", "analytics", "ranking"],
+      supportingText: "Quick action",
+    });
+  }
+
+  if (allowWorkspaceSettings) {
+    items.push({
+      id: "quick-open-settings",
+      category: "quick_create",
+      description: "Open workspace controls, connectors, and audit visibility.",
+      href: "/settings",
+      label: "Open workspace settings",
+      navHref: "/settings",
+      keywords: ["settings", "admin", "connectors", "audit"],
+      supportingText: "Operator action",
+    });
+  }
+
+  return items;
+}
+
+function buildShellViewCommandItems({
+  navGroups,
+  quickLinks,
+}: {
+  navGroups: NavGroup[];
+  quickLinks: NavItem[];
+}) {
+  const workbenchItems = [...navGroups.flatMap((group) => group.items), ...quickLinks]
+    .map(createWorkbenchItemFromNavItem)
+    .filter(
+      (candidate, index, items) =>
+        items.findIndex((item) => item.href === candidate.href) === index,
+    );
+
+  return workbenchItems.map((item) => ({
+    ...createCommandItemFromWorkbenchItem(item),
+    keywords: [item.label, item.description, item.supportingText ?? ""].filter(Boolean),
+  }));
+}
+
+function filterCommandSections({
+  query,
+  sections,
+}: {
+  query: string;
+  sections: Array<{
+    items: AppShellCommandItem[];
+    key: string;
+    label: string;
+  }>;
+}) {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return sections.filter((section) => section.items.length > 0);
+  }
+
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        [
+          item.label,
+          item.description,
+          item.supportingText ?? "",
+          ...item.keywords,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
+function createWorkbenchItemFromCommandItem(
+  item: AppShellCommandItem,
+): AppShellWorkbenchItem {
+  return {
+    category: item.category,
+    description: item.description,
+    href: item.href,
+    label: item.label,
+    navHref: item.navHref,
+    supportingText: item.supportingText,
+  };
+}
+
+function createCommandItemFromWorkbenchItem(
+  item: AppShellWorkbenchItem,
+): AppShellCommandItem {
+  return {
+    ...item,
+    id: `${item.category}:${item.href}`,
+    keywords: [item.label, item.description, item.supportingText ?? ""].filter(
+      Boolean,
+    ),
+  };
+}
+
 function getCurrentDestination({
   allowDecisionSupport,
   allowWorkspaceSettings,
@@ -791,19 +1441,23 @@ function getCurrentDestination({
   }
 
   return {
+    category: "view",
     description: definition.description,
     href: currentPath,
     label: definition.label,
     navHref: definition.navHref,
-  } satisfies RecentDestination;
+    supportingText: null,
+  } satisfies AppShellWorkbenchItem;
 }
 
-function createDestination(item: NavItem): RecentDestination {
+function createWorkbenchItemFromNavItem(item: NavItem): AppShellWorkbenchItem {
   return {
+    category: "view",
     description: item.description,
     href: item.href,
     label: item.label,
     navHref: item.href,
+    supportingText: "Shell view",
   };
 }
 
@@ -849,7 +1503,7 @@ function readCollapsedRailPreferenceSnapshot() {
   }
 }
 
-function readRecentDestinationsSnapshot() {
+function readRecentWorkbenchItemsSnapshot() {
   if (typeof window === "undefined") {
     return "[]";
   }
@@ -865,7 +1519,19 @@ function readRecentDestinationsSnapshot() {
   }
 }
 
-function parseRecentDestinationsSnapshot(snapshot: string) {
+function readPinnedWorkbenchItemsSnapshot() {
+  if (typeof window === "undefined") {
+    return "[]";
+  }
+
+  try {
+    return window.localStorage.getItem(SHELL_PINNED_ITEMS_STORAGE_KEY) ?? "[]";
+  } catch {
+    return "[]";
+  }
+}
+
+function parseWorkbenchItemsSnapshot(snapshot: string, limit: number) {
   try {
     const parsedValue = JSON.parse(snapshot) as unknown;
 
@@ -874,10 +1540,72 @@ function parseRecentDestinationsSnapshot(snapshot: string) {
     }
 
     return parsedValue
-      .filter(isRecentDestination)
-      .slice(0, SHELL_RECENT_DESTINATION_LIMIT);
+      .map(normalizeWorkbenchItem)
+      .filter((item): item is AppShellWorkbenchItem => item !== null)
+      .slice(0, limit);
   } catch {
     return [];
+  }
+}
+
+function normalizeWorkbenchItem(value: unknown): AppShellWorkbenchItem | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  if (
+    typeof candidate.description !== "string" ||
+    typeof candidate.href !== "string" ||
+    typeof candidate.label !== "string" ||
+    typeof candidate.navHref !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    category: isCommandCategory(candidate.category) ? candidate.category : "view",
+    description: candidate.description,
+    href: candidate.href,
+    label: candidate.label,
+    navHref: candidate.navHref,
+    supportingText:
+      typeof candidate.supportingText === "string"
+        ? candidate.supportingText
+        : null,
+  };
+}
+
+function writeWorkbenchItemsPreference({
+  key,
+  items,
+  limit,
+}: {
+  items: AppShellWorkbenchItem[];
+  key: string;
+  limit: number;
+}) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify(
+        items
+          .filter(
+            (item, index, allItems) =>
+              allItems.findIndex((candidate) => candidate.href === item.href) ===
+              index,
+          )
+          .slice(0, limit),
+      ),
+    );
+    emitShellPreferenceChange();
+  } catch {
+    // Ignore storage failures; the shell should remain usable without persistence.
   }
 }
 
@@ -905,17 +1633,43 @@ function updateCollapsedRailPreference(value: boolean) {
   }
 }
 
-function isRecentDestination(value: unknown): value is RecentDestination {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
+function getCommandOptionId(prefix: string, itemId: string) {
+  return `${prefix}-option-${itemId}`;
+}
 
-  const candidate = value as Record<string, unknown>;
+function getCommandLinkId(prefix: string, itemId: string) {
+  return `${prefix}-link-${itemId}`;
+}
 
+function isCommandCategory(
+  value: unknown,
+): value is AppShellCommandCategory {
   return (
-    typeof candidate.description === "string" &&
-    typeof candidate.href === "string" &&
-    typeof candidate.label === "string" &&
-    typeof candidate.navHref === "string"
+    value === "knowledge" ||
+    value === "opportunity" ||
+    value === "quick_create" ||
+    value === "saved_search" ||
+    value === "task" ||
+    value === "view"
   );
+}
+
+function formatCommandCategoryLabel(category: AppShellCommandCategory) {
+  switch (category) {
+    case "quick_create":
+      return "Quick create";
+    case "saved_search":
+      return "Saved search";
+    default:
+      return category.charAt(0).toUpperCase() + category.slice(1);
+  }
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
