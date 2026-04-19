@@ -141,6 +141,38 @@ const snapshot: SourceSearchSnapshot = {
   },
   searchExecutionId: "search_exec_123",
   resultCountLabel: "Showing 1-1 of 1 external results",
+  savedSearches: [
+    {
+      id: "saved_search_cloud",
+      name: "Daily Cloud Discovery",
+      description: "Active cloud queue.",
+      sourceSystem: "sam_gov",
+      query: {
+        sourceSystem: "sam_gov",
+        keywords: "cloud operations",
+        postedDateFrom: "2026-04-01",
+        postedDateTo: "2026-04-30",
+        responseDeadlineFrom: null,
+        responseDeadlineTo: null,
+        procurementTypes: ["r"],
+        noticeId: null,
+        solicitationNumber: null,
+        organizationName: null,
+        organizationCode: null,
+        naicsCode: "541512",
+        classificationCode: null,
+        setAsideCode: null,
+        setAsideDescription: null,
+        placeOfPerformanceState: "VA",
+        placeOfPerformanceZip: null,
+        status: "active",
+        pageSize: 25,
+        pageOffset: 0,
+      },
+      lastExecutedAt: "2026-04-18T08:30:00.000Z",
+      lastSyncedAt: "2026-04-18T08:45:00.000Z",
+    },
+  ],
 };
 
 const previewSnapshot: SourceImportPreviewSnapshot = {
@@ -260,9 +292,10 @@ describe("SourceSearch", () => {
       screen.getByRole("table", { name: /external source search results/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /source-result preview/i }),
+      screen.getByText(/^import preview$/i),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/fixture connector/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/daily cloud discovery/i)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /spreadsheet import workspace/i }),
     ).toBeInTheDocument();

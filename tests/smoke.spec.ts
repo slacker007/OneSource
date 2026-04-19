@@ -235,6 +235,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     }),
   ).toBeVisible();
   await page.getByLabel(/keywords/i).fill("cloud operations");
+  await page
+    .getByText(/advanced filters, procurement types, and pagination/i)
+    .click();
   await page.locator("#ptype-r").check();
   await page.getByLabel(/place of performance state/i).fill("VA");
   await expect(
@@ -257,11 +260,11 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     page.getByText(/enterprise knowledge management support services/i),
   ).not.toBeVisible();
   await expect(page.getByText(/title: cloud operations/i)).toBeVisible();
-  await page.getByRole("link", { name: /preview result/i }).click();
+  await page
+    .getByRole("link", { name: /^inspect import$/i })
+    .click();
   await expect(
-    page.getByRole("heading", {
-      name: /source-result preview/i,
-    }),
+    page.getByText(/^import preview$/i),
   ).toBeVisible();
   const linkButton = page.getByRole("button", {
     name: /merge into selected opportunity|link to selected opportunity/i,
@@ -947,7 +950,7 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
   await expect(
     page.getByRole("dialog", { name: /notifications/i }),
   ).toBeVisible();
-  await expect(page.getByText(/saved search issue/i)).toBeVisible();
+  await expect(page.getByText(/saved search issue/i).first()).toBeVisible();
   await page.getByRole("button", { name: /dismiss notifications/i }).click();
 
   await page.getByRole("button", { name: /collapse navigation rail/i }).click();

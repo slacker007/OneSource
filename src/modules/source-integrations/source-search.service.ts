@@ -123,6 +123,16 @@ export type SourceSearchRequestState = {
   validationErrors: string[];
 };
 
+export type SourceSearchSavedSearchSummary = {
+  description: string | null;
+  id: string;
+  lastExecutedAt: string | null;
+  lastSyncedAt: string | null;
+  name: string;
+  query: CanonicalSourceSearchQuery;
+  sourceSystem: string;
+};
+
 export type SourceSearchSnapshot = {
   activeCapability: SourceSearchCapability;
   activeConnector: SourceSearchConnectorSummary | null;
@@ -147,6 +157,7 @@ export type SourceSearchSnapshot = {
   query: CanonicalSourceSearchQuery | null;
   resultCountLabel: string;
   results: SourceSearchResultSummary[];
+  savedSearches: SourceSearchSavedSearchSummary[];
   searchExecutionId: string | null;
   totalCount: number;
   validationErrors: string[];
@@ -267,6 +278,18 @@ const organizationSourceSearchArgs = {
         credentialReference: true,
       },
     },
+    sourceSavedSearches: {
+      orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        sourceSystem: true,
+        canonicalFilters: true,
+        lastExecutedAt: true,
+        lastSyncedAt: true,
+      },
+    },
   },
 } as const;
 
@@ -275,6 +298,15 @@ type OrganizationSourceSearchRecord = {
   name: string;
   slug: string;
   sourceConnectorConfigs: SourceSearchConnectorRecord[];
+  sourceSavedSearches: Array<{
+    canonicalFilters: Prisma.JsonValue;
+    description: string | null;
+    id: string;
+    lastExecutedAt: Date | null;
+    lastSyncedAt: Date | null;
+    name: string;
+    sourceSystem: string;
+  }>;
 };
 
 type SearchActorContext = {
@@ -927,11 +959,7 @@ function buildBaseSnapshot({
   executionMessage: string;
   executionMode: SourceSearchSnapshot["executionMode"];
   formValues: SourceSearchFormValues;
-  organization: {
-    id: string;
-    name: string;
-    slug: string;
-  };
+  organization: OrganizationSourceSearchRecord;
   outboundRequest: SamGovOutboundRequest | null;
   query: CanonicalSourceSearchQuery | null;
   results: SourceSearchResultSummary[];
@@ -953,6 +981,31 @@ function buildBaseSnapshot({
       : totalCount === 0
         ? "No external results returned"
         : `Showing ${pageStart}-${pageEnd} of ${totalCount} external results`;
+  const savedSearches = organization.sourceSavedSearches.flatMap((savedSearch) => {
+    if (savedSearch.sourceSystem !== formValues.source) {
+      return [];
+    }
+
+    const parsedQuery = parseStoredCanonicalSourceSearchQuery(
+      savedSearch.canonicalFilters,
+    );
+
+    if (!parsedQuery) {
+      return [];
+    }
+
+    return [
+      {
+        id: savedSearch.id,
+        name: savedSearch.name,
+        description: savedSearch.description,
+        sourceSystem: savedSearch.sourceSystem,
+        query: parsedQuery,
+        lastExecutedAt: savedSearch.lastExecutedAt?.toISOString() ?? null,
+        lastSyncedAt: savedSearch.lastSyncedAt?.toISOString() ?? null,
+      } satisfies SourceSearchSavedSearchSummary,
+    ];
+  });
 
   return {
     organization: {
@@ -977,6 +1030,7 @@ function buildBaseSnapshot({
     query,
     resultCountLabel,
     results,
+    savedSearches,
     searchExecutionId,
     totalCount,
     validationErrors,
@@ -1213,6 +1267,66 @@ function emptyStringToNull(value: string) {
 
 function asJsonValue(value: Record<string, unknown> | CanonicalSourceSearchQuery) {
   return value as Prisma.InputJsonValue;
+}
+
+function parseStoredCanonicalSourceSearchQuery(
+  value: Prisma.JsonValue,
+): CanonicalSourceSearchQuery | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const postedDateFrom = readString(record.postedDateFrom);
+  const postedDateTo = readString(record.postedDateTo);
+  const sourceSystem = readString(record.sourceSystem);
+  const pageSize = readNumber(record.pageSize);
+  const pageOffset = readNumber(record.pageOffset);
+
+  if (
+    !postedDateFrom ||
+    !postedDateTo ||
+    !sourceSystem ||
+    pageSize === null ||
+    pageOffset === null
+  ) {
+    return null;
+  }
+
+  return {
+    classificationCode: readString(record.classificationCode),
+    keywords: readString(record.keywords),
+    naicsCode: readString(record.naicsCode),
+    noticeId: readString(record.noticeId),
+    organizationCode: readString(record.organizationCode),
+    organizationName: readString(record.organizationName),
+    pageOffset,
+    pageSize,
+    placeOfPerformanceState: readString(record.placeOfPerformanceState),
+    placeOfPerformanceZip: readString(record.placeOfPerformanceZip),
+    postedDateFrom,
+    postedDateTo,
+    procurementTypes: readStringArray(record.procurementTypes),
+    responseDeadlineFrom: readString(record.responseDeadlineFrom),
+    responseDeadlineTo: readString(record.responseDeadlineTo),
+    setAsideCode: readString(record.setAsideCode),
+    setAsideDescription: readString(record.setAsideDescription),
+    solicitationNumber: readString(record.solicitationNumber),
+    sourceSystem,
+    status: readString(record.status),
+  };
+}
+
+function readNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readStringArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === "string");
 }
 
 function readString(value: unknown) {

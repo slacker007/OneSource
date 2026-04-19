@@ -1,13 +1,25 @@
-import { CsvImportWorkspace } from "./csv-import-workspace";
-
 import Link from "next/link";
+import type { ReactNode } from "react";
 
+import { CsvImportWorkspace } from "./csv-import-workspace";
+import {
+  ActiveFilterChipBar,
+  type ActiveFilterChip,
+} from "@/components/ui/active-filter-chip-bar";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import {
+  PreviewPanel,
+  type PreviewPanelMetadataItem,
+} from "@/components/ui/preview-panel";
+import {
+  SavedViewControls,
+  type SavedViewControlItem,
+} from "@/components/ui/saved-view-controls";
 import { Select } from "@/components/ui/select";
 import type { CsvImportWorkspaceSnapshot } from "@/modules/source-integrations/csv-import.service";
 import type {
@@ -70,36 +82,42 @@ export function SourceSearch({
   const emptyState = buildResultEmptyState(snapshot);
   const sanitizedReturnPath = stripTransientImportParams(returnPath);
   const importFeedbackBanner = buildImportFeedbackBanner(importFeedback);
+  const connectorItems = buildConnectorItems(snapshot, sanitizedReturnPath);
+  const savedSearchItems = buildSavedSearchItems(
+    snapshot.savedSearches,
+    snapshot.query,
+  );
+  const activeFilterChips = snapshot.query
+    ? buildActiveFilterChips(snapshot.query, sanitizedReturnPath)
+    : [];
+  const advancedFiltersOpen =
+    snapshot.validationErrors.length > 0 ||
+    hasAdvancedFilterSelections(snapshot.formValues);
 
   return (
     <section className="space-y-6">
       <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
-              <Badge>External search</Badge>
-              <Badge tone="muted">Connector-ready DTOs</Badge>
-              <Badge tone="warning">
-                {snapshot.executionMode === "live_connector"
-                  ? "Live `sam.gov` connector"
-                  : snapshot.executionMode === "fixture_connector"
-                    ? "Fixture-backed `sam.gov` connector"
-                    : "Connector health required"}
-              </Badge>
+              <Badge>Source discovery</Badge>
+              <Badge tone="muted">Connector-led workspace</Badge>
+              <Badge tone="accent">Preview and import</Badge>
             </div>
-            <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-              External source search
-            </h1>
-            <p className="text-muted max-w-3xl text-sm leading-7">
-              Search configured opportunity sources with a typed canonical query,
-              then translate that query into the explicit `sam.gov` request
-              shape. Successful runs now persist normalized source records plus
-              the execution envelope, so preview and import operate on durable
-              lineage instead of synthetic mock IDs.
-            </p>
+            <div className="space-y-2">
+              <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
+                External source search
+              </h1>
+              <p className="text-muted max-w-3xl text-sm leading-7">
+                Scan connector-backed discovery queues, reapply saved searches,
+                inspect the translated outbound request, and keep duplicate-aware
+                import preview beside the result set instead of jumping between
+                disconnected search and intake steps.
+              </p>
+            </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <SummaryCard
               label="Connector"
               value={snapshot.activeConnector?.sourceDisplayName ?? "Unknown"}
@@ -109,16 +127,44 @@ export function SourceSearch({
               }
             />
             <SummaryCard
+              label="Saved searches"
+              value={String(snapshot.savedSearches.length)}
+              supportingText={
+                snapshot.savedSearches.length > 0
+                  ? "Saved search overlays available for this connector"
+                  : "No saved searches are configured for this connector yet"
+              }
+            />
+            <SummaryCard
               label="Execution"
               value={formatExecutionMode(snapshot.executionMode)}
               supportingText={snapshot.resultCountLabel}
             />
             <SummaryCard
-              label="Workspace"
-              value={snapshot.organization.name}
-              supportingText={`${searchableConnectors.length} searchable connectors configured`}
+              label="Preview rail"
+              value={previewSnapshot ? "Open" : "Standby"}
+              supportingText={
+                previewSnapshot
+                  ? "Duplicate and import decisions are loaded"
+                  : "Select a result to inspect import state"
+              }
             />
           </div>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <SavedViewControls items={connectorItems} label="Connectors" />
+          {savedSearchItems.length > 0 ? (
+            <SavedViewControls items={savedSearchItems} label="Saved searches" />
+          ) : (
+            <p className="text-sm text-muted">
+              No saved searches are seeded for{" "}
+              <span className="font-medium text-foreground">
+                {snapshot.activeConnector?.sourceDisplayName ?? "this connector"}
+              </span>
+              .
+            </p>
+          )}
         </div>
       </header>
 
@@ -146,362 +192,381 @@ export function SourceSearch({
                 ? "Connector configuration is incomplete"
                 : snapshot.executionMode === "connector_error"
                   ? "Connector execution failed"
-              : "Search query needs correction"
+                  : "Search query needs correction"
           }
         />
       )}
 
-      <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="space-y-2">
-            <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Search filters
-            </p>
-            <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
-              `sam.gov` keyword and structured filters
-            </h2>
-            <p className="text-muted max-w-3xl text-sm leading-6">
-              This surface now supports the explicit Phase 4 filter set: posted
-              dates, response deadlines, notice ID, solicitation number,
-              procurement types, organization metadata, NAICS, classification
-              code, set-aside, place of performance, status, page size, and
-              offset.
-            </p>
-          </div>
-
-          <Link
-            className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-            href="/sources"
-          >
-            Reset search
-          </Link>
-        </div>
-
-        <form action="/sources" className="mt-6 space-y-6">
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-            <FormField
-              hint="The route already knows about other configured connectors, but only the sam.gov connector is executable in this slice."
-              htmlFor="source-connector"
-              label="Source connector"
-            >
-              <Select
-                defaultValue={snapshot.formValues.source}
-                id="source-connector"
-                name="source"
-              >
-                {searchableConnectors.map((connector) => (
-                  <option
-                    disabled={!connector.isEnabled}
-                    key={connector.id}
-                    value={connector.sourceSystemKey}
-                  >
-                    {connector.sourceDisplayName}
-                    {connector.sourceSystemKey === "sam_gov"
-                      ? " (search enabled)"
-                      : " (coming later)"}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-
-            <FormField
-              hint="Matches the outbound `title` parameter for sam.gov."
-              htmlFor="source-keywords"
-              label="Keywords"
-            >
-              <Input
-                defaultValue={snapshot.formValues.keywords}
-                id="source-keywords"
-                name="keywords"
-                placeholder="cloud operations"
-                type="search"
-              />
-            </FormField>
-
-            <FormField
-              hint="Required by the current sam.gov search contract."
-              htmlFor="source-posted-from"
-              label="Posted from"
-            >
-              <Input
-                defaultValue={snapshot.formValues.postedFrom}
-                id="source-posted-from"
-                name="postedFrom"
-                type="date"
-              />
-            </FormField>
-
-            <FormField
-              hint="Required by the current sam.gov search contract."
-              htmlFor="source-posted-to"
-              label="Posted to"
-            >
-              <Input
-                defaultValue={snapshot.formValues.postedTo}
-                id="source-posted-to"
-                name="postedTo"
-                type="date"
-              />
-            </FormField>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-            <FormField htmlFor="source-notice-id" label="Notice ID">
-              <Input
-                defaultValue={snapshot.formValues.noticeid}
-                id="source-notice-id"
-                name="noticeid"
-                placeholder="FA4861-26-R-0001"
-              />
-            </FormField>
-
-            <FormField htmlFor="source-solicitation" label="Solicitation number">
-              <Input
-                defaultValue={snapshot.formValues.solnum}
-                id="source-solicitation"
-                name="solnum"
-                placeholder="36C10B26Q0142"
-              />
-            </FormField>
-
-            <FormField htmlFor="source-org-name" label="Organization name">
-              <Input
-                defaultValue={snapshot.formValues.organizationName}
-                id="source-org-name"
-                name="organizationName"
-                placeholder="Department of Veterans Affairs"
-              />
-            </FormField>
-
-            <FormField htmlFor="source-org-code" label="Organization code">
-              <Input
-                defaultValue={snapshot.formValues.organizationCode}
-                id="source-org-code"
-                name="organizationCode"
-                placeholder="36C10B"
-              />
-            </FormField>
-
-            <FormField htmlFor="source-state" label="Place of performance state">
-              <Input
-                defaultValue={snapshot.formValues.state}
-                id="source-state"
-                maxLength={2}
-                name="state"
-                placeholder="VA"
-              />
-            </FormField>
-
-            <FormField htmlFor="source-zip" label="Place of performance ZIP">
-              <Input
-                defaultValue={snapshot.formValues.zip}
-                id="source-zip"
-                name="zip"
-                placeholder="22350"
-              />
-            </FormField>
-
-            <FormField htmlFor="source-naics" label="NAICS code">
-              <Input
-                defaultValue={snapshot.formValues.ncode}
-                id="source-naics"
-                name="ncode"
-                placeholder="541512"
-              />
-            </FormField>
-
-            <FormField htmlFor="source-ccode" label="Classification code">
-              <Input
-                defaultValue={snapshot.formValues.ccode}
-                id="source-ccode"
-                name="ccode"
-                placeholder="D302"
-              />
-            </FormField>
-
-            <FormField htmlFor="source-set-aside" label="Set-aside code">
-              <Input
-                defaultValue={snapshot.formValues.typeOfSetAside}
-                id="source-set-aside"
-                name="typeOfSetAside"
-                placeholder="SDVOSB"
-              />
-            </FormField>
-
-            <FormField
-              htmlFor="source-set-aside-description"
-              label="Set-aside description"
-            >
-              <Input
-                defaultValue={snapshot.formValues.typeOfSetAsideDescription}
-                id="source-set-aside-description"
-                name="typeOfSetAsideDescription"
-                placeholder="Small business"
-              />
-            </FormField>
-
-            <FormField htmlFor="source-rdlfrom" label="Response deadline from">
-              <Input
-                defaultValue={snapshot.formValues.rdlfrom}
-                id="source-rdlfrom"
-                name="rdlfrom"
-                type="date"
-              />
-            </FormField>
-
-            <FormField htmlFor="source-rdlto" label="Response deadline to">
-              <Input
-                defaultValue={snapshot.formValues.rdlto}
-                id="source-rdlto"
-                name="rdlto"
-                type="date"
-              />
-            </FormField>
-
-            <FormField htmlFor="source-status" label="Status">
-              <Select
-                defaultValue={snapshot.formValues.status}
-                id="source-status"
-                name="status"
-              >
-                {snapshot.activeCapability.statusOptions.map((option) => (
-                  <option key={option.label} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-
-            <FormField htmlFor="source-limit" label="Page size">
-              <Select
-                defaultValue={snapshot.formValues.limit}
-                id="source-limit"
-                name="limit"
-              >
-                {snapshot.activeCapability.pageSizeOptions.map((pageSize) => (
-                  <option key={pageSize} value={pageSize}>
-                    {pageSize}
-                  </option>
-                ))}
-                <option value="250">250</option>
-                <option value="500">500</option>
-                <option value="1000">1000</option>
-              </Select>
-            </FormField>
-
-            <FormField
-              hint="Maps directly to the sam.gov `offset` parameter."
-              htmlFor="source-offset"
-              label="Offset"
-            >
-              <Input
-                defaultValue={snapshot.formValues.offset}
-                id="source-offset"
-                min={0}
-                name="offset"
-                step={1}
-                type="number"
-              />
-            </FormField>
-          </div>
-
-          <fieldset className="space-y-3">
-            <legend className="text-foreground text-sm font-medium">
-              Procurement types
-            </legend>
-            <p className="text-muted text-xs leading-5">
-              `ptype[]` is modeled as a real multi-select instead of a single
-              value so the form already matches the upstream contract.
-            </p>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {snapshot.activeCapability.procurementTypes.map((option) => (
-                <label
-                  className="border-border flex gap-3 rounded-[20px] border bg-white px-4 py-3 text-sm shadow-[0_12px_24px_rgba(20,37,34,0.05)]"
-                  htmlFor={`ptype-${option.value}`}
-                  key={option.value}
-                >
-                  <input
-                    defaultChecked={snapshot.formValues.ptype.includes(option.value)}
-                    id={`ptype-${option.value}`}
-                    name="ptype"
-                    type="checkbox"
-                    value={option.value}
-                  />
-                  <span className="space-y-1">
-                    <span className="block font-medium">{option.label}</span>
-                    <span className="text-muted block text-xs leading-5">
-                      {option.description}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-              type="submit"
-            >
-              Search external opportunities
-            </button>
-            <Link
-              className="border-border text-muted inline-flex min-h-12 items-center justify-center rounded-full border bg-white px-5 py-3 text-sm font-medium"
-              href="/sources"
-            >
-              Clear all filters
-            </Link>
-          </div>
-        </form>
-      </section>
-
-      <CsvImportWorkspace
-        action={csvImportAction}
-        feedback={csvImportFeedback}
-        workspaceSnapshot={csvImportSnapshot}
-      />
-
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_22rem]">
         <section className="space-y-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-muted text-xs tracking-[0.24em] uppercase">
-                Results
-              </p>
-              <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-                {snapshot.resultCountLabel}
-              </h2>
+          <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                  Discovery filters
+                </p>
+                <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+                  Connector-led search and filter queue
+                </h2>
+                <p className="mt-2 text-sm text-muted">
+                  Keep the high-frequency inputs visible, then open advanced
+                  filters only when you need pagination, procurement-type, or
+                  source-specific narrowing.
+                </p>
+              </div>
+
+              <Link
+                className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+                href="/sources"
+              >
+                Reset workspace
+              </Link>
             </div>
 
-            {snapshot.query ? (
-              <div className="flex flex-wrap gap-2">
-                {buildActiveFilterBadges(snapshot.query).map((badge) => (
-                  <Badge key={badge}>{badge}</Badge>
-                ))}
+            <form action="/sources" className="mt-6 space-y-5">
+              <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+                <FormField
+                  hint="Switching connectors keeps the route stable while changing the discovery context."
+                  htmlFor="source-connector"
+                  label="Active connector"
+                >
+                  <Select
+                    defaultValue={snapshot.formValues.source}
+                    id="source-connector"
+                    name="source"
+                  >
+                    {searchableConnectors.map((connector) => (
+                      <option
+                        disabled={!connector.isEnabled}
+                        key={connector.id}
+                        value={connector.sourceSystemKey}
+                      >
+                        {connector.sourceDisplayName}
+                        {connector.sourceSystemKey === "sam_gov"
+                          ? " (search enabled)"
+                          : " (coming later)"}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+
+                <FormField
+                  hint="Maps to the outbound `title` parameter for the current SAM.gov implementation."
+                  htmlFor="source-keywords"
+                  label="Keywords"
+                >
+                  <Input
+                    defaultValue={snapshot.formValues.keywords}
+                    id="source-keywords"
+                    name="keywords"
+                    placeholder="cloud operations"
+                    type="search"
+                  />
+                </FormField>
+
+                <FormField
+                  hint="Required by the current connector contract."
+                  htmlFor="source-posted-from"
+                  label="Posted from"
+                >
+                  <Input
+                    defaultValue={snapshot.formValues.postedFrom}
+                    id="source-posted-from"
+                    name="postedFrom"
+                    type="date"
+                  />
+                </FormField>
+
+                <FormField
+                  hint="Required by the current connector contract."
+                  htmlFor="source-posted-to"
+                  label="Posted to"
+                >
+                  <Input
+                    defaultValue={snapshot.formValues.postedTo}
+                    id="source-posted-to"
+                    name="postedTo"
+                    type="date"
+                  />
+                </FormField>
               </div>
-            ) : null}
-          </div>
+
+              <details
+                className="border-border rounded-[24px] border bg-white px-4 py-4 shadow-[0_12px_28px_rgba(20,37,34,0.05)]"
+                open={advancedFiltersOpen}
+              >
+                <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+                  Advanced filters, procurement types, and pagination
+                </summary>
+                <div className="mt-4 space-y-5">
+                  <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+                    <FormField htmlFor="source-notice-id" label="Notice ID">
+                      <Input
+                        defaultValue={snapshot.formValues.noticeid}
+                        id="source-notice-id"
+                        name="noticeid"
+                        placeholder="FA4861-26-R-0001"
+                      />
+                    </FormField>
+
+                    <FormField
+                      htmlFor="source-solicitation"
+                      label="Solicitation number"
+                    >
+                      <Input
+                        defaultValue={snapshot.formValues.solnum}
+                        id="source-solicitation"
+                        name="solnum"
+                        placeholder="36C10B26Q0142"
+                      />
+                    </FormField>
+
+                    <FormField htmlFor="source-org-name" label="Organization name">
+                      <Input
+                        defaultValue={snapshot.formValues.organizationName}
+                        id="source-org-name"
+                        name="organizationName"
+                        placeholder="Department of Veterans Affairs"
+                      />
+                    </FormField>
+
+                    <FormField htmlFor="source-org-code" label="Organization code">
+                      <Input
+                        defaultValue={snapshot.formValues.organizationCode}
+                        id="source-org-code"
+                        name="organizationCode"
+                        placeholder="36C10B"
+                      />
+                    </FormField>
+
+                    <FormField
+                      htmlFor="source-state"
+                      label="Place of performance state"
+                    >
+                      <Input
+                        defaultValue={snapshot.formValues.state}
+                        id="source-state"
+                        maxLength={2}
+                        name="state"
+                        placeholder="VA"
+                      />
+                    </FormField>
+
+                    <FormField htmlFor="source-zip" label="Place of performance ZIP">
+                      <Input
+                        defaultValue={snapshot.formValues.zip}
+                        id="source-zip"
+                        name="zip"
+                        placeholder="22350"
+                      />
+                    </FormField>
+
+                    <FormField htmlFor="source-naics" label="NAICS code">
+                      <Input
+                        defaultValue={snapshot.formValues.ncode}
+                        id="source-naics"
+                        name="ncode"
+                        placeholder="541512"
+                      />
+                    </FormField>
+
+                    <FormField htmlFor="source-ccode" label="Classification code">
+                      <Input
+                        defaultValue={snapshot.formValues.ccode}
+                        id="source-ccode"
+                        name="ccode"
+                        placeholder="D302"
+                      />
+                    </FormField>
+
+                    <FormField htmlFor="source-set-aside" label="Set-aside code">
+                      <Input
+                        defaultValue={snapshot.formValues.typeOfSetAside}
+                        id="source-set-aside"
+                        name="typeOfSetAside"
+                        placeholder="SDVOSB"
+                      />
+                    </FormField>
+
+                    <FormField
+                      htmlFor="source-set-aside-description"
+                      label="Set-aside description"
+                    >
+                      <Input
+                        defaultValue={snapshot.formValues.typeOfSetAsideDescription}
+                        id="source-set-aside-description"
+                        name="typeOfSetAsideDescription"
+                        placeholder="Small business"
+                      />
+                    </FormField>
+
+                    <FormField
+                      htmlFor="source-rdlfrom"
+                      label="Response deadline from"
+                    >
+                      <Input
+                        defaultValue={snapshot.formValues.rdlfrom}
+                        id="source-rdlfrom"
+                        name="rdlfrom"
+                        type="date"
+                      />
+                    </FormField>
+
+                    <FormField htmlFor="source-rdlto" label="Response deadline to">
+                      <Input
+                        defaultValue={snapshot.formValues.rdlto}
+                        id="source-rdlto"
+                        name="rdlto"
+                        type="date"
+                      />
+                    </FormField>
+
+                    <FormField htmlFor="source-status" label="Status">
+                      <Select
+                        defaultValue={snapshot.formValues.status}
+                        id="source-status"
+                        name="status"
+                      >
+                        {snapshot.activeCapability.statusOptions.map((option) => (
+                          <option key={option.label} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </FormField>
+
+                    <FormField htmlFor="source-limit" label="Page size">
+                      <Select
+                        defaultValue={snapshot.formValues.limit}
+                        id="source-limit"
+                        name="limit"
+                      >
+                        {snapshot.activeCapability.pageSizeOptions.map((pageSize) => (
+                          <option key={pageSize} value={pageSize}>
+                            {pageSize}
+                          </option>
+                        ))}
+                        <option value="250">250</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                      </Select>
+                    </FormField>
+
+                    <FormField
+                      hint="Maps directly to the `offset` parameter."
+                      htmlFor="source-offset"
+                      label="Offset"
+                    >
+                      <Input
+                        defaultValue={snapshot.formValues.offset}
+                        id="source-offset"
+                        min={0}
+                        name="offset"
+                        step={1}
+                        type="number"
+                      />
+                    </FormField>
+                  </div>
+
+                  <fieldset className="space-y-3">
+                    <legend className="text-foreground text-sm font-medium">
+                      Procurement types
+                    </legend>
+                    <p className="text-muted text-xs leading-5">
+                      The checkbox grid preserves the real `ptype[]` request
+                      model so one saved search can express multiple notice
+                      categories without connector-specific rewrites.
+                    </p>
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {snapshot.activeCapability.procurementTypes.map((option) => (
+                        <label
+                          className="border-border flex gap-3 rounded-[20px] border bg-[color:color-mix(in_srgb,var(--surface-muted)_70%,white_30%)] px-4 py-3 text-sm"
+                          htmlFor={`ptype-${option.value}`}
+                          key={option.value}
+                        >
+                          <input
+                            defaultChecked={snapshot.formValues.ptype.includes(
+                              option.value,
+                            )}
+                            id={`ptype-${option.value}`}
+                            name="ptype"
+                            type="checkbox"
+                            value={option.value}
+                          />
+                          <span className="space-y-1">
+                            <span className="block font-medium">{option.label}</span>
+                            <span className="text-muted block text-xs leading-5">
+                              {option.description}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </div>
+              </details>
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
+                  type="submit"
+                >
+                  Search external opportunities
+                </button>
+                <Link
+                  className="border-border text-muted inline-flex min-h-12 items-center justify-center rounded-full border bg-white px-5 py-3 text-sm font-medium"
+                  href="/sources"
+                >
+                  Clear all filters
+                </Link>
+              </div>
+            </form>
+          </section>
+
+          <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                    Result queue
+                  </p>
+                  <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+                    {snapshot.resultCountLabel}
+                  </h2>
+                  <p className="mt-2 text-sm text-muted">
+                    Compact scanning keeps opportunity, agency, import state, and
+                    preview access in one table instead of splitting discovery
+                    from the intake decision.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone="muted">
+                    {snapshot.activeConnector?.sourceDisplayName ?? "Connector unknown"}
+                  </Badge>
+                  <Badge tone="warning">
+                    {snapshot.executedAt
+                      ? `Ran ${formatDateTime(snapshot.executedAt)}`
+                      : "Not executed"}
+                  </Badge>
+                </div>
+              </div>
+
+              <ActiveFilterChipBar
+                chips={activeFilterChips}
+                clearHref="/sources"
+                emptyLabel="No active chips beyond the selected connector or saved search."
+              />
+            </div>
+          </section>
 
           <DataTable
             ariaLabel="External source search results"
+            caption="External source results with agency context, deadlines, duplicate state, and import-preview actions."
             columns={[
-              {
-                key: "notice",
-                header: "Notice",
-                className: "min-w-[12rem]",
-                cell: (result) => (
-                  <div>
-                    <p className="font-medium">{result.noticeId}</p>
-                    <p className="text-muted text-xs">
-                      {result.solicitationNumber ?? "No solicitation number"}
-                    </p>
-                  </div>
-                ),
-              },
               {
                 key: "opportunity",
                 header: "Opportunity",
-                className: "min-w-[22rem]",
+                className: "min-w-[20rem]",
                 cell: (result) => (
                   <div className="space-y-2">
                     <a
@@ -512,7 +577,12 @@ export function SourceSearch({
                     >
                       {result.title}
                     </a>
-                    <p className="text-muted text-xs">{result.organizationName}</p>
+                    <p className="text-xs text-muted">
+                      Notice {result.noticeId}
+                      {result.solicitationNumber
+                        ? ` · Solicitation ${result.solicitationNumber}`
+                        : ""}
+                    </p>
                     <p className="text-sm leading-6 text-foreground">
                       {result.summary}
                     </p>
@@ -520,173 +590,116 @@ export function SourceSearch({
                 ),
               },
               {
-                key: "dates",
+                key: "agency",
+                header: "Agency",
+                className: "min-w-[12rem]",
+                cell: (result) => (
+                  <div className="space-y-2">
+                    <p className="font-medium text-foreground">
+                      {result.organizationName}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {result.organizationCode ?? "No organization code"}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {result.placeOfPerformanceState ?? "No state"}
+                      {result.placeOfPerformanceZip
+                        ? ` · ${result.placeOfPerformanceZip}`
+                        : ""}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                key: "timing",
                 header: "Dates",
                 className: "min-w-[10rem]",
                 cell: (result) => (
                   <div className="space-y-2">
-                    <p className="font-medium">
+                    <p className="font-medium text-foreground">
                       Posted {formatShortDate(result.postedDate)}
                     </p>
-                    <p className="text-muted text-xs">
+                    <p className="text-xs text-muted">
                       {result.responseDeadline
                         ? `Due ${formatShortDate(result.responseDeadline)}`
                         : "No deadline returned"}
                     </p>
-                  </div>
-                ),
-              },
-              {
-                key: "classification",
-                header: "Type",
-                className: "min-w-[10rem]",
-                cell: (result) => (
-                  <div className="space-y-2">
                     <Badge tone="muted">{result.procurementTypeLabel}</Badge>
-                    <p className="text-muted text-xs uppercase">
-                      {result.status}
-                    </p>
                   </div>
                 ),
               },
               {
-                key: "location",
-                header: "Location",
-                className: "min-w-[10rem]",
+                key: "import-state",
+                header: "Import state",
+                className: "min-w-[12rem]",
                 cell: (result) => (
-                  <div className="space-y-2">
-                    <p className="font-medium">
-                      {result.placeOfPerformanceState ?? "No state"}
-                    </p>
-                    <p className="text-muted text-xs">
-                      {result.placeOfPerformanceZip ?? "No ZIP"}
-                    </p>
-                  </div>
+                  <InlineImportState
+                    previewSnapshot={
+                      previewSnapshot?.result.id === result.id ? previewSnapshot : null
+                    }
+                    resultId={result.id}
+                  />
                 ),
               },
               {
                 key: "actions",
-                header: "Actions",
-                className: "min-w-[12rem]",
+                header: "Action",
+                className: "min-w-[10rem]",
                 cell: (result) => (
                   <Link
-                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.06)] px-4 py-2 text-sm font-medium text-[rgb(19,78,68)]"
+                    className="inline-flex min-h-10 w-full items-center justify-center rounded-full border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.06)] px-4 py-2 text-sm font-medium text-[rgb(19,78,68)]"
                     href={buildPreviewHref(sanitizedReturnPath, result.id)}
                   >
                     {previewSnapshot?.result.id === result.id
                       ? "Preview open"
-                      : "Preview result"}
+                      : "Inspect import"}
                   </Link>
                 ),
               },
             ]}
+            density="compact"
             emptyState={emptyState}
             getRowKey={(result) => result.id}
             rows={snapshot.results}
+            selectedRowId={previewSnapshot?.result.id ?? null}
           />
         </section>
 
-        <section className="space-y-4">
-          {previewSnapshot ? (
-            <PreviewPanel
-              importAction={importAction}
-              previewSnapshot={previewSnapshot}
-              returnPath={buildPreviewHref(
-                sanitizedReturnPath,
-                previewSnapshot.result.id,
-              )}
-            />
-          ) : (
-            <EmptyState
-              className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]"
-              message="Select any result row to review raw payloads, normalized fields, duplicate candidates, and pull actions before the opportunity enters the tracked pipeline."
-              title="Result preview and import actions"
-            />
-          )}
-
-          <div className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]">
-            <p className="text-muted text-xs tracking-[0.22em] uppercase">
-              Execution summary
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Badge>{formatExecutionMode(snapshot.executionMode)}</Badge>
-              <Badge tone="muted">
-                {snapshot.activeConnector?.sourceDisplayName ?? "Connector unknown"}
-              </Badge>
-              <Badge tone="warning">
-                {snapshot.executedAt
-                  ? `Ran ${formatDateTime(snapshot.executedAt)}`
-                  : "Not executed"}
-              </Badge>
-            </div>
-            <p className="text-muted mt-4 text-sm leading-6">
-              {snapshot.executionMessage}
-            </p>
-          </div>
-
-          <div className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]">
-            <p className="text-muted text-xs tracking-[0.22em] uppercase">
-              Connector capability
-            </p>
-            <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-              Search contract and connector capability
-            </h2>
-            <ul className="mt-4 space-y-2 text-sm leading-6 text-foreground">
-              {snapshot.activeCapability.supportedFilterLabels.map((label) => (
-                <li key={label}>• {label}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]">
-            <p className="text-muted text-xs tracking-[0.22em] uppercase">
-              Outbound request
-            </p>
-            <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-              Translated `sam.gov` query
-            </h2>
-            {snapshot.outboundRequest ? (
-              <dl className="mt-4 space-y-3 text-sm">
-                <div>
-                  <dt className="text-muted text-xs tracking-[0.18em] uppercase">
-                    Endpoint
-                  </dt>
-                  <dd className="mt-1 break-all text-foreground">
-                    {snapshot.outboundRequest.endpoint}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted text-xs tracking-[0.18em] uppercase">
-                    Query params
-                  </dt>
-                  <dd className="mt-2 flex flex-wrap gap-2">
-                    {Object.entries(snapshot.outboundRequest.queryParams).map(
-                      ([key, value]) => (
-                        <Badge key={key} tone="muted">
-                          {Array.isArray(value)
-                            ? `${key}: ${value.join(", ")}`
-                            : `${key}: ${value}`}
-                        </Badge>
-                      ),
-                    )}
-                  </dd>
-                </div>
-              </dl>
+        <aside className="space-y-4">
+          <div className="xl:sticky xl:top-24 xl:space-y-4">
+            {previewSnapshot ? (
+              <SourceImportPreviewPanel
+                importAction={importAction}
+                previewSnapshot={previewSnapshot}
+                returnPath={buildPreviewHref(
+                  sanitizedReturnPath,
+                  previewSnapshot.result.id,
+                )}
+              />
             ) : (
               <EmptyState
-                className="mt-4"
-                message="A translated outbound request will appear here once the query validates and an executable connector is selected."
-                title="No request generated"
+                className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]"
+                message="Open any result row to inspect duplicate signals, the raw and normalized payloads, and the guarded create-or-link import actions."
+                title="Result preview and import actions"
               />
             )}
+
+            <SourceExecutionCard snapshot={snapshot} />
+            <TranslatedQueryCard snapshot={snapshot} />
           </div>
-        </section>
+        </aside>
       </div>
+
+      <CsvImportWorkspace
+        action={csvImportAction}
+        feedback={csvImportFeedback}
+        workspaceSnapshot={csvImportSnapshot}
+      />
     </section>
   );
 }
 
-function PreviewPanel({
+function SourceImportPreviewPanel({
   importAction,
   previewSnapshot,
   returnPath,
@@ -697,7 +710,6 @@ function PreviewPanel({
 }) {
   const {
     alreadyTrackedOpportunity,
-    connector,
     duplicateCandidates,
     importPreview,
     result,
@@ -711,206 +723,367 @@ function PreviewPanel({
     linkableCandidates.find(
       (candidate) => candidate.opportunityId === suggestedTargetOpportunityId,
     ) ?? linkableCandidates[0] ?? null;
+  const metadata = buildPreviewMetadata(result);
 
   return (
-    <div className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
-          <p className="text-muted text-xs tracking-[0.22em] uppercase">
-            Preview and import
-          </p>
-          <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
-            Source-result preview
-          </h2>
-          <p className="text-muted text-sm leading-6">
-            Review the retained raw payload beside the normalized canonical
-            fields, then either create a tracked opportunity or link the source
-            result to an existing record.
-          </p>
-        </div>
-
-        <Link
-          className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-          href={clearPreviewHref(returnPath)}
-        >
-          Close preview
-        </Link>
-      </div>
-
-      <div className="mt-5 flex flex-wrap gap-2">
-        <Badge>{result.noticeId}</Badge>
-        <Badge tone="muted">{result.procurementTypeLabel}</Badge>
-        <Badge tone="warning">{result.status}</Badge>
-        <Badge tone="muted">{connector?.sourceDisplayName ?? "Connector unknown"}</Badge>
-      </div>
-
-      <h3 className="mt-4 text-lg font-semibold text-foreground">{result.title}</h3>
-      <p className="text-muted mt-2 text-sm leading-6">{result.summary}</p>
-
-      {alreadyTrackedOpportunity ? (
-        <div className="mt-5 rounded-[24px] border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.07)] px-4 py-4">
-          <p className="text-sm font-semibold text-[rgb(16,66,57)]">
+    <div className="space-y-4">
+      <PreviewPanel
+        actions={
+          <>
+            <Link
+              className="inline-flex min-h-10 items-center justify-center rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-foreground"
+              href={clearPreviewHref(returnPath)}
+            >
+              Close preview
+            </Link>
+            <a
+              className="inline-flex min-h-10 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
+              href={result.uiLink}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Open source notice
+            </a>
+          </>
+        }
+        className="shadow-[0_16px_40px_rgba(20,37,34,0.08)]"
+        description="Review the duplicate assessment, inspect the persisted source payload, and then either create a new tracked opportunity or attach the source notice to the canonical record already in the workspace."
+        eyebrow="Import preview"
+        metadata={metadata}
+        title={result.title}
+      >
+        {alreadyTrackedOpportunity ? (
+          <Callout tone="success" title="Already linked">
             This source notice is already linked to the tracked opportunity{" "}
-            {alreadyTrackedOpportunity.title}.
-          </p>
-          <p className="mt-2 text-sm text-[rgb(16,66,57)]">
+            <span className="font-semibold">{alreadyTrackedOpportunity.title}</span>.
             Stage: {alreadyTrackedOpportunity.currentStageLabel ?? "Unstaged"}.
-          </p>
-        </div>
-      ) : null}
+          </Callout>
+        ) : null}
 
-      {!alreadyTrackedOpportunity && shouldAutoCanonicalize && recommendedCandidate ? (
-        <div className="mt-5 rounded-[24px] border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.07)] px-4 py-4">
-          <p className="text-sm font-semibold text-[rgb(16,66,57)]">
-            Canonical merge recommended
-          </p>
-          <p className="mt-2 text-sm leading-6 text-[rgb(16,66,57)]">
-            The import service will merge this result into{" "}
+        {!alreadyTrackedOpportunity && shouldAutoCanonicalize && recommendedCandidate ? (
+          <Callout tone="info" title="Canonical merge recommended">
+            The duplicate signals are strong enough to merge this result into{" "}
             <span className="font-semibold">{recommendedCandidate.title}</span>{" "}
-            because the duplicate signals are strong enough to avoid creating a
-            second canonical opportunity.
-          </p>
-        </div>
-      ) : null}
+            instead of creating a second canonical opportunity.
+          </Callout>
+        ) : null}
 
-      <div className="mt-5 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4">
-        <p className="text-sm font-semibold text-foreground">
-          Duplicate candidates
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+              Duplicate candidates
+            </h3>
+            <Badge tone="muted">
+              {duplicateCandidates.length} candidate
+              {duplicateCandidates.length === 1 ? "" : "s"}
+            </Badge>
+          </div>
+          {duplicateCandidates.length > 0 ? (
+            <div className="space-y-3">
+              {duplicateCandidates.map((candidate) => (
+                <DuplicateCandidateCard
+                  candidate={candidate}
+                  key={candidate.opportunityId}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm leading-6 text-muted">
+              No likely duplicate opportunity crossed the current match
+              threshold. Creating a new tracked opportunity is the clean path.
+            </p>
+          )}
+        </section>
+
+        {!alreadyTrackedOpportunity ? (
+          <section className="space-y-4">
+            {!shouldAutoCanonicalize ? (
+              <form
+                action={importAction}
+                className="space-y-3 rounded-[20px] border border-border bg-surface-muted px-4 py-4"
+              >
+                <input name="mode" type="hidden" value="CREATE_OPPORTUNITY" />
+                <input name="sourceRecordId" type="hidden" value={result.id} />
+                <input name="returnPath" type="hidden" value={returnPath} />
+                <p className="text-sm font-semibold text-foreground">
+                  Create a new tracked opportunity
+                </p>
+                <p className="text-sm leading-6 text-muted">
+                  Use this when the result is net new or the candidate list does
+                  not represent the same pursuit.
+                </p>
+                <button
+                  className="inline-flex min-h-11 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
+                  type="submit"
+                >
+                  Create tracked opportunity
+                </button>
+              </form>
+            ) : null}
+
+            {linkableCandidates.length > 0 ? (
+              <form
+                action={importAction}
+                className="space-y-4 rounded-[20px] border border-border bg-surface-muted px-4 py-4"
+              >
+                <input name="mode" type="hidden" value="LINK_TO_EXISTING" />
+                <input name="sourceRecordId" type="hidden" value={result.id} />
+                <input name="returnPath" type="hidden" value={returnPath} />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {shouldAutoCanonicalize
+                      ? "Merge into the canonical opportunity"
+                      : "Link to an existing tracked opportunity"}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-muted">
+                    {shouldAutoCanonicalize
+                      ? "The strongest duplicate candidate is treated as the canonical pursuit."
+                      : "Use the duplicate analysis to attach this source result to an already-tracked pursuit."}
+                  </p>
+                </div>
+
+                <fieldset className="space-y-3">
+                  <legend className="sr-only">Duplicate opportunity choices</legend>
+                  {linkableCandidates.map((candidate, index) => (
+                    <label
+                      className="flex gap-3 rounded-[18px] border border-border bg-white px-4 py-3"
+                      htmlFor={`target-${candidate.opportunityId}`}
+                      key={candidate.opportunityId}
+                    >
+                      <input
+                        defaultChecked={
+                          candidate.opportunityId === suggestedTargetOpportunityId ||
+                          (suggestedTargetOpportunityId === null && index === 0)
+                        }
+                        id={`target-${candidate.opportunityId}`}
+                        name="targetOpportunityId"
+                        type="radio"
+                        value={candidate.opportunityId}
+                      />
+                      <span className="space-y-2">
+                        <span className="block font-medium text-foreground">
+                          {candidate.title}
+                        </span>
+                        <span className="flex flex-wrap gap-2">
+                          <Badge tone="muted">
+                            {formatMatchLabel(candidate.matchKind)}
+                          </Badge>
+                          <Badge>{candidate.matchScore} / 100</Badge>
+                          <Badge tone="warning">
+                            {candidate.currentStageLabel ?? "Unstaged"}
+                          </Badge>
+                        </span>
+                        <span className="block text-xs leading-5 text-muted">
+                          {candidate.matchReasons.join(" ")}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
+
+                <button
+                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.08)] px-4 py-2 text-sm font-medium text-[rgb(19,78,68)]"
+                  type="submit"
+                >
+                  {shouldAutoCanonicalize
+                    ? "Merge into selected opportunity"
+                    : "Link to selected opportunity"}
+                </button>
+              </form>
+            ) : null}
+          </section>
+        ) : null}
+
+        <details className="rounded-[20px] border border-border bg-surface-muted px-4 py-4">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+            Open raw and normalized payloads
+          </summary>
+          <div className="mt-4 grid gap-4">
+            <JsonPreviewCard payload={importPreview.rawPayload} title="Raw payload" />
+            <JsonPreviewCard
+              payload={importPreview.normalizedPayload}
+              title="Normalized payload"
+            />
+          </div>
+        </details>
+
+        <section className="rounded-[20px] border border-warning/25 bg-warning-soft px-4 py-4">
+          <p className="text-sm font-semibold text-warning">Preview warnings</p>
+          <ul className="mt-3 space-y-2 text-sm leading-6 text-warning">
+            {importPreview.warnings.map((warning) => (
+              <li key={warning}>• {warning}</li>
+            ))}
+          </ul>
+        </section>
+      </PreviewPanel>
+    </div>
+  );
+}
+
+function SourceExecutionCard({
+  snapshot,
+}: {
+  snapshot: SourceSearchSnapshot;
+}) {
+  return (
+    <section className="border-border rounded-[24px] border bg-white px-5 py-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]">
+      <p className="text-muted text-xs tracking-[0.22em] uppercase">
+        Execution summary
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Badge>{formatExecutionMode(snapshot.executionMode)}</Badge>
+        <Badge tone="muted">
+          {snapshot.activeConnector?.sourceDisplayName ?? "Connector unknown"}
+        </Badge>
+        <Badge tone="warning">
+          {snapshot.executedAt
+            ? `Ran ${formatDateTime(snapshot.executedAt)}`
+            : "Not executed"}
+        </Badge>
+      </div>
+      <p className="mt-4 text-sm leading-6 text-muted">{snapshot.executionMessage}</p>
+      <div className="mt-4 space-y-2 text-sm text-foreground">
+        <p>
+          <span className="font-medium">Workspace:</span> {snapshot.organization.name}
         </p>
-        {duplicateCandidates.length > 0 ? (
-          <div className="mt-4 space-y-3">
-            {duplicateCandidates.map((candidate) => (
-              <DuplicateCandidateCard
-                candidate={candidate}
-                key={candidate.opportunityId}
-              />
+        <p>
+          <span className="font-medium">Search execution:</span>{" "}
+          {snapshot.searchExecutionId ?? "Unavailable"}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function TranslatedQueryCard({
+  snapshot,
+}: {
+  snapshot: SourceSearchSnapshot;
+}) {
+  return (
+    <details
+      className="border-border rounded-[24px] border bg-white px-5 py-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]"
+      open={Boolean(snapshot.outboundRequest)}
+    >
+      <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+        Translated query and connector capability
+      </summary>
+
+      <div className="mt-4 space-y-4">
+        <section>
+          <p className="text-muted text-xs tracking-[0.22em] uppercase">
+            Supported filter contract
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {snapshot.activeCapability.supportedFilterLabels.map((label) => (
+              <Badge key={label} tone="muted">
+                {label}
+              </Badge>
             ))}
           </div>
-        ) : (
-          <p className="text-muted mt-2 text-sm leading-6">
-            No likely duplicate opportunity crossed the current match threshold.
-            Creating a new tracked opportunity is currently the clean path.
+        </section>
+
+        <section>
+          <p className="text-muted text-xs tracking-[0.22em] uppercase">
+            Outbound request
           </p>
-        )}
-      </div>
-
-      <div className="mt-5 grid gap-4 xl:grid-cols-2">
-        <JsonPreviewCard
-          payload={importPreview.rawPayload}
-          title="Raw payload"
-        />
-        <JsonPreviewCard
-          payload={importPreview.normalizedPayload}
-          title="Normalized payload"
-        />
-      </div>
-
-      <div className="mt-5 rounded-[24px] border border-[rgba(188,112,35,0.18)] bg-[rgba(188,112,35,0.08)] px-4 py-4">
-        <p className="text-sm font-semibold text-[rgb(128,76,31)]">
-          Preview warnings
-        </p>
-        <ul className="mt-3 space-y-2 text-sm leading-6 text-[rgb(128,76,31)]">
-          {importPreview.warnings.map((warning) => (
-            <li key={warning}>• {warning}</li>
-          ))}
-        </ul>
-      </div>
-
-      {!alreadyTrackedOpportunity ? (
-        <div className="mt-5 space-y-4">
-          {!shouldAutoCanonicalize ? (
-            <form action={importAction} className="space-y-3 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4">
-              <input name="mode" type="hidden" value="CREATE_OPPORTUNITY" />
-              <input name="sourceRecordId" type="hidden" value={result.id} />
-              <input name="returnPath" type="hidden" value={returnPath} />
-              <p className="text-sm font-semibold text-foreground">
-                Create a new tracked opportunity
-              </p>
-              <p className="text-muted text-sm leading-6">
-                Use this when the source result is net new or the duplicate
-                candidates do not represent the same pursuit.
-              </p>
-              <button
-                className="inline-flex min-h-11 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
-                type="submit"
-              >
-                Create tracked opportunity
-              </button>
-            </form>
-          ) : null}
-
-          {linkableCandidates.length > 0 ? (
-            <form
-              action={importAction}
-              className="space-y-4 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4"
-            >
-              <input name="mode" type="hidden" value="LINK_TO_EXISTING" />
-              <input name="sourceRecordId" type="hidden" value={result.id} />
-              <input name="returnPath" type="hidden" value={returnPath} />
+          {snapshot.outboundRequest ? (
+            <div className="mt-3 space-y-3 text-sm text-foreground">
               <div>
-                <p className="text-sm font-semibold text-foreground">
-                  {shouldAutoCanonicalize
-                    ? "Merge into the canonical opportunity"
-                    : "Link to an existing tracked opportunity"}
+                <p className="text-xs font-semibold tracking-[0.18em] text-muted uppercase">
+                  Endpoint
                 </p>
-                <p className="text-muted mt-1 text-sm leading-6">
-                  {shouldAutoCanonicalize
-                    ? "The strongest duplicate candidate is treated as the canonical pursuit. The import path will attach this source result and backfill missing canonical fields on the existing opportunity."
-                    : "Use the duplicate analysis to attach this source result to an already-tracked pursuit instead of creating a second canonical record."}
-                </p>
+                <p className="mt-1 break-all">{snapshot.outboundRequest.endpoint}</p>
               </div>
+              <div>
+                <p className="text-xs font-semibold tracking-[0.18em] text-muted uppercase">
+                  Query params
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {Object.entries(snapshot.outboundRequest.queryParams).map(
+                    ([key, value]) => (
+                      <Badge key={key} tone="muted">
+                        {Array.isArray(value)
+                          ? `${key}: ${value.join(", ")}`
+                          : `${key}: ${value}`}
+                      </Badge>
+                    ),
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <EmptyState
+              className="mt-3"
+              message="A translated outbound request appears here once the query validates and an executable connector is selected."
+              title="No request generated"
+            />
+          )}
+        </section>
+      </div>
+    </details>
+  );
+}
 
-              <fieldset className="space-y-3">
-                <legend className="sr-only">Duplicate opportunity choices</legend>
-                {linkableCandidates.map((candidate, index) => (
-                  <label
-                    className="flex gap-3 rounded-[20px] border border-[rgba(15,28,31,0.08)] bg-white px-4 py-3"
-                    htmlFor={`target-${candidate.opportunityId}`}
-                    key={candidate.opportunityId}
-                  >
-                    <input
-                      defaultChecked={
-                        candidate.opportunityId === suggestedTargetOpportunityId ||
-                        (suggestedTargetOpportunityId === null && index === 0)
-                      }
-                      id={`target-${candidate.opportunityId}`}
-                      name="targetOpportunityId"
-                      type="radio"
-                      value={candidate.opportunityId}
-                    />
-                    <span className="space-y-2">
-                      <span className="block font-medium text-foreground">
-                        {candidate.title}
-                      </span>
-                      <span className="flex flex-wrap gap-2">
-                        <Badge tone="muted">
-                          {formatMatchLabel(candidate.matchKind)}
-                        </Badge>
-                        <Badge>{candidate.matchScore} / 100</Badge>
-                        <Badge tone="warning">
-                          {candidate.currentStageLabel ?? "Unstaged"}
-                        </Badge>
-                      </span>
-                      <span className="block text-xs leading-5 text-muted">
-                        {candidate.matchReasons.join(" ")}
-                      </span>
-                    </span>
-                  </label>
-                ))}
-              </fieldset>
+function InlineImportState({
+  previewSnapshot,
+  resultId,
+}: {
+  previewSnapshot: SourceImportPreviewSnapshot | null;
+  resultId: string;
+}) {
+  if (!previewSnapshot) {
+    return (
+      <div className="space-y-2">
+        <Badge tone="muted">Preview pending</Badge>
+        <p className="text-xs leading-5 text-muted">
+          Open this result to inspect duplicate signals and import state.
+        </p>
+      </div>
+    );
+  }
 
-              <button
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.08)] px-4 py-2 text-sm font-medium text-[rgb(19,78,68)]"
-                type="submit"
-              >
-                {shouldAutoCanonicalize
-                  ? "Merge into selected opportunity"
-                  : "Link to selected opportunity"}
-              </button>
-            </form>
-          ) : null}
-        </div>
-      ) : null}
+  if (previewSnapshot.alreadyTrackedOpportunity) {
+    return (
+      <div className="space-y-2">
+        <Badge tone="success">Already linked</Badge>
+        <p className="text-xs leading-5 text-muted">
+          {previewSnapshot.alreadyTrackedOpportunity.title}
+        </p>
+      </div>
+    );
+  }
+
+  if (previewSnapshot.shouldAutoCanonicalize) {
+    return (
+      <div className="space-y-2">
+        <Badge tone="info">Merge recommended</Badge>
+        <p className="text-xs leading-5 text-muted">
+          {previewSnapshot.duplicateCandidates.length} duplicate candidate
+          {previewSnapshot.duplicateCandidates.length === 1 ? "" : "s"} reviewed
+          for {resultId}.
+        </p>
+      </div>
+    );
+  }
+
+  if (previewSnapshot.duplicateCandidates.length > 0) {
+    return (
+      <div className="space-y-2">
+        <Badge tone="warning">Manual review</Badge>
+        <p className="text-xs leading-5 text-muted">
+          Duplicate candidates need a human import choice.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Badge tone="success">Ready to create</Badge>
+      <p className="text-xs leading-5 text-muted">
+        No duplicate candidate crossed the current threshold.
+      </p>
     </div>
   );
 }
@@ -921,13 +1094,13 @@ function DuplicateCandidateCard({
   candidate: SourceImportDuplicateCandidate;
 }) {
   return (
-    <div className="rounded-[20px] border border-[rgba(15,28,31,0.08)] bg-white px-4 py-3">
+    <div className="rounded-[18px] border border-border bg-white px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <p className="font-medium text-foreground">{candidate.title}</p>
         <Badge tone="muted">{formatMatchLabel(candidate.matchKind)}</Badge>
         <Badge>{candidate.matchScore} / 100</Badge>
       </div>
-      <p className="text-muted mt-2 text-sm">
+      <p className="mt-2 text-sm text-muted">
         Stage: {candidate.currentStageLabel ?? "Unstaged"} · Origin:{" "}
         {candidate.originSourceSystem ?? "unknown"}
       </p>
@@ -948,11 +1121,33 @@ function JsonPreviewCard({
   title: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(15,28,31,0.02)] px-4 py-4">
+    <div className="rounded-[20px] border border-border bg-[rgba(15,28,31,0.02)] px-4 py-4">
       <p className="text-sm font-semibold text-foreground">{title}</p>
       <pre className="mt-3 overflow-x-auto rounded-[18px] bg-[rgb(15,28,31)] p-4 text-xs leading-6 text-[rgb(233,244,241)]">
         {JSON.stringify(payload, null, 2)}
       </pre>
+    </div>
+  );
+}
+
+function Callout({
+  children,
+  tone,
+  title,
+}: {
+  children: ReactNode;
+  tone: "info" | "success";
+  title: string;
+}) {
+  const toneClasses =
+    tone === "success"
+      ? "border-success/20 bg-success-soft text-success"
+      : "border-info/20 bg-info-soft text-info";
+
+  return (
+    <div className={`rounded-[20px] border px-4 py-4 ${toneClasses}`}>
+      <p className="text-sm font-semibold">{title}</p>
+      <p className="mt-2 text-sm leading-6">{children}</p>
     </div>
   );
 }
@@ -998,7 +1193,7 @@ function buildResultEmptyState(snapshot: SourceSearchSnapshot) {
   if (snapshot.executionMode === "unsupported_connector") {
     return (
       <EmptyState
-        message="Leave the connector set to SAM.gov for now, or wait for a later slice to add another executable adapter."
+        message="Only the SAM.gov connector is executable in the current slice. Other configured connectors stay visible so the shared source framework can expand without reworking the route."
         title="Connector execution is pending"
       />
     );
@@ -1029,79 +1224,313 @@ function buildResultEmptyState(snapshot: SourceSearchSnapshot) {
           className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
           href="/sources"
         >
-          Reset to the default mock query
+          Reset to the default query
         </Link>
       }
-      message="No external source records matched this filter set. Adjust the posted dates, remove a structured filter, or switch back to the default query."
+      message="No external source records matched this filter set. Adjust the date range, remove a structured filter, or reapply a broader saved search."
       title="No external opportunities matched"
     />
   );
 }
 
-function buildActiveFilterBadges(query: CanonicalSourceSearchQuery) {
-  const badges: string[] = [`posted: ${query.postedDateFrom} to ${query.postedDateTo}`];
+function buildConnectorItems(
+  snapshot: SourceSearchSnapshot,
+  returnPath: string,
+): SavedViewControlItem[] {
+  return snapshot.connectors
+    .filter((connector) => connector.supportsSearch)
+    .map((connector) => ({
+      active: connector.sourceSystemKey === snapshot.formValues.source,
+      href: buildSourceSearchHref(returnPath, {
+        source: connector.sourceSystemKey,
+      }),
+      label: connector.sourceDisplayName,
+      supportingText:
+        connector.sourceSystemKey === "sam_gov"
+          ? "Search enabled"
+          : connector.isEnabled
+            ? "Queued next"
+            : "Not configured",
+    }));
+}
+
+function buildSavedSearchItems(
+  savedSearches: SourceSearchSnapshot["savedSearches"],
+  currentQuery: CanonicalSourceSearchQuery | null,
+): SavedViewControlItem[] {
+  return savedSearches.map((savedSearch) => ({
+    active:
+      currentQuery !== null &&
+      buildSavedSearchHref(savedSearch.query) === buildSavedSearchHref(currentQuery),
+    href: buildSavedSearchHref(savedSearch.query),
+    label: savedSearch.name,
+    supportingText: savedSearch.lastExecutedAt
+      ? `Ran ${formatRelativeDate(savedSearch.lastExecutedAt)}`
+      : "Not executed",
+  }));
+}
+
+function buildActiveFilterChips(
+  query: CanonicalSourceSearchQuery,
+  returnPath: string,
+): ActiveFilterChip[] {
+  const chips: ActiveFilterChip[] = [
+    {
+      href: buildSourceSearchHref(returnPath, {
+        postedFrom: null,
+        postedTo: null,
+      }),
+      label: `Posted ${query.postedDateFrom} to ${query.postedDateTo}`,
+    },
+  ];
 
   if (query.keywords) {
-    badges.push(`keywords: ${query.keywords}`);
+    chips.push({
+      href: buildSourceSearchHref(returnPath, {
+        keywords: null,
+      }),
+      label: `Keywords: ${query.keywords}`,
+    });
   }
 
   if (query.procurementTypes.length > 0) {
-    badges.push(`ptype: ${query.procurementTypes.join(", ")}`);
+    chips.push({
+      href: buildSourceSearchHref(returnPath, {
+        ptype: [],
+      }),
+      label: `Type: ${query.procurementTypes.join(", ")}`,
+    });
   }
 
   if (query.organizationName) {
-    badges.push(`org: ${query.organizationName}`);
+    chips.push({
+      href: buildSourceSearchHref(returnPath, {
+        organizationName: null,
+      }),
+      label: `Agency: ${query.organizationName}`,
+    });
   }
 
   if (query.placeOfPerformanceState) {
-    badges.push(`state: ${query.placeOfPerformanceState}`);
+    chips.push({
+      href: buildSourceSearchHref(returnPath, {
+        state: null,
+      }),
+      label: `State: ${query.placeOfPerformanceState}`,
+    });
   }
 
-  if (query.status) {
-    badges.push(`status: ${query.status}`);
+  if (query.status && query.status !== "active") {
+    chips.push({
+      href: buildSourceSearchHref(returnPath, {
+        status: null,
+      }),
+      label: `Status: ${query.status}`,
+    });
   }
 
   if (query.noticeId) {
-    badges.push(`notice: ${query.noticeId}`);
+    chips.push({
+      href: buildSourceSearchHref(returnPath, {
+        noticeid: null,
+      }),
+      label: `Notice: ${query.noticeId}`,
+    });
   }
 
-  return badges;
+  if (query.naicsCode) {
+    chips.push({
+      href: buildSourceSearchHref(returnPath, {
+        ncode: null,
+      }),
+      label: `NAICS: ${query.naicsCode}`,
+    });
+  }
+
+  return chips;
+}
+
+function buildPreviewMetadata(
+  result: SourceImportPreviewSnapshot["result"],
+): PreviewPanelMetadataItem[] {
+  return [
+    {
+      label: "Notice",
+      value: result.noticeId,
+    },
+    {
+      label: "Connector",
+      value: result.sourceSystem,
+    },
+    {
+      label: "Posted",
+      value: formatShortDate(result.postedDate),
+    },
+    {
+      label: "Deadline",
+      value: result.responseDeadline
+        ? formatShortDate(result.responseDeadline)
+        : "No deadline returned",
+    },
+    {
+      label: "Status",
+      value: result.status,
+    },
+    {
+      label: "Agency",
+      value: result.organizationName,
+    },
+  ];
+}
+
+function buildSavedSearchHref(query: CanonicalSourceSearchQuery) {
+  const params = new URLSearchParams();
+
+  params.set("source", query.sourceSystem);
+  params.set("postedFrom", query.postedDateFrom);
+  params.set("postedTo", query.postedDateTo);
+  params.set("limit", String(query.pageSize));
+  params.set("offset", String(query.pageOffset));
+
+  if (query.keywords) {
+    params.set("keywords", query.keywords);
+  }
+
+  if (query.responseDeadlineFrom) {
+    params.set("rdlfrom", query.responseDeadlineFrom);
+  }
+
+  if (query.responseDeadlineTo) {
+    params.set("rdlto", query.responseDeadlineTo);
+  }
+
+  for (const procurementType of query.procurementTypes) {
+    params.append("ptype", procurementType);
+  }
+
+  if (query.noticeId) {
+    params.set("noticeid", query.noticeId);
+  }
+
+  if (query.solicitationNumber) {
+    params.set("solnum", query.solicitationNumber);
+  }
+
+  if (query.organizationName) {
+    params.set("organizationName", query.organizationName);
+  }
+
+  if (query.organizationCode) {
+    params.set("organizationCode", query.organizationCode);
+  }
+
+  if (query.naicsCode) {
+    params.set("ncode", query.naicsCode);
+  }
+
+  if (query.classificationCode) {
+    params.set("ccode", query.classificationCode);
+  }
+
+  if (query.setAsideCode) {
+    params.set("typeOfSetAside", query.setAsideCode);
+  }
+
+  if (query.setAsideDescription) {
+    params.set("typeOfSetAsideDescription", query.setAsideDescription);
+  }
+
+  if (query.placeOfPerformanceState) {
+    params.set("state", query.placeOfPerformanceState);
+  }
+
+  if (query.placeOfPerformanceZip) {
+    params.set("zip", query.placeOfPerformanceZip);
+  }
+
+  if (query.status) {
+    params.set("status", query.status);
+  }
+
+  return `/sources?${params.toString()}`;
+}
+
+function buildSourceSearchHref(
+  returnPath: string,
+  updates: Record<
+    string,
+    string | null | number | string[]
+  >,
+) {
+  const [pathname, existingQuery = ""] = returnPath.split("?");
+  const params = new URLSearchParams(existingQuery);
+
+  for (const [key, value] of Object.entries(updates)) {
+    params.delete(key);
+
+    if (value === null) {
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item.length > 0) {
+          params.append(key, item);
+        }
+      }
+      continue;
+    }
+
+    params.set(key, String(value));
+  }
+
+  const queryString = params.toString();
+  return queryString ? `${pathname}?${queryString}` : pathname;
 }
 
 function buildPreviewHref(returnPath: string, resultId: string) {
-  const [pathname, existingQuery = ""] = returnPath.split("?");
-  const params = new URLSearchParams(existingQuery);
-
-  params.set("preview", resultId);
-  params.delete("importStatus");
-  params.delete("importError");
-  params.delete("opportunityId");
-
-  const queryString = params.toString();
-  return queryString ? `${pathname}?${queryString}` : pathname;
+  return buildSourceSearchHref(returnPath, {
+    importError: null,
+    importStatus: null,
+    opportunityId: null,
+    preview: resultId,
+  });
 }
 
 function clearPreviewHref(returnPath: string) {
-  const [pathname, existingQuery = ""] = returnPath.split("?");
-  const params = new URLSearchParams(existingQuery);
-
-  params.delete("preview");
-  params.delete("importStatus");
-  params.delete("importError");
-  params.delete("opportunityId");
-
-  const queryString = params.toString();
-  return queryString ? `${pathname}?${queryString}` : pathname;
+  return buildSourceSearchHref(returnPath, {
+    importError: null,
+    importStatus: null,
+    opportunityId: null,
+    preview: null,
+  });
 }
 
 function stripTransientImportParams(returnPath: string) {
-  return clearPreviewHref(buildPreviewHref(returnPath, getPreviewId(returnPath) ?? ""));
+  return clearPreviewHref(returnPath);
 }
 
-function getPreviewId(returnPath: string) {
-  const [, existingQuery = ""] = returnPath.split("?");
-  const params = new URLSearchParams(existingQuery);
-  return params.get("preview");
+function hasAdvancedFilterSelections(
+  formValues: SourceSearchSnapshot["formValues"],
+) {
+  return (
+    formValues.noticeid.length > 0 ||
+    formValues.solnum.length > 0 ||
+    formValues.organizationName.length > 0 ||
+    formValues.organizationCode.length > 0 ||
+    formValues.ncode.length > 0 ||
+    formValues.ccode.length > 0 ||
+    formValues.typeOfSetAside.length > 0 ||
+    formValues.typeOfSetAsideDescription.length > 0 ||
+    formValues.state.length > 0 ||
+    formValues.zip.length > 0 ||
+    formValues.rdlfrom.length > 0 ||
+    formValues.rdlto.length > 0 ||
+    formValues.status !== "active" ||
+    formValues.limit !== "25" ||
+    formValues.offset !== "0" ||
+    formValues.ptype.length > 0
+  );
 }
 
 function formatExecutionMode(mode: SourceSearchSnapshot["executionMode"]) {
@@ -1170,6 +1599,14 @@ function formatDateTime(value: string) {
     month: "short",
     timeZone: "UTC",
     year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatRelativeDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
   }).format(new Date(value));
 }
 
