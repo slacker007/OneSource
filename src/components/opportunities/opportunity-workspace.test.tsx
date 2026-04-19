@@ -375,9 +375,12 @@ const snapshot: OpportunityWorkspaceSnapshot = {
 };
 
 describe("OpportunityWorkspace", () => {
-  it("renders the workspace sections and seeded execution context", () => {
-    render(
+  it("renders the sectioned workspace shell and focused zone content", () => {
+    const renderWorkspace = (activeSection?: Parameters<
+      typeof OpportunityWorkspace
+    >[0]["activeSection"]) => (
       <OpportunityWorkspace
+        activeSection={activeSection}
         allowManagePipeline
         recordBidDecisionAction={async () =>
           INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE
@@ -411,37 +414,33 @@ describe("OpportunityWorkspace", () => {
           INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE
         }
         updateTaskAction={async () => INITIAL_OPPORTUNITY_TASK_ACTION_STATE}
-      />,
+      />
     );
+
+    const { rerender } = render(renderWorkspace("summary"));
 
     expect(
       screen.getByRole("heading", {
         name: /enterprise knowledge management support services/i,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^Overview$/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^Scoring$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /^Opportunities$/i }),
+    ).toHaveAttribute("href", "/opportunities");
+    expect(
+      screen.getByRole("navigation", {
+        name: /opportunity workspace sections/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^Summary$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /^Capture/i }),
+    ).toHaveAttribute("href", "/opportunities/opp_123?section=capture");
+    expect(
+      screen.getByRole("heading", { name: /^Capture summary$/i }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /suggested reusable content/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /^Proposal tracking$/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^Tasks$/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^Documents$/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^Notes$/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^History$/i })).toBeInTheDocument();
-    expect(screen.getByText(/^overdue$/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/upcoming deadline/i).length).toBeGreaterThan(0);
-    expect(
-      screen.getByText(/complete incumbent analysis brief/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getAllByRole("heading", { name: /performance work statement/i }).length,
-    ).toBeGreaterThan(0);
-    expect(screen.getByText(/capture summary/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /capability fit/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/linked to this opportunity/i),
@@ -452,9 +451,20 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("link", { name: /open asset/i }),
     ).toHaveAttribute("href", "/knowledge/knowledge_1/edit");
+    expect(
+      screen.getByRole("link", { name: /open source notice/i }),
+    ).toHaveAttribute("href", "https://sam.gov/opp/FA4861-26-R-0001/view");
+    expect(
+      screen.getByRole("link", { name: /edit details/i }),
+    ).toHaveAttribute("href", "/opportunities/opp_123/edit");
+
+    rerender(renderWorkspace("capture"));
+
+    expect(screen.getByRole("heading", { name: /^Capture$/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^Scoring$/i })).toBeInTheDocument();
     expect(screen.getByText(/weight 30\.00/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/bid decision recorded as go/i),
+      screen.getByRole("heading", { name: /^Initial Pursuit$/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /^Decision history$/i }),
@@ -490,6 +500,15 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("button", { name: /move to pursuit approved/i }),
     ).toBeInTheDocument();
+
+    rerender(renderWorkspace("tasks"));
+
+    expect(screen.getByRole("heading", { name: /^Tasks$/i })).toBeInTheDocument();
+    expect(screen.getByText(/^overdue$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/upcoming deadline/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/complete incumbent analysis brief/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^create task$/i }),
     ).toBeInTheDocument();
@@ -500,39 +519,60 @@ describe("OpportunityWorkspace", () => {
       screen.getByRole("button", { name: /^create milestone$/i }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("button", { name: /^save milestone$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("textbox", { name: /^description$/i }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByDisplayValue(/customer questions due/i),
+    ).toBeInTheDocument();
+
+    rerender(renderWorkspace("documents"));
+
+    expect(
+      screen.getByRole("heading", { name: /^Documents$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { name: /performance work statement/i }).length,
+    ).toBeGreaterThan(0);
+    expect(
       screen.getByRole("button", { name: /^upload document$/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /download stored file/i }),
+    ).toHaveAttribute("href", "/api/opportunities/documents/doc_1/download");
+
+    rerender(renderWorkspace("notes"));
+
+    expect(screen.getByRole("heading", { name: /^Notes$/i })).toBeInTheDocument();
+    expect(screen.getByText(/capture summary/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^add note$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: /^pin note$/i }),
+    ).toBeInTheDocument();
+
+    rerender(renderWorkspace("proposal"));
+
+    expect(
+      screen.getByRole("heading", { name: /^Proposal tracking$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/requirement matrix reviewed/i).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.getByRole("button", { name: /^save proposal$/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^delete proposal record$/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^add note$/i })).toBeInTheDocument();
+
+    rerender(renderWorkspace("history"));
+
+    expect(screen.getByRole("heading", { name: /^History$/i })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /^save milestone$/i }),
+      screen.getByRole("heading", { name: /^Activity feed$/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("textbox", { name: /^details$/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("combobox", { name: /^pin note$/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByDisplayValue(/customer questions due/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /open source notice/i }),
-    ).toHaveAttribute("href", "https://sam.gov/opp/FA4861-26-R-0001/view");
-    expect(
-      screen.getByRole("link", { name: /edit details/i }),
-    ).toHaveAttribute("href", "/opportunities/opp_123/edit");
-    expect(
-      screen.getByRole("link", { name: /download stored file/i }),
-    ).toHaveAttribute("href", "/api/opportunities/documents/doc_1/download");
-    expect(
-      screen.getAllByText(/requirement matrix reviewed/i).length,
-    ).toBeGreaterThan(0);
   });
 
   it("renders the closeout section for closed opportunities", () => {
@@ -574,6 +614,7 @@ describe("OpportunityWorkspace", () => {
 
     render(
       <OpportunityWorkspace
+        activeSection="capture"
         allowManagePipeline
         recordBidDecisionAction={async () =>
           INITIAL_OPPORTUNITY_BID_DECISION_ACTION_STATE

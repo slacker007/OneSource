@@ -39,6 +39,7 @@ import type {
 } from "@/modules/opportunities/opportunity.types";
 
 type OpportunityWorkspaceProps = {
+  activeSection?: OpportunityWorkspaceSection;
   snapshot: OpportunityWorkspaceSnapshot | null;
   allowManagePipeline?: boolean;
   recordBidDecisionAction?: (
@@ -95,7 +96,41 @@ type OpportunityWorkspaceProps = {
   ) => Promise<OpportunityStageTransitionActionState>;
 };
 
+export const OPPORTUNITY_WORKSPACE_SECTION_ORDER = [
+  "summary",
+  "capture",
+  "tasks",
+  "documents",
+  "notes",
+  "proposal",
+  "history",
+] as const;
+
+export type OpportunityWorkspaceSection =
+  (typeof OPPORTUNITY_WORKSPACE_SECTION_ORDER)[number];
+
+type WorkspaceSectionNavItem = {
+  countLabel?: string | null;
+  href: string;
+  id: OpportunityWorkspaceSection;
+  label: string;
+  supportingText: string;
+};
+
+export function readOpportunityWorkspaceSection(
+  value: string | string[] | undefined,
+): OpportunityWorkspaceSection {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+
+  return OPPORTUNITY_WORKSPACE_SECTION_ORDER.includes(
+    rawValue as OpportunityWorkspaceSection,
+  )
+    ? (rawValue as OpportunityWorkspaceSection)
+    : "summary";
+}
+
 export function OpportunityWorkspace({
+  activeSection = "summary",
   snapshot,
   allowManagePipeline = false,
   recordBidDecisionAction,
@@ -136,54 +171,80 @@ export function OpportunityWorkspace({
   const stageControlSnapshot = buildOpportunityStageControlSnapshotFromWorkspace(
     snapshot,
   );
+  const sectionNavItems = buildWorkspaceSectionNavItems(snapshot);
+  const isProposalAvailable =
+    Boolean(snapshot.proposal) ||
+    canTrackProposalForStage(snapshot.opportunity.currentStageKey);
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-5">
       <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div className="space-y-3">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
+              <Link
+                className="font-medium text-[rgb(19,78,68)] transition hover:text-[rgb(16,66,57)]"
+                href="/opportunities"
+              >
+                Opportunities
+              </Link>
+              <span aria-hidden="true">/</span>
+              <span className="truncate text-foreground">
+                {snapshot.opportunity.title}
+              </span>
+            </div>
+
             <div className="flex flex-wrap gap-2">
-              <Badge>Opportunity workspace</Badge>
+              <Badge>Workspace</Badge>
               <Badge tone="muted">{snapshot.opportunity.currentStageLabel}</Badge>
               <Badge tone="warning">
                 {humanizeSourceSystem(snapshot.opportunity.originSourceSystem)}
               </Badge>
               <Badge tone="accent">{decisionLabel}</Badge>
             </div>
-            <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-              {snapshot.opportunity.title}
-            </h1>
-            <p className="text-muted max-w-3xl text-sm leading-7">
-              {snapshot.opportunity.description ??
-                snapshot.opportunity.sourceSummaryText ??
-                "No opportunity summary has been captured yet."}
-            </p>
+
+            <div className="space-y-3">
+              <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
+                {snapshot.opportunity.title}
+              </h1>
+              <p className="text-muted max-w-4xl text-sm leading-7">
+                {snapshot.opportunity.description ??
+                  snapshot.opportunity.sourceSummaryText ??
+                  "No opportunity summary has been captured yet."}
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <WorkspaceHeaderLink
+              href={`/opportunities/${snapshot.opportunity.id}?section=capture`}
+              label="Record decision"
+              tone="secondary"
+            />
+            <WorkspaceHeaderLink
+              href={`/opportunities/${snapshot.opportunity.id}?section=tasks`}
+              label="Add task"
+              tone="secondary"
+            />
             {snapshot.opportunity.uiLink ? (
-              <Link
-                className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-white px-5 py-3 text-sm font-medium text-foreground transition hover:bg-[rgba(15,28,31,0.03)]"
+              <WorkspaceHeaderLink
                 href={snapshot.opportunity.uiLink}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Open source notice
-              </Link>
+                label="Open source notice"
+                newTab
+                tone="secondary"
+              />
             ) : null}
-
             {allowManagePipeline ? (
-              <Link
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
+              <WorkspaceHeaderLink
                 href={`/opportunities/${snapshot.opportunity.id}/edit`}
-              >
-                Edit details
-              </Link>
+                label="Edit details"
+                tone="primary"
+              />
             ) : null}
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <SummaryCard
             label="Lead agency"
             supportingText={
@@ -222,57 +283,88 @@ export function OpportunityWorkspace({
                 : "Unscored"
             }
           />
+          <SummaryCard
+            label="Primary owner"
+            supportingText="Proposal lead or first assigned execution owner."
+            value={readPrimaryOwnerLabel(snapshot)}
+          />
         </div>
       </header>
 
-      {allowManagePipeline && stageTransitionAction ? (
-        <OpportunityStageTransitionPanel
-          action={stageTransitionAction}
-          opportunityId={snapshot.opportunity.id}
-          snapshot={stageControlSnapshot}
-        />
+      <nav
+        aria-label="Opportunity workspace sections"
+        className="border-border sticky top-4 z-10 rounded-[24px] border bg-[rgba(250,247,242,0.94)] p-3 shadow-[0_18px_40px_rgba(20,37,34,0.08)] backdrop-blur"
+      >
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
+          {sectionNavItems.map((item) => {
+            const isActive = item.id === activeSection;
+
+            return (
+              <Link
+                aria-current={isActive ? "page" : undefined}
+                className={`rounded-[20px] border px-4 py-3 transition ${
+                  isActive
+                    ? "border-[rgba(19,78,68,0.22)] bg-[rgba(229,243,239,0.92)] shadow-[0_12px_24px_rgba(19,78,68,0.10)]"
+                    : "border-transparent bg-white/70 hover:border-[rgba(15,28,31,0.08)] hover:bg-white"
+                }`}
+                href={item.href}
+                key={item.id}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    {item.label}
+                  </p>
+                  {item.countLabel ? (
+                    <Badge tone={isActive ? "accent" : "muted"}>
+                      {item.countLabel}
+                    </Badge>
+                  ) : null}
+                </div>
+                <p className="mt-1 text-xs leading-5 text-muted">
+                  {item.supportingText}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      {activeSection === "summary" ? (
+        <SummaryWorkspaceSection snapshot={snapshot} />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <OverviewSection snapshot={snapshot} />
-        <ScoringSection
-          allowManagePipeline={allowManagePipeline}
-          decisionHistory={snapshot.decisionHistory}
-          recordBidDecisionAction={recordBidDecisionAction}
-          snapshot={snapshot}
-        />
-      </div>
+      {activeSection === "capture" ? (
+        <div className="space-y-6">
+          {allowManagePipeline && stageTransitionAction ? (
+            <OpportunityStageTransitionPanel
+              action={stageTransitionAction}
+              opportunityId={snapshot.opportunity.id}
+              snapshot={stageControlSnapshot}
+            />
+          ) : null}
 
-      {snapshot.proposal ||
-      canTrackProposalForStage(snapshot.opportunity.currentStageKey) ? (
-        <ProposalSection
-          allowManagePipeline={allowManagePipeline}
-          deleteProposalAction={deleteProposalAction}
-          documents={snapshot.documents}
-          ownerOptions={snapshot.taskAssigneeOptions}
-          opportunityId={snapshot.opportunity.id}
-          proposal={snapshot.proposal}
-          saveProposalAction={saveProposalAction}
-          stageKey={snapshot.opportunity.currentStageKey}
-          stageLabel={snapshot.opportunity.currentStageLabel}
-        />
+          <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
+            <CaptureProfileSection snapshot={snapshot} />
+            <ScoringSection
+              allowManagePipeline={allowManagePipeline}
+              decisionHistory={snapshot.decisionHistory}
+              recordBidDecisionAction={recordBidDecisionAction}
+              snapshot={snapshot}
+            />
+          </div>
+
+          {isClosedOpportunityStage(snapshot.opportunity.currentStageKey) ||
+          snapshot.closeout ? (
+            <CloseoutSection
+              allowManagePipeline={allowManagePipeline}
+              recordCloseoutAction={recordCloseoutAction}
+              snapshot={snapshot}
+            />
+          ) : null}
+        </div>
       ) : null}
 
-      {isClosedOpportunityStage(snapshot.opportunity.currentStageKey) ||
-      snapshot.closeout ? (
-        <CloseoutSection
-          allowManagePipeline={allowManagePipeline}
-          recordCloseoutAction={recordCloseoutAction}
-          snapshot={snapshot}
-        />
-      ) : null}
-
-      <KnowledgeSuggestionsSection
-        opportunityId={snapshot.opportunity.id}
-        suggestions={snapshot.knowledgeSuggestions}
-      />
-
-      <div className="grid gap-6 xl:grid-cols-2">
+      {activeSection === "tasks" ? (
         <TasksSection
           allowManagePipeline={allowManagePipeline}
           createMilestoneAction={createMilestoneAction}
@@ -286,31 +378,295 @@ export function OpportunityWorkspace({
           updateMilestoneAction={updateMilestoneAction}
           updateTaskAction={updateTaskAction}
         />
+      ) : null}
+
+      {activeSection === "documents" ? (
         <DocumentsSection
           allowManagePipeline={allowManagePipeline}
           createDocumentAction={createDocumentAction}
           documents={snapshot.documents}
           opportunityId={snapshot.opportunity.id}
         />
-      </div>
+      ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      {activeSection === "notes" ? (
         <NotesSection
           allowManagePipeline={allowManagePipeline}
           createNoteAction={createNoteAction}
           notes={snapshot.notes}
           opportunityId={snapshot.opportunity.id}
         />
+      ) : null}
+
+      {activeSection === "proposal" ? (
+        isProposalAvailable ? (
+          <ProposalSection
+            allowManagePipeline={allowManagePipeline}
+            deleteProposalAction={deleteProposalAction}
+            documents={snapshot.documents}
+            ownerOptions={snapshot.taskAssigneeOptions}
+            opportunityId={snapshot.opportunity.id}
+            proposal={snapshot.proposal}
+            saveProposalAction={saveProposalAction}
+            stageKey={snapshot.opportunity.currentStageKey}
+            stageLabel={snapshot.opportunity.currentStageLabel}
+          />
+        ) : (
+          <SectionPlaceholderCard
+            description="Proposal tracking starts once the pursuit reaches an approved proposal stage. Keep current capture work in Summary, Capture, and Tasks until that transition happens."
+            title="Proposal tracking is not available yet"
+          />
+        )
+      ) : null}
+
+      {activeSection === "history" ? (
         <HistorySection
           activity={snapshot.activity}
           stageTransitions={snapshot.stageTransitions}
         />
-      </div>
+      ) : null}
     </section>
   );
 }
 
-function OverviewSection({
+function SummaryWorkspaceSection({
+  snapshot,
+}: {
+  snapshot: OpportunityWorkspaceSnapshot;
+}) {
+  const nextMilestone = selectNextMilestone(snapshot.milestones);
+  const watchItems = buildSummaryWatchItems(snapshot);
+  const openTaskCount = countOpenTasks(snapshot.tasks);
+  const overdueTaskCount = countOverdueTasks(snapshot.tasks);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+          <p className="text-muted text-xs tracking-[0.24em] uppercase">
+            Workspace summary
+          </p>
+          <h2 className="font-heading text-foreground mt-2 text-3xl font-semibold tracking-[-0.03em]">
+            Summary
+          </h2>
+          <p className="text-muted mt-3 max-w-3xl text-sm leading-7">
+            Keep the current pursuit posture, next checkpoint, and reusable
+            content visible from one summary layer before dropping into
+            execution-specific tabs.
+          </p>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard
+              label="Decision state"
+              supportingText="Latest recorded final or recommended posture."
+              value={
+                snapshot.bidDecision?.finalOutcome ??
+                snapshot.scorecard?.recommendationOutcome ??
+                "Pending"
+              }
+            />
+            <SummaryCard
+              label="Next milestone"
+              supportingText={
+                nextMilestone?.milestoneTypeKey
+                  ? humanizeEnum(nextMilestone.milestoneTypeKey)
+                  : "No milestone type recorded"
+              }
+              value={
+                nextMilestone
+                  ? `${nextMilestone.title} · ${formatDate(nextMilestone.targetDate)}`
+                  : "No milestone recorded"
+              }
+            />
+            <SummaryCard
+              label="Open work"
+              supportingText={
+                overdueTaskCount > 0
+                  ? `${overdueTaskCount} overdue`
+                  : "No overdue reminders"
+              }
+              value={`${openTaskCount} active tasks`}
+            />
+            <SummaryCard
+              label="Knowledge matches"
+              supportingText="Reusable content already aligned to this pursuit."
+              value={String(snapshot.knowledgeSuggestions.length)}
+            />
+          </div>
+        </article>
+
+        <article className="border-border rounded-[28px] border bg-[linear-gradient(135deg,rgba(32,95,85,0.97),rgba(16,58,53,1))] p-6 text-white shadow-[0_22px_60px_rgba(16,58,53,0.28)]">
+          <p className="text-xs tracking-[0.24em] text-white/70 uppercase">
+            Immediate focus
+          </p>
+          <h3 className="font-heading mt-2 text-2xl font-semibold tracking-[-0.03em]">
+            Next actions and watch items
+          </h3>
+          <p className="mt-3 text-sm leading-7 text-white/80">
+            The summary view prioritizes the next milestone, current score
+            posture, and the strongest open watch items so capture reviews can
+            start from signal instead of raw detail.
+          </p>
+
+          <div className="mt-6 space-y-3">
+            {watchItems.length > 0 ? (
+              watchItems.map((item) => (
+                <div
+                  className="rounded-[22px] border border-white/12 bg-white/8 px-4 py-4"
+                  key={item}
+                >
+                  <p className="text-sm leading-6 text-white">{item}</p>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-[22px] border border-white/12 bg-white/8 px-4 py-4">
+                <p className="text-sm leading-6 text-white">
+                  No material watch items are open in the current seeded score
+                  or decision context.
+                </p>
+              </div>
+            )}
+          </div>
+        </article>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                Capture summary
+              </p>
+              <h3 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+                Capture summary
+              </h3>
+            </div>
+            <Badge tone="muted">{snapshot.opportunity.currentStageLabel}</Badge>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <DetailRow
+              label="Notice and solicitation"
+              value={[
+                snapshot.opportunity.externalNoticeId
+                  ? `Notice ${snapshot.opportunity.externalNoticeId}`
+                  : null,
+                snapshot.opportunity.solicitationNumber
+                  ? `Solicitation ${snapshot.opportunity.solicitationNumber}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "No notice or solicitation identifiers recorded"}
+            />
+            <DetailRow
+              label="Acquisition profile"
+              value={[
+                snapshot.opportunity.procurementTypeLabel,
+                snapshot.opportunity.setAsideDescription,
+                snapshot.opportunity.naicsCode
+                  ? `NAICS ${snapshot.opportunity.naicsCode}`
+                  : null,
+                snapshot.opportunity.classificationCode
+                  ? `PSC ${snapshot.opportunity.classificationCode}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "No acquisition metadata recorded"}
+            />
+            <DetailRow
+              label="Vehicle and competitor context"
+              value={[
+                snapshot.opportunity.vehicles.length > 0
+                  ? snapshot.opportunity.vehicles
+                      .map((vehicle) => vehicle.code)
+                      .join(", ")
+                  : "No vehicle linked",
+                snapshot.opportunity.competitors.length > 0
+                  ? snapshot.opportunity.competitors
+                      .map((competitor) => competitor.name)
+                      .join(", ")
+                  : "No competitor recorded",
+              ].join(" · ")}
+            />
+            <DetailRow
+              label="Location"
+              value={[
+                snapshot.opportunity.officeLocation ?? "Office not captured",
+                snapshot.opportunity.placeOfPerformanceLocation ??
+                  "Place of performance not captured",
+              ].join(" · ")}
+            />
+          </div>
+        </article>
+
+        <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                Decision posture
+              </p>
+              <h3 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+                Score and rationale snapshot
+              </h3>
+            </div>
+            <Badge tone="accent">
+              {snapshot.scorecard?.recommendationOutcome ??
+                snapshot.bidDecision?.finalOutcome ??
+                "Pending"}
+            </Badge>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <SummaryCard
+              label="Score"
+              supportingText="Deterministic model output."
+              value={
+                snapshot.scorecard?.totalScore
+                  ? `${snapshot.scorecard.totalScore}/${snapshot.scorecard.maximumScore ?? "100"}`
+                  : "Unscored"
+              }
+            />
+            <SummaryCard
+              label="Decision"
+              supportingText="Latest human or engine posture."
+              value={
+                snapshot.bidDecision?.finalOutcome ??
+                snapshot.scorecard?.recommendationOutcome ??
+                "Pending"
+              }
+            />
+            <SummaryCard
+              label="History"
+              supportingText="Decision and stage events recorded."
+              value={String(
+                snapshot.decisionHistory.length + snapshot.stageTransitions.length,
+              )}
+            />
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <p className="text-sm leading-7 text-muted">
+              {snapshot.bidDecision?.finalRationale ??
+                snapshot.bidDecision?.recommendationSummary ??
+                snapshot.scorecard?.summary ??
+                "No decision rationale has been recorded yet."}
+            </p>
+            <p className="text-sm text-muted">
+              Last refreshed {formatDate(snapshot.opportunity.updatedAt)}
+            </p>
+          </div>
+        </article>
+      </div>
+
+      <KnowledgeSuggestionsSection
+        opportunityId={snapshot.opportunity.id}
+        suggestions={snapshot.knowledgeSuggestions}
+      />
+    </div>
+  );
+}
+
+function CaptureProfileSection({
   snapshot,
 }: {
   snapshot: OpportunityWorkspaceSnapshot;
@@ -336,11 +692,16 @@ function OverviewSection({
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-muted text-xs tracking-[0.24em] uppercase">
-            Overview
+            Capture profile
           </p>
           <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-            Overview
+            Capture
           </h2>
+          <p className="text-muted mt-2 max-w-2xl text-sm leading-6">
+            Keep pursuit qualifiers, source identifiers, vehicles, and
+            competitive context in one command surface beside scoring and stage
+            control.
+          </p>
         </div>
         <Badge tone="muted">{snapshot.opportunity.currentStageLabel}</Badge>
       </div>
@@ -356,6 +717,17 @@ function OverviewSection({
           </div>
         ) : null}
 
+        <DetailRow
+          label="Procurement type"
+          value={
+            [
+              snapshot.opportunity.procurementTypeLabel,
+              snapshot.opportunity.procurementBaseTypeLabel,
+            ]
+              .filter(Boolean)
+              .join(" · ") || "Not captured"
+          }
+        />
         <DetailRow
           label="Vehicles"
           value={
@@ -384,31 +756,159 @@ function OverviewSection({
           label="Place of performance"
           value={snapshot.opportunity.placeOfPerformanceLocation ?? "Not captured"}
         />
-
-        <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,249,239,0.78)] px-5 py-5">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-base font-semibold text-foreground">
-              Milestones
-            </h3>
-            <Badge tone="warning">{snapshot.milestones.length}</Badge>
-          </div>
-          {snapshot.milestones.length > 0 ? (
-            <div className="mt-4 space-y-3">
-              {snapshot.milestones.map((milestone) => (
-                <MilestoneCard key={milestone.id} milestone={milestone} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              className="mt-4 bg-white/80"
-              message="Milestones will appear here as capture checkpoints are recorded."
-              title="No milestones yet"
-            />
-          )}
-        </div>
       </div>
     </article>
   );
+}
+
+function WorkspaceHeaderLink({
+  href,
+  label,
+  newTab = false,
+  tone,
+}: {
+  href: string;
+  label: string;
+  newTab?: boolean;
+  tone: "primary" | "secondary";
+}) {
+  const className =
+    tone === "primary"
+      ? "inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
+      : "inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-white px-5 py-3 text-sm font-medium text-foreground transition hover:bg-[rgba(15,28,31,0.03)]";
+
+  return (
+    <Link
+      className={className}
+      href={href}
+      rel={newTab ? "noreferrer" : undefined}
+      target={newTab ? "_blank" : undefined}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function SectionPlaceholderCard({
+  description,
+  title,
+}: {
+  description: string;
+  title: string;
+}) {
+  return (
+    <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+      <p className="text-muted text-xs tracking-[0.24em] uppercase">Proposal</p>
+      <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+        {title}
+      </h2>
+      <p className="text-muted mt-3 max-w-3xl text-sm leading-7">
+        {description}
+      </p>
+    </article>
+  );
+}
+
+function buildWorkspaceSectionNavItems(
+  snapshot: OpportunityWorkspaceSnapshot,
+): WorkspaceSectionNavItem[] {
+  const openTaskCount = countOpenTasks(snapshot.tasks);
+  const historyEventCount =
+    snapshot.activity.length + snapshot.stageTransitions.length;
+  const proposalCountLabel =
+    snapshot.proposal?.completedChecklistCount !== undefined &&
+    snapshot.proposal?.totalChecklistCount !== undefined
+      ? `${snapshot.proposal.completedChecklistCount}/${snapshot.proposal.totalChecklistCount}`
+      : null;
+
+  return [
+    {
+      id: "summary",
+      href: `/opportunities/${snapshot.opportunity.id}?section=summary`,
+      label: "Summary",
+      supportingText: "Executive brief, milestones, and reusable content.",
+    },
+    {
+      id: "capture",
+      href: `/opportunities/${snapshot.opportunity.id}?section=capture`,
+      label: "Capture",
+      supportingText: "Stage control, score posture, and pursuit context.",
+    },
+    {
+      countLabel: String(openTaskCount),
+      id: "tasks",
+      href: `/opportunities/${snapshot.opportunity.id}?section=tasks`,
+      label: "Tasks",
+      supportingText: "Execution work items and milestone checkpoints.",
+    },
+    {
+      countLabel: String(snapshot.documents.length),
+      id: "documents",
+      href: `/opportunities/${snapshot.opportunity.id}?section=documents`,
+      label: "Documents",
+      supportingText: "Artifacts, extraction state, and source files.",
+    },
+    {
+      countLabel: String(snapshot.notes.length),
+      id: "notes",
+      href: `/opportunities/${snapshot.opportunity.id}?section=notes`,
+      label: "Notes",
+      supportingText: "Working assumptions, pinned notes, and context.",
+    },
+    {
+      countLabel: proposalCountLabel,
+      id: "proposal",
+      href: `/opportunities/${snapshot.opportunity.id}?section=proposal`,
+      label: "Proposal",
+      supportingText: "Readiness, ownership, and linked submission artifacts.",
+    },
+    {
+      countLabel: String(historyEventCount),
+      id: "history",
+      href: `/opportunities/${snapshot.opportunity.id}?section=history`,
+      label: "History",
+      supportingText: "Activity log, stage moves, and durable trail.",
+    },
+  ];
+}
+
+function readPrimaryOwnerLabel(snapshot: OpportunityWorkspaceSnapshot) {
+  return (
+    snapshot.proposal?.ownerName ??
+    snapshot.tasks.find((task) => Boolean(task.assigneeName))?.assigneeName ??
+    "Unassigned"
+  );
+}
+
+function countOpenTasks(tasks: OpportunityWorkspaceTask[]) {
+  return tasks.filter((task) => task.status !== "COMPLETED").length;
+}
+
+function countOverdueTasks(tasks: OpportunityWorkspaceTask[]) {
+  return tasks.filter((task) => task.deadlineReminderState === "OVERDUE").length;
+}
+
+function selectNextMilestone(milestones: OpportunityWorkspaceMilestone[]) {
+  return [...milestones].sort((left, right) =>
+    left.targetDate.localeCompare(right.targetDate),
+  )[0] ?? null;
+}
+
+function buildSummaryWatchItems(snapshot: OpportunityWorkspaceSnapshot) {
+  const scorecardWatchItems =
+    snapshot.scorecard?.factors
+      .filter((factor) => Number(factor.score) < Number(factor.maximumScore))
+      .slice(0, 3)
+      .map(
+        (factor) =>
+          `${factor.factorLabel}: ${factor.explanation ?? "Scoring factor needs additional pursuit evidence."}`,
+      ) ?? [];
+
+  const rationaleWatchItem = snapshot.bidDecision?.finalRationale
+    ? [`Decision rationale: ${snapshot.bidDecision.finalRationale}`]
+    : [];
+
+  return [...scorecardWatchItems, ...rationaleWatchItem].slice(0, 3);
 }
 
 function KnowledgeSuggestionsSection({

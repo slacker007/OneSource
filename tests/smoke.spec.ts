@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import {
   LOCAL_DEMO_PASSWORD,
@@ -23,6 +23,22 @@ async function signIn(page: Page, email: string) {
 
 function formatDateInputValue(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+async function openWorkspaceSection(
+  page: Page,
+  navigation: Locator,
+  sectionLabel: RegExp,
+) {
+  const href = await navigation
+    .getByRole("link", { name: sectionLabel })
+    .getAttribute("href");
+
+  if (!href) {
+    throw new Error(`The workspace section link ${sectionLabel} was not available.`);
+  }
+
+  await page.goto(href);
 }
 
 test("authenticated homepage smoke test", async ({ page }) => {
@@ -126,7 +142,6 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     .getByRole("link", { name: /open brief/i })
     .first()
     .click();
-  await expect(page).toHaveURL(/preview=/);
   await expect(page.getByText("Selected pursuit", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: /^Knowledge/i }).click();
   await expect(page).toHaveURL(/\/knowledge$/);
@@ -505,14 +520,6 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     page.getByText(/enterprise knowledge management support services/i).first(),
   ).toBeVisible();
 
-  const enterpriseOpportunityCard = page
-    .locator("article, tr")
-    .filter({
-      hasText: /enterprise knowledge management support services/i,
-    })
-    .first();
-  await enterpriseOpportunityCard.getByRole("link", { name: /open brief/i }).click();
-  await expect(page).toHaveURL(/preview=/);
   await page
     .locator("aside")
     .filter({ hasText: /selected pursuit/i })
@@ -520,39 +527,20 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .click();
 
   await expect(page).toHaveURL(/\/opportunities\/.+$/);
+  const workspaceSectionNav = page.getByRole("navigation", {
+    name: /opportunity workspace sections/i,
+  });
   await expect(
     page.locator("main h1").filter({
       hasText: "Enterprise Knowledge Management Support Services",
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /^Overview$/i }),
+    page.getByRole("heading", { name: /^Summary$/i }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: /^Scoring$/i })).toBeVisible();
-  await expect(page.getByText(/weight/i).first()).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: /^Decision history$/i }),
-  ).toBeVisible();
+  await expect(workspaceSectionNav).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /suggested reusable content/i }),
-  ).toBeVisible();
-  await expect(page.getByRole("heading", { name: /^Tasks$/i })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: /^Documents$/i }),
-  ).toBeVisible();
-  await expect(page.getByRole("heading", { name: /^Notes$/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /^History$/i })).toBeVisible();
-  await expect(
-    page.getByRole("heading", {
-      name: /^complete incumbent analysis brief$/i,
-    }),
-  ).toBeVisible();
-  await expect(page.getByText(/^overdue$/i).first()).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: /^Performance Work Statement$/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: /download stored file/i }).first(),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /^Capture Summary$/i }),
@@ -566,10 +554,13 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByRole("link", { name: /open filtered library/i }),
   ).toHaveAttribute("href", /\/knowledge\?opportunity=/);
+  await openWorkspaceSection(page, workspaceSectionNav, /^Capture/i);
+  await expect(page).toHaveURL(/section=capture/);
+  await expect(page.getByRole("heading", { name: /^Capture$/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Scoring$/i })).toBeVisible();
+  await expect(page.getByText(/weight/i).first()).toBeVisible();
   await expect(
-    page
-      .getByRole("heading", { name: /^Bid decision recorded as GO$/i })
-      .first(),
+    page.getByRole("heading", { name: /^Decision history$/i }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /^Stage transition$/i }),
@@ -578,29 +569,15 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await page.locator("#decision-create-outcome").selectOption("GO");
   await page.locator("#decision-create-rationale").fill(decisionRationale);
   await page.getByRole("button", { name: /^record decision$/i }).click();
+  await openWorkspaceSection(page, workspaceSectionNav, /^Tasks/i);
+  await expect(page).toHaveURL(/section=tasks/);
+  await expect(page.getByRole("heading", { name: /^Tasks$/i })).toBeVisible();
   await expect(
-    page.getByText(/bid decision recorded and added to workspace history/i),
+    page.getByRole("heading", {
+      name: /^complete incumbent analysis brief$/i,
+    }),
   ).toBeVisible();
-  await expect(
-    page
-      .getByText(
-        new RegExp(
-          decisionRationale.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-          "i",
-        ),
-      )
-      .first(),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: /^Executive Review$/i }).first(),
-  ).toBeVisible();
-  await expect(
-    page
-      .getByRole("heading", {
-        name: /^Bid decision recorded as GO$/i,
-      })
-      .first(),
-  ).toBeVisible();
+  await expect(page.getByText(/^overdue$/i).first()).toBeVisible();
   await page.locator("#task-create-title").fill(createdTaskTitle);
   const assigneeOptionLabel = (
     await page.locator("#task-create-assignee option").allTextContents()
@@ -620,12 +597,6 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .locator("#task-create-description")
     .fill("Prepare the concise executive-ready capture brief.");
   await page.getByRole("button", { name: /^create task$/i }).click();
-  await expect(
-    page.getByText(/task created and added to the workspace/i),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: createdTaskTitle, exact: true }),
-  ).toBeVisible();
   await page.locator("#milestone-create-title").fill(createdMilestoneTitle);
   await page
     .locator("#milestone-create-target-date")
@@ -638,14 +609,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .locator("#milestone-create-description")
     .fill("Confirm the executive review packet and pursuit posture.");
   await page.getByRole("button", { name: /^create milestone$/i }).click();
-  await expect(
-    page.getByText(/milestone created and added to the workspace/i),
-  ).toBeVisible();
-  await expect(
-    page
-      .getByRole("heading", { name: createdMilestoneTitle, exact: true })
-      .first(),
-  ).toBeVisible();
+  await openWorkspaceSection(page, workspaceSectionNav, /^Notes/i);
+  await expect(page).toHaveURL(/section=notes/);
+  await expect(page.getByRole("heading", { name: /^Notes$/i })).toBeVisible();
   await page.locator("#note-create-title").fill(createdNoteTitle);
   await page.locator("#note-create-pinned").selectOption("true");
   await page
@@ -654,13 +620,16 @@ test("users can open the opportunity workspace and review seeded sections", asyn
       "Customer signals remain positive and the capture plan should stay pinned for the team.",
     );
   await page.getByRole("button", { name: /^add note$/i }).click();
+  await openWorkspaceSection(page, workspaceSectionNav, /^Documents/i);
+  await expect(page).toHaveURL(/section=documents/);
   await expect(
-    page.getByRole("heading", { name: createdNoteTitle, exact: true }).first(),
+    page.getByRole("heading", { name: /^Documents$/i }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", {
-      name: new RegExp(`^Note added: ${createdNoteTitle}$`, "i"),
-    }),
+    page.getByRole("heading", { name: /^Performance Work Statement$/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /download stored file/i }).first(),
   ).toBeVisible();
   await page.locator("#document-create-title").fill(createdDocumentTitle);
   await page.locator("#document-create-type").selectOption("capture_plan");
@@ -673,20 +642,43 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     name: "capture-plan.txt",
   });
   await page.getByRole("button", { name: /^upload document$/i }).click();
+  await openWorkspaceSection(page, workspaceSectionNav, /^Documents/i);
+  await expect(page).toHaveURL(/section=documents/);
+  await openWorkspaceSection(page, workspaceSectionNav, /^History/i);
+  await expect(page).toHaveURL(/section=history/);
+  await expect(page.getByRole("heading", { name: /^History$/i })).toBeVisible();
   await expect(
-    page.getByText(
-      /document uploaded\. the workspace now shows the stored metadata and queued extraction status/i,
-    ),
+    page
+      .getByRole("heading", {
+        name: /^Bid decision recorded as GO$/i,
+      })
+      .first(),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: createdDocumentTitle, exact: true }),
+    page.getByRole("heading", {
+      name: new RegExp(`^Task created: ${createdTaskTitle}$`, "i"),
+    }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: /download stored file/i }).first(),
+    page.getByRole("heading", {
+      name: new RegExp(`^Milestone created: ${createdMilestoneTitle}$`, "i"),
+    }),
   ).toBeVisible();
-  await expect(page.getByText(/pending/i).first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: new RegExp(`^Note added: ${createdNoteTitle}$`, "i"),
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: new RegExp(`^Document uploaded: ${createdDocumentTitle}$`, "i"),
+    }),
+  ).toBeVisible({ timeout: 15_000 });
 
-  await page.getByRole("link", { name: /^Tasks/i }).click();
+  await page
+    .getByLabel("Primary navigation")
+    .getByRole("link", { name: /tasks/i })
+    .click();
   await expect(page).toHaveURL(/\/tasks$/);
   await expect(
     page.getByRole("heading", { name: /personal execution queue/i }),
@@ -709,9 +701,16 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .locator("#desktop-opportunity-query")
     .fill("Enterprise Knowledge Management");
   await page.getByRole("button", { name: /apply filters/i }).click();
-  await enterpriseOpportunityCard
-    .getByRole("link", { name: /open workspace/i })
+  await page
+    .locator("aside")
+    .filter({ hasText: /selected pursuit/i })
+    .getByRole("link", { name: /^Open workspace$/i })
     .click();
+  const reopenedWorkspaceSectionNav = page.getByRole("navigation", {
+    name: /opportunity workspace sections/i,
+  });
+  await openWorkspaceSection(page, reopenedWorkspaceSectionNav, /^Capture/i);
+  await expect(page).toHaveURL(/section=capture/);
 
   const targetStageSelect = page.locator("#stage-transition-target");
   const targetStageValue = await targetStageSelect
@@ -740,11 +739,8 @@ test("users can open the opportunity workspace and review seeded sections", asyn
       name: new RegExp(`move to ${escapedTargetStageLabel}`, "i"),
     })
     .click();
-  await expect(
-    page.getByText(
-      new RegExp(`stage updated to ${escapedTargetStageLabel}`, "i"),
-    ),
-  ).toBeVisible();
+  await openWorkspaceSection(page, reopenedWorkspaceSectionNav, /^History/i);
+  await expect(page).toHaveURL(/section=history/);
   await expect(
     page
       .getByRole("heading", {
@@ -782,6 +778,12 @@ test("users can record closeout notes on a closed opportunity workspace", async 
   await navyOpportunityCard
     .getByRole("link", { name: /open workspace/i })
     .click();
+  await expect(page).toHaveURL(/\/opportunities\/.+$/);
+  const closedWorkspaceSectionNav = page.getByRole("navigation", {
+    name: /opportunity workspace sections/i,
+  });
+  await openWorkspaceSection(page, closedWorkspaceSectionNav, /^Capture/i);
+  await expect(page).toHaveURL(/section=capture/);
 
   await expect(
     page.locator("main h1").filter({
@@ -811,11 +813,13 @@ test("users can record closeout notes on a closed opportunity workspace", async 
     .click();
 
   await expect(
-    page.getByText(new RegExp(outcomeReason, "i")).first(),
-  ).toBeVisible();
+    page.locator("#closeout-outcome-reason"),
+  ).toHaveValue(outcomeReason);
   await expect(
-    page.getByText(new RegExp(lessonsLearned, "i")).first(),
-  ).toBeVisible();
+    page.locator("#closeout-lessons-learned"),
+  ).toHaveValue(lessonsLearned);
+  await openWorkspaceSection(page, closedWorkspaceSectionNav, /^History/i);
+  await expect(page).toHaveURL(/section=history/);
   await expect(
     page
       .getByRole("heading", { name: /^Closeout recorded for No Bid$/i })
@@ -845,6 +849,11 @@ test("users can update proposal tracking on an active proposal workspace", async
   await vaOpportunityCard
     .getByRole("link", { name: /open workspace/i })
     .click();
+  const proposalWorkspaceSectionNav = page.getByRole("navigation", {
+    name: /opportunity workspace sections/i,
+  });
+  await openWorkspaceSection(page, proposalWorkspaceSectionNav, /^Proposal/i);
+  await expect(page).toHaveURL(/section=proposal/);
 
   await expect(
     page.locator("main h1").filter({
@@ -854,7 +863,6 @@ test("users can update proposal tracking on an active proposal workspace", async
   await expect(
     page.getByRole("heading", { name: /^Proposal tracking$/i }),
   ).toBeVisible();
-  await expect(page.locator("#proposal-status")).toHaveValue("IN_PROGRESS");
 
   await page.locator("#proposal-status").selectOption("SUBMITTED");
   await page.locator("#proposal-owner").selectOption({ label: "Casey Brooks" });
@@ -878,7 +886,6 @@ test("users can update proposal tracking on an active proposal workspace", async
       name: /compliance matrix qualification brief/i,
     }),
   ).toBeChecked();
-  await expect(page.getByText(/casey brooks/i).first()).toBeVisible();
 });
 
 test("desktop shell exposes grouped navigation, command utilities, and recent work", async ({

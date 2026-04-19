@@ -1,4 +1,7 @@
-import { OpportunityWorkspace } from "@/components/opportunities/opportunity-workspace";
+import {
+  OpportunityWorkspace,
+  readOpportunityWorkspaceSection,
+} from "@/components/opportunities/opportunity-workspace";
 import { requireAppPermission } from "@/lib/auth/authorization";
 import { hasAppPermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
@@ -28,13 +31,18 @@ type OpportunityWorkspacePageProps = {
   params: Promise<{
     opportunityId: string;
   }>;
+  searchParams?: Promise<{
+    section?: string | string[];
+  }>;
 };
 
 export default async function OpportunityWorkspacePage({
   params,
+  searchParams,
 }: OpportunityWorkspacePageProps) {
   const { session } = await requireAppPermission("view_dashboard");
   const resolvedParams = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const snapshot = await getOpportunityWorkspaceSnapshot({
     db: prisma as unknown as OpportunityWorkspaceRepositoryClient,
     opportunityId: resolvedParams.opportunityId,
@@ -42,6 +50,9 @@ export default async function OpportunityWorkspacePage({
 
   return (
     <OpportunityWorkspace
+      activeSection={readOpportunityWorkspaceSection(
+        resolvedSearchParams?.section,
+      )}
       allowManagePipeline={hasAppPermission(
         session.user.roleKeys,
         "manage_pipeline",
