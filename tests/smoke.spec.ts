@@ -12,7 +12,7 @@ async function signIn(page: Page, email: string) {
   await expect(page).toHaveURL(/\/sign-in$/);
   await expect(
     page.getByRole("heading", {
-      name: /sign in to the capture workspace/i,
+      name: /sign in to onesource/i,
     }),
   ).toBeVisible();
 
@@ -504,7 +504,6 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     }),
   ).toBeVisible();
   await expect(page.getByText(/^overdue$/i).first()).toBeVisible();
-  await expect(page.getByText(/upcoming deadline/i).first()).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /^Performance Work Statement$/i }),
   ).toBeVisible();

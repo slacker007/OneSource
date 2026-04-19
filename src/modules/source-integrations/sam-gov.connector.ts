@@ -1,6 +1,9 @@
+import { ProxyAgent, type Dispatcher } from "undici";
+
 const DEFAULT_SAM_GOV_SEARCH_ENDPOINT =
   "https://api.sam.gov/prod/opportunities/v2/search";
 const SAM_GOV_NORMALIZATION_VERSION = "sam-gov.v1";
+const proxyAgentsByUrl = new Map<string, ProxyAgent>();
 
 type CanonicalSourceSearchQueryShape = {
   classificationCode: string | null;
@@ -203,7 +206,14 @@ export const SAM_GOV_CAPABILITY = {
   ],
 } as const;
 
-type HttpClient = typeof fetch;
+type SamGovRequestInit = RequestInit & {
+  dispatcher?: Dispatcher;
+};
+
+type HttpClient = (
+  input: string | URL | Request,
+  init?: SamGovRequestInit,
+) => Promise<Response>;
 
 type SamGovFixtureRecord = Record<string, unknown>;
 
@@ -578,9 +588,24 @@ export async function executeSamGovSearch({
   url.searchParams.set("api_key", apiKey);
 
   const startedAt = Date.now();
-  const response = await httpClient(url, {
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  let response: Response;
+
+  try {
+    response = await httpClient(url, {
+      dispatcher: resolveSamGovProxyDispatcher(url),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    throw new SamGovConnectorError({
+      code: "sam_gov_transport_error",
+      httpStatus: null,
+      message:
+        "The SAM.gov search request could not reach the upstream endpoint. Check proxy or network connectivity and retry the live search.",
+      outboundRequest,
+      responseLatencyMs: Date.now() - startedAt,
+    });
+  }
+
   const responseLatencyMs = Date.now() - startedAt;
   const rawText = await response.text();
   const body = parseJsonSafely(rawText);
@@ -608,6 +633,66 @@ export async function executeSamGovSearch({
     responseLatencyMs,
     totalRecords,
   };
+}
+
+function resolveSamGovProxyDispatcher(url: URL) {
+  const proxyUrl = selectProxyUrlForSamGov(url);
+
+  if (!proxyUrl) {
+    return undefined;
+  }
+
+  const existingAgent = proxyAgentsByUrl.get(proxyUrl);
+
+  if (existingAgent) {
+    return existingAgent;
+  }
+
+  const createdAgent = new ProxyAgent(proxyUrl);
+  proxyAgentsByUrl.set(proxyUrl, createdAgent);
+  return createdAgent;
+}
+
+function selectProxyUrlForSamGov(url: URL) {
+  if (shouldBypassProxy(url.hostname)) {
+    return null;
+  }
+
+  if (url.protocol === "https:") {
+    return (
+      process.env.HTTPS_PROXY ??
+      process.env.https_proxy ??
+      process.env.HTTP_PROXY ??
+      process.env.http_proxy ??
+      null
+    );
+  }
+
+  return process.env.HTTP_PROXY ?? process.env.http_proxy ?? null;
+}
+
+function shouldBypassProxy(hostname: string) {
+  const noProxy = process.env.NO_PROXY ?? process.env.no_proxy ?? "";
+
+  if (!noProxy.trim()) {
+    return false;
+  }
+
+  return noProxy
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean)
+    .some((entry) => {
+      if (entry === "*") {
+        return true;
+      }
+
+      if (entry.startsWith(".")) {
+        return hostname.toLowerCase().endsWith(entry);
+      }
+
+      return hostname.toLowerCase() === entry;
+    });
 }
 
 export function materializeSamGovSourceRecord(rawPayload: Record<string, unknown>) {

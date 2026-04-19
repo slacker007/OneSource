@@ -77,6 +77,6 @@ describe("AppShellFrame", () => {
     expect(
       screen.queryByRole("link", { name: /^analytics/i }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/capture workspace/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/onesource workspace/i)).toHaveLength(2);
   });
 });

@@ -21,10 +21,11 @@ export default async function SignInPage() {
             OneSource Access
           </p>
           <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-            Sign in to the capture workspace.
+            Sign in to OneSource.
           </h1>
           <p className="text-muted text-sm leading-6">
-            The app shell is now protected. Use the seeded local admin account{" "}
+            Use the seeded local admin account to access OneSource. Sign in with{" "}
+            the email{" "}
             <span className="text-foreground font-medium">
               {LOCAL_DEMO_SIGN_IN_EMAIL}
             </span>{" "}

@@ -106,7 +106,7 @@ export function AppShellFrame({
         eyebrow="OneSource"
         onClose={() => setIsMobileNavOpen(false)}
         open={isMobileNavOpen}
-        title="Capture workspace"
+        title="OneSource workspace"
       >
         <div className="mt-6 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
           <p className="text-sm font-medium text-white">{displayName}</p>
@@ -145,8 +145,8 @@ export function AppShellFrame({
                 Capture intelligence for the next serious bid.
               </p>
               <p className="text-sm leading-6 text-stone-300">
-                The authenticated shell is now the stable workspace boundary for
-                navigation, permissions, and future opportunity modules.
+                The OneSource app shell is now the stable workspace boundary
+                for navigation, permissions, and future opportunity modules.
               </p>
             </div>
           </div>
@@ -212,7 +212,7 @@ export function AppShellFrame({
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="space-y-1">
                 <p className="text-muted hidden text-xs tracking-[0.24em] uppercase lg:block">
-                  Authenticated workspace
+                  OneSource workspace
                 </p>
                 <p className="font-heading hidden text-3xl font-semibold tracking-[-0.04em] lg:block">
                   {activeLabel}

@@ -1,8 +1,45 @@
-import { describe, expect, it } from "vitest";
+import { ProxyAgent } from "undici";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { materializeSamGovSourceRecord } from "./sam-gov.connector";
+import {
+  executeSamGovSearch,
+  materializeSamGovSourceRecord,
+  SamGovConnectorError,
+} from "./sam-gov.connector";
+
+const liveQuery = {
+  classificationCode: null,
+  keywords: "cloud operations",
+  naicsCode: null,
+  noticeId: null,
+  organizationCode: null,
+  organizationName: null,
+  pageOffset: 0,
+  pageSize: 5,
+  placeOfPerformanceState: null,
+  placeOfPerformanceZip: null,
+  postedDateFrom: "2026-04-01",
+  postedDateTo: "2026-04-19",
+  procurementTypes: [],
+  responseDeadlineFrom: null,
+  responseDeadlineTo: null,
+  setAsideCode: null,
+  setAsideDescription: null,
+  solicitationNumber: null,
+  sourceSystem: "sam_gov",
+  status: "active",
+} as const;
 
 describe("sam-gov.connector", () => {
+  afterEach(() => {
+    delete process.env.HTTPS_PROXY;
+    delete process.env.HTTP_PROXY;
+    delete process.env.NO_PROXY;
+    delete process.env.https_proxy;
+    delete process.env.http_proxy;
+    delete process.env.no_proxy;
+  });
+
   it("materializes attachments, contacts, and award data for lineage persistence", () => {
     const materialized = materializeSamGovSourceRecord({
       active: "Yes",
@@ -88,5 +125,60 @@ describe("sam-gov.connector", () => {
         awardeeUEI: "ABC123XYZ789",
       }),
     );
+  });
+
+  it("uses a proxy dispatcher for live requests when HTTPS_PROXY is configured", async () => {
+    process.env.HTTPS_PROXY = "http://proxy.internal:3128";
+
+    let receivedDispatcher: unknown;
+
+    await executeSamGovSearch({
+      apiKey: "live-key",
+      config: {
+        connectorVersion: "sam-gov.v1",
+        credentialReference: "secret://sam-gov/public-api-key",
+        searchEndpoint: "https://api.sam.gov/prod/opportunities/v2/search",
+      },
+      httpClient: async (_url, init) => {
+        receivedDispatcher = init?.dispatcher;
+
+        return new Response(
+          JSON.stringify({
+            opportunitiesData: [],
+            totalRecords: 0,
+          }),
+          {
+            status: 200,
+          },
+        );
+      },
+      query: liveQuery,
+      useFixtures: false,
+    });
+
+    expect(receivedDispatcher).toBeInstanceOf(ProxyAgent);
+  });
+
+  it("converts transport failures into connector errors with a stable code", async () => {
+    await expect(
+      executeSamGovSearch({
+        apiKey: "live-key",
+        config: {
+          connectorVersion: "sam-gov.v1",
+          credentialReference: "secret://sam-gov/public-api-key",
+          searchEndpoint: "https://api.sam.gov/prod/opportunities/v2/search",
+        },
+        httpClient: async () => {
+          throw new TypeError("fetch failed");
+        },
+        query: liveQuery,
+        useFixtures: false,
+      }),
+    ).rejects.toMatchObject<Partial<SamGovConnectorError>>({
+      code: "sam_gov_transport_error",
+      httpStatus: null,
+      message:
+        "The SAM.gov search request could not reach the upstream endpoint. Check proxy or network connectivity and retry the live search.",
+    });
   });
 });

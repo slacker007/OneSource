@@ -16,7 +16,7 @@ export const APP_PERMISSION_DEFINITIONS = [
     key: "view_dashboard",
     label: "View dashboard",
     description:
-      "Open the authenticated workspace, dashboards, and opportunity summaries.",
+      "Open the OneSource workspace, dashboards, and opportunity summaries.",
     allowedRoles: [...SYSTEM_ROLE_KEYS],
   },
   {
@@ -57,7 +57,7 @@ export const APP_PERMISSION_DEFINITIONS = [
     key: "manage_workspace_settings",
     label: "Manage workspace settings",
     description:
-      "Access workspace configuration surfaces reserved for administrators.",
+      "Access OneSource administration surfaces reserved for administrators.",
     allowedRoles: ["admin"],
   },
 ] as const satisfies readonly AppPermissionDefinition[];
