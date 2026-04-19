@@ -156,19 +156,25 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByRole("table", { name: /knowledge asset results/i }),
   ).toBeVisible();
+  await expect(page.getByText("Selected asset", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /copy reusable content/i }),
+  ).toBeVisible();
   await expect(
     page.getByText(/air force operational planning past performance/i),
   ).toBeVisible();
-  await page.locator("#knowledge-type").selectOption("WIN_THEME");
+  await page.locator("#desktop-knowledge-type").selectOption("WIN_THEME");
   await page
-    .locator("#knowledge-capability")
+    .locator("#desktop-knowledge-capability")
     .selectOption("cloud-platform-engineering");
   await page.getByRole("button", { name: /apply filters/i }).click();
   await expect(page).toHaveURL(/\/knowledge\?/);
   await expect(page).toHaveURL(/type=WIN_THEME/);
   await expect(page).toHaveURL(/capability=cloud-platform-engineering/);
   await expect(
-    page.getByText(/army cloud transition win theme/i),
+    page
+      .getByRole("table", { name: /knowledge asset results/i })
+      .getByText(/army cloud transition win theme/i),
   ).toBeVisible();
   await page.getByRole("link", { name: /create knowledge asset/i }).click();
   await expect(page).toHaveURL(/\/knowledge\/new$/);
@@ -205,8 +211,10 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page.getByText(/knowledge asset created/i)).toBeVisible();
   await page.getByRole("link", { name: /return to library/i }).click();
   await expect(page).toHaveURL(/\/knowledge$/);
-  await page.locator("#knowledge-query").fill(knowledgeAssetTitle);
-  await page.locator("#knowledge-vehicle").selectOption("OASIS-PLUS-UNR");
+  await page.locator("#desktop-knowledge-query").fill(knowledgeAssetTitle);
+  await page
+    .locator("#desktop-knowledge-vehicle")
+    .selectOption("OASIS-PLUS-UNR");
   await page.getByRole("button", { name: /apply filters/i }).click();
   await expect(page).toHaveURL(/\/knowledge\?/);
   await expect(page).toHaveURL(/vehicle=OASIS-PLUS-UNR/);
@@ -230,7 +238,10 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
       .getByRole("table", { name: /knowledge asset results/i })
       .getByText(/cloud platform engineering/i),
   ).toBeVisible();
-  await page.getByRole("link", { name: /^Sources/i }).click();
+  await page
+    .getByLabel("Primary navigation")
+    .getByRole("link", { name: /^Sources/i })
+    .click();
   await expect(page).toHaveURL(/\/sources$/);
   await expect(
     page.getByRole("heading", {

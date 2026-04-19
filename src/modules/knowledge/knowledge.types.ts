@@ -43,6 +43,7 @@ export type KnowledgeAssetSummary = {
   assetType: KnowledgeAssetType;
   title: string;
   summary: string | null;
+  body: string;
   bodyPreview: string;
   facets: KnowledgeAssetFacetSummary;
   tags: string[];

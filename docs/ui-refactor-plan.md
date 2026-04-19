@@ -302,6 +302,11 @@ Primary files:
 - `src/components/knowledge/knowledge-library.tsx`
 - `src/components/knowledge/knowledge-form.tsx`
 
+Implemented baseline:
+- `src/components/knowledge/knowledge-library.tsx` now renders as a preview-first asset browser with asset-type views, a sticky desktop taxonomy rail, a mobile filter disclosure, active filter chips, and a right-side selected-asset brief.
+- `src/modules/knowledge/knowledge.repository.ts` and `knowledge.types.ts` now expose the additive preview payload needed for the selected asset, including full reusable-content text while preserving the existing CRUD and tag-validation paths.
+- `src/components/knowledge/knowledge-copy-button.tsx` now provides a lightweight reusable-content copy action from the preview panel, and the Chromium smoke flow plus component coverage now validate the browse, filter, preview, copy, and create path together.
+
 Key outcomes:
 - Preview-first browsing
 - Stronger taxonomy filters

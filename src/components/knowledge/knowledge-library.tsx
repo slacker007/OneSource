@@ -1,16 +1,40 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
+import { KnowledgeCopyButton } from "@/components/knowledge/knowledge-copy-button";
+import {
+  ActiveFilterChipBar,
+  type ActiveFilterChip,
+} from "@/components/ui/active-filter-chip-bar";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import {
+  PreviewPanel,
+  type PreviewPanelMetadataItem,
+} from "@/components/ui/preview-panel";
+import {
+  SavedViewControls,
+  type SavedViewControlItem,
+} from "@/components/ui/saved-view-controls";
 import { Select } from "@/components/ui/select";
+import type {
+  KnowledgeAssetListQuery,
+  KnowledgeAssetSummary,
+  KnowledgeFacetOption,
+  KnowledgeLibrarySnapshot,
+} from "@/modules/knowledge/knowledge.types";
 import {
   KNOWLEDGE_ASSET_TYPE_LABELS,
-  type KnowledgeLibrarySnapshot,
+  KNOWLEDGE_ASSET_TYPES,
 } from "@/modules/knowledge/knowledge.types";
+
+export type KnowledgeLibraryViewState = {
+  previewAssetId: string | null;
+};
 
 type KnowledgeLibraryProps = {
   allowManageKnowledge?: boolean;
@@ -20,12 +44,14 @@ type KnowledgeLibraryProps = {
     tone: "accent" | "warning" | "danger";
   } | null;
   snapshot: KnowledgeLibrarySnapshot | null;
+  viewState: KnowledgeLibraryViewState;
 };
 
 export function KnowledgeLibrary({
   allowManageKnowledge = false,
   notice = null,
   snapshot,
+  viewState,
 }: KnowledgeLibraryProps) {
   if (!snapshot) {
     return (
@@ -44,28 +70,51 @@ export function KnowledgeLibrary({
     );
   }
 
+  const selectedAsset =
+    snapshot.results.find((asset) => asset.id === viewState.previewAssetId) ??
+    snapshot.results[0] ??
+    null;
+  const resetHref = buildKnowledgeLibraryHref(snapshot.query, viewState, {
+    agencyId: null,
+    assetType: null,
+    capabilityKey: null,
+    contractType: null,
+    opportunityId: null,
+    previewAssetId: null,
+    query: null,
+    tag: null,
+    vehicleCode: null,
+  });
+  const activeFilterChips = buildActiveFilterChips(snapshot, viewState);
+  const assetViewItems = buildAssetViewItems(snapshot, viewState);
+  const activeViewLabel = snapshot.query.assetType
+    ? KNOWLEDGE_ASSET_TYPE_LABELS[snapshot.query.assetType]
+    : "All asset types";
+
   return (
     <section className="space-y-6">
       <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
-              <Badge>Knowledge system</Badge>
-              <Badge tone="muted">Reusable content</Badge>
-              <Badge tone="warning">Opportunity-linked</Badge>
+              <Badge>Knowledge</Badge>
+              <Badge tone="muted">Strategic asset browser</Badge>
+              <Badge tone="accent">Preview-first</Badge>
             </div>
-            <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-              Knowledge library
-            </h1>
-            <p className="text-muted max-w-3xl text-sm leading-7">
-              Capture reusable past performance, boilerplate, and win themes in
-              one organization-scoped library. Assets now carry both freeform
-              tags and structured agency, capability, contract-type, and vehicle
-              coverage so the team can narrow reusable content faster.
-            </p>
+            <div className="space-y-2">
+              <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
+                Knowledge library
+              </h1>
+              <p className="text-muted max-w-3xl text-sm leading-7">
+                Scan reusable win themes, past performance, and boilerplate from
+                one asset browser, then keep the selected narrative visible
+                while narrowing by agency, capability, contract type, vehicle,
+                and linked pursuit context.
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="flex flex-col items-start gap-3 xl:items-end">
             {allowManageKnowledge ? (
               <Link
                 className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
@@ -74,34 +123,44 @@ export function KnowledgeLibrary({
                 Create knowledge asset
               </Link>
             ) : null}
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <SummaryCard
-                label="Assets"
-                supportingText="Reusable records visible in this workspace"
-                value={String(snapshot.totalCount)}
-              />
-              <SummaryCard
-                label="Tag labels"
-                supportingText="Distinct freeform and structured labels in the current result set"
-                value={String(snapshot.totalTagCount)}
-              />
-              <SummaryCard
-                label="Linked pursuits"
-                supportingText="Distinct opportunities referenced by current assets"
-                value={String(snapshot.totalLinkedOpportunityCount)}
-              />
-              <SummaryCard
-                label="Active filters"
-                supportingText={
-                  snapshot.availableFilterCount > 0
-                    ? "Applied from the URL query string"
-                    : "Showing the full library"
-                }
-                value={String(snapshot.availableFilterCount)}
-              />
-            </div>
+            <p className="text-right text-sm text-muted">
+              Library workspace:{" "}
+              <span className="font-medium text-foreground">
+                {snapshot.organization.name}
+              </span>
+            </p>
           </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard
+            label="Asset view"
+            supportingText="Selected browse lane for the current scan"
+            value={activeViewLabel}
+          />
+          <SummaryCard
+            label="Results"
+            supportingText="Assets returned by the current query"
+            value={String(snapshot.totalCount)}
+          />
+          <SummaryCard
+            label="Linked pursuits"
+            supportingText="Distinct tracked opportunities referenced by the current result set"
+            value={String(snapshot.totalLinkedOpportunityCount)}
+          />
+          <SummaryCard
+            label="Active filters"
+            supportingText={
+              snapshot.availableFilterCount > 0
+                ? "Layered narrowing on top of the selected asset view"
+                : "Showing the full library"
+            }
+            value={String(snapshot.availableFilterCount)}
+          />
+        </div>
+
+        <div className="mt-6">
+          <SavedViewControls items={assetViewItems} label="Asset views" />
         </div>
       </header>
 
@@ -113,302 +172,690 @@ export function KnowledgeLibrary({
         />
       ) : null}
 
-      <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="space-y-2">
-            <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Filters
-            </p>
-            <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
-              Find reusable content quickly
-            </h2>
-            <p className="text-muted max-w-2xl text-sm leading-6">
-              Filter the current library by keyword, asset type, freeform tag,
-              agency, capability, contract type, vehicle, or linked opportunity.
-            </p>
-          </div>
+      <details className="border-border bg-surface rounded-[24px] border px-5 py-4 shadow-[0_14px_36px_rgba(20,37,34,0.06)] xl:hidden">
+        <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+          Open filters and taxonomy
+        </summary>
+        <div className="mt-4">
+          <KnowledgeFilterRail
+            idPrefix="mobile"
+            query={snapshot.query}
+            resetHref={resetHref}
+            snapshot={snapshot}
+            viewState={viewState}
+          />
+        </div>
+      </details>
 
-          <Link
-            className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-            href="/knowledge"
+      <div className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_24rem]">
+        <aside className="hidden xl:block">
+          <div className="sticky top-24">
+            <KnowledgeFilterRail
+              idPrefix="desktop"
+              query={snapshot.query}
+              resetHref={resetHref}
+              snapshot={snapshot}
+              viewState={viewState}
+            />
+          </div>
+        </aside>
+
+        <section className="space-y-4">
+          <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                    Asset queue
+                  </p>
+                  <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
+                    {snapshot.totalCount === 1
+                      ? "1 knowledge asset"
+                      : `${snapshot.totalCount} knowledge assets`}
+                  </h2>
+                  <p className="mt-2 text-sm text-muted">
+                    Select one row to keep its reusable narrative and linked
+                    pursuits visible beside the browse table.
+                  </p>
+                </div>
+
+                <div className="space-y-2 lg:text-right">
+                  <p className="text-muted text-xs tracking-[0.2em] uppercase">
+                    Preview focus
+                  </p>
+                  <p className="text-sm text-foreground">
+                    {selectedAsset ? selectedAsset.title : "Choose a result"}
+                  </p>
+                </div>
+              </div>
+
+              <ActiveFilterChipBar
+                chips={activeFilterChips}
+                clearHref={resetHref}
+                emptyLabel="No active filter chips beyond the selected asset view."
+              />
+            </div>
+          </section>
+
+          <DataTable
+            ariaLabel="Knowledge asset results"
+            caption="Knowledge asset results with reusable content, structured coverage, linked pursuits, and preview actions."
+            columns={[
+              {
+                key: "asset",
+                header: "Asset",
+                className: "min-w-[20rem]",
+                cell: (asset) => <KnowledgeAssetCell asset={asset} />,
+              },
+              {
+                key: "coverage",
+                header: "Coverage",
+                className: "min-w-[16rem]",
+                cell: (asset) => <KnowledgeCoverageCell asset={asset} />,
+              },
+              {
+                key: "pursuits",
+                header: "Linked pursuits",
+                className: "min-w-[14rem]",
+                cell: (asset) => <KnowledgeLinkedPursuitsCell asset={asset} />,
+              },
+              {
+                key: "actions",
+                header: "Last updated",
+                className: "min-w-[12rem]",
+                cell: (asset) => (
+                  <KnowledgeActionsCell
+                    allowManageKnowledge={allowManageKnowledge}
+                    asset={asset}
+                    previewHref={buildKnowledgeLibraryHref(
+                      snapshot.query,
+                      viewState,
+                      {
+                        previewAssetId: asset.id,
+                      },
+                    )}
+                  />
+                ),
+              },
+            ]}
+            emptyState={
+              <EmptyState
+                action={
+                  <Link
+                    className="inline-flex rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
+                    href={resetHref}
+                  >
+                    Reset the library view
+                  </Link>
+                }
+                message="Create a reusable knowledge asset or clear the current filters to restore the full strategic library."
+                title="No knowledge assets match the current view"
+              />
+            }
+            getRowKey={(asset) => asset.id}
+            rows={snapshot.results}
+            selectedRowId={selectedAsset?.id ?? null}
+          />
+        </section>
+
+        {selectedAsset ? (
+          <PreviewPanel
+            actions={
+              <>
+                <KnowledgeCopyButton
+                  label="Copy reusable content"
+                  text={selectedAsset.body}
+                />
+                {allowManageKnowledge ? (
+                  <Link
+                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-border-strong hover:bg-surface-muted"
+                    href={`/knowledge/${selectedAsset.id}/edit`}
+                  >
+                    Edit asset
+                  </Link>
+                ) : null}
+              </>
+            }
+            className="xl:sticky xl:top-24"
+            description={
+              selectedAsset.summary ??
+              "Reusable content, structured retrieval coverage, and linked pursuits remain visible here while you browse."
+            }
+            eyebrow="Selected asset"
+            metadata={buildPreviewMetadata(selectedAsset)}
+            title={selectedAsset.title}
           >
-            Clear filters
+            <PreviewSection title="Reusable content">
+              <div className="rounded-[20px] border border-border bg-surface-strong px-4 py-4 text-sm leading-7 whitespace-pre-wrap text-foreground">
+                {selectedAsset.body}
+              </div>
+            </PreviewSection>
+
+            <PreviewSection title="Structured coverage">
+              <div className="space-y-3">
+                <CoverageList
+                  emptyLabel="No agency coverage tagged"
+                  label="Agencies"
+                  values={selectedAsset.facets.agencies}
+                />
+                <CoverageList
+                  emptyLabel="No capability coverage tagged"
+                  label="Capabilities"
+                  values={selectedAsset.facets.capabilities}
+                />
+                <CoverageList
+                  emptyLabel="No contract type coverage tagged"
+                  label="Contract types"
+                  values={selectedAsset.facets.contractTypes}
+                />
+                <CoverageList
+                  emptyLabel="No vehicle coverage tagged"
+                  label="Vehicles"
+                  values={selectedAsset.facets.vehicles}
+                />
+                <CoverageList
+                  emptyLabel="No freeform tags"
+                  label="Freeform tags"
+                  values={selectedAsset.tags}
+                />
+              </div>
+            </PreviewSection>
+
+            <PreviewSection title="Linked pursuits">
+              {selectedAsset.linkedOpportunities.length > 0 ? (
+                <div className="space-y-3">
+                  {selectedAsset.linkedOpportunities.map((opportunity) => (
+                    <article
+                      className="rounded-[20px] border border-border bg-surface-strong px-4 py-4"
+                      key={opportunity.id}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <Link
+                          className="font-medium text-foreground underline-offset-4 hover:underline"
+                          href={`/opportunities/${opportunity.id}`}
+                        >
+                          {opportunity.title}
+                        </Link>
+                        <Badge tone="muted">
+                          {opportunity.currentStageLabel}
+                        </Badge>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm leading-6 text-muted">
+                  This asset is not linked to a tracked pursuit yet.
+                </p>
+              )}
+            </PreviewSection>
+          </PreviewPanel>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function KnowledgeFilterRail({
+  idPrefix,
+  query,
+  resetHref,
+  snapshot,
+  viewState,
+}: {
+  idPrefix: string;
+  query: KnowledgeAssetListQuery;
+  resetHref: string;
+  snapshot: KnowledgeLibrarySnapshot;
+  viewState: KnowledgeLibraryViewState;
+}) {
+  return (
+    <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+      <div className="space-y-2">
+        <p className="text-muted text-xs tracking-[0.22em] uppercase">
+          Filter rail
+        </p>
+        <h2 className="font-heading text-xl font-semibold tracking-[-0.03em] text-foreground">
+          Refine the library
+        </h2>
+        <p className="text-sm leading-6 text-muted">
+          Keep search and structured filters close by, then jump between the
+          densest agency, capability, contract-type, and vehicle slices without
+          leaving the queue.
+        </p>
+      </div>
+
+      <form action="/knowledge" className="mt-5 space-y-4">
+        <FormField
+          hint="Matches asset title, summary, body text, tags, and linked pursuit titles."
+          htmlFor={`${idPrefix}-knowledge-query`}
+          label="Search"
+        >
+          <Input
+            defaultValue={query.query ?? ""}
+            id={`${idPrefix}-knowledge-query`}
+            name="q"
+            placeholder="Search knowledge assets"
+            type="search"
+          />
+        </FormField>
+
+        <FormField htmlFor={`${idPrefix}-knowledge-type`} label="Asset type">
+          <Select
+            defaultValue={query.assetType ?? ""}
+            id={`${idPrefix}-knowledge-type`}
+            name="type"
+          >
+            <option value="">All asset types</option>
+            {snapshot.filterOptions.assetTypes.map((assetType) => (
+              <option key={assetType.value} value={assetType.value}>
+                {assetType.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField htmlFor={`${idPrefix}-knowledge-tag`} label="Tag">
+          <Select
+            defaultValue={query.tag ?? ""}
+            id={`${idPrefix}-knowledge-tag`}
+            name="tag"
+          >
+            <option value="">All tags</option>
+            {snapshot.filterOptions.tags.map((tag) => (
+              <option key={tag.value} value={tag.value}>
+                {tag.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField htmlFor={`${idPrefix}-knowledge-agency`} label="Agency">
+          <Select
+            defaultValue={query.agencyId ?? ""}
+            id={`${idPrefix}-knowledge-agency`}
+            name="agency"
+          >
+            <option value="">All agencies</option>
+            {snapshot.filterOptions.agencies.map((agency) => (
+              <option key={agency.value} value={agency.value}>
+                {agency.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField
+          htmlFor={`${idPrefix}-knowledge-capability`}
+          label="Capability"
+        >
+          <Select
+            defaultValue={query.capabilityKey ?? ""}
+            id={`${idPrefix}-knowledge-capability`}
+            name="capability"
+          >
+            <option value="">All capabilities</option>
+            {snapshot.filterOptions.capabilities.map((capability) => (
+              <option key={capability.value} value={capability.value}>
+                {capability.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField
+          htmlFor={`${idPrefix}-knowledge-contract-type`}
+          label="Contract type"
+        >
+          <Select
+            defaultValue={query.contractType ?? ""}
+            id={`${idPrefix}-knowledge-contract-type`}
+            name="contractType"
+          >
+            <option value="">All contract types</option>
+            {snapshot.filterOptions.contractTypes.map((contractType) => (
+              <option key={contractType.value} value={contractType.value}>
+                {contractType.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField htmlFor={`${idPrefix}-knowledge-vehicle`} label="Vehicle">
+          <Select
+            defaultValue={query.vehicleCode ?? ""}
+            id={`${idPrefix}-knowledge-vehicle`}
+            name="vehicle"
+          >
+            <option value="">All vehicles</option>
+            {snapshot.filterOptions.vehicles.map((vehicle) => (
+              <option key={vehicle.value} value={vehicle.value}>
+                {vehicle.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField
+          htmlFor={`${idPrefix}-knowledge-opportunity`}
+          label="Linked pursuit"
+        >
+          <Select
+            defaultValue={query.opportunityId ?? ""}
+            id={`${idPrefix}-knowledge-opportunity`}
+            name="opportunity"
+          >
+            <option value="">All linked pursuits</option>
+            {snapshot.filterOptions.opportunities.map((opportunity) => (
+              <option key={opportunity.value} value={opportunity.value}>
+                {opportunity.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <div className="space-y-3">
+          <button
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
+            type="submit"
+          >
+            Apply filters
+          </button>
+          <Link
+            className="inline-flex min-h-10 w-full items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-border-strong hover:bg-surface-muted"
+            href={resetHref}
+          >
+            Clear all filters
           </Link>
         </div>
+      </form>
 
-        <form
-          action="/knowledge"
-          className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4"
-        >
-          <FormField
-            hint="Matches title, summary, body text, tags, and linked opportunity titles."
-            htmlFor="knowledge-query"
-            label="Search"
-          >
-            <Input
-              defaultValue={snapshot.query.query ?? ""}
-              id="knowledge-query"
-              name="q"
-              placeholder="Search reusable content"
-              type="search"
-            />
-          </FormField>
-
-          <FormField htmlFor="knowledge-type" label="Asset type">
-            <Select
-              defaultValue={snapshot.query.assetType ?? ""}
-              id="knowledge-type"
-              name="type"
-            >
-              <option value="">All asset types</option>
-              {snapshot.filterOptions.assetTypes.map((assetType) => (
-                <option key={assetType.value} value={assetType.value}>
-                  {assetType.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <FormField htmlFor="knowledge-tag" label="Tag">
-            <Select
-              defaultValue={snapshot.query.tag ?? ""}
-              id="knowledge-tag"
-              name="tag"
-            >
-              <option value="">All tags</option>
-              {snapshot.filterOptions.tags.map((tag) => (
-                <option key={tag.value} value={tag.value}>
-                  {tag.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <FormField htmlFor="knowledge-agency" label="Agency">
-            <Select
-              defaultValue={snapshot.query.agencyId ?? ""}
-              id="knowledge-agency"
-              name="agency"
-            >
-              <option value="">All agencies</option>
-              {snapshot.filterOptions.agencies.map((agency) => (
-                <option key={agency.value} value={agency.value}>
-                  {agency.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <FormField htmlFor="knowledge-capability" label="Capability">
-            <Select
-              defaultValue={snapshot.query.capabilityKey ?? ""}
-              id="knowledge-capability"
-              name="capability"
-            >
-              <option value="">All capabilities</option>
-              {snapshot.filterOptions.capabilities.map((capability) => (
-                <option key={capability.value} value={capability.value}>
-                  {capability.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <FormField htmlFor="knowledge-contract-type" label="Contract type">
-            <Select
-              defaultValue={snapshot.query.contractType ?? ""}
-              id="knowledge-contract-type"
-              name="contractType"
-            >
-              <option value="">All contract types</option>
-              {snapshot.filterOptions.contractTypes.map((contractType) => (
-                <option key={contractType.value} value={contractType.value}>
-                  {contractType.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <FormField htmlFor="knowledge-vehicle" label="Vehicle">
-            <Select
-              defaultValue={snapshot.query.vehicleCode ?? ""}
-              id="knowledge-vehicle"
-              name="vehicle"
-            >
-              <option value="">All vehicles</option>
-              {snapshot.filterOptions.vehicles.map((vehicle) => (
-                <option key={vehicle.value} value={vehicle.value}>
-                  {vehicle.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <FormField htmlFor="knowledge-opportunity" label="Linked opportunity">
-            <Select
-              defaultValue={snapshot.query.opportunityId ?? ""}
-              id="knowledge-opportunity"
-              name="opportunity"
-            >
-              <option value="">All linked opportunities</option>
-              {snapshot.filterOptions.opportunities.map((opportunity) => (
-                <option key={opportunity.value} value={opportunity.value}>
-                  {opportunity.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
-          <div className="flex items-end xl:col-span-4">
-            <button
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-              type="submit"
-            >
-              Apply filters
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section className="space-y-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Results
-            </p>
-            <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-              {snapshot.totalCount === 1
-                ? "1 knowledge asset"
-                : `${snapshot.totalCount} knowledge assets`}
-            </h2>
-          </div>
-
-          {snapshot.availableFilterCount > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {buildActiveFilterBadges(snapshot).map((badge) => (
-                <Badge key={badge}>{badge}</Badge>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <DataTable
-          ariaLabel="Knowledge asset results"
-          columns={[
-            {
-              key: "asset",
-              header: "Asset",
-              cell: (asset) => (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge>
-                      {KNOWLEDGE_ASSET_TYPE_LABELS[asset.assetType]}
-                    </Badge>
-                    {asset.tags.map((tag) => (
-                      <Badge key={tag} tone="muted">
-                        {tag}
-                      </Badge>
-                    ))}
-                    {asset.facets.agencies.map((agency) => (
-                      <Badge key={`${asset.id}-${agency}`} tone="accent">
-                        {agency}
-                      </Badge>
-                    ))}
-                    {asset.facets.capabilities.map((capability) => (
-                      <Badge key={`${asset.id}-${capability}`} tone="warning">
-                        {capability}
-                      </Badge>
-                    ))}
-                    {asset.facets.contractTypes.map((contractType) => (
-                      <Badge key={`${asset.id}-${contractType}`} tone="muted">
-                        {contractType}
-                      </Badge>
-                    ))}
-                    {asset.facets.vehicles.map((vehicle) => (
-                      <Badge key={`${asset.id}-${vehicle}`} tone="accent">
-                        {vehicle}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-foreground font-medium">{asset.title}</p>
-                    {asset.summary ? (
-                      <p className="text-muted text-sm leading-6">
-                        {asset.summary}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              ),
-            },
-            {
-              key: "content",
-              header: "Reusable content",
-              cell: (asset) => (
-                <p className="text-muted text-sm leading-6">
-                  {asset.bodyPreview}
-                </p>
-              ),
-            },
-            {
-              key: "opportunities",
-              header: "Linked opportunities",
-              cell: (asset) =>
-                asset.linkedOpportunities.length > 0 ? (
-                  <div className="space-y-2">
-                    {asset.linkedOpportunities.map((opportunity) => (
-                      <div key={opportunity.id} className="space-y-1">
-                        <p className="text-foreground font-medium">
-                          {opportunity.title}
-                        </p>
-                        <p className="text-muted text-xs">
-                          {opportunity.currentStageLabel}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted text-sm">
-                    Not linked to a tracked pursuit yet.
-                  </p>
-                ),
-            },
-            {
-              key: "updated",
-              header: "Updated",
-              cell: (asset) => (
-                <div className="space-y-2">
-                  <p className="text-foreground font-medium">
-                    {formatUtcDate(asset.updatedAt)}
-                  </p>
-                  <p className="text-muted text-xs">
-                    {asset.updatedByLabel
-                      ? `Last updated by ${asset.updatedByLabel}`
-                      : "Updater unavailable"}
-                  </p>
-                  {allowManageKnowledge ? (
-                    <Link
-                      className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-                      href={`/knowledge/${asset.id}/edit`}
-                    >
-                      Edit asset
-                    </Link>
-                  ) : null}
-                </div>
-              ),
-            },
-          ]}
-          emptyState={
-            <EmptyState
-              message="Create a reusable knowledge asset or clear the filters to restore the full library."
-              title="No knowledge assets match the current view"
-            />
-          }
-          getRowKey={(asset) => asset.id}
-          rows={snapshot.results}
+      <div className="mt-6 space-y-5 border-border border-t pt-5">
+        <TaxonomyShortcutSection
+          activeValue={query.agencyId}
+          description="Jump straight into the agencies already represented in the workspace."
+          emptyMessage="No agencies are available in this workspace."
+          field="agencyId"
+          options={snapshot.filterOptions.agencies}
+          query={query}
+          title="Agency coverage"
+          viewState={viewState}
         />
-      </section>
+        <TaxonomyShortcutSection
+          activeValue={query.capabilityKey}
+          description="Use capability slices to line up reusable narratives with the active pursuit gap."
+          emptyMessage="No capabilities are configured yet."
+          field="capabilityKey"
+          options={snapshot.filterOptions.capabilities}
+          query={query}
+          title="Capabilities"
+          viewState={viewState}
+        />
+        <TaxonomyShortcutSection
+          activeValue={query.contractType}
+          description="Pull up assets already tagged for the contract posture you are working."
+          emptyMessage="No contract types have been observed yet."
+          field="contractType"
+          options={snapshot.filterOptions.contractTypes}
+          query={query}
+          title="Contract types"
+          viewState={viewState}
+        />
+        <TaxonomyShortcutSection
+          activeValue={query.vehicleCode}
+          description="Move directly into the vehicles where reusable language has already proven useful."
+          emptyMessage="No vehicles are available in this workspace."
+          field="vehicleCode"
+          options={snapshot.filterOptions.vehicles}
+          query={query}
+          title="Vehicles"
+          viewState={viewState}
+        />
+      </div>
     </section>
+  );
+}
+
+function TaxonomyShortcutSection({
+  activeValue,
+  description,
+  emptyMessage,
+  field,
+  options,
+  query,
+  title,
+  viewState,
+}: {
+  activeValue: string | null;
+  description: string;
+  emptyMessage: string;
+  field: "agencyId" | "capabilityKey" | "contractType" | "vehicleCode";
+  options: KnowledgeFacetOption[];
+  query: KnowledgeAssetListQuery;
+  title: string;
+  viewState: KnowledgeLibraryViewState;
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold tracking-[0.02em] text-foreground">
+          {title}
+        </h3>
+        <p className="text-sm leading-6 text-muted">{description}</p>
+      </div>
+
+      {options.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {options.map((option) => {
+            const nextValue = activeValue === option.value ? null : option.value;
+
+            return (
+              <Link
+                aria-current={activeValue === option.value ? "page" : undefined}
+                className={
+                  activeValue === option.value
+                    ? "inline-flex min-h-9 items-center rounded-[var(--radius-pill)] border border-accent bg-accent-soft px-3 py-2 text-sm font-medium text-foreground"
+                    : "inline-flex min-h-9 items-center rounded-[var(--radius-pill)] border border-border bg-surface-strong px-3 py-2 text-sm text-muted transition hover:border-border-strong hover:text-foreground"
+                }
+                href={buildKnowledgeLibraryHref(query, viewState, {
+                  [field]: nextValue,
+                  previewAssetId: null,
+                })}
+                key={option.value}
+                title={option.description ?? option.label}
+              >
+                {option.label}
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-sm leading-6 text-muted">{emptyMessage}</p>
+      )}
+    </section>
+  );
+}
+
+function KnowledgeAssetCell({ asset }: { asset: KnowledgeAssetSummary }) {
+  const hiddenTagCount = Math.max(asset.tags.length - 2, 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <Badge>{KNOWLEDGE_ASSET_TYPE_LABELS[asset.assetType]}</Badge>
+        {asset.tags.slice(0, 2).map((tag) => (
+          <Badge key={`${asset.id}-${tag}`} tone="muted">
+            {tag}
+          </Badge>
+        ))}
+        {hiddenTagCount > 0 ? (
+          <Badge tone="muted">+{hiddenTagCount} more tags</Badge>
+        ) : null}
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="font-medium text-foreground">{asset.title}</p>
+        <p className="text-sm leading-6 text-muted">
+          {asset.summary ?? asset.bodyPreview}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function KnowledgeCoverageCell({ asset }: { asset: KnowledgeAssetSummary }) {
+  return (
+    <div className="space-y-2">
+      <CoverageSummaryLine
+        emptyLabel="No agency coverage"
+        label="Agencies"
+        values={asset.facets.agencies}
+      />
+      <CoverageSummaryLine
+        emptyLabel="No capability coverage"
+        label="Capabilities"
+        values={asset.facets.capabilities}
+      />
+      <CoverageSummaryLine
+        emptyLabel="No contract types"
+        label="Contract types"
+        values={asset.facets.contractTypes}
+      />
+      <CoverageSummaryLine
+        emptyLabel="No vehicles"
+        label="Vehicles"
+        values={asset.facets.vehicles}
+      />
+    </div>
+  );
+}
+
+function KnowledgeLinkedPursuitsCell({
+  asset,
+}: {
+  asset: KnowledgeAssetSummary;
+}) {
+  if (asset.linkedOpportunities.length === 0) {
+    return (
+      <p className="text-sm leading-6 text-muted">
+        Not linked to a tracked pursuit yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {asset.linkedOpportunities.map((opportunity) => (
+        <div key={opportunity.id} className="space-y-1">
+          <p className="font-medium text-foreground">{opportunity.title}</p>
+          <p className="text-xs text-muted">{opportunity.currentStageLabel}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function KnowledgeActionsCell({
+  allowManageKnowledge,
+  asset,
+  previewHref,
+}: {
+  allowManageKnowledge: boolean;
+  asset: KnowledgeAssetSummary;
+  previewHref: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="font-medium text-foreground">{formatUtcDate(asset.updatedAt)}</p>
+      <p className="text-xs text-muted">
+        {asset.updatedByLabel
+          ? `Last updated by ${asset.updatedByLabel}`
+          : "Updater unavailable"}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+          href={previewHref}
+        >
+          Preview asset
+        </Link>
+        {allowManageKnowledge ? (
+          <Link
+            className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
+            href={`/knowledge/${asset.id}/edit`}
+          >
+            Edit
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PreviewSection({
+  children,
+  title,
+}: {
+  children: ReactNode;
+  title: string;
+}) {
+  return (
+    <section className="space-y-3">
+      <h3 className="text-sm font-semibold tracking-[0.02em] text-foreground">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function CoverageList({
+  emptyLabel,
+  label,
+  values,
+}: {
+  emptyLabel: string;
+  label: string;
+  values: string[];
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-muted uppercase">
+        {label}
+      </p>
+      {values.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {values.map((value) => (
+            <Badge key={`${label}-${value}`} tone="muted">
+              {value}
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm leading-6 text-muted">{emptyLabel}</p>
+      )}
+    </div>
+  );
+}
+
+function CoverageSummaryLine({
+  emptyLabel,
+  label,
+  values,
+}: {
+  emptyLabel: string;
+  label: string;
+  values: string[];
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-muted uppercase">
+        {label}
+      </p>
+      <p className="text-sm leading-6 text-foreground">
+        {values.length > 0 ? values.join(", ") : emptyLabel}
+      </p>
+    </div>
   );
 }
 
@@ -451,62 +898,233 @@ function Banner({
   );
 }
 
-function buildActiveFilterBadges(snapshot: KnowledgeLibrarySnapshot) {
-  const badges: string[] = [];
+function buildAssetViewItems(
+  snapshot: KnowledgeLibrarySnapshot,
+  viewState: KnowledgeLibraryViewState,
+): SavedViewControlItem[] {
+  return [
+    {
+      active: snapshot.query.assetType == null,
+      href: buildKnowledgeLibraryHref(snapshot.query, viewState, {
+        assetType: null,
+        previewAssetId: null,
+      }),
+      label: "All assets",
+    },
+    ...KNOWLEDGE_ASSET_TYPES.map((assetType) => ({
+      active: snapshot.query.assetType === assetType,
+      href: buildKnowledgeLibraryHref(snapshot.query, viewState, {
+        assetType,
+        previewAssetId: null,
+      }),
+      label: KNOWLEDGE_ASSET_TYPE_LABELS[assetType],
+    })),
+  ];
+}
+
+function buildActiveFilterChips(
+  snapshot: KnowledgeLibrarySnapshot,
+  viewState: KnowledgeLibraryViewState,
+): ActiveFilterChip[] {
+  const chips: ActiveFilterChip[] = [];
 
   if (snapshot.query.query) {
-    badges.push(`Search: ${snapshot.query.query}`);
+    chips.push({
+      href: buildKnowledgeLibraryHref(snapshot.query, viewState, {
+        previewAssetId: null,
+        query: null,
+      }),
+      label: `Search: ${snapshot.query.query}`,
+    });
   }
 
   if (snapshot.query.assetType) {
-    badges.push(KNOWLEDGE_ASSET_TYPE_LABELS[snapshot.query.assetType]);
+    chips.push({
+      href: buildKnowledgeLibraryHref(snapshot.query, viewState, {
+        assetType: null,
+        previewAssetId: null,
+      }),
+      label: KNOWLEDGE_ASSET_TYPE_LABELS[snapshot.query.assetType],
+    });
   }
 
   if (snapshot.query.tag) {
-    badges.push(`Tag: ${snapshot.query.tag}`);
+    chips.push({
+      href: buildKnowledgeLibraryHref(snapshot.query, viewState, {
+        previewAssetId: null,
+        tag: null,
+      }),
+      label: `Tag: ${snapshot.query.tag}`,
+    });
   }
 
   if (snapshot.query.agencyId) {
-    const agencyLabel =
-      snapshot.filterOptions.agencies.find(
-        (agency) => agency.value === snapshot.query.agencyId,
-      )?.label ?? snapshot.query.agencyId;
-    badges.push(`Agency: ${agencyLabel}`);
+    chips.push({
+      href: buildKnowledgeLibraryHref(snapshot.query, viewState, {
+        agencyId: null,
+        previewAssetId: null,
+      }),
+      label: `Agency: ${resolveOptionLabel(
+        snapshot.filterOptions.agencies,
+        snapshot.query.agencyId,
+      )}`,
+    });
   }
 
   if (snapshot.query.capabilityKey) {
-    const capabilityLabel =
-      snapshot.filterOptions.capabilities.find(
-        (capability) => capability.value === snapshot.query.capabilityKey,
-      )?.label ?? snapshot.query.capabilityKey;
-    badges.push(`Capability: ${capabilityLabel}`);
+    chips.push({
+      href: buildKnowledgeLibraryHref(snapshot.query, viewState, {
+        capabilityKey: null,
+        previewAssetId: null,
+      }),
+      label: `Capability: ${resolveOptionLabel(
+        snapshot.filterOptions.capabilities,
+        snapshot.query.capabilityKey,
+      )}`,
+    });
   }
 
   if (snapshot.query.contractType) {
-    const contractTypeLabel =
-      snapshot.filterOptions.contractTypes.find(
-        (contractType) => contractType.value === snapshot.query.contractType,
-      )?.label ?? snapshot.query.contractType;
-    badges.push(`Contract type: ${contractTypeLabel}`);
+    chips.push({
+      href: buildKnowledgeLibraryHref(snapshot.query, viewState, {
+        contractType: null,
+        previewAssetId: null,
+      }),
+      label: `Contract type: ${resolveOptionLabel(
+        snapshot.filterOptions.contractTypes,
+        snapshot.query.contractType,
+      )}`,
+    });
   }
 
   if (snapshot.query.opportunityId) {
-    const opportunityLabel =
-      snapshot.filterOptions.opportunities.find(
-        (opportunity) => opportunity.value === snapshot.query.opportunityId,
-      )?.label ?? snapshot.query.opportunityId;
-    badges.push(`Opportunity: ${opportunityLabel}`);
+    chips.push({
+      href: buildKnowledgeLibraryHref(snapshot.query, viewState, {
+        opportunityId: null,
+        previewAssetId: null,
+      }),
+      label: `Pursuit: ${
+        snapshot.filterOptions.opportunities.find(
+          (opportunity) => opportunity.value === snapshot.query.opportunityId,
+        )?.label ?? snapshot.query.opportunityId
+      }`,
+    });
   }
 
   if (snapshot.query.vehicleCode) {
-    const vehicleLabel =
-      snapshot.filterOptions.vehicles.find(
-        (vehicle) => vehicle.value === snapshot.query.vehicleCode,
-      )?.label ?? snapshot.query.vehicleCode;
-    badges.push(`Vehicle: ${vehicleLabel}`);
+    chips.push({
+      href: buildKnowledgeLibraryHref(snapshot.query, viewState, {
+        previewAssetId: null,
+        vehicleCode: null,
+      }),
+      label: `Vehicle: ${resolveOptionLabel(
+        snapshot.filterOptions.vehicles,
+        snapshot.query.vehicleCode,
+      )}`,
+    });
   }
 
-  return badges;
+  return chips;
+}
+
+function buildKnowledgeLibraryHref(
+  query: KnowledgeAssetListQuery,
+  viewState: KnowledgeLibraryViewState,
+  overrides: Partial<KnowledgeAssetListQuery> & {
+    previewAssetId?: string | null;
+  },
+) {
+  const nextQuery = {
+    ...query,
+    ...overrides,
+  };
+  const nextPreviewAssetId =
+    overrides.previewAssetId === undefined
+      ? viewState.previewAssetId
+      : overrides.previewAssetId;
+  const params = new URLSearchParams();
+
+  if (nextQuery.query) {
+    params.set("q", nextQuery.query);
+  }
+
+  if (nextQuery.assetType) {
+    params.set("type", nextQuery.assetType);
+  }
+
+  if (nextQuery.tag) {
+    params.set("tag", nextQuery.tag);
+  }
+
+  if (nextQuery.agencyId) {
+    params.set("agency", nextQuery.agencyId);
+  }
+
+  if (nextQuery.capabilityKey) {
+    params.set("capability", nextQuery.capabilityKey);
+  }
+
+  if (nextQuery.contractType) {
+    params.set("contractType", nextQuery.contractType);
+  }
+
+  if (nextQuery.opportunityId) {
+    params.set("opportunity", nextQuery.opportunityId);
+  }
+
+  if (nextQuery.vehicleCode) {
+    params.set("vehicle", nextQuery.vehicleCode);
+  }
+
+  if (nextPreviewAssetId) {
+    params.set("preview", nextPreviewAssetId);
+  }
+
+  const queryString = params.toString();
+  return queryString ? `/knowledge?${queryString}` : "/knowledge";
+}
+
+function buildPreviewMetadata(
+  asset: KnowledgeAssetSummary,
+): PreviewPanelMetadataItem[] {
+  return [
+    {
+      label: "Asset type",
+      value: KNOWLEDGE_ASSET_TYPE_LABELS[asset.assetType],
+    },
+    {
+      label: "Updated",
+      value: formatUtcDate(asset.updatedAt),
+    },
+    {
+      label: "Updated by",
+      value: asset.updatedByLabel ?? "Unknown actor",
+    },
+    {
+      label: "Linked pursuits",
+      value: String(asset.linkedOpportunities.length),
+    },
+    {
+      label: "Structured facets",
+      value: String(
+        asset.facets.agencies.length +
+          asset.facets.capabilities.length +
+          asset.facets.contractTypes.length +
+          asset.facets.vehicles.length,
+      ),
+    },
+    {
+      label: "Freeform tags",
+      value: String(asset.tags.length),
+    },
+  ];
+}
+
+function resolveOptionLabel(
+  options: KnowledgeFacetOption[],
+  value: string,
+) {
+  return options.find((option) => option.value === value)?.label ?? value;
 }
 
 function formatUtcDate(value: string) {

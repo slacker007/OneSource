@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { KnowledgeLibrary } from "./knowledge-library";
@@ -72,6 +72,8 @@ const snapshot: KnowledgeLibrarySnapshot = {
       assetType: "WIN_THEME",
       title: "Army cloud transition win theme",
       summary: "Reusable transition-risk narrative.",
+      body:
+        "Reusable transition-risk narrative that explains how to stabilize the environment while preserving mission continuity.",
       bodyPreview: "Reusable transition-risk narrative.",
       facets: {
         agencies: ["Army PEO EIS (W52P1J)"],
@@ -98,12 +100,15 @@ const snapshot: KnowledgeLibrarySnapshot = {
 };
 
 describe("KnowledgeLibrary", () => {
-  it("renders filterable knowledge assets with linked opportunities", () => {
+  it("renders a preview-first knowledge browser with linked opportunities", () => {
     render(
       <KnowledgeLibrary
         allowManageKnowledge
         notice={null}
         snapshot={snapshot}
+        viewState={{
+          previewAssetId: "asset_army",
+        }}
       />,
     );
 
@@ -116,15 +121,59 @@ describe("KnowledgeLibrary", () => {
     expect(
       screen.getByRole("table", { name: /knowledge asset results/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/^selected asset$/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/army cloud transition win theme/i),
+      screen.getByRole("button", { name: /copy reusable content/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/army cloud transition win theme/i).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.getAllByText(/army cloud operations recompete/i).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByText(/cloud operations/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/army peo eis/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/oasis-plus-unr/i).length).toBeGreaterThan(0);
+
+    const previewHeading = within(
+      screen.getByText(/^selected asset$/i).closest("aside") as HTMLElement,
+    ).getByRole("heading", {
+      name: /army cloud transition win theme/i,
+    });
+    expect(previewHeading).toBeInTheDocument();
+  });
+
+  it("honors the requested preview asset when the URL selects a row", () => {
+    render(
+      <KnowledgeLibrary
+        allowManageKnowledge
+        notice={null}
+        snapshot={{
+          ...snapshot,
+          results: [
+            snapshot.results[0],
+            {
+              ...snapshot.results[0],
+              id: "asset_second",
+              title: "VA intake boilerplate",
+              assetType: "BOILERPLATE_CONTENT",
+              body: "Reusable VA intake boilerplate body.",
+              bodyPreview: "Reusable VA intake boilerplate body.",
+            },
+          ],
+        }}
+        viewState={{
+          previewAssetId: "asset_second",
+        }}
+      />,
+    );
+
+    const previewHeading = within(
+      screen.getByText(/^selected asset$/i).closest("aside") as HTMLElement,
+    ).getByRole("heading", {
+      name: /va intake boilerplate/i,
+    });
+    expect(previewHeading).toBeInTheDocument();
   });
 
   it("renders a truthful empty state when filters exclude every asset", () => {
@@ -137,6 +186,9 @@ describe("KnowledgeLibrary", () => {
           results: [],
           totalCount: 0,
         }}
+        viewState={{
+          previewAssetId: null,
+        }}
       />,
     );
 
@@ -145,7 +197,7 @@ describe("KnowledgeLibrary", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /create a reusable knowledge asset or clear the filters to restore the full library/i,
+        /create a reusable knowledge asset or clear the current filters to restore the full strategic library/i,
       ),
     ).toBeInTheDocument();
   });
@@ -156,6 +208,9 @@ describe("KnowledgeLibrary", () => {
         allowManageKnowledge
         notice={null}
         snapshot={null}
+        viewState={{
+          previewAssetId: null,
+        }}
       />,
     );
 

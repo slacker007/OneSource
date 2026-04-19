@@ -1,4 +1,7 @@
-import { KnowledgeLibrary } from "@/components/knowledge/knowledge-library";
+import {
+  KnowledgeLibrary,
+  type KnowledgeLibraryViewState,
+} from "@/components/knowledge/knowledge-library";
 import { requireAuthenticatedAppSession } from "@/lib/auth/authorization";
 import { hasAppPermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
@@ -23,6 +26,9 @@ export default async function KnowledgePage({
     organizationId: session.user.organizationId,
     searchParams: resolvedSearchParams,
   });
+  const viewState: KnowledgeLibraryViewState = {
+    previewAssetId: readSingleSearchParam(resolvedSearchParams?.preview),
+  };
 
   return (
     <KnowledgeLibrary
@@ -41,6 +47,7 @@ export default async function KnowledgePage({
           : null
       }
       snapshot={snapshot}
+      viewState={viewState}
     />
   );
 }

@@ -544,6 +544,7 @@ export async function getKnowledgeLibrarySnapshot({
       assetType: asset.assetType,
       title: asset.title,
       summary: asset.summary,
+      body: asset.body,
       bodyPreview: summarizeKnowledgeBody(asset.body, asset.summary),
       facets: {
         agencies: tagSummary.agencies.map((tag) => tag.label),
