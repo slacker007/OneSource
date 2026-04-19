@@ -856,6 +856,48 @@ test("users can update proposal tracking on an active proposal workspace", async
   await expect(page.getByText(/casey brooks/i).first()).toBeVisible();
 });
 
+test("desktop shell exposes grouped navigation, quick links, and recent work", async ({
+  page,
+}) => {
+  await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
+
+  await expect(page).toHaveURL(/\/$/);
+  const primaryNavigation = page.getByLabel("Primary navigation");
+  await expect(primaryNavigation.getByText(/^capture command$/i)).toBeVisible();
+  await expect(primaryNavigation.getByText(/^intelligence$/i)).toBeVisible();
+  await expect(page.getByText(/^quick links$/i).first()).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /collapse navigation rail/i }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: /^Knowledge/i }).click();
+  await expect(page).toHaveURL(/\/knowledge$/);
+  await expect(
+    page.getByRole("heading", { name: /knowledge library/i }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: /^Tasks/i }).click();
+  await expect(page).toHaveURL(/\/tasks$/);
+  await expect(
+    page.getByRole("heading", { name: /personal execution queue/i }),
+  ).toBeVisible();
+  await expect(page.getByText(/^recent work$/i)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /knowledge library/i }).last(),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: /collapse navigation rail/i }).click();
+  await expect(
+    page.getByRole("button", { name: /expand navigation rail/i }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: /create pursuit/i }).click();
+  await expect(page).toHaveURL(/\/opportunities\/new$/);
+  await expect(
+    page.getByRole("heading", { name: /create a tracked opportunity/i }),
+  ).toBeVisible();
+});
+
 test.describe("mobile navigation", () => {
   test.use({
     viewport: {
