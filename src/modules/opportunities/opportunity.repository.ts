@@ -19,6 +19,7 @@ import { buildOpportunityDocumentDownloadPath } from "./opportunity-document-sto
 import type {
   AgencySummary,
   BidDecisionOutcome,
+  DashboardAttentionItem,
   DecisionAnalyticsOutcomeSummary,
   DecisionAnalyticsSnapshot,
   DecisionConsoleItem,
@@ -31,6 +32,8 @@ import type {
   CompetitorSummary,
   ContractVehicleSummary,
   DashboardDeadlineSummary,
+  DashboardSourceActivitySummary,
+  DashboardTaskBurdenSummary,
   HomeDashboardSnapshot,
   PipelineConversionSummary,
   PipelineStageAgingSummary,
@@ -67,14 +70,12 @@ export const DEFAULT_ORGANIZATION_SLUG = "default-org";
 
 const UPCOMING_DEADLINE_WINDOW_DAYS = 30;
 const UPCOMING_DEADLINE_ITEM_LIMIT = 6;
+const DASHBOARD_ATTENTION_ITEM_LIMIT = 5;
+const DASHBOARD_SOURCE_ACTIVITY_LIMIT = 4;
+const DASHBOARD_TASK_BURDEN_OPPORTUNITY_LIMIT = 3;
 const TOP_OPPORTUNITY_LIMIT = 3;
 export const OPPORTUNITY_LIST_PAGE_SIZE = 4;
-const CLOSED_PIPELINE_STAGE_KEYS = [
-  "awarded",
-  "lost",
-  "no_bid",
-  "submitted",
-];
+const CLOSED_PIPELINE_STAGE_KEYS = ["awarded", "lost", "no_bid", "submitted"];
 const PIPELINE_PROGRESS_STAGE_KEYS = OPPORTUNITY_STAGE_DEFINITIONS.filter(
   (definition) => definition.key !== "no_bid",
 ).map((definition) => definition.key);
@@ -263,6 +264,35 @@ const organizationDashboardArgs = {
         supportsScheduledSync: true,
         supportsResultPreview: true,
         connectorVersion: true,
+      },
+    },
+    sourceSyncRuns: {
+      orderBy: {
+        requestedAt: "desc",
+      },
+      take: DASHBOARD_SOURCE_ACTIVITY_LIMIT,
+      select: {
+        id: true,
+        sourceSystem: true,
+        triggerType: true,
+        status: true,
+        recordsFetched: true,
+        recordsImported: true,
+        recordsFailed: true,
+        requestedAt: true,
+        completedAt: true,
+        savedSearch: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        connectorConfig: {
+          select: {
+            sourceDisplayName: true,
+            sourceSystemKey: true,
+          },
+        },
       },
     },
     opportunities: {
@@ -599,7 +629,11 @@ const opportunityWorkspaceArgs = {
       },
     },
     milestones: {
-      orderBy: [{ sortOrder: "asc" }, { targetDate: "asc" }, { createdAt: "asc" }],
+      orderBy: [
+        { sortOrder: "asc" },
+        { targetDate: "asc" },
+        { createdAt: "asc" },
+      ],
       select: {
         id: true,
         title: true,
@@ -882,37 +916,43 @@ const personalTaskBoardArgs = {
 
 export type OpportunityRepositoryClient = {
   organization: {
-    findUnique(args: {
-      where: {
-        slug: string;
-      };
-    } & typeof organizationDashboardArgs): Promise<OrganizationDashboardRecord | null>;
+    findUnique(
+      args: {
+        where: {
+          slug: string;
+        };
+      } & typeof organizationDashboardArgs,
+    ): Promise<OrganizationDashboardRecord | null>;
   };
 };
 
 export type OpportunityWorkspaceRepositoryClient = {
   opportunity: {
-    findFirst(args: {
-      where: {
-        id: string;
-        organization: {
-          slug: string;
+    findFirst(
+      args: {
+        where: {
+          id: string;
+          organization: {
+            slug: string;
+          };
         };
-      };
-    } & typeof opportunityWorkspaceArgs): Promise<OpportunityWorkspaceRecord | null>;
+      } & typeof opportunityWorkspaceArgs,
+    ): Promise<OpportunityWorkspaceRecord | null>;
   };
 };
 
 export type PersonalTaskBoardRepositoryClient = {
   user: {
-    findFirst(args: {
-      where: {
-        id: string;
-        organization: {
-          slug: string;
+    findFirst(
+      args: {
+        where: {
+          id: string;
+          organization: {
+            slug: string;
+          };
         };
-      };
-    } & typeof personalTaskBoardArgs): Promise<PersonalTaskBoardRecord | null>;
+      } & typeof personalTaskBoardArgs,
+    ): Promise<PersonalTaskBoardRecord | null>;
   };
 };
 
@@ -1046,8 +1086,7 @@ type OrganizationDashboardOpportunityRecord = {
     id: string;
     isCurrent: boolean;
     decisionTypeKey: string | null;
-    recommendationOutcome:
-      OpportunityBidDecisionSummary["recommendationOutcome"];
+    recommendationOutcome: OpportunityBidDecisionSummary["recommendationOutcome"];
     finalOutcome: OpportunityBidDecisionSummary["finalOutcome"];
     decidedAt: Date | null;
   }>;
@@ -1064,12 +1103,33 @@ type OrganizationDashboardOpportunityRecord = {
   };
 };
 
+type OrganizationDashboardSourceSyncRunRecord = {
+  id: string;
+  sourceSystem: string;
+  triggerType: DashboardSourceActivitySummary["triggerType"];
+  status: DashboardSourceActivitySummary["status"];
+  recordsFetched: number;
+  recordsImported: number;
+  recordsFailed: number;
+  requestedAt: Date;
+  completedAt: Date | null;
+  savedSearch: {
+    id: string;
+    name: string;
+  } | null;
+  connectorConfig: {
+    sourceDisplayName: string;
+    sourceSystemKey: string;
+  } | null;
+};
+
 export type OrganizationDashboardRecord = {
   id: string;
   name: string;
   slug: string;
   organizationProfile: OrganizationScoringProfileRecord;
   sourceConnectorConfigs: OrganizationDashboardConnectorRecord[];
+  sourceSyncRuns: OrganizationDashboardSourceSyncRunRecord[];
   opportunities: OrganizationDashboardOpportunityRecord[];
 };
 
@@ -1293,8 +1353,7 @@ export type OpportunityWorkspaceRecord = {
     id: string;
     isCurrent: boolean;
     decisionTypeKey: string | null;
-    recommendationOutcome:
-      OpportunityBidDecisionSummary["recommendationOutcome"];
+    recommendationOutcome: OpportunityBidDecisionSummary["recommendationOutcome"];
     finalOutcome: OpportunityBidDecisionSummary["finalOutcome"];
     recommendationSummary: string | null;
     finalRationale: string | null;
@@ -1334,13 +1393,15 @@ export type PersonalTaskBoardRecord = {
     name: string;
     slug: string;
   };
-  assignedOpportunityTasks: Array<OpportunityWorkspaceRecord["tasks"][number] & {
-    opportunity: {
-      id: string;
-      title: string;
-      currentStageLabel: string | null;
-    };
-  }>;
+  assignedOpportunityTasks: Array<
+    OpportunityWorkspaceRecord["tasks"][number] & {
+      opportunity: {
+        id: string;
+        title: string;
+        currentStageLabel: string | null;
+      };
+    }
+  >;
 };
 
 type GetHomeDashboardSnapshotParams = {
@@ -1376,12 +1437,7 @@ const opportunityListSearchParamsSchema = z.object({
     .optional()
     .transform(normalizeOptionalString),
   page: z.coerce.number().int().min(1).max(999).optional().default(1),
-  q: z
-    .string()
-    .trim()
-    .max(160)
-    .optional()
-    .transform(normalizeOptionalString),
+  q: z.string().trim().max(160).optional().transform(normalizeOptionalString),
   sort: z.enum(OPPORTUNITY_LIST_SORTS).optional().default("updated_desc"),
   source: z
     .string()
@@ -1448,13 +1504,18 @@ export async function getHomeDashboardSnapshot({
         referenceDate: now,
       }),
   );
-  const connectors: SourceConnectorSummary[] = record.sourceConnectorConfigs.map(
-    (connector) => mapConnectorSummary(connector),
-  );
+  const connectors: SourceConnectorSummary[] =
+    record.sourceConnectorConfigs.map((connector) =>
+      mapConnectorSummary(connector),
+    );
   const activeOpportunities = opportunities.filter(isActivePipelineOpportunity);
   const opportunitiesForAction =
     activeOpportunities.length > 0 ? activeOpportunities : opportunities;
   const upcomingDeadlines = buildUpcomingDeadlines({
+    opportunities: opportunitiesForAction,
+    now,
+  });
+  const attentionQueue = buildDashboardAttentionQueue({
     opportunities: opportunitiesForAction,
     now,
   });
@@ -1465,6 +1526,10 @@ export async function getHomeDashboardSnapshot({
     opportunities: record.opportunities,
     now,
   });
+  const taskBurden = buildDashboardTaskBurdenSummary(opportunitiesForAction);
+  const recentSourceActivity = buildDashboardSourceActivity(
+    record.sourceSyncRuns,
+  );
 
   return {
     organization: {
@@ -1481,10 +1546,13 @@ export async function getHomeDashboardSnapshot({
     opportunitiesRequiringAttentionCount: opportunitiesForAction.filter(
       (opportunity) => requiresAttention(opportunity),
     ).length,
+    attentionQueue,
     stageSummaries: buildStageSummaries(opportunities),
     pipelineConversionSummaries,
     pipelineStageAgingSummaries,
     upcomingDeadlines,
+    taskBurden,
+    recentSourceActivity,
     topOpportunities: [...opportunitiesForAction]
       .sort(compareTopOpportunities)
       .slice(0, TOP_OPPORTUNITY_LIMIT),
@@ -1492,9 +1560,7 @@ export async function getHomeDashboardSnapshot({
 }
 
 export function parseDecisionConsoleSearchParams(
-  searchParams:
-    | Record<string, string | string[] | undefined>
-    | undefined,
+  searchParams: Record<string, string | string[] | undefined> | undefined,
 ): DecisionConsoleQuery {
   const parsed = decisionConsoleSearchParamsSchema.parse({
     ranking: getFirstSearchParamValue(searchParams?.ranking),
@@ -1533,10 +1599,14 @@ export async function getDecisionConsoleSnapshot({
   );
   const opportunitiesInScope =
     query.scope === "active"
-      ? opportunities.filter((opportunity) => opportunity.isActivePipelineOpportunity)
+      ? opportunities.filter(
+          (opportunity) => opportunity.isActivePipelineOpportunity,
+        )
       : opportunities;
   const rankedOpportunities = [...opportunitiesInScope]
-    .sort((left, right) => compareDecisionConsoleItems(left, right, query.ranking))
+    .sort((left, right) =>
+      compareDecisionConsoleItems(left, right, query.ranking),
+    )
     .map(stripDecisionConsoleWorkingFields);
   const decisionAnalytics = buildDecisionAnalyticsSnapshot({
     opportunities,
@@ -1595,9 +1665,7 @@ export async function getDecisionConsoleSnapshot({
 }
 
 export function parseOpportunityListSearchParams(
-  searchParams:
-    | Record<string, string | string[] | undefined>
-    | undefined,
+  searchParams: Record<string, string | string[] | undefined> | undefined,
 ): OpportunityListQuery {
   const parsed = opportunityListSearchParamsSchema.parse({
     agency: getFirstSearchParamValue(searchParams?.agency),
@@ -1748,7 +1816,8 @@ export async function getOpportunityWorkspaceSnapshot({
     record.bidDecisions.find((bidDecision) => bidDecision.isCurrent) ??
     record.bidDecisions[0];
   const currentCloseout =
-    record.closeouts.find((closeout) => closeout.isCurrent) ?? record.closeouts[0];
+    record.closeouts.find((closeout) => closeout.isCurrent) ??
+    record.closeouts[0];
 
   return {
     organization: {
@@ -2046,7 +2115,8 @@ function calculateOpportunityScorecard(
     opportunity: {
       id: opportunity.id,
       title: opportunity.title,
-      description: "description" in opportunity ? opportunity.description : null,
+      description:
+        "description" in opportunity ? opportunity.description : null,
       sourceSummaryText: opportunity.sourceSummaryText,
       responseDeadlineAt: toIsoString(opportunity.responseDeadlineAt),
       currentStageKey: opportunity.currentStageKey,
@@ -2211,7 +2281,9 @@ function resolveOpportunityScoringMetrics({
     recommendationOutcome: calculatedScorecard.recommendationOutcome,
     strategicValuePercent,
     riskPressurePercent:
-      riskConfidencePercent === null ? null : roundPercent(100 - riskConfidencePercent),
+      riskConfidencePercent === null
+        ? null
+        : roundPercent(100 - riskConfidencePercent),
   };
 }
 
@@ -2232,7 +2304,10 @@ function mapDecisionConsoleItem({
     referenceDate,
   });
   const bidDecision = mapBidDecisionSummary(opportunity.bidDecisions[0]);
-  const urgency = buildUrgencyMetrics(opportunity.responseDeadlineAt, referenceDate);
+  const urgency = buildUrgencyMetrics(
+    opportunity.responseDeadlineAt,
+    referenceDate,
+  );
   const recommendationOutcome =
     bidDecision?.recommendationOutcome ?? scoringMetrics.recommendationOutcome;
   const finalDecision = bidDecision?.finalOutcome ?? null;
@@ -2305,7 +2380,11 @@ function mapOpportunitySummary({
 }): OpportunitySummary {
   const calculatedScorecard = opportunity.scorecards[0]
     ? null
-    : calculateOpportunityScorecard(opportunity, organizationProfile, referenceDate);
+    : calculateOpportunityScorecard(
+        opportunity,
+        organizationProfile,
+        referenceDate,
+      );
 
   return {
     id: opportunity.id,
@@ -2329,9 +2408,7 @@ function mapOpportunitySummary({
     bidDecision: mapBidDecisionSummary(opportunity.bidDecisions[0]),
     vehicles: opportunity.vehicles.map(mapVehicleSummary),
     competitors: opportunity.competitors.map(mapCompetitorSummary),
-    tasks: opportunity.tasks
-      .map(mapTaskSummary)
-      .sort(compareTaskSummaries),
+    tasks: opportunity.tasks.map(mapTaskSummary).sort(compareTaskSummaries),
     milestones: opportunity.milestones
       .map(mapMilestoneSummary)
       .sort(compareMilestoneSummaries),
@@ -2380,7 +2457,9 @@ function mapOpportunityWorkspaceSummary({
       status: milestone.status,
       targetDate: milestone.targetDate.toISOString(),
       deadlineReminderState: milestone.deadlineReminderState,
-      deadlineReminderUpdatedAt: toIsoString(milestone.deadlineReminderUpdatedAt),
+      deadlineReminderUpdatedAt: toIsoString(
+        milestone.deadlineReminderUpdatedAt,
+      ),
     })),
     description: opportunity.description,
     externalNoticeId: opportunity.externalNoticeId,
@@ -2608,10 +2687,7 @@ function mapWorkspaceCloseout(
 }
 
 function mapWorkspaceProposal(
-  proposal:
-    | OpportunityWorkspaceRecord["proposalRecord"]
-    | null
-    | undefined,
+  proposal: OpportunityWorkspaceRecord["proposalRecord"] | null | undefined,
 ): OpportunityWorkspaceProposal | null {
   if (!proposal) {
     return null;
@@ -2626,8 +2702,9 @@ function mapWorkspaceProposal(
     submittedAt: toIsoString(proposal.submittedAt),
     createdAt: proposal.createdAt.toISOString(),
     updatedAt: proposal.updatedAt.toISOString(),
-    completedChecklistCount: proposal.checklistItems.filter((item) => item.isComplete)
-      .length,
+    completedChecklistCount: proposal.checklistItems.filter(
+      (item) => item.isComplete,
+    ).length,
     totalChecklistCount: proposal.checklistItems.length,
     checklistItems: proposal.checklistItems.map((item) => ({
       id: item.id,
@@ -2766,7 +2843,8 @@ function buildPipelineConversionSummaries(
       label: definition.label,
       numerator,
       denominator,
-      ratePercent: denominator === 0 ? 0 : roundPercent((numerator / denominator) * 100),
+      ratePercent:
+        denominator === 0 ? 0 : roundPercent((numerator / denominator) * 100),
     };
   });
 }
@@ -2801,7 +2879,9 @@ function buildPipelineStageAgingSummaries({
       humanizeStageKey(opportunity.currentStageKey) ??
       "Unstaged";
     const ageAnchor =
-      opportunity.currentStageChangedAt ?? opportunity.createdAt ?? opportunity.updatedAt;
+      opportunity.currentStageChangedAt ??
+      opportunity.createdAt ??
+      opportunity.updatedAt;
     const ageDays = calculateAgeInDays(ageAnchor, now);
     const existing = agingByStage.get(stageKey);
 
@@ -2832,7 +2912,9 @@ function buildPipelineStageAgingSummaries({
       stageKey: summary.stageKey,
       stageLabel: summary.stageLabel,
       opportunityCount: summary.opportunityCount,
-      averageAgeDays: Math.round(summary.totalAgeDays / summary.opportunityCount),
+      averageAgeDays: Math.round(
+        summary.totalAgeDays / summary.opportunityCount,
+      ),
       oldestAgeDays: summary.oldestAgeDays,
       oldestOpportunityTitle: summary.oldestOpportunityTitle,
     }))
@@ -2853,7 +2935,9 @@ function buildReachedStageKeySet(
   opportunity: OrganizationDashboardOpportunityRecord,
 ) {
   const reachedStageKeys = new Set<string>();
-  const currentStageKey = normalizeOpportunityStageKey(opportunity.currentStageKey);
+  const currentStageKey = normalizeOpportunityStageKey(
+    opportunity.currentStageKey,
+  );
 
   if (currentStageKey) {
     addReachedStageKeyCascade(reachedStageKeys, currentStageKey);
@@ -2926,6 +3010,230 @@ function requiresAttention(opportunity: OpportunitySummary) {
   );
 }
 
+function buildDashboardAttentionQueue({
+  opportunities,
+  now,
+}: {
+  opportunities: OpportunitySummary[];
+  now: Date;
+}): DashboardAttentionItem[] {
+  return opportunities
+    .map((opportunity) => buildDashboardAttentionItem({ opportunity, now }))
+    .filter(
+      (item): item is DashboardAttentionItem & { severity: number } =>
+        item !== null,
+    )
+    .sort(compareDashboardAttentionItems)
+    .slice(0, DASHBOARD_ATTENTION_ITEM_LIMIT);
+}
+
+function buildDashboardAttentionItem({
+  opportunity,
+  now,
+}: {
+  opportunity: OpportunitySummary;
+  now: Date;
+}): (DashboardAttentionItem & { severity: number }) | null {
+  const blockedOverdueTask = opportunity.tasks.find(
+    (task) =>
+      task.status === "BLOCKED" && task.deadlineReminderState === "OVERDUE",
+  );
+
+  if (blockedOverdueTask) {
+    return {
+      opportunityId: opportunity.id,
+      opportunityTitle: opportunity.title,
+      responseDeadlineAt: opportunity.responseDeadlineAt,
+      stageLabel: opportunity.currentStageLabel,
+      reasonLabel: "Blocked overdue task",
+      supportingDetail: blockedOverdueTask.title,
+      tone: "danger",
+      severity: 500,
+    };
+  }
+
+  const overdueTask = opportunity.tasks.find(
+    (task) => task.deadlineReminderState === "OVERDUE",
+  );
+
+  if (overdueTask) {
+    return {
+      opportunityId: opportunity.id,
+      opportunityTitle: opportunity.title,
+      responseDeadlineAt: opportunity.responseDeadlineAt,
+      stageLabel: opportunity.currentStageLabel,
+      reasonLabel: "Overdue execution work",
+      supportingDetail: overdueTask.title,
+      tone: "danger",
+      severity: 450,
+    };
+  }
+
+  const overdueMilestone = opportunity.milestones.find(
+    (milestone) => milestone.deadlineReminderState === "OVERDUE",
+  );
+
+  if (overdueMilestone) {
+    return {
+      opportunityId: opportunity.id,
+      opportunityTitle: opportunity.title,
+      responseDeadlineAt: opportunity.responseDeadlineAt,
+      stageLabel: opportunity.currentStageLabel,
+      reasonLabel: "Milestone slipped",
+      supportingDetail: overdueMilestone.title,
+      tone: "danger",
+      severity: 420,
+    };
+  }
+
+  const responseDeadlineDays = getDaysUntil(
+    opportunity.responseDeadlineAt,
+    now,
+  );
+
+  if (responseDeadlineDays !== null && responseDeadlineDays <= 7) {
+    return {
+      opportunityId: opportunity.id,
+      opportunityTitle: opportunity.title,
+      responseDeadlineAt: opportunity.responseDeadlineAt,
+      stageLabel: opportunity.currentStageLabel,
+      reasonLabel: "Response window closing",
+      supportingDetail: `${responseDeadlineDays === 0 ? "Due today" : `${responseDeadlineDays} days remaining`} on the solicitation deadline`,
+      tone: "danger",
+      severity: 400 - responseDeadlineDays,
+    };
+  }
+
+  const blockedTask = opportunity.tasks.find(
+    (task) => task.status === "BLOCKED",
+  );
+
+  if (blockedTask) {
+    return {
+      opportunityId: opportunity.id,
+      opportunityTitle: opportunity.title,
+      responseDeadlineAt: opportunity.responseDeadlineAt,
+      stageLabel: opportunity.currentStageLabel,
+      reasonLabel: "Blocked workstream",
+      supportingDetail: blockedTask.title,
+      tone: "warning",
+      severity: 320,
+    };
+  }
+
+  const criticalTask = opportunity.tasks.find(
+    (task) => task.priority === "CRITICAL",
+  );
+
+  if (criticalTask) {
+    return {
+      opportunityId: opportunity.id,
+      opportunityTitle: opportunity.title,
+      responseDeadlineAt: opportunity.responseDeadlineAt,
+      stageLabel: opportunity.currentStageLabel,
+      reasonLabel: "Critical task load",
+      supportingDetail: criticalTask.title,
+      tone: "warning",
+      severity: 280,
+    };
+  }
+
+  const upcomingMilestone = opportunity.milestones.find(
+    (milestone) => milestone.deadlineReminderState === "UPCOMING",
+  );
+
+  if (upcomingMilestone) {
+    return {
+      opportunityId: opportunity.id,
+      opportunityTitle: opportunity.title,
+      responseDeadlineAt: opportunity.responseDeadlineAt,
+      stageLabel: opportunity.currentStageLabel,
+      reasonLabel: "Decision checkpoint coming up",
+      supportingDetail: upcomingMilestone.title,
+      tone: "accent",
+      severity: 220,
+    };
+  }
+
+  if (
+    responseDeadlineDays !== null &&
+    responseDeadlineDays <= UPCOMING_DEADLINE_WINDOW_DAYS
+  ) {
+    return {
+      opportunityId: opportunity.id,
+      opportunityTitle: opportunity.title,
+      responseDeadlineAt: opportunity.responseDeadlineAt,
+      stageLabel: opportunity.currentStageLabel,
+      reasonLabel: "Upcoming response date",
+      supportingDetail: `${responseDeadlineDays} days remaining on the current solicitation deadline`,
+      tone: "accent",
+      severity: 200 - responseDeadlineDays,
+    };
+  }
+
+  return null;
+}
+
+function buildDashboardTaskBurdenSummary(
+  opportunities: OpportunitySummary[],
+): DashboardTaskBurdenSummary {
+  const allTasks = opportunities.flatMap((opportunity) => opportunity.tasks);
+
+  return {
+    openTaskCount: allTasks.length,
+    blockedTaskCount: allTasks.filter((task) => task.status === "BLOCKED")
+      .length,
+    criticalTaskCount: allTasks.filter((task) => task.priority === "CRITICAL")
+      .length,
+    overdueTaskCount: allTasks.filter(
+      (task) => task.deadlineReminderState === "OVERDUE",
+    ).length,
+    upcomingTaskCount: allTasks.filter(
+      (task) => task.deadlineReminderState === "UPCOMING",
+    ).length,
+    opportunitiesWithOpenTasksCount: opportunities.filter(
+      (opportunity) => opportunity.tasks.length > 0,
+    ).length,
+    busiestOpportunities: opportunities
+      .filter((opportunity) => opportunity.tasks.length > 0)
+      .map((opportunity) => ({
+        opportunityId: opportunity.id,
+        opportunityTitle: opportunity.title,
+        openTaskCount: opportunity.tasks.length,
+        blockedTaskCount: opportunity.tasks.filter(
+          (task) => task.status === "BLOCKED",
+        ).length,
+        criticalTaskCount: opportunity.tasks.filter(
+          (task) => task.priority === "CRITICAL",
+        ).length,
+        overdueTaskCount: opportunity.tasks.filter(
+          (task) => task.deadlineReminderState === "OVERDUE",
+        ).length,
+      }))
+      .sort(compareDashboardTaskBurdenOpportunities)
+      .slice(0, DASHBOARD_TASK_BURDEN_OPPORTUNITY_LIMIT),
+  };
+}
+
+function buildDashboardSourceActivity(
+  sourceSyncRuns: OrganizationDashboardSourceSyncRunRecord[],
+): DashboardSourceActivitySummary[] {
+  return sourceSyncRuns.map((run) => ({
+    id: run.id,
+    sourceSystem: run.sourceSystem,
+    sourceDisplayName:
+      run.connectorConfig?.sourceDisplayName ?? run.sourceSystem,
+    status: run.status,
+    triggerType: run.triggerType,
+    requestedAt: run.requestedAt.toISOString(),
+    completedAt: run.completedAt?.toISOString() ?? null,
+    savedSearchName: run.savedSearch?.name ?? null,
+    recordsFetched: run.recordsFetched,
+    recordsImported: run.recordsImported,
+    recordsFailed: run.recordsFailed,
+  }));
+}
+
 function isActivePipelineOpportunity(opportunity: OpportunitySummary) {
   return isActiveStageKey(opportunity.currentStageKey);
 }
@@ -2942,6 +3250,22 @@ function calculateAgeInDays(startDate: Date, endDate: Date) {
   const diffMs = endDate.getTime() - startDate.getTime();
 
   return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+}
+
+function getDaysUntil(isoDate: string | null, now: Date) {
+  if (!isoDate) {
+    return null;
+  }
+
+  const targetDate = new Date(isoDate);
+
+  if (Number.isNaN(targetDate.getTime()) || targetDate < now) {
+    return null;
+  }
+
+  return Math.ceil(
+    (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+  );
 }
 
 function buildUpcomingDeadlines({
@@ -3141,12 +3465,65 @@ function compareDashboardDeadlines(
   return left.opportunityTitle.localeCompare(right.opportunityTitle);
 }
 
+function compareDashboardAttentionItems(
+  left: DashboardAttentionItem & { severity: number },
+  right: DashboardAttentionItem & { severity: number },
+) {
+  if (left.severity !== right.severity) {
+    return right.severity - left.severity;
+  }
+
+  if (left.responseDeadlineAt && right.responseDeadlineAt) {
+    const deadlineComparison = left.responseDeadlineAt.localeCompare(
+      right.responseDeadlineAt,
+    );
+
+    if (deadlineComparison !== 0) {
+      return deadlineComparison;
+    }
+  }
+
+  if (left.responseDeadlineAt) {
+    return -1;
+  }
+
+  if (right.responseDeadlineAt) {
+    return 1;
+  }
+
+  return left.opportunityTitle.localeCompare(right.opportunityTitle);
+}
+
+function compareDashboardTaskBurdenOpportunities(
+  left: DashboardTaskBurdenSummary["busiestOpportunities"][number],
+  right: DashboardTaskBurdenSummary["busiestOpportunities"][number],
+) {
+  if (left.blockedTaskCount !== right.blockedTaskCount) {
+    return right.blockedTaskCount - left.blockedTaskCount;
+  }
+
+  if (left.overdueTaskCount !== right.overdueTaskCount) {
+    return right.overdueTaskCount - left.overdueTaskCount;
+  }
+
+  if (left.criticalTaskCount !== right.criticalTaskCount) {
+    return right.criticalTaskCount - left.criticalTaskCount;
+  }
+
+  if (left.openTaskCount !== right.openTaskCount) {
+    return right.openTaskCount - left.openTaskCount;
+  }
+
+  return left.opportunityTitle.localeCompare(right.opportunityTitle);
+}
+
 function compareTopOpportunities(
   left: OpportunitySummary,
   right: OpportunitySummary,
 ) {
   const scoreComparison =
-    getScoreValue(right.score?.totalScore) - getScoreValue(left.score?.totalScore);
+    getScoreValue(right.score?.totalScore) -
+    getScoreValue(left.score?.totalScore);
 
   if (scoreComparison !== 0) {
     return scoreComparison;
@@ -3275,7 +3652,8 @@ function buildDecisionAnalyticsSnapshot({
     (opportunity) => opportunity.hasFinalDecision,
   );
   const recommendationOnlyCount = reviewedOpportunities.filter(
-    (opportunity) => !opportunity.hasFinalDecision && opportunity.hasRecommendation,
+    (opportunity) =>
+      !opportunity.hasFinalDecision && opportunity.hasRecommendation,
   ).length;
   const alignedRecommendationCount = reviewedOpportunities.filter(
     (opportunity) => opportunity.recommendationAligned === true,
@@ -3291,14 +3669,16 @@ function buildDecisionAnalyticsSnapshot({
     reviewedOpportunityCount: reviewedOpportunities.length,
     finalDecisionCount: opportunitiesWithFinalDecision.length,
     recommendationOnlyCount,
-    recentDecisionVolume: opportunitiesWithFinalDecision.filter((opportunity) => {
-      if (!opportunity.decidedAt) {
-        return false;
-      }
+    recentDecisionVolume: opportunitiesWithFinalDecision.filter(
+      (opportunity) => {
+        if (!opportunity.decidedAt) {
+          return false;
+        }
 
-      const decidedAt = new Date(opportunity.decidedAt);
-      return decidedAt >= recentWindowStart && decidedAt <= now;
-    }).length,
+        const decidedAt = new Date(opportunity.decidedAt);
+        return decidedAt >= recentWindowStart && decidedAt <= now;
+      },
+    ).length,
     recommendationAlignmentPercent:
       comparableRecommendationCount === 0
         ? null
@@ -3497,7 +3877,8 @@ function comparePersonalTaskBoardItems(
   right: PersonalTaskBoardItem,
 ) {
   const statusComparison =
-    getPersonalTaskStatusRank(left.status) - getPersonalTaskStatusRank(right.status);
+    getPersonalTaskStatusRank(left.status) -
+    getPersonalTaskStatusRank(right.status);
 
   if (statusComparison !== 0) {
     return statusComparison;
@@ -3705,7 +4086,9 @@ function filterOpportunitySummaries({
       }
     }
 
-    if (!matchesDueWindow(opportunity.responseDeadlineAt, query.dueWindow, now)) {
+    if (
+      !matchesDueWindow(opportunity.responseDeadlineAt, query.dueWindow, now)
+    ) {
       return false;
     }
 
@@ -3746,7 +4129,10 @@ function matchesDueWindow(
   return deadline >= now && deadline <= windowEnd;
 }
 
-function matchesOpportunityQuery(opportunity: OpportunitySummary, query: string) {
+function matchesOpportunityQuery(
+  opportunity: OpportunitySummary,
+  query: string,
+) {
   const normalizedQuery = query.toLowerCase();
 
   return [
@@ -3876,8 +4262,8 @@ function formatPersonLabel(
 }
 
 function joinLocationParts(parts: Array<string | null>) {
-  const normalizedParts = parts.filter(
-    (part): part is string => Boolean(part && part.trim()),
+  const normalizedParts = parts.filter((part): part is string =>
+    Boolean(part && part.trim()),
   );
 
   return normalizedParts.length > 0 ? normalizedParts.join(", ") : null;

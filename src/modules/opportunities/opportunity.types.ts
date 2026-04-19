@@ -260,16 +260,15 @@ export type OpportunityWorkspaceScorecard = OpportunityScoreSummary & {
   factors: OpportunityWorkspaceScoreFactor[];
 };
 
-export type OpportunityWorkspaceBidDecision =
-  OpportunityBidDecisionSummary & {
-    id: string;
-    isCurrent: boolean;
-    recommendationSummary: string | null;
-    finalRationale: string | null;
-    recommendedAt: string | null;
-    recommendedByLabel: string | null;
-    decidedByName: string | null;
-  };
+export type OpportunityWorkspaceBidDecision = OpportunityBidDecisionSummary & {
+  id: string;
+  isCurrent: boolean;
+  recommendationSummary: string | null;
+  finalRationale: string | null;
+  recommendedAt: string | null;
+  recommendedByLabel: string | null;
+  decidedByName: string | null;
+};
 
 export type OpportunityWorkspaceBidDecisionHistoryEntry =
   OpportunityWorkspaceBidDecision;
@@ -339,10 +338,7 @@ export type OpportunityWorkspaceOpportunitySummary = OpportunitySummary & {
 
 export type OpportunityWorkspaceKnowledgeSuggestion = {
   id: string;
-  assetType:
-    | "PAST_PERFORMANCE_SNIPPET"
-    | "BOILERPLATE_CONTENT"
-    | "WIN_THEME";
+  assetType: "PAST_PERFORMANCE_SNIPPET" | "BOILERPLATE_CONTENT" | "WIN_THEME";
   title: string;
   summary: string | null;
   bodyPreview: string;
@@ -473,6 +469,55 @@ export type DashboardDeadlineSummary = {
   stageLabel: string;
 };
 
+export type DashboardAttentionItem = {
+  opportunityId: string;
+  opportunityTitle: string;
+  stageLabel: string;
+  reasonLabel: string;
+  supportingDetail: string;
+  responseDeadlineAt: string | null;
+  tone: "accent" | "warning" | "danger";
+};
+
+export type DashboardTaskBurdenOpportunity = {
+  opportunityId: string;
+  opportunityTitle: string;
+  openTaskCount: number;
+  blockedTaskCount: number;
+  criticalTaskCount: number;
+  overdueTaskCount: number;
+};
+
+export type DashboardTaskBurdenSummary = {
+  openTaskCount: number;
+  blockedTaskCount: number;
+  criticalTaskCount: number;
+  overdueTaskCount: number;
+  upcomingTaskCount: number;
+  opportunitiesWithOpenTasksCount: number;
+  busiestOpportunities: DashboardTaskBurdenOpportunity[];
+};
+
+export type DashboardSourceActivitySummary = {
+  id: string;
+  sourceSystem: string;
+  sourceDisplayName: string;
+  status:
+    | "QUEUED"
+    | "RUNNING"
+    | "SUCCEEDED"
+    | "PARTIAL"
+    | "FAILED"
+    | "CANCELLED";
+  triggerType: "MANUAL" | "SCHEDULED" | "BACKFILL";
+  requestedAt: string;
+  completedAt: string | null;
+  savedSearchName: string | null;
+  recordsFetched: number;
+  recordsImported: number;
+  recordsFailed: number;
+};
+
 export type HomeDashboardSnapshot = {
   organization: OrganizationSummary;
   connectors: SourceConnectorSummary[];
@@ -481,10 +526,13 @@ export type HomeDashboardSnapshot = {
   upcomingDeadlineCount: number;
   enabledConnectorCount: number;
   opportunitiesRequiringAttentionCount: number;
+  attentionQueue: DashboardAttentionItem[];
   stageSummaries: OpportunityStageSummary[];
   pipelineConversionSummaries: PipelineConversionSummary[];
   pipelineStageAgingSummaries: PipelineStageAgingSummary[];
   upcomingDeadlines: DashboardDeadlineSummary[];
+  taskBurden: DashboardTaskBurdenSummary;
+  recentSourceActivity: DashboardSourceActivitySummary[];
   topOpportunities: OpportunitySummary[];
 };
 

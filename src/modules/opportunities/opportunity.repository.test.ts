@@ -136,6 +136,43 @@ function buildOrganizationDashboardRecord(): OrganizationDashboardRecord {
         connectorVersion: "gsa-ebuy.v1",
       },
     ],
+    sourceSyncRuns: [
+      {
+        id: "sync_run_1",
+        sourceSystem: "sam_gov",
+        triggerType: "SCHEDULED",
+        status: "SUCCEEDED",
+        recordsFetched: 24,
+        recordsImported: 3,
+        recordsFailed: 0,
+        requestedAt: new Date("2026-04-18T06:00:00.000Z"),
+        completedAt: new Date("2026-04-18T06:02:00.000Z"),
+        savedSearch: {
+          id: "saved_search_1",
+          name: "Air Force knowledge services",
+        },
+        connectorConfig: {
+          sourceDisplayName: "SAM.gov",
+          sourceSystemKey: "sam_gov",
+        },
+      },
+      {
+        id: "sync_run_2",
+        sourceSystem: "usaspending_api",
+        triggerType: "MANUAL",
+        status: "PARTIAL",
+        recordsFetched: 8,
+        recordsImported: 1,
+        recordsFailed: 2,
+        requestedAt: new Date("2026-04-17T19:30:00.000Z"),
+        completedAt: new Date("2026-04-17T19:33:00.000Z"),
+        savedSearch: null,
+        connectorConfig: {
+          sourceDisplayName: "USAspending API",
+          sourceSystemKey: "usaspending_api",
+        },
+      },
+    ],
     opportunities: [
       {
         id: "opp_alpha",
@@ -884,7 +921,9 @@ function buildPersonalTaskBoardRecord(): PersonalTaskBoardRecord {
   };
 }
 
-function createWorkspaceRepositoryClient(record: OpportunityWorkspaceRecord | null) {
+function createWorkspaceRepositoryClient(
+  record: OpportunityWorkspaceRecord | null,
+) {
   return {
     opportunity: {
       findFirst: vi.fn().mockResolvedValue(record),
@@ -953,9 +992,47 @@ describe("opportunity.repository", () => {
       upcomingDeadlineCount: 2,
       enabledConnectorCount: 2,
       opportunitiesRequiringAttentionCount: 1,
+      attentionQueue: [
+        {
+          opportunityTitle: "Enterprise Knowledge Management Support Services",
+          reasonLabel: "Blocked overdue task",
+          supportingDetail: "Confirm incumbent teaming posture",
+          tone: "danger",
+        },
+      ],
       organization: {
         slug: "default-org",
       },
+      taskBurden: {
+        openTaskCount: 2,
+        blockedTaskCount: 1,
+        criticalTaskCount: 1,
+        overdueTaskCount: 1,
+        upcomingTaskCount: 1,
+        opportunitiesWithOpenTasksCount: 1,
+        busiestOpportunities: [
+          {
+            opportunityTitle:
+              "Enterprise Knowledge Management Support Services",
+            openTaskCount: 2,
+          },
+        ],
+      },
+      recentSourceActivity: [
+        {
+          sourceDisplayName: "SAM.gov",
+          sourceSystem: "sam_gov",
+          status: "SUCCEEDED",
+          savedSearchName: "Air Force knowledge services",
+          recordsImported: 3,
+        },
+        {
+          sourceDisplayName: "USAspending API",
+          sourceSystem: "usaspending_api",
+          status: "PARTIAL",
+          recordsFailed: 2,
+        },
+      ],
       topOpportunities: [
         {
           title: "Enterprise Knowledge Management Support Services",
@@ -1011,7 +1088,8 @@ describe("opportunity.repository", () => {
           stageKey: "capture_active",
           averageAgeDays: 7,
           oldestAgeDays: 7,
-          oldestOpportunityTitle: "Enterprise Knowledge Management Support Services",
+          oldestOpportunityTitle:
+            "Enterprise Knowledge Management Support Services",
         },
       ],
     });
@@ -1169,7 +1247,9 @@ describe("opportunity.repository", () => {
   });
 
   it("builds an opportunity workspace snapshot with overview, scoring, and history data", async () => {
-    const db = createWorkspaceRepositoryClient(buildOpportunityWorkspaceRecord());
+    const db = createWorkspaceRepositoryClient(
+      buildOpportunityWorkspaceRecord(),
+    );
 
     const snapshot = await getOpportunityWorkspaceSnapshot({
       db,

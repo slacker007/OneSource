@@ -42,12 +42,12 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page).toHaveTitle(/OneSource/i);
   await expect(
     page.getByRole("heading", {
-      name: /capture dashboard with live seeded pipeline queries/i,
+      name: /capture command center/i,
     }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /counts by stage/i,
+      name: /attention queue/i,
     }),
   ).toBeVisible();
   await expect(
@@ -57,33 +57,36 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /top opportunities/i,
+      name: /top pursuits/i,
     }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /conversion rates/i,
+      name: /task burden/i,
     }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /pipeline aging/i,
+      name: /pipeline risk/i,
     }),
   ).toBeVisible();
-  await expect(page.getByText(/qualification rate/i)).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", {
+        name: /va claims intake automation bpa/i,
+      })
+      .first(),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /va claims intake automation bpa/i,
+      name: /recent source activity/i,
     }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /open command search/i }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
-  await page
-    .getByLabel("Primary navigation")
-    .getByRole("link", { name: /^Opportunities/i })
-    .click();
+  await page.getByRole("link", { name: /^View pipeline$/i }).click();
   await expect(page).toHaveURL(/\/opportunities$/);
   await expect(
     page.getByRole("heading", {
@@ -157,9 +160,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     )
     .check();
   await page
-    .locator(
-      'input[name="capabilityKeys"][value="cloud-platform-engineering"]',
-    )
+    .locator('input[name="capabilityKeys"][value="cloud-platform-engineering"]')
     .check();
   await page
     .locator('input[name="contractTypes"][value="Solicitation"]')
@@ -378,7 +379,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await page.locator("#weight-capability_fit").fill("28.25");
   await page
     .locator("#scoring-recalibration-note")
-    .fill("Lowered capability fit slightly after reviewing recent closed outcomes.");
+    .fill(
+      "Lowered capability fit slightly after reviewing recent closed outcomes.",
+    );
   await page
     .getByRole("button", { name: /save manual recalibration/i })
     .click();
@@ -547,10 +550,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(page.getByText(/linked to this opportunity/i)).toBeVisible();
   await expect(
     page.getByRole("link", { name: /open filtered library/i }),
-  ).toHaveAttribute(
-    "href",
-    /\/knowledge\?opportunity=/,
-  );
+  ).toHaveAttribute("href", /\/knowledge\?opportunity=/);
   await expect(
     page
       .getByRole("heading", { name: /^Bid decision recorded as GO$/i })
@@ -799,7 +799,9 @@ test("users can record closeout notes on a closed opportunity workspace", async 
   await expect(
     page.getByText(/closeout notes recorded and added to workspace history/i),
   ).toBeVisible();
-  await expect(page.getByText(new RegExp(outcomeReason, "i")).first()).toBeVisible();
+  await expect(
+    page.getByText(new RegExp(outcomeReason, "i")).first(),
+  ).toBeVisible();
   await expect(
     page.getByText(new RegExp(lessonsLearned, "i")).first(),
   ).toBeVisible();
@@ -855,14 +857,16 @@ test("users can update proposal tracking on an active proposal workspace", async
     page.getByText(/proposal tracking saved to the workspace/i),
   ).toBeVisible();
   await expect(page.locator("#proposal-status")).toHaveValue("SUBMITTED");
-  await expect(
-    page.locator("#proposal-owner option:checked"),
-  ).toHaveText(/casey brooks/i);
+  await expect(page.locator("#proposal-owner option:checked")).toHaveText(
+    /casey brooks/i,
+  );
   await expect(
     page.getByRole("checkbox", { name: /final compliance review complete/i }),
   ).toBeChecked();
   await expect(
-    page.getByRole("checkbox", { name: /compliance matrix qualification brief/i }),
+    page.getByRole("checkbox", {
+      name: /compliance matrix qualification brief/i,
+    }),
   ).toBeChecked();
   await expect(page.getByText(/casey brooks/i).first()).toBeVisible();
 });
@@ -891,7 +895,9 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
   await expect(
     page.getByRole("dialog", { name: /command center/i }),
   ).toBeVisible();
-  await page.getByRole("searchbox", { name: /command search/i }).fill("create pursuit");
+  await page
+    .getByRole("searchbox", { name: /command search/i })
+    .fill("create pursuit");
   await page
     .getByRole("button", { name: /pin create pursuit to pinned work/i })
     .first()

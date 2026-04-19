@@ -111,10 +111,10 @@ For the current Phase 6 scoring slices, targeted verification should confirm:
 - the typed opportunity repository maps a decision-console snapshot that ranks pursuits by strategic value, overall score, urgency, or risk pressure without leaking raw Prisma payloads into the page layer
 - the decision-console component renders the URL-selected ranking lens, scope, and ranked comparison rows truthfully, including the documented temporary `value == strategic alignment` assumption
 
-For the current Phase 3 dashboard slice, targeted unit verification should confirm:
+For the current dashboard command-center slice, targeted unit verification should confirm:
 
-- the seeded dashboard landing component renders stage counts, pipeline conversion rates, active-stage aging, ranked opportunities, and upcoming deadlines from typed snapshot data
-- the typed opportunity repository derives the dashboard snapshot without leaking raw Prisma model payloads into the page layer and calculates conversion plus aging summaries from stage history and timestamps
+- the seeded dashboard landing component renders the attention queue, top pursuits, task-burden summaries, recent source activity, stage counts, pipeline conversion rates, active-stage aging, and upcoming deadlines from typed snapshot data
+- the typed opportunity repository derives the dashboard snapshot without leaking raw Prisma model payloads into the page layer and calculates attention, task-burden, conversion, aging, and recent-source-activity summaries from persisted opportunity and sync state
 - the authenticated shell still opens the mobile drawer through the shared drawer primitive
 
 For the current Phase 7 connector-backed source-search slice, targeted unit verification should confirm:

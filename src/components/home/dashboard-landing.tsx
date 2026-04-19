@@ -1,8 +1,13 @@
+import Link from "next/link";
+
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import type {
+  DashboardAttentionItem,
   DashboardDeadlineSummary,
+  DashboardSourceActivitySummary,
+  DashboardTaskBurdenOpportunity,
   HomeDashboardSnapshot,
   OpportunitySummary,
   PipelineConversionSummary,
@@ -25,85 +30,123 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
 
   return (
     <section className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          detail="Canonical opportunity records currently visible in the seeded workspace."
-          label="Tracked opportunities"
-          value={String(snapshot.trackedOpportunityCount)}
-        />
-        <MetricCard
-          detail="Open pursuits still moving through qualification, capture, or proposal work."
-          label="Active pursuits"
-          value={String(snapshot.activeOpportunityCount)}
-        />
-        <MetricCard
-          detail="Upcoming response and milestone dates within the current dashboard window."
-          label="Upcoming deadlines"
-          value={String(snapshot.upcomingDeadlineCount)}
-        />
-        <MetricCard
-          detail="Opportunities with blocked or critical work still needing capture-team action."
-          label="Attention needed"
-          value={String(snapshot.opportunitiesRequiringAttentionCount)}
-        />
-      </div>
+      <div className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
+        <article className="border-border overflow-hidden rounded-[30px] border bg-[linear-gradient(135deg,rgba(16,58,53,1),rgba(21,74,66,0.96),rgba(244,250,247,0.72))] p-6 text-white shadow-[0_22px_60px_rgba(16,58,53,0.26)]">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <Badge
+                    className="border-white/15 bg-white/10 text-white"
+                    tone="muted"
+                  >
+                    Dashboard
+                  </Badge>
+                  <Badge
+                    className="border-white/15 bg-white/10 text-white"
+                    tone="muted"
+                  >
+                    Attention-led
+                  </Badge>
+                  <Badge
+                    className="border-white/15 bg-white/10 text-white"
+                    tone="muted"
+                  >
+                    {snapshot.organization.name}
+                  </Badge>
+                </div>
 
-      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-        <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-muted text-xs tracking-[0.24em] uppercase">
-                Pipeline
-              </p>
-              <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-                Counts by stage
-              </h2>
-            </div>
-            <Badge tone="muted">{snapshot.organization.name}</Badge>
-          </div>
-
-          {snapshot.stageSummaries.length > 0 ? (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {snapshot.stageSummaries.map((stage) => (
-                <div
-                  key={stage.stageKey}
-                  className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,249,239,0.78)] px-5 py-5"
-                >
-                  <p className="text-muted text-xs tracking-[0.18em] uppercase">
-                    {stage.stageLabel}
+                <div className="space-y-3">
+                  <p className="text-xs tracking-[0.24em] text-white/70 uppercase">
+                    Capture command center
                   </p>
-                  <p className="font-heading text-foreground mt-3 text-4xl font-semibold tracking-[-0.04em]">
-                    {stage.opportunityCount}
+                  <h2 className="font-heading text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+                    Attention queue
+                  </h2>
+                  <p className="max-w-2xl text-sm leading-7 text-white/78 sm:text-base">
+                    Start with the pursuits that can slip, block, or close soon,
+                    then branch into the pipeline, tasks, and sourced work
+                    directly from the same command center.
                   </p>
                 </div>
-              ))}
+
+                <div className="flex flex-wrap gap-3">
+                  <ActionLink
+                    href="/opportunities?due=next_30_days"
+                    label="Review deadline queue"
+                    tone="primary"
+                  />
+                  <ActionLink
+                    href="/tasks"
+                    label="Open task triage"
+                    tone="secondary"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DashboardKpiCard
+                  detail="Records visible in the current seeded workspace."
+                  label="Tracked pursuits"
+                  value={String(snapshot.trackedOpportunityCount)}
+                />
+                <DashboardKpiCard
+                  detail="Open pursuits still moving through active execution."
+                  label="Active pipeline"
+                  value={String(snapshot.activeOpportunityCount)}
+                />
+                <DashboardKpiCard
+                  detail="Items currently surfacing a blocked, overdue, or near-term signal."
+                  label="Needs attention"
+                  value={String(snapshot.opportunitiesRequiringAttentionCount)}
+                />
+                <DashboardKpiCard
+                  detail="Source connectors currently enabled for discovery and sync."
+                  label="Live connectors"
+                  value={String(snapshot.enabledConnectorCount)}
+                />
+              </div>
             </div>
-          ) : (
-            <EmptyState
-              className="mt-6"
-              message="Run the seed workflow to populate stage summaries for the dashboard landing page."
-              title="No staged opportunities yet"
-            />
-          )}
+
+            {snapshot.attentionQueue.length > 0 ? (
+              <div className="grid gap-3 lg:grid-cols-2">
+                {snapshot.attentionQueue.map((item) => (
+                  <AttentionQueueCard key={item.opportunityId} item={item} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                className="border-white/12 bg-white/6 text-white"
+                message="The active pipeline does not currently surface blocked, overdue, or near-term items."
+                title="No immediate attention signals"
+              />
+            )}
+          </div>
         </article>
 
-        <article className="border-border rounded-[28px] border bg-[linear-gradient(135deg,rgba(32,95,85,0.97),rgba(16,58,53,1))] p-6 text-white shadow-[0_22px_60px_rgba(16,58,53,0.28)]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs tracking-[0.24em] text-white/70 uppercase">
-                Priorities
+        <article className="border-border rounded-[30px] border bg-[linear-gradient(180deg,rgba(255,250,241,0.98),rgba(245,238,224,0.94))] p-6 shadow-[0_18px_48px_rgba(67,49,33,0.12)]">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-xs tracking-[0.22em] text-[#8b6e56] uppercase">
+                Priority stack
               </p>
-              <h2 className="font-heading mt-2 text-2xl font-semibold tracking-[-0.03em]">
-                Top opportunities
+              <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
+                Top pursuits
               </h2>
+              <p className="text-muted max-w-xl text-sm leading-6">
+                Highest-ranked work remains visible with score, decision,
+                deadline, and execution load in one scan.
+              </p>
             </div>
-            <Badge className="border-white/20 bg-white/10 text-white" tone="muted">
-              {snapshot.enabledConnectorCount} connectors enabled
-            </Badge>
+            <ActionLink
+              href="/opportunities"
+              label="View pipeline"
+              tone="secondary"
+            />
           </div>
 
           {snapshot.topOpportunities.length > 0 ? (
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 space-y-3">
               {snapshot.topOpportunities.map((opportunity, index) => (
                 <TopOpportunityCard
                   key={opportunity.id}
@@ -114,7 +157,7 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
             </div>
           ) : (
             <EmptyState
-              className="mt-6 border-white/15 bg-white/5 text-white"
+              className="mt-6 bg-white/70"
               message="The current organization snapshot does not have any ranked pursuits yet."
               title="No ranked opportunities"
             />
@@ -122,96 +165,266 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
         </article>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-        <article className="border-border rounded-[28px] border bg-[linear-gradient(180deg,rgba(244,250,247,1),rgba(232,244,239,0.96))] p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-muted text-xs tracking-[0.24em] uppercase">
-                Pipeline health
+      <div className="grid gap-4 xl:grid-cols-[1.02fr_0.98fr]">
+        <article className="border-border rounded-[30px] border bg-[#f6efe4] p-6 shadow-[0_18px_48px_rgba(67,49,33,0.1)]">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-xs tracking-[0.22em] text-[#8b6e56] uppercase">
+                Deadline watch
               </p>
-              <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-                Conversion rates
+              <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
+                Upcoming deadlines
               </h2>
+              <p className="text-muted max-w-xl text-sm leading-6">
+                Response windows and capture checkpoints stay linked back to the
+                owning pursuit so schedule pressure does not get buried.
+              </p>
             </div>
-            <Badge tone="accent">{snapshot.activeOpportunityCount} active</Badge>
+            <ActionLink
+              href="/opportunities?due=next_30_days"
+              label="Review deadline queue"
+              tone="secondary"
+            />
           </div>
 
-          {snapshot.pipelineConversionSummaries.length > 0 ? (
-            <div className="mt-6 grid gap-3 md:grid-cols-2">
-              {snapshot.pipelineConversionSummaries.map((summary) => (
-                <ConversionRateCard key={summary.key} summary={summary} />
+          {snapshot.upcomingDeadlines.length > 0 ? (
+            <div className="mt-6 grid gap-3 lg:grid-cols-2">
+              {snapshot.upcomingDeadlines.map((deadline) => (
+                <DeadlineCard key={deadline.id} deadline={deadline} />
               ))}
             </div>
           ) : (
             <EmptyState
               className="mt-6 bg-white/70"
-              message="The current organization snapshot does not have enough pipeline history to calculate conversions yet."
-              title="No conversion analytics yet"
+              message="No response or milestone dates fall within the current dashboard window."
+              title="No near-term deadlines"
             />
           )}
         </article>
 
-        <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-muted text-xs tracking-[0.24em] uppercase">
-                Pipeline health
+        <article className="border-border rounded-[30px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-muted text-xs tracking-[0.22em] uppercase">
+                Execution load
               </p>
-              <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-                Pipeline aging
+              <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
+                Task burden
               </h2>
+              <p className="text-muted max-w-xl text-sm leading-6">
+                Workload is organized around blocked, critical, overdue, and
+                upcoming tasks so capture leads can rebalance before the queue
+                spreads too wide.
+              </p>
             </div>
-            <Badge tone="warning">Active stages</Badge>
+            <ActionLink
+              href="/tasks"
+              label="Open task triage"
+              tone="secondary"
+            />
           </div>
 
-          {snapshot.pipelineStageAgingSummaries.length > 0 ? (
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <TaskBurdenStat
+              label="Open tasks"
+              supportingText={`${snapshot.taskBurden.opportunitiesWithOpenTasksCount} pursuits carrying live work`}
+              value={String(snapshot.taskBurden.openTaskCount)}
+            />
+            <TaskBurdenStat
+              label="Blocked"
+              supportingText="Tasks currently stalled"
+              value={String(snapshot.taskBurden.blockedTaskCount)}
+            />
+            <TaskBurdenStat
+              label="Critical"
+              supportingText="Top-priority execution items"
+              value={String(snapshot.taskBurden.criticalTaskCount)}
+            />
+            <TaskBurdenStat
+              label="Overdue"
+              supportingText={`${snapshot.taskBurden.upcomingTaskCount} more flagged as upcoming`}
+              value={String(snapshot.taskBurden.overdueTaskCount)}
+            />
+          </div>
+
+          {snapshot.taskBurden.busiestOpportunities.length > 0 ? (
             <div className="mt-6 space-y-3">
-              {snapshot.pipelineStageAgingSummaries.map((summary) => (
-                <StageAgingCard key={summary.stageKey} summary={summary} />
+              {snapshot.taskBurden.busiestOpportunities.map((item) => (
+                <TaskBurdenOpportunityCard
+                  key={item.opportunityId}
+                  item={item}
+                />
               ))}
             </div>
           ) : (
             <EmptyState
               className="mt-6"
-              message="Stage aging will appear once opportunities start moving through the active pipeline."
-              title="No active stage aging yet"
+              message="The active portfolio does not currently have open tasks."
+              title="No execution load yet"
             />
           )}
         </article>
       </div>
 
-      <article className="border-border rounded-[28px] border bg-[#f6efe4] p-6 shadow-[0_16px_40px_rgba(67,49,33,0.08)]">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs tracking-[0.24em] text-[#8b6e56] uppercase">
-              Schedule
-            </p>
-            <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-              Upcoming deadlines
-            </h2>
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <article className="border-border rounded-[30px] border bg-[linear-gradient(180deg,rgba(244,250,247,1),rgba(232,244,239,0.96))] p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-muted text-xs tracking-[0.22em] uppercase">
+                Portfolio flow
+              </p>
+              <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
+                Pipeline risk
+              </h2>
+              <p className="text-muted max-w-2xl text-sm leading-6">
+                Stage mix, conversion pressure, and aging show where the current
+                pipeline is piling up or losing momentum.
+              </p>
+            </div>
+            <ActionLink
+              href="/opportunities"
+              label="Review pipeline"
+              tone="secondary"
+            />
           </div>
-          <Badge tone="warning">Next 30 days</Badge>
-        </div>
 
-        {snapshot.upcomingDeadlines.length > 0 ? (
-          <div className="mt-6 grid gap-3 lg:grid-cols-2">
-            {snapshot.upcomingDeadlines.map((deadline) => (
-              <DeadlineCard key={deadline.id} deadline={deadline} />
-            ))}
+          <div className="mt-6 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+            <div className="space-y-6">
+              <div>
+                <p className="text-muted text-xs tracking-[0.18em] uppercase">
+                  Stage distribution
+                </p>
+                {snapshot.stageSummaries.length > 0 ? (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {snapshot.stageSummaries.map((stage) => (
+                      <div
+                        key={stage.stageKey}
+                        className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-white/80 px-4 py-4"
+                      >
+                        <p className="text-muted text-xs tracking-[0.18em] uppercase">
+                          {stage.stageLabel}
+                        </p>
+                        <p className="font-heading text-foreground mt-3 text-3xl font-semibold tracking-[-0.04em]">
+                          {stage.opportunityCount}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    className="mt-3 bg-white/70"
+                    message="Run the seed workflow to populate stage summaries for the dashboard landing page."
+                    title="No staged opportunities yet"
+                  />
+                )}
+              </div>
+
+              <div>
+                <p className="text-muted text-xs tracking-[0.18em] uppercase">
+                  Conversion pressure
+                </p>
+                {snapshot.pipelineConversionSummaries.length > 0 ? (
+                  <div className="mt-3 space-y-3">
+                    {snapshot.pipelineConversionSummaries.map((summary) => (
+                      <ConversionRateRow key={summary.key} summary={summary} />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    className="mt-3 bg-white/70"
+                    message="The current organization snapshot does not have enough pipeline history to calculate conversions yet."
+                    title="No conversion analytics yet"
+                  />
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-muted text-xs tracking-[0.18em] uppercase">
+                Stage aging
+              </p>
+              {snapshot.pipelineStageAgingSummaries.length > 0 ? (
+                <div className="mt-3 space-y-3">
+                  {snapshot.pipelineStageAgingSummaries.map((summary) => (
+                    <StageAgingCard key={summary.stageKey} summary={summary} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  className="mt-3 bg-white/70"
+                  message="Stage aging will appear once opportunities start moving through the active pipeline."
+                  title="No active stage aging yet"
+                />
+              )}
+            </div>
           </div>
-        ) : (
-          <EmptyState
-            className="mt-6 bg-white/70"
-            message="No response or milestone dates fall within the current dashboard window."
-            title="No near-term deadlines"
-          />
-        )}
-      </article>
+        </article>
+
+        <article className="border-border rounded-[30px] border bg-[linear-gradient(180deg,rgba(251,252,255,1),rgba(239,244,255,0.92))] p-6 shadow-[0_16px_40px_rgba(18,52,88,0.08)]">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-[0.7rem] tracking-[0.22em] text-[#5d7395] uppercase">
+                External discovery
+              </p>
+              <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
+                Recent source activity
+              </h2>
+              <p className="text-muted max-w-xl text-sm leading-6">
+                Source syncs stay visible on the landing page so discovery
+                momentum and import health can be reviewed alongside the
+                pipeline.
+              </p>
+            </div>
+            <ActionLink
+              href="/opportunities"
+              label="Review sourced work"
+              tone="secondary"
+            />
+          </div>
+
+          {snapshot.recentSourceActivity.length > 0 ? (
+            <div className="mt-6 space-y-3">
+              {snapshot.recentSourceActivity.map((activity) => (
+                <SourceActivityCard key={activity.id} activity={activity} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              className="mt-6 bg-white/70"
+              message="Source sync runs will appear here once searches or scheduled sweeps have executed."
+              title="No recent source activity"
+            />
+          )}
+        </article>
+      </div>
     </section>
   );
 }
 
-function MetricCard({
+function ActionLink({
+  href,
+  label,
+  tone,
+}: {
+  href: string;
+  label: string;
+  tone: "primary" | "secondary";
+}) {
+  return (
+    <Link
+      className={
+        tone === "primary"
+          ? "inline-flex min-h-11 items-center justify-center rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-[rgb(16,58,53)] transition hover:bg-[rgba(255,255,255,0.92)]"
+          : "text-foreground inline-flex min-h-11 items-center justify-center rounded-full border border-[rgba(15,28,31,0.12)] bg-white/82 px-4 py-2.5 text-sm font-semibold transition hover:bg-white"
+      }
+      href={href}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function DashboardKpiCard({
   detail,
   label,
   value,
@@ -221,13 +434,53 @@ function MetricCard({
   value: string;
 }) {
   return (
-    <article className="border-border rounded-[24px] border bg-white p-5 shadow-[0_14px_34px_rgba(20,37,34,0.06)]">
-      <p className="text-muted text-xs tracking-[0.22em] uppercase">{label}</p>
-      <p className="font-heading text-foreground mt-4 text-4xl font-semibold tracking-[-0.04em]">
+    <article className="rounded-[22px] border border-white/12 bg-white/8 px-4 py-4 shadow-[0_12px_32px_rgba(7,22,20,0.12)] backdrop-blur">
+      <p className="text-xs tracking-[0.2em] text-white/68 uppercase">
+        {label}
+      </p>
+      <p className="font-heading mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
         {value}
       </p>
-      <p className="text-muted mt-3 text-sm leading-6">{detail}</p>
+      <p className="mt-2 text-sm leading-6 text-white/72">{detail}</p>
     </article>
+  );
+}
+
+function AttentionQueueCard({ item }: { item: DashboardAttentionItem }) {
+  return (
+    <div className="rounded-[24px] border border-white/12 bg-white/7 p-5 shadow-[0_12px_28px_rgba(7,22,20,0.1)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <p className="text-xs tracking-[0.18em] text-white/66 uppercase">
+            {item.stageLabel}
+          </p>
+          <h3 className="font-heading text-xl font-semibold tracking-[-0.03em] text-white">
+            {item.opportunityTitle}
+          </h3>
+        </div>
+        <Badge className={getInvertedBadgeClassName(item.tone)} tone="muted">
+          {item.reasonLabel}
+        </Badge>
+      </div>
+
+      <p className="mt-3 text-sm leading-6 text-white/76">
+        {item.supportingDetail}
+      </p>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-white/72">
+          {item.responseDeadlineAt
+            ? `Deadline ${formatShortDate(item.responseDeadlineAt)}`
+            : "No response deadline recorded"}
+        </p>
+        <Link
+          className="text-sm font-semibold text-white underline decoration-white/30 underline-offset-4 transition hover:decoration-white"
+          href={`/opportunities/${item.opportunityId}`}
+        >
+          Open workspace for {item.opportunityTitle}
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -247,51 +500,76 @@ function TopOpportunityCard({
     "Pending";
 
   return (
-    <div className="rounded-[24px] border border-white/12 bg-white/7 p-5">
+    <div className="rounded-[24px] border border-[rgba(67,49,33,0.08)] bg-white/82 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
-          <p className="text-xs tracking-[0.22em] text-white/65 uppercase">
+          <p className="text-xs tracking-[0.18em] text-[#8b6e56] uppercase">
             Priority {index + 1}
           </p>
-          <h3 className="font-heading text-2xl font-semibold tracking-[-0.03em]">
+          <h3 className="font-heading text-foreground text-xl font-semibold tracking-[-0.03em]">
             {opportunity.title}
           </h3>
-          <p className="text-sm text-white/75">
+          <p className="text-muted text-sm">
             {opportunity.currentStageLabel}
             {opportunity.leadAgency ? ` · ${opportunity.leadAgency.name}` : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge className="border-white/15 bg-white/12 text-white" tone="muted">
-            Score {scoreValue}
-          </Badge>
-          <Badge className="border-white/15 bg-white/12 text-white" tone="muted">
+          <Badge tone="accent">Score {scoreValue}</Badge>
+          <Badge tone={decisionLabel === "GO" ? "success" : "warning"}>
             {decisionLabel}
           </Badge>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-4 text-sm text-white/75">
-        <span>
-          Deadline:{" "}
-          {opportunity.responseDeadlineAt
-            ? formatShortDate(opportunity.responseDeadlineAt)
-            : "Not set"}
-        </span>
-        <span>Tasks: {opportunity.tasks.length}</span>
-        <span>Milestones: {opportunity.milestones.length}</span>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <OpportunitySignal
+          label="Deadline"
+          value={
+            opportunity.responseDeadlineAt
+              ? formatShortDate(opportunity.responseDeadlineAt)
+              : "Not set"
+          }
+        />
+        <OpportunitySignal
+          label="Tasks"
+          value={String(opportunity.tasks.length)}
+        />
+        <OpportunitySignal
+          label="Milestones"
+          value={String(opportunity.milestones.length)}
+        />
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <Link
+          className="text-foreground text-sm font-semibold underline decoration-[rgba(15,28,31,0.2)] underline-offset-4 transition hover:decoration-[rgba(15,28,31,0.6)]"
+          href={`/opportunities/${opportunity.id}`}
+        >
+          Open workspace for {opportunity.title}
+        </Link>
       </div>
     </div>
   );
 }
 
-function DeadlineCard({
-  deadline,
-}: {
-  deadline: DashboardDeadlineSummary;
-}) {
+function OpportunitySignal({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[24px] border border-[rgba(67,49,33,0.08)] bg-white/78 px-5 py-4">
+    <div className="rounded-[18px] border border-[rgba(67,49,33,0.08)] bg-[rgba(255,255,255,0.72)] px-4 py-3">
+      <p className="text-muted text-[0.68rem] tracking-[0.18em] uppercase">
+        {label}
+      </p>
+      <p className="text-foreground mt-2 text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function DeadlineCard({ deadline }: { deadline: DashboardDeadlineSummary }) {
+  return (
+    <Link
+      className="rounded-[24px] border border-[rgba(67,49,33,0.08)] bg-white/78 px-5 py-4 transition hover:bg-white"
+      href={`/opportunities/${deadline.opportunityId}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
           <p className="text-muted text-xs tracking-[0.18em] uppercase">
@@ -304,45 +582,106 @@ function DeadlineCard({
             {deadline.stageLabel} · {formatShortDate(deadline.deadlineAt)}
           </p>
         </div>
-        <Badge tone={deadline.deadlineType === "MILESTONE" ? "warning" : "accent"}>
+        <Badge
+          tone={deadline.deadlineType === "MILESTONE" ? "warning" : "accent"}
+        >
           {deadline.deadlineType === "MILESTONE"
             ? "Milestone"
             : "Response deadline"}
+        </Badge>
+      </div>
+    </Link>
+  );
+}
+
+function TaskBurdenStat({
+  label,
+  supportingText,
+  value,
+}: {
+  label: string;
+  supportingText: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-[rgba(244,250,247,0.72)] px-4 py-4">
+      <p className="text-muted text-[0.68rem] tracking-[0.18em] uppercase">
+        {label}
+      </p>
+      <p className="font-heading text-foreground mt-3 text-3xl font-semibold tracking-[-0.04em]">
+        {value}
+      </p>
+      <p className="text-muted mt-2 text-sm leading-6">{supportingText}</p>
+    </div>
+  );
+}
+
+function TaskBurdenOpportunityCard({
+  item,
+}: {
+  item: DashboardTaskBurdenOpportunity;
+}) {
+  return (
+    <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(248,250,252,0.96)] px-5 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <p className="text-muted text-xs tracking-[0.18em] uppercase">
+            Busiest pursuit
+          </p>
+          <h3 className="text-foreground text-base font-semibold">
+            {item.opportunityTitle}
+          </h3>
+        </div>
+        <Badge tone={item.blockedTaskCount > 0 ? "danger" : "muted"}>
+          {item.openTaskCount} open
+        </Badge>
+      </div>
+
+      <div className="text-muted mt-3 flex flex-wrap gap-2 text-sm">
+        <span>{item.blockedTaskCount} blocked</span>
+        <span>{item.criticalTaskCount} critical</span>
+        <span>{item.overdueTaskCount} overdue</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <Link
+          className="text-foreground text-sm font-semibold underline decoration-[rgba(15,28,31,0.2)] underline-offset-4 transition hover:decoration-[rgba(15,28,31,0.6)]"
+          href={`/opportunities/${item.opportunityId}`}
+        >
+          Open workspace for {item.opportunityTitle}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function ConversionRateRow({
+  summary,
+}: {
+  summary: PipelineConversionSummary;
+}) {
+  return (
+    <div className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-white/80 px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-muted text-xs tracking-[0.18em] uppercase">
+            {summary.label}
+          </p>
+          <p className="font-heading text-foreground mt-2 text-3xl font-semibold tracking-[-0.04em]">
+            {formatPercent(summary.ratePercent)}
+          </p>
+        </div>
+        <Badge tone="accent">
+          {summary.numerator}/{summary.denominator}
         </Badge>
       </div>
     </div>
   );
 }
 
-function ConversionRateCard({
-  summary,
-}: {
-  summary: PipelineConversionSummary;
-}) {
+function StageAgingCard({ summary }: { summary: PipelineStageAgingSummary }) {
   return (
-    <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-white/78 px-5 py-5">
-      <p className="text-muted text-xs tracking-[0.18em] uppercase">
-        {summary.label}
-      </p>
-      <p className="font-heading text-foreground mt-3 text-4xl font-semibold tracking-[-0.04em]">
-        {formatPercent(summary.ratePercent)}
-      </p>
-      <p className="text-muted mt-3 text-sm leading-6">
-        {summary.numerator} of {summary.denominator}{" "}
-        {summary.denominator === 1 ? "opportunity" : "opportunities"} reached
-        this step.
-      </p>
-    </div>
-  );
-}
-
-function StageAgingCard({
-  summary,
-}: {
-  summary: PipelineStageAgingSummary;
-}) {
-  return (
-    <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,249,239,0.62)] px-5 py-4">
+    <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,255,255,0.82)] px-5 py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-muted text-xs tracking-[0.18em] uppercase">
@@ -352,9 +691,9 @@ function StageAgingCard({
             Avg age {formatDayCount(summary.averageAgeDays)}
           </p>
         </div>
-        <Badge tone="muted">
+        <Badge tone={summary.averageAgeDays >= 14 ? "warning" : "muted"}>
           {summary.opportunityCount}{" "}
-          {summary.opportunityCount === 1 ? "opportunity" : "opportunities"}
+          {summary.opportunityCount === 1 ? "pursuit" : "pursuits"}
         </Badge>
       </div>
 
@@ -366,10 +705,89 @@ function StageAgingCard({
   );
 }
 
+function SourceActivityCard({
+  activity,
+}: {
+  activity: DashboardSourceActivitySummary;
+}) {
+  return (
+    <Link
+      className="block rounded-[24px] border border-[rgba(18,52,88,0.08)] bg-white/82 px-5 py-4 transition hover:bg-white"
+      href={`/opportunities?source=${encodeURIComponent(activity.sourceSystem)}`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <p className="text-[0.68rem] tracking-[0.18em] text-[#5d7395] uppercase">
+            {activity.savedSearchName ??
+              formatSourceTrigger(activity.triggerType)}
+          </p>
+          <h3 className="text-foreground text-base font-semibold">
+            {activity.sourceDisplayName}
+          </h3>
+          <p className="text-muted text-sm">
+            Requested {formatTimestamp(activity.requestedAt)}
+          </p>
+        </div>
+        <Badge tone={getSourceStatusTone(activity.status)}>
+          {formatSourceStatus(activity.status)}
+        </Badge>
+      </div>
+
+      <div className="text-muted mt-3 flex flex-wrap gap-2 text-sm">
+        <span>{activity.recordsFetched} fetched</span>
+        <span>{activity.recordsImported} imported</span>
+        <span>{activity.recordsFailed} failed</span>
+      </div>
+    </Link>
+  );
+}
+
+function getInvertedBadgeClassName(
+  tone: DashboardAttentionItem["tone"],
+): string {
+  switch (tone) {
+    case "danger":
+      return "border-[rgba(255,255,255,0.16)] bg-[rgba(196,71,52,0.22)] text-white";
+    case "warning":
+      return "border-[rgba(255,255,255,0.16)] bg-[rgba(203,143,62,0.2)] text-white";
+    case "accent":
+    default:
+      return "border-[rgba(255,255,255,0.16)] bg-[rgba(96,158,144,0.22)] text-white";
+  }
+}
+
+function getSourceStatusTone(
+  activityStatus: DashboardSourceActivitySummary["status"],
+) {
+  switch (activityStatus) {
+    case "SUCCEEDED":
+      return "success";
+    case "PARTIAL":
+      return "warning";
+    case "FAILED":
+    case "CANCELLED":
+      return "danger";
+    case "RUNNING":
+      return "accent";
+    case "QUEUED":
+    default:
+      return "muted";
+  }
+}
+
 function formatShortDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
+  }).format(new Date(value));
+}
+
+function formatTimestamp(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(new Date(value));
 }
 
@@ -382,4 +800,14 @@ function formatPercent(value: number) {
 
 function formatDayCount(value: number) {
   return `${value} ${value === 1 ? "day" : "days"}`;
+}
+
+function formatSourceStatus(status: DashboardSourceActivitySummary["status"]) {
+  return status.toLowerCase().replaceAll("_", " ");
+}
+
+function formatSourceTrigger(
+  triggerType: DashboardSourceActivitySummary["triggerType"],
+) {
+  return triggerType.toLowerCase().replaceAll("_", " ");
 }
