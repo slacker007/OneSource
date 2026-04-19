@@ -29,6 +29,7 @@ export type CredentialsInput = {
 
 export interface AuthUserStore {
   findByEmail(email: string): Promise<AuthUserRecord | null>;
+  findById(userId: string): Promise<AuthUserRecord | null>;
 }
 
 async function createPrismaAuthUserStore(): Promise<AuthUserStore> {
@@ -57,11 +58,52 @@ async function createPrismaAuthUserStore(): Promise<AuthUserStore> {
         },
       });
     },
+    async findById(userId) {
+      return prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          organizationId: true,
+          email: true,
+          name: true,
+          passwordHash: true,
+          status: true,
+          roles: {
+            select: {
+              role: {
+                select: {
+                  key: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    },
   };
 }
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+function buildAuthenticatedSessionUser(
+  user: Pick<
+    AuthUserRecord,
+    "id" | "organizationId" | "email" | "name" | "roles" | "status"
+  > | null,
+): AuthenticatedSessionUser | null {
+  if (!user || user.status !== "ACTIVE") {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    organizationId: user.organizationId,
+    email: user.email,
+    name: user.name,
+    roleKeys: [...new Set(user.roles.map(({ role }) => role.key))],
+  };
 }
 
 export async function authenticateUserWithPassword(
@@ -86,11 +128,19 @@ export async function authenticateUserWithPassword(
     return null;
   }
 
-  return {
-    id: user.id,
-    organizationId: user.organizationId,
-    email: user.email,
-    name: user.name,
-    roleKeys: [...new Set(user.roles.map(({ role }) => role.key))],
-  };
+  return buildAuthenticatedSessionUser(user);
+}
+
+export async function getCurrentAuthenticatedUser(
+  userId: string,
+  store?: AuthUserStore,
+): Promise<AuthenticatedSessionUser | null> {
+  if (!userId.trim()) {
+    return null;
+  }
+
+  const resolvedStore = store ?? (await createPrismaAuthUserStore());
+  const user = await resolvedStore.findById(userId);
+
+  return buildAuthenticatedSessionUser(user);
 }

@@ -14,7 +14,7 @@ The current repo includes the first live authentication, authorization, audit-em
 - Prisma-managed workspace tables for tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, and activity events
 - Auth.js credentials-provider sign-in backed by seeded local users
 - scrypt-based password-hash verification for local development credentials
-- JWT-backed sessions enriched with `organizationId` and `roleKeys`
+- JWT-backed sessions enriched with `organizationId` and `roleKeys`, then revalidated against the live `users` table on refresh so deleted or disabled seeded users fall back to sign-in instead of reaching authenticated routes or write paths with stale actor IDs
 - shared role-to-permission policy helpers that can run in both server and client code
 - server-side protected-route gating in the `(app)` route group
 - server-side permission guards for restricted routes and mutating surfaces such as `/analytics`, `/settings`, source import actions under `/sources`, and `/opportunities/new` plus `/opportunities/[opportunityId]/edit`, with a public permission-denied route
@@ -59,6 +59,7 @@ The current local credentials flow uses the shared development password document
 - `SAM_GOV_SEARCH_ENDPOINT` defaults to the official `https://api.sam.gov/prod/opportunities/v2/search` endpoint and should only be overridden for controlled testing.
 - `SAM_GOV_TIMEOUT_MS` bounds connector request duration.
 - `SAM_GOV_USE_FIXTURES` switches the connector into deterministic fixture mode for automated verification and should remain `false` in production-like environments.
+- `HTTP_PROXY` and `HTTPS_PROXY`, when present, are honored by the live connector so server-side SAM.gov requests can traverse controlled outbound proxies.
 - `.env` is ignored by git; `.env.example` is the only committed env file.
 - Connector configs can store a `credentialReference` string, but the repo still stores only secret references such as `secret://sam-gov/public-api-key`, never raw connector credentials.
 - The new Phase 10 integration-boundary module ships dry-run CRM, document-repository, and communication adapters only; it prepares canonical payloads but does not yet persist external credentials or perform live outbound dispatch.
@@ -110,7 +111,7 @@ Current review result: the repo’s major restricted routes still gate server-si
 - The new integration boundary proves contract shape only; no live external-system auth, outbound delivery, webhook verification, or callback-signature validation exists yet
 - No production-grade password reset, OAuth, MFA, or account-recovery workflow yet
 - No secret-vault integration behind connector credential references yet
-- Credentialed live `sam.gov` validation is intentionally deferred to post-project follow-on `FP-01`; its absence does not block current fixture-backed `P7-03` acceptance
+- Credentialed live `sam.gov` validation is no longer hypothetical in this repo state: on `2026-04-19`, the running app completed one real `/sources` search-plus-import flow against the upstream API using a configured `SAM_GOV_API_KEY`
 - No authorization guardrails around specific retained source records, workspace notes, documents, or future mutating actions yet
 
 Until the later hardening items are complete, this authz slice should be treated as a baseline security boundary rather than full production-ready RBAC coverage.

@@ -41,6 +41,7 @@ make docker-artifacts
 - `SAM_GOV_API_KEY` is required only for live upstream search execution.
 - `SAM_GOV_SEARCH_ENDPOINT` defaults to `https://api.sam.gov/prod/opportunities/v2/search`.
 - `SAM_GOV_TIMEOUT_MS` defaults to `15000`.
+- `HTTP_PROXY` or `HTTPS_PROXY`, when present, is now honored by the live connector for server-side outbound requests.
 
 ## Boot The Default Stack
 
@@ -139,6 +140,8 @@ curl http://127.0.0.1:3000/api/health
 
 Use this flow before browser reruns when the shared seed has been heavily mutated, and use it immediately if PostgreSQL starts surfacing `XX000 unexpected data beyond EOF` corruption faults on this machine.
 
+After a reset, reseed, or manual user-status change, older JWT session cookies may no longer map to an active seeded user. The app now treats that as an invalid session and redirects the next authenticated request back to `/sign-in` instead of attempting authenticated writes with a stale user ID. If `/sources` or another protected route suddenly returns you to sign-in after a reset, sign in again rather than reusing the old browser session.
+
 ## Document Storage
 
 - Opportunity document uploads are stored on local disk beneath `DOCUMENT_UPLOAD_DIR`, which defaults to `.data/opportunity-documents`.
@@ -215,12 +218,12 @@ The reminder and worker summaries currently include:
 
 - The `/sources` search surface now runs through a reusable `sam.gov` connector that can execute in either live or deterministic fixture mode.
 - Fixture mode is the canonical setting for automated host and compose verification because it avoids flaky upstream credentials, latency, and result drift.
-- Live mode requires `SAM_GOV_API_KEY` and should be used for post-project follow-on `FP-01`, exploratory operator testing, or future scheduled-ingestion work.
+- Live mode requires `SAM_GOV_API_KEY` and should be used for exploratory operator testing, dated operator re-verification, or future scheduled-ingestion work.
 - Search executions persist outbound request envelopes plus normalized `source_records` and normalized attachment/contact/award child rows, so preview and import actions operate on retained lineage data rather than transient page-local IDs.
 - Scheduled source sync now reuses the same connector boundary through the worker and `job:source-sync`, creating `source_sync_runs` plus fresh `source_search_executions` for due saved searches.
 - The guarded `/settings` admin console now reads source connector health, recent sync runs, failed import review items, and last-success metadata from retained sync history so operators can inspect source posture without querying the database directly.
 - When a saved search is retryable, `/settings` exposes a `Retry sync` control that requeues the search for the next worker sweep by clearing `lastSyncedAt` through the guarded settings server action.
-- The current repo state does not require a credentialed live search/import run to close `P7-03`; that manual upstream exercise is intentionally deferred to post-project follow-on `FP-01` when a real `SAM_GOV_API_KEY` is available.
+- Dated live verification evidence now exists for the real connector path: on `2026-04-19`, a credentialed `/sources` search located live notice `f40018c4e8394c98af3555e336a149f8`, the retained preview rendered from persisted lineage data, and the import action created a new tracked opportunity from that record.
 
 ## Compose Test Workflows
 

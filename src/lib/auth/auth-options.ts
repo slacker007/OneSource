@@ -1,8 +1,38 @@
 import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth/next";
 import CredentialsProvider from "next-auth/providers/credentials";
+import type { JWT } from "next-auth/jwt";
 
-import { authenticateUserWithPassword } from "./authenticate-user";
+import {
+  authenticateUserWithPassword,
+  getCurrentAuthenticatedUser,
+} from "./authenticate-user";
+
+type SessionTokenUser = {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+  organizationId: string;
+  roleKeys: string[];
+};
+
+function applyUserToToken(token: JWT, user: SessionTokenUser) {
+  token.sub = user.id;
+  token.email = user.email ?? null;
+  token.name = user.name ?? null;
+  token.organizationId = user.organizationId;
+  token.roleKeys = user.roleKeys;
+  return token;
+}
+
+function clearAppTokenFields(token: JWT) {
+  delete token.sub;
+  delete token.email;
+  delete token.name;
+  delete token.organizationId;
+  delete token.roleKeys;
+  return token;
+}
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.AUTH_SECRET,
@@ -34,11 +64,17 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.sub = user.id;
-        token.email = user.email;
-        token.name = user.name;
-        token.organizationId = user.organizationId;
-        token.roleKeys = user.roleKeys;
+        return applyUserToToken(token, user);
+      }
+
+      if (typeof token.sub === "string") {
+        const currentUser = await getCurrentAuthenticatedUser(token.sub);
+
+        if (!currentUser) {
+          return clearAppTokenFields(token);
+        }
+
+        return applyUserToToken(token, currentUser);
       }
 
       return token;
