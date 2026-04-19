@@ -30,19 +30,19 @@ export function DataTable<Row>({
   return (
     <div
       className={cn(
-        "border-border overflow-hidden rounded-[24px] border bg-white",
+        "ui-surface overflow-hidden",
         className,
       )}
     >
       <div className="overflow-x-auto">
         <table aria-label={ariaLabel} className="min-w-full border-collapse">
-          <thead className="bg-[rgba(15,28,31,0.04)]">
+          <thead className="bg-surface-muted">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
                   className={cn(
-                    "px-4 py-3 text-left text-xs tracking-[0.18em] text-muted uppercase",
+                    "px-4 py-2.5 text-left text-[0.68rem] font-semibold tracking-[0.18em] text-muted uppercase",
                     column.headerClassName,
                   )}
                   scope="col"
@@ -63,7 +63,7 @@ export function DataTable<Row>({
                     <td
                       key={column.key}
                       className={cn(
-                        "px-4 py-4 text-sm leading-6 text-foreground",
+                        "px-4 py-3.5 text-sm leading-6 text-foreground",
                         column.className,
                       )}
                     >

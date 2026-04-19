@@ -3,10 +3,12 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 const toneClasses = {
-  accent: "bg-accent-soft text-accent-strong border-transparent",
-  muted: "border-border bg-white text-foreground",
-  warning: "border-transparent bg-[rgba(168,93,42,0.12)] text-[rgb(133,69,49)]",
-  danger: "border-transparent bg-[rgba(148,53,53,0.12)] text-[rgb(125,39,39)]",
+  accent: "border-transparent bg-accent-soft text-accent-strong",
+  muted: "border-border bg-surface text-foreground",
+  info: "border-transparent bg-info-soft text-info",
+  success: "border-transparent bg-success-soft text-success",
+  warning: "border-transparent bg-warning-soft text-warning",
+  danger: "border-transparent bg-danger-soft text-danger",
 } as const;
 
 type BadgeProps = {
@@ -24,7 +26,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium tracking-[0.16em] uppercase",
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold tracking-[0.16em] uppercase",
         toneClasses[tone],
         className,
       )}

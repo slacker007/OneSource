@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 type ErrorStateProps = {
   action?: ReactNode;
   className?: string;
+  eyebrow?: string;
   message: string;
   title: string;
 };
@@ -12,19 +13,16 @@ type ErrorStateProps = {
 export function ErrorState({
   action,
   className,
+  eyebrow = "Attention required",
   message,
   title,
 }: ErrorStateProps) {
   return (
-    <div
-      className={cn(
-        "rounded-[24px] border border-[rgba(133,69,49,0.18)] bg-[rgba(255,245,239,0.9)] px-5 py-6",
-        className,
-      )}
-    >
-      <p className="text-[rgb(115,52,30)] text-sm font-semibold">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-[rgb(133,69,49)]">{message}</p>
-      {action ? <div className="mt-4">{action}</div> : null}
+    <div className={cn("ui-state ui-state-danger", className)}>
+      <p className="ui-state-eyebrow">{eyebrow}</p>
+      <p className="ui-state-title">{title}</p>
+      <p className="ui-state-body">{message}</p>
+      {action ? <div className="ui-state-actions">{action}</div> : null}
     </div>
   );
 }
