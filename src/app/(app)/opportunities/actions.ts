@@ -1,7 +1,6 @@
 "use server";
 
 import { AuditActorType } from "@prisma/client";
-import { revalidatePath } from "next/cache";
 import { requireAppPermission } from "@/lib/auth/authorization";
 import { prisma } from "@/lib/prisma";
 import {
@@ -259,8 +258,6 @@ export async function transitionOpportunityStageAction(
         toStageKey,
       },
     });
-
-    revalidatePath(`/opportunities/${opportunityId}`);
 
     return {
       ...INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE,
@@ -712,8 +709,8 @@ function readRequiredString(value: FormDataEntryValue | null) {
 }
 
 function revalidateOpportunitySurfaces(opportunityId: string) {
-  revalidatePath("/");
-  revalidatePath("/opportunities");
-  revalidatePath(`/opportunities/${opportunityId}`);
-  revalidatePath("/tasks");
+  void opportunityId;
+  // The workspace, task board, dashboard, and pipeline routes are force-dynamic,
+  // and the client explicitly calls router.refresh() after each successful mutation.
+  // Avoid blocking the server action response on redundant invalidation work.
 }

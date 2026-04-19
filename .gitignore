@@ -48,6 +48,9 @@ next-env.d.ts
 /.docker/postgres-data
 /.tmp*
 /.data/
+/docker/certs/*.crt
+/docker/certs/*.pem
+/docker/certs/*.cer
 
 # generated local build caches
 /vendor/*.tar.gz

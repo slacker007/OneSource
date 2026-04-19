@@ -1,136 +1,606 @@
 import Link from "next/link";
 
+import { ActiveFilterChipBar } from "@/components/ui/active-filter-chip-bar";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
-import type { PersonalTaskBoardSnapshot } from "@/modules/opportunities/opportunity.types";
+import { PreviewPanel } from "@/components/ui/preview-panel";
+import { SavedViewControls } from "@/components/ui/saved-view-controls";
+import { cn } from "@/lib/cn";
+import type {
+  TaskBoardItem,
+  TaskBoardSnapshot,
+  TaskBoardViewKey,
+} from "@/modules/opportunities/opportunity.types";
 
 type PersonalTaskBoardProps = {
-  snapshot: PersonalTaskBoardSnapshot | null;
+  snapshot: TaskBoardSnapshot | null;
+  viewState: {
+    focusTaskId: string | null;
+    view: TaskBoardViewKey;
+  };
 };
 
-export function PersonalTaskBoard({ snapshot }: PersonalTaskBoardProps) {
+export function PersonalTaskBoard({
+  snapshot,
+  viewState,
+}: PersonalTaskBoardProps) {
   if (!snapshot) {
     return (
       <section className="space-y-4">
         <p className="text-muted text-sm tracking-[0.26em] uppercase">Tasks</p>
         <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-          Execution queue
+          Execution triage
         </h1>
         <ErrorState
-          message="The assigned-task view could not be loaded for the current workspace."
-          title="Task board is unavailable"
+          message="The task workspace could not be loaded for the current organization."
+          title="Task workspace is unavailable"
         />
       </section>
     );
   }
 
+  const activeViewTasks = getTasksForView({
+    snapshot,
+    view: viewState.view,
+  });
+  const focusedTask =
+    activeViewTasks.find((task) => task.id === viewState.focusTaskId) ??
+    activeViewTasks[0] ??
+    snapshot.allTasks[0] ??
+    null;
+
+  const viewItems = [
+    {
+      active: viewState.view === "my_tasks",
+      href: buildTaskHref({
+        view: "my_tasks",
+      }),
+      label: "My Tasks",
+      supportingText: `${snapshot.summary.assignedTaskCount} assigned`,
+    },
+    {
+      active: viewState.view === "team_tasks",
+      href: buildTaskHref({
+        view: "team_tasks",
+      }),
+      label: "Team Tasks",
+      supportingText: `${snapshot.summary.openTaskCount} open`,
+    },
+    {
+      active: viewState.view === "calendar",
+      href: buildTaskHref({
+        view: "calendar",
+      }),
+      label: "Calendar",
+      supportingText: `${snapshot.calendar.buckets.length} buckets`,
+    },
+    {
+      active: viewState.view === "kanban",
+      href: buildTaskHref({
+        view: "kanban",
+      }),
+      label: "Kanban",
+      supportingText: `${snapshot.kanban.columns.filter((column) => column.taskCount > 0).length} live columns`,
+    },
+  ];
+
+  const signalChips = [
+    {
+      label: `${snapshot.summary.overdueTaskCount} overdue`,
+    },
+    {
+      label: `${snapshot.summary.upcomingTaskCount} upcoming`,
+    },
+    {
+      label: `${snapshot.summary.blockedTaskCount} blocked`,
+    },
+    {
+      label: `${snapshot.summary.unassignedTaskCount} unassigned`,
+    },
+  ];
+
   return (
     <section className="space-y-6">
-      <header className="rounded-[28px] border border-border bg-white px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
+      <header className="ui-surface space-y-6 px-6 py-6 sm:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
               <Badge>Tasks</Badge>
-              <Badge tone="muted">{snapshot.userDisplayName}</Badge>
+              <Badge tone="muted">{snapshot.organization.name}</Badge>
+              <Badge tone="info">{snapshot.userDisplayName}</Badge>
             </div>
-            <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-              Personal execution queue
-            </h1>
-            <p className="max-w-3xl text-sm leading-7 text-muted">
-              Assigned tasks surface here across opportunities so contributors can
-              work from one personal view and jump back into the linked workspace.
-            </p>
+            <div className="space-y-2">
+              <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
+                Execution triage
+              </h1>
+              <p className="max-w-3xl text-sm leading-7 text-muted">
+                Move between personal priorities, team ownership, due-date
+                sequencing, and status lanes without losing reminder state or the
+                linked opportunity context.
+              </p>
+            </div>
           </div>
+
+          <Link
+            className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-pill)] border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:border-border-strong hover:bg-surface-strong"
+            href="/opportunities"
+          >
+            Open pipeline
+          </Link>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
+          <SavedViewControls items={viewItems} label="Views" />
+          <ActiveFilterChipBar
+            chips={signalChips}
+            className="xl:justify-end"
+            emptyLabel="No active deadline signals"
+          />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
-            label="Assigned tasks"
-            value={String(snapshot.assignedTaskCount)}
+            label="My queue"
+            supportingText="Assigned work requiring personal follow-through."
+            value={String(snapshot.summary.assignedTaskCount)}
           />
           <SummaryCard
-            label="Overdue"
-            value={String(snapshot.overdueTaskCount)}
+            label="Open portfolio work"
+            supportingText={`${snapshot.summary.linkedOpportunityCount} linked pursuits`}
+            value={String(snapshot.summary.openTaskCount)}
           />
           <SummaryCard
-            label="Completed"
-            value={String(snapshot.completedTaskCount)}
+            label="Overdue or blocked"
+            supportingText="Priority work already outside the planned path."
+            value={String(
+              snapshot.summary.overdueTaskCount + snapshot.summary.blockedTaskCount,
+            )}
+          />
+          <SummaryCard
+            label="Unassigned"
+            supportingText="Tasks that still need ownership before execution."
+            value={String(snapshot.summary.unassignedTaskCount)}
           />
         </div>
       </header>
 
-      {snapshot.tasks.length > 0 ? (
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_380px] xl:items-start">
         <div className="space-y-4">
-          {snapshot.tasks.map((task) => (
-            <article
-              className="rounded-[24px] border border-border bg-white px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)]"
-              key={task.id}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge tone={priorityTone(task.priority)}>
-                      {humanizeEnum(task.priority)}
-                    </Badge>
-                    <Badge tone="muted">{humanizeEnum(task.status)}</Badge>
-                    <Badge tone="warning">{task.opportunityStageLabel}</Badge>
-                    {task.deadlineReminderState !== "NONE" ? (
-                      <Badge tone={deadlineReminderTone(task.deadlineReminderState)}>
-                        {deadlineReminderLabel(task.deadlineReminderState)}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <h2 className="text-xl font-semibold text-foreground">{task.title}</h2>
-                  <p className="text-sm text-muted">
-                    {task.opportunityTitle}
-                    {task.assigneeName ? ` · Assigned to ${task.assigneeName}` : ""}
-                  </p>
-                </div>
-                <p className="text-sm text-muted">
-                  {task.dueAt ? `Due ${formatDate(task.dueAt)}` : "No due date"}
-                </p>
-              </div>
-
-              {task.description ? (
-                <p className="mt-3 text-sm leading-6 text-muted">{task.description}</p>
-              ) : null}
-
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-muted">
-                  {task.completedAt
-                    ? `Completed ${formatDate(task.completedAt)}`
-                    : task.startedAt
-                      ? `Started ${formatDate(task.startedAt)}`
-                      : "Not started yet"}
-                </p>
-                <Link
-                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-                  href={`/opportunities/${task.opportunityId}`}
-                >
-                  Open workspace
-                </Link>
-              </div>
-            </article>
-          ))}
+          {viewState.view === "my_tasks" ? (
+            <MyTasksView focusedTaskId={focusedTask?.id ?? null} snapshot={snapshot} />
+          ) : null}
+          {viewState.view === "team_tasks" ? (
+            <TeamTasksView focusedTaskId={focusedTask?.id ?? null} snapshot={snapshot} />
+          ) : null}
+          {viewState.view === "calendar" ? (
+            <CalendarTasksView
+              focusedTaskId={focusedTask?.id ?? null}
+              snapshot={snapshot}
+            />
+          ) : null}
+          {viewState.view === "kanban" ? (
+            <KanbanTasksView focusedTaskId={focusedTask?.id ?? null} snapshot={snapshot} />
+          ) : null}
         </div>
-      ) : (
-        <EmptyState
-          message="Assigned tasks will appear here once work is delegated from opportunity workspaces."
-          title="No assigned tasks"
-        />
-      )}
+
+        <PreviewPanel
+          actions={
+            focusedTask ? (
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-pill)] bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
+                href={`/opportunities/${focusedTask.opportunityId}?section=tasks`}
+              >
+                Open task in workspace
+              </Link>
+            ) : undefined
+          }
+          className="xl:sticky xl:top-24"
+          description={
+            focusedTask?.description ??
+            "Choose a task from the active view to inspect ownership, due-date pressure, and the linked pursuit."
+          }
+          eyebrow="Task preview"
+          metadata={
+            focusedTask
+              ? [
+                  {
+                    label: "Opportunity",
+                    value: focusedTask.opportunityTitle,
+                  },
+                  {
+                    label: "Stage",
+                    value: focusedTask.opportunityStageLabel,
+                  },
+                  {
+                    label: "Owner",
+                    value: focusedTask.assigneeName ?? "Unassigned",
+                  },
+                  {
+                    label: "Due",
+                    value: focusedTask.dueAt
+                      ? formatDate(focusedTask.dueAt)
+                      : "No due date",
+                  },
+                  {
+                    label: "Reminder",
+                    value: deadlineReminderLabel(focusedTask.deadlineReminderState),
+                  },
+                  {
+                    label: "Created by",
+                    value: focusedTask.createdByName ?? "Unknown",
+                  },
+                ]
+              : []
+          }
+          title={focusedTask?.title ?? "Select a task"}
+        >
+          {focusedTask ? (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge tone={priorityTone(focusedTask.priority)}>
+                  {humanizeEnum(focusedTask.priority)}
+                </Badge>
+                <Badge tone={statusTone(focusedTask.status)}>
+                  {humanizeEnum(focusedTask.status)}
+                </Badge>
+                {focusedTask.deadlineReminderState !== "NONE" ? (
+                  <Badge tone={deadlineReminderTone(focusedTask.deadlineReminderState)}>
+                    {deadlineReminderLabel(focusedTask.deadlineReminderState)}
+                  </Badge>
+                ) : null}
+              </div>
+
+              <dl className="space-y-3 text-sm leading-6 text-muted">
+                <div>
+                  <dt className="text-[0.68rem] font-semibold tracking-[0.18em] uppercase">
+                    Started
+                  </dt>
+                  <dd>{focusedTask.startedAt ? formatDate(focusedTask.startedAt) : "Not started yet"}</dd>
+                </div>
+                <div>
+                  <dt className="text-[0.68rem] font-semibold tracking-[0.18em] uppercase">
+                    Completed
+                  </dt>
+                  <dd>
+                    {focusedTask.completedAt
+                      ? formatDate(focusedTask.completedAt)
+                      : "Still active"}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          ) : (
+            <EmptyState
+              className="border-none bg-transparent px-0 py-0 shadow-none"
+              eyebrow="No task selected"
+              message="Pick a task from any queue to review its context and jump into the workspace."
+              title="Task detail stays here"
+            />
+          )}
+        </PreviewPanel>
+      </div>
     </section>
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
+function MyTasksView({
+  focusedTaskId,
+  snapshot,
+}: {
+  focusedTaskId: string | null;
+  snapshot: TaskBoardSnapshot;
+}) {
+  if (snapshot.myTasks.tasks.length === 0) {
+    return (
+      <EmptyState
+        message="Assigned work will appear here once opportunity owners delegate execution tasks."
+        title="No personal tasks"
+      />
+    );
+  }
+
+  const sections = snapshot.myTasks.sections.filter((section) => section.taskCount > 0);
+
   return (
-    <div className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,249,239,0.72)] px-5 py-5">
-      <p className="text-xs tracking-[0.24em] text-muted uppercase">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-foreground">{value}</p>
+    <div className="space-y-4">
+      {sections.map((section) => (
+        <section className="ui-surface space-y-4 px-5 py-5" key={section.key}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="muted">{section.label}</Badge>
+                <Badge tone={section.key === "needs_attention" ? "warning" : "info"}>
+                  {section.taskCount} tasks
+                </Badge>
+              </div>
+              <h2 className="text-lg font-semibold text-foreground">{section.label}</h2>
+              <p className="max-w-2xl text-sm leading-6 text-muted">
+                {section.description}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {section.tasks.map((task) => (
+              <TaskListItem
+                active={focusedTaskId === task.id}
+                key={task.id}
+                task={task}
+                view="my_tasks"
+              />
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
+}
+
+function TeamTasksView({
+  focusedTaskId,
+  snapshot,
+}: {
+  focusedTaskId: string | null;
+  snapshot: TaskBoardSnapshot;
+}) {
+  if (snapshot.teamTasks.lanes.length === 0) {
+    return (
+      <EmptyState
+        message="Open team work will appear here once tasks are created on live pursuits."
+        title="No team tasks"
+      />
+    );
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      {snapshot.teamTasks.lanes.map((lane) => (
+        <section className="ui-surface space-y-4 px-5 py-5" key={lane.key}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-foreground">{lane.label}</h2>
+              <p className="text-sm leading-6 text-muted">{lane.supportingText}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge tone="info">{lane.taskCount} open</Badge>
+              {lane.overdueTaskCount > 0 ? (
+                <Badge tone="warning">{lane.overdueTaskCount} overdue</Badge>
+              ) : null}
+            </div>
+          </div>
+          <div className="space-y-3">
+            {lane.tasks.map((task) => (
+              <TaskListItem
+                active={focusedTaskId === task.id}
+                key={task.id}
+                task={task}
+                view="team_tasks"
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function CalendarTasksView({
+  focusedTaskId,
+  snapshot,
+}: {
+  focusedTaskId: string | null;
+  snapshot: TaskBoardSnapshot;
+}) {
+  if (snapshot.calendar.buckets.length === 0) {
+    return (
+      <EmptyState
+        message="Due-date sequencing will appear here once the portfolio has task records."
+        title="No calendar tasks"
+      />
+    );
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      {snapshot.calendar.buckets.map((bucket) => (
+        <section className="ui-surface space-y-4 px-5 py-5" key={bucket.key}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="muted">{bucket.label}</Badge>
+                {bucket.overdueTaskCount > 0 ? (
+                  <Badge tone="warning">{bucket.overdueTaskCount} overdue</Badge>
+                ) : null}
+              </div>
+              <h2 className="text-lg font-semibold text-foreground">{bucket.label}</h2>
+              <p className="text-sm leading-6 text-muted">{bucket.supportingText}</p>
+            </div>
+            <Badge tone="info">{bucket.taskCount} tasks</Badge>
+          </div>
+          <div className="space-y-3">
+            {bucket.tasks.map((task) => (
+              <TaskListItem
+                active={focusedTaskId === task.id}
+                key={task.id}
+                task={task}
+                view="calendar"
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function KanbanTasksView({
+  focusedTaskId,
+  snapshot,
+}: {
+  focusedTaskId: string | null;
+  snapshot: TaskBoardSnapshot;
+}) {
+  if (snapshot.allTasks.length === 0) {
+    return (
+      <EmptyState
+        message="Status lanes will populate after the first execution tasks are created."
+        title="No task lanes"
+      />
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="grid min-w-[960px] gap-4 xl:min-w-0 xl:grid-cols-5">
+        {snapshot.kanban.columns.map((column) => (
+          <section className="ui-surface space-y-4 px-4 py-4" key={column.key}>
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <Badge tone={statusTone(column.key)}>{column.label}</Badge>
+                <Badge tone="muted">{column.taskCount}</Badge>
+                {column.overdueTaskCount > 0 ? (
+                  <Badge tone="warning">{column.overdueTaskCount} overdue</Badge>
+                ) : null}
+              </div>
+              <p className="text-sm leading-6 text-muted">
+                Tasks currently sitting in the {column.label.toLowerCase()} lane.
+              </p>
+            </div>
+
+            {column.tasks.length > 0 ? (
+              <div className="space-y-3">
+                {column.tasks.map((task) => (
+                  <TaskListItem
+                    active={focusedTaskId === task.id}
+                    key={task.id}
+                    task={task}
+                    view="kanban"
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                className="px-4 py-5"
+                eyebrow="No tasks in lane"
+                message="This lane is currently clear."
+                title={`No ${column.label.toLowerCase()} tasks`}
+              />
+            )}
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TaskListItem({
+  active,
+  task,
+  view,
+}: {
+  active: boolean;
+  task: TaskBoardItem;
+  view: TaskBoardViewKey;
+}) {
+  return (
+    <Link
+      aria-current={active ? "true" : undefined}
+      className={cn(
+        "block rounded-[20px] border px-4 py-4 transition",
+        active
+          ? "border-accent bg-accent-soft/60 shadow-[0_14px_28px_rgba(19,78,68,0.12)]"
+          : "border-border bg-surface hover:border-border-strong hover:bg-surface-strong",
+      )}
+      href={buildTaskHref({
+        focusTaskId: task.id,
+        view,
+      })}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <Badge tone={priorityTone(task.priority)}>
+              {humanizeEnum(task.priority)}
+            </Badge>
+            <Badge tone={statusTone(task.status)}>{humanizeEnum(task.status)}</Badge>
+            {task.deadlineReminderState !== "NONE" ? (
+              <Badge tone={deadlineReminderTone(task.deadlineReminderState)}>
+                {deadlineReminderLabel(task.deadlineReminderState)}
+              </Badge>
+            ) : null}
+          </div>
+          <h3 className="text-base font-semibold text-foreground">{task.title}</h3>
+        </div>
+        <p className="text-sm text-muted">
+          {task.dueAt ? `Due ${formatDate(task.dueAt)}` : "No due date"}
+        </p>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted">
+        <span>{task.opportunityTitle}</span>
+        <span>{task.opportunityStageLabel}</span>
+        <span>{task.assigneeName ?? "Unassigned"}</span>
+      </div>
+    </Link>
+  );
+}
+
+function SummaryCard({
+  label,
+  supportingText,
+  value,
+}: {
+  label: string;
+  supportingText: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[20px] border border-border bg-surface px-5 py-5">
+      <p className="text-xs tracking-[0.22em] text-muted uppercase">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-foreground">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-muted">{supportingText}</p>
+    </div>
+  );
+}
+
+function getTasksForView({
+  snapshot,
+  view,
+}: {
+  snapshot: TaskBoardSnapshot;
+  view: TaskBoardViewKey;
+}) {
+  switch (view) {
+    case "team_tasks":
+      return snapshot.teamTasks.lanes.flatMap((lane) => lane.tasks);
+    case "calendar":
+      return snapshot.calendar.buckets.flatMap((bucket) => bucket.tasks);
+    case "kanban":
+      return snapshot.kanban.columns.flatMap((column) => column.tasks);
+    case "my_tasks":
+    default:
+      return snapshot.myTasks.tasks;
+  }
+}
+
+function buildTaskHref({
+  focusTaskId,
+  view,
+}: {
+  focusTaskId?: string | null;
+  view: TaskBoardViewKey;
+}) {
+  const params = new URLSearchParams();
+  if (view !== "my_tasks") {
+    params.set("view", view);
+  }
+
+  if (focusTaskId) {
+    params.set("focus", focusTaskId);
+  }
+
+  const query = params.toString();
+  return query ? `/tasks?${query}` : "/tasks";
 }
 
 function humanizeEnum(value: string) {
@@ -141,27 +611,55 @@ function humanizeEnum(value: string) {
     .join(" ");
 }
 
-function priorityTone(priority: PersonalTaskBoardSnapshot["tasks"][number]["priority"]) {
-  switch (priority) {
+function priorityTone(taskPriority: TaskBoardItem["priority"]) {
+  switch (taskPriority) {
     case "CRITICAL":
       return "warning" as const;
     case "HIGH":
       return "accent" as const;
+    case "LOW":
+      return "muted" as const;
+    default:
+      return "info" as const;
+  }
+}
+
+function statusTone(status: TaskBoardItem["status"]) {
+  switch (status) {
+    case "BLOCKED":
+      return "warning" as const;
+    case "COMPLETED":
+      return "success" as const;
+    case "IN_PROGRESS":
+      return "info" as const;
+    case "CANCELLED":
+      return "danger" as const;
     default:
       return "muted" as const;
   }
 }
 
-function deadlineReminderTone(
-  state: PersonalTaskBoardSnapshot["tasks"][number]["deadlineReminderState"],
-) {
-  return state === "OVERDUE" ? ("warning" as const) : ("accent" as const);
+function deadlineReminderTone(state: TaskBoardItem["deadlineReminderState"]) {
+  if (state === "OVERDUE") {
+    return "warning" as const;
+  }
+
+  if (state === "UPCOMING") {
+    return "info" as const;
+  }
+
+  return "muted" as const;
 }
 
-function deadlineReminderLabel(
-  state: PersonalTaskBoardSnapshot["tasks"][number]["deadlineReminderState"],
-) {
-  return state === "OVERDUE" ? "Overdue" : "Upcoming deadline";
+function deadlineReminderLabel(state: TaskBoardItem["deadlineReminderState"]) {
+  switch (state) {
+    case "OVERDUE":
+      return "Overdue";
+    case "UPCOMING":
+      return "Upcoming";
+    default:
+      return "On track";
+  }
 }
 
 function formatDate(value: string) {

@@ -28,7 +28,7 @@ describe("buildDockerArtifactPlan", () => {
   const repoRoot = path.join("/tmp", "onesource");
   const paths = getDockerArtifactPaths(repoRoot);
 
-  it("plans install plus both archive refreshes when the local environment is missing", () => {
+  it("blocks archive refreshes when the host install is missing or stale", () => {
     const plan = buildDockerArtifactPlan({
       repoRoot,
       ...createMockFs({
@@ -41,15 +41,11 @@ describe("buildDockerArtifactPlan", () => {
       }),
     });
 
-    expect(plan.installNeeded).toBe(true);
+    expect(plan.hostInstallReady).toBe(false);
+    expect(plan.blockedByHostInstall).toBe(true);
     expect(plan.npmArchiveNeeded).toBe(true);
     expect(plan.prismaArchiveNeeded).toBe(true);
-    expect(plan.steps.map((step) => step.label)).toEqual([
-      "Install npm dependencies",
-      "Generate Prisma client",
-      "Refresh offline npm cache archive",
-      "Refresh offline Prisma client archive",
-    ]);
+    expect(plan.steps).toEqual([]);
   });
 
   it("skips all work when the install marker and archives are newer than their inputs", () => {
@@ -68,6 +64,8 @@ describe("buildDockerArtifactPlan", () => {
       }),
     });
 
+    expect(plan.hostInstallReady).toBe(true);
+    expect(plan.blockedByHostInstall).toBe(false);
     expect(plan.steps).toEqual([]);
   });
 
@@ -87,7 +85,8 @@ describe("buildDockerArtifactPlan", () => {
       }),
     });
 
-    expect(plan.installNeeded).toBe(false);
+    expect(plan.hostInstallReady).toBe(true);
+    expect(plan.blockedByHostInstall).toBe(false);
     expect(plan.npmArchiveNeeded).toBe(false);
     expect(plan.prismaArchiveNeeded).toBe(true);
     expect(plan.steps.map((step) => step.label)).toEqual([

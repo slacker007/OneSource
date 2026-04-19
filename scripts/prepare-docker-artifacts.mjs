@@ -11,6 +11,17 @@ if (!fs.existsSync(`${repoRoot}/package.json`)) {
 
 const plan = buildDockerArtifactPlan({ repoRoot });
 
+if (plan.blockedByHostInstall) {
+  console.error(
+    [
+      "Host npm dependencies are missing or stale.",
+      "`make docker-artifacts` is an optional fallback for environments that already have a healthy host install.",
+      "Run `npm ci --ignore-scripts` or `npm install` in a supported host runtime first, then rerun this command.",
+    ].join(" "),
+  );
+  process.exit(1);
+}
+
 if (plan.steps.length === 0) {
   console.log("Local Docker cache archives are already up to date.");
   process.exit(0);

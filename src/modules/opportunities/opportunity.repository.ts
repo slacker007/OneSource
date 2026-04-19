@@ -64,6 +64,12 @@ import type {
   OpportunityScoreSummary,
   OpportunityStageSummary,
   OpportunitySummary,
+  TaskBoardCalendarBucket,
+  TaskBoardItem,
+  TaskBoardKanbanColumn,
+  TaskBoardQueueSection,
+  TaskBoardSnapshot,
+  TaskBoardTeamLane,
   OpportunityTaskSummary,
   SourceConnectorSummary,
 } from "./opportunity.types";
@@ -77,6 +83,35 @@ const DASHBOARD_SOURCE_ACTIVITY_LIMIT = 4;
 const DASHBOARD_TASK_BURDEN_OPPORTUNITY_LIMIT = 3;
 const TOP_OPPORTUNITY_LIMIT = 3;
 export const OPPORTUNITY_LIST_PAGE_SIZE = 4;
+const TASK_CALENDAR_EMPTY_BUCKET_KEY = "no_due_date";
+const TASK_CALENDAR_EMPTY_BUCKET_LABEL = "No due date";
+const TASK_CALENDAR_EMPTY_BUCKET_SUPPORTING_TEXT =
+  "Tasks without a committed due date stay visible here until planning catches up.";
+const TASK_STATUS_DEFINITIONS = [
+  {
+    key: "BLOCKED",
+    label: "Blocked",
+  },
+  {
+    key: "IN_PROGRESS",
+    label: "In progress",
+  },
+  {
+    key: "NOT_STARTED",
+    label: "Not started",
+  },
+  {
+    key: "COMPLETED",
+    label: "Completed",
+  },
+  {
+    key: "CANCELLED",
+    label: "Cancelled",
+  },
+] as const satisfies Array<{
+  key: OpportunityTaskSummary["status"];
+  label: string;
+}>;
 const CLOSED_PIPELINE_STAGE_KEYS = ["awarded", "lost", "no_bid", "submitted"];
 const PIPELINE_PROGRESS_STAGE_KEYS = OPPORTUNITY_STAGE_DEFINITIONS.filter(
   (definition) => definition.key !== "no_bid",
@@ -871,6 +906,51 @@ const opportunityWorkspaceArgs = {
   },
 };
 
+const taskBoardArgs = {
+  select: {
+    id: true,
+    name: true,
+    slug: true,
+    opportunities: {
+      orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
+      select: {
+        id: true,
+        title: true,
+        currentStageLabel: true,
+        tasks: {
+          orderBy: [{ dueAt: "asc" }, { priority: "desc" }, { createdAt: "asc" }],
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            status: true,
+            priority: true,
+            dueAt: true,
+            startedAt: true,
+            completedAt: true,
+            deadlineReminderState: true,
+            deadlineReminderUpdatedAt: true,
+            assigneeUserId: true,
+            createdByUser: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
+            assigneeUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
 const personalTaskBoardArgs = {
   select: {
     id: true,
@@ -961,6 +1041,18 @@ export type PersonalTaskBoardRepositoryClient = {
         };
       } & typeof personalTaskBoardArgs,
     ): Promise<PersonalTaskBoardRecord | null>;
+  };
+};
+
+export type TaskBoardRepositoryClient = {
+  organization: {
+    findUnique(
+      args: {
+        where: {
+          slug: string;
+        };
+      } & typeof taskBoardArgs,
+    ): Promise<TaskBoardRecord | null>;
   };
 };
 
@@ -1410,6 +1502,18 @@ export type PersonalTaskBoardRecord = {
       };
     }
   >;
+};
+
+export type TaskBoardRecord = {
+  id: string;
+  name: string;
+  slug: string;
+  opportunities: Array<{
+    id: string;
+    title: string;
+    currentStageLabel: string | null;
+    tasks: Array<OpportunityWorkspaceRecord["tasks"][number]>;
+  }>;
 };
 
 type GetHomeDashboardSnapshotParams = {
@@ -1932,6 +2036,85 @@ export async function getPersonalTaskBoardSnapshot({
   };
 }
 
+export async function getTaskBoardSnapshot({
+  db,
+  userDisplayName,
+  userId,
+  organizationSlug = DEFAULT_ORGANIZATION_SLUG,
+  now = new Date(),
+}: {
+  db: TaskBoardRepositoryClient;
+  userDisplayName: string;
+  userId: string;
+  organizationSlug?: string;
+  now?: Date;
+}): Promise<TaskBoardSnapshot | null> {
+  const record = await loadTaskBoardRecord({
+    db,
+    organizationSlug,
+  });
+
+  if (!record) {
+    return null;
+  }
+
+  const allTasks = record.opportunities
+    .flatMap((opportunity) =>
+      opportunity.tasks.map((task) =>
+        mapTaskBoardItem({
+          opportunity,
+          task,
+        }),
+      ),
+    )
+    .sort(compareTaskBoardItems);
+  const myTasks = allTasks.filter((task) => task.assigneeUserId === userId);
+  const openTasks = allTasks.filter((task) => isOpenTask(task.status));
+
+  return {
+    organization: {
+      id: record.id,
+      name: record.name,
+      slug: record.slug,
+    },
+    currentUserId: userId,
+    summary: {
+      assignedTaskCount: myTasks.length,
+      openTaskCount: openTasks.length,
+      overdueTaskCount: openTasks.filter(
+        (task) => task.deadlineReminderState === "OVERDUE",
+      ).length,
+      upcomingTaskCount: openTasks.filter(
+        (task) => task.deadlineReminderState === "UPCOMING",
+      ).length,
+      blockedTaskCount: openTasks.filter((task) => task.status === "BLOCKED")
+        .length,
+      unassignedTaskCount: openTasks.filter((task) => !task.assigneeUserId).length,
+      linkedOpportunityCount: new Set(
+        openTasks.map((task) => task.opportunityId),
+      ).size,
+    },
+    userDisplayName,
+    allTasks,
+    myTasks: {
+      sections: buildTaskQueueSections({
+        now,
+        tasks: myTasks,
+      }),
+      tasks: myTasks,
+    },
+    teamTasks: {
+      lanes: buildTaskTeamLanes(openTasks),
+    },
+    calendar: {
+      buckets: buildTaskCalendarBuckets(allTasks),
+    },
+    kanban: {
+      columns: buildTaskKanbanColumns(allTasks),
+    },
+  };
+}
+
 async function loadOrganizationDashboardRecord({
   db,
   organizationSlug,
@@ -1985,6 +2168,21 @@ async function loadPersonalTaskBoardRecord({
     },
     ...personalTaskBoardArgs,
   })) as PersonalTaskBoardRecord | null;
+}
+
+async function loadTaskBoardRecord({
+  db,
+  organizationSlug,
+}: {
+  db: TaskBoardRepositoryClient;
+  organizationSlug: string;
+}): Promise<TaskBoardRecord | null> {
+  return (await db.organization.findUnique({
+    where: {
+      slug: organizationSlug,
+    },
+    ...taskBoardArgs,
+  })) as TaskBoardRecord | null;
 }
 
 function mapConnectorSummary(
@@ -2551,6 +2749,204 @@ function mapPersonalTaskBoardItem(
     opportunityTitle: task.opportunity.title,
     opportunityStageLabel: task.opportunity.currentStageLabel ?? "Identified",
   };
+}
+
+function mapTaskBoardItem({
+  opportunity,
+  task,
+}: {
+  opportunity: TaskBoardRecord["opportunities"][number];
+  task: TaskBoardRecord["opportunities"][number]["tasks"][number];
+}): TaskBoardItem {
+  return {
+    ...mapWorkspaceTask(task),
+    opportunityId: opportunity.id,
+    opportunityTitle: opportunity.title,
+    opportunityStageLabel: opportunity.currentStageLabel ?? "Identified",
+  };
+}
+
+function buildTaskQueueSections({
+  now,
+  tasks,
+}: {
+  now: Date;
+  tasks: TaskBoardItem[];
+}): TaskBoardQueueSection[] {
+  const sortedTasks = [...tasks].sort(compareTaskBoardItems);
+  const needsAttention = sortedTasks.filter(
+    (task) =>
+      task.deadlineReminderState === "OVERDUE" ||
+      task.status === "BLOCKED" ||
+      task.priority === "CRITICAL",
+  );
+  const dueNext = sortedTasks.filter(
+    (task) =>
+      !needsAttention.some((candidate) => candidate.id === task.id) &&
+      isOpenTask(task.status) &&
+      (task.deadlineReminderState === "UPCOMING" ||
+        isTaskDueWithinDays(task.dueAt, now, 7)),
+  );
+  const activeQueue = sortedTasks.filter(
+    (task) =>
+      !needsAttention.some((candidate) => candidate.id === task.id) &&
+      !dueNext.some((candidate) => candidate.id === task.id) &&
+      isOpenTask(task.status),
+  );
+  const closedLoop = sortedTasks.filter((task) => !isOpenTask(task.status));
+
+  return [
+    {
+      key: "needs_attention",
+      label: "Needs attention",
+      description:
+        "Overdue, blocked, and critical work stays at the top of the queue.",
+      taskCount: needsAttention.length,
+      tasks: needsAttention,
+    },
+    {
+      key: "due_next",
+      label: "Due next",
+      description:
+        "Upcoming commitments due in the next week or already flagged by reminders.",
+      taskCount: dueNext.length,
+      tasks: dueNext,
+    },
+    {
+      key: "active_queue",
+      label: "Active queue",
+      description:
+        "Remaining open work that still needs progress but is not yet in the warning band.",
+      taskCount: activeQueue.length,
+      tasks: activeQueue,
+    },
+    {
+      key: "closed_loop",
+      label: "Closed loop",
+      description:
+        "Completed or cancelled work stays visible for context without crowding the active queue.",
+      taskCount: closedLoop.length,
+      tasks: closedLoop,
+    },
+  ];
+}
+
+function buildTaskTeamLanes(tasks: TaskBoardItem[]): TaskBoardTeamLane[] {
+  const laneMap = new Map<string, TaskBoardTeamLane>();
+
+  for (const task of tasks) {
+    const key = task.assigneeUserId ?? "unassigned";
+    const lane = laneMap.get(key) ?? {
+      key,
+      label: task.assigneeName ?? "Unassigned",
+      supportingText: task.assigneeName
+        ? "Live work assigned across the portfolio."
+        : "Tasks that still need an owner before execution can move.",
+      taskCount: 0,
+      overdueTaskCount: 0,
+      tasks: [],
+    };
+
+    lane.taskCount += 1;
+    if (task.deadlineReminderState === "OVERDUE") {
+      lane.overdueTaskCount += 1;
+    }
+    lane.tasks.push(task);
+    laneMap.set(key, lane);
+  }
+
+  return [...laneMap.values()]
+    .map((lane) => ({
+      ...lane,
+      tasks: lane.tasks.sort(compareTaskBoardItems),
+    }))
+    .sort((left, right) => {
+      if (left.label === "Unassigned") {
+        return -1;
+      }
+
+      if (right.label === "Unassigned") {
+        return 1;
+      }
+
+      if (left.overdueTaskCount !== right.overdueTaskCount) {
+        return right.overdueTaskCount - left.overdueTaskCount;
+      }
+
+      if (left.taskCount !== right.taskCount) {
+        return right.taskCount - left.taskCount;
+      }
+
+      return left.label.localeCompare(right.label);
+    });
+}
+
+function buildTaskCalendarBuckets(tasks: TaskBoardItem[]): TaskBoardCalendarBucket[] {
+  const datedTaskMap = new Map<string, TaskBoardCalendarBucket>();
+  const noDueDateTasks: TaskBoardItem[] = [];
+
+  for (const task of tasks) {
+    if (!task.dueAt) {
+      noDueDateTasks.push(task);
+      continue;
+    }
+
+    const dueDate = new Date(task.dueAt);
+    const key = dueDate.toISOString().slice(0, 10);
+    const bucket = datedTaskMap.get(key) ?? {
+      key,
+      label: formatTaskCalendarLabel(dueDate),
+      supportingText: formatTaskCalendarSupportingText(dueDate),
+      taskCount: 0,
+      overdueTaskCount: 0,
+      tasks: [],
+    };
+
+    bucket.taskCount += 1;
+    if (task.deadlineReminderState === "OVERDUE") {
+      bucket.overdueTaskCount += 1;
+    }
+    bucket.tasks.push(task);
+    datedTaskMap.set(key, bucket);
+  }
+
+  const buckets = [...datedTaskMap.values()]
+    .map((bucket) => ({
+      ...bucket,
+      tasks: bucket.tasks.sort(compareTaskBoardItems),
+    }))
+    .sort((left, right) => left.key.localeCompare(right.key));
+
+  if (noDueDateTasks.length > 0) {
+    buckets.push({
+      key: TASK_CALENDAR_EMPTY_BUCKET_KEY,
+      label: TASK_CALENDAR_EMPTY_BUCKET_LABEL,
+      supportingText: TASK_CALENDAR_EMPTY_BUCKET_SUPPORTING_TEXT,
+      taskCount: noDueDateTasks.length,
+      overdueTaskCount: 0,
+      tasks: noDueDateTasks.sort(compareTaskBoardItems),
+    });
+  }
+
+  return buckets;
+}
+
+function buildTaskKanbanColumns(tasks: TaskBoardItem[]): TaskBoardKanbanColumn[] {
+  return TASK_STATUS_DEFINITIONS.map(({ key, label }) => {
+    const columnTasks = tasks
+      .filter((task) => task.status === key)
+      .sort(compareTaskBoardItems);
+
+    return {
+      key,
+      label,
+      taskCount: columnTasks.length,
+      overdueTaskCount: columnTasks.filter(
+        (task) => task.deadlineReminderState === "OVERDUE",
+      ).length,
+      tasks: columnTasks,
+    };
+  });
 }
 
 function mapWorkspaceMilestone(
@@ -3919,6 +4315,10 @@ function compareTaskSummaries(
   return left.title.localeCompare(right.title);
 }
 
+function compareTaskBoardItems(left: TaskBoardItem, right: TaskBoardItem) {
+  return comparePersonalTaskBoardItems(left, right);
+}
+
 function comparePersonalTaskBoardItems(
   left: PersonalTaskBoardItem,
   right: PersonalTaskBoardItem,
@@ -3955,6 +4355,45 @@ function getPersonalTaskStatusRank(status: PersonalTaskBoardItem["status"]) {
     default:
       return 5;
   }
+}
+
+function isOpenTask(status: OpportunityTaskSummary["status"]) {
+  return status !== "COMPLETED" && status !== "CANCELLED";
+}
+
+function isTaskDueWithinDays(
+  dueAt: string | null,
+  now: Date,
+  days: number,
+) {
+  if (!dueAt) {
+    return false;
+  }
+
+  const dueDate = new Date(dueAt);
+  if (Number.isNaN(dueDate.getTime())) {
+    return false;
+  }
+
+  const deltaMs = dueDate.getTime() - now.getTime();
+  const deltaDays = deltaMs / (1000 * 60 * 60 * 24);
+  return deltaDays >= 0 && deltaDays <= days;
+}
+
+function formatTaskCalendarLabel(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(value);
+}
+
+function formatTaskCalendarSupportingText(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(value);
 }
 
 function compareMilestoneSummaries(

@@ -1,6 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -14,6 +22,8 @@ import {
   OPPORTUNITY_MILESTONE_STATUS_OPTIONS,
   OPPORTUNITY_MILESTONE_TYPE_OPTIONS,
   type OpportunityMilestoneActionState,
+  type OpportunityMilestoneSubmission,
+  validateOpportunityMilestoneFormSubmission,
 } from "@/modules/opportunities/opportunity-milestone-form.schema";
 import type { OpportunityWorkspaceMilestone } from "@/modules/opportunities/opportunity.types";
 
@@ -41,11 +51,31 @@ export function OpportunityMilestoneManager({
   opportunityId,
   updateAction,
 }: OpportunityMilestoneManagerProps) {
+  const router = useRouter();
   const [createState, createFormAction, createIsPending] = useActionState(
     createAction,
     INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE,
   );
   const createFormRef = useRef<HTMLFormElement>(null);
+  const [optimisticCreatedMilestone, setOptimisticCreatedMilestone] =
+    useState<OptimisticMilestoneDraft | null>(null);
+  const lastCreateRefreshStateRef =
+    useRef<OpportunityMilestoneActionState | null>(null);
+  const hasMaterializedOptimisticMilestone = optimisticCreatedMilestone
+    ? milestones.some((milestone) =>
+        doesMilestoneMatchOptimisticDraft(milestone, optimisticCreatedMilestone),
+      )
+    : false;
+  const shouldShowOptimisticMilestone = Boolean(
+    optimisticCreatedMilestone &&
+      !createState.formError &&
+      Object.keys(createState.fieldErrors).length === 0 &&
+      !hasMaterializedOptimisticMilestone,
+  );
+  const visibleMilestones =
+    optimisticCreatedMilestone && shouldShowOptimisticMilestone
+      ? [optimisticCreatedMilestone.milestone, ...milestones]
+      : milestones;
 
   useEffect(() => {
     if (createState.successMessage) {
@@ -53,11 +83,32 @@ export function OpportunityMilestoneManager({
     }
   }, [createState.successMessage]);
 
+  useEffect(() => {
+    if (
+      createState.successMessage &&
+      lastCreateRefreshStateRef.current !== createState
+    ) {
+      lastCreateRefreshStateRef.current = createState;
+      const refreshTimeout = window.setTimeout(() => {
+        startTransition(() => {
+          router.refresh();
+        });
+      }, 400);
+
+      return () => {
+        window.clearTimeout(refreshTimeout);
+      };
+    }
+  }, [createState, router]);
+
   return (
     <div className="space-y-5">
       <form
         action={createFormAction}
         className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,249,239,0.86)] px-5 py-5"
+        onSubmitCapture={(event) => {
+          setOptimisticCreatedMilestone(buildOptimisticMilestoneDraft(event));
+        }}
         ref={createFormRef}
       >
         <input name="opportunityId" type="hidden" value={opportunityId} />
@@ -183,17 +234,26 @@ export function OpportunityMilestoneManager({
         </div>
       </form>
 
-      {milestones.length > 0 ? (
+      {visibleMilestones.length > 0 ? (
         <div className="space-y-4">
-          {milestones.map((milestone) => (
-            <EditableMilestoneCard
-              deleteAction={deleteAction}
-              key={buildMilestoneVersionKey(milestone)}
-              milestone={milestone}
-              opportunityId={opportunityId}
-              updateAction={updateAction}
-            />
-          ))}
+          {visibleMilestones.map((milestone) =>
+            milestone.id.startsWith("optimistic-milestone:")
+              ? (
+                  <OptimisticMilestoneCard
+                    key={milestone.id}
+                    milestone={milestone}
+                  />
+                )
+              : (
+                  <EditableMilestoneCard
+                    deleteAction={deleteAction}
+                    key={buildMilestoneVersionKey(milestone)}
+                    milestone={milestone}
+                    opportunityId={opportunityId}
+                    updateAction={updateAction}
+                  />
+                ),
+          )}
         </div>
       ) : (
         <EmptyState
@@ -203,6 +263,43 @@ export function OpportunityMilestoneManager({
         />
       )}
     </div>
+  );
+}
+
+type OptimisticMilestoneDraft = {
+  key: string;
+  milestone: OpportunityWorkspaceMilestone;
+};
+
+function OptimisticMilestoneCard({
+  milestone,
+}: {
+  milestone: OpportunityWorkspaceMilestone;
+}) {
+  return (
+    <article className="rounded-[24px] border border-[rgba(32,95,85,0.18)] bg-[rgba(229,243,239,0.9)] px-5 py-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <h3 className="text-base font-semibold text-foreground">
+            {milestone.title}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="accent">Saving</Badge>
+            <Badge tone={milestoneTone(milestone.status)}>
+              {humanizeEnum(milestone.status)}
+            </Badge>
+            {milestone.milestoneTypeKey ? (
+              <Badge tone="muted">{humanizeEnum(milestone.milestoneTypeKey)}</Badge>
+            ) : null}
+          </div>
+        </div>
+        <p className="text-sm text-muted">Target {formatDate(milestone.targetDate)}</p>
+      </div>
+
+      {milestone.description ? (
+        <p className="mt-4 text-sm leading-6 text-muted">{milestone.description}</p>
+      ) : null}
+    </article>
   );
 }
 
@@ -217,6 +314,7 @@ function EditableMilestoneCard({
   opportunityId: string;
   updateAction: OpportunityMilestoneManagerProps["updateAction"];
 }) {
+  const router = useRouter();
   const [updateState, updateFormAction, updateIsPending] = useActionState(
     updateAction,
     INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE,
@@ -225,6 +323,43 @@ function EditableMilestoneCard({
     deleteAction,
     INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE,
   );
+  const lastRefreshStateRef = useRef<OpportunityMilestoneActionState | null>(null);
+
+  useEffect(() => {
+    if (
+      updateState.successMessage &&
+      lastRefreshStateRef.current !== updateState
+    ) {
+      lastRefreshStateRef.current = updateState;
+      const refreshTimeout = window.setTimeout(() => {
+        startTransition(() => {
+          router.refresh();
+        });
+      }, 400);
+
+      return () => {
+        window.clearTimeout(refreshTimeout);
+      };
+    }
+  }, [router, updateState]);
+
+  useEffect(() => {
+    if (
+      deleteState.successMessage &&
+      lastRefreshStateRef.current !== deleteState
+    ) {
+      lastRefreshStateRef.current = deleteState;
+      const refreshTimeout = window.setTimeout(() => {
+        startTransition(() => {
+          router.refresh();
+        });
+      }, 400);
+
+      return () => {
+        window.clearTimeout(refreshTimeout);
+      };
+    }
+  }, [deleteState, router]);
 
   return (
     <article className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(244,248,246,0.9)] px-5 py-5">
@@ -409,6 +544,94 @@ function buildMilestoneVersionKey(milestone: OpportunityWorkspaceMilestone) {
     milestone.targetDate,
     milestone.completedAt ?? "pending",
   ].join(":");
+}
+
+function buildOptimisticMilestoneDraft(
+  event: FormEvent<HTMLFormElement>,
+): OptimisticMilestoneDraft | null {
+  const validation = validateOpportunityMilestoneFormSubmission(
+    new FormData(event.currentTarget),
+  );
+
+  if (!validation.success) {
+    return null;
+  }
+
+  const submission = validation.submission;
+  const key = buildMilestoneComparisonKey({
+    description: submission.description,
+    milestoneTypeKey: submission.milestoneTypeKey,
+    status: submission.status,
+    targetDate: formatDateKey(submission.targetDate),
+    title: submission.title,
+  });
+
+  return {
+    key,
+    milestone: buildOptimisticMilestoneRecord(submission, key),
+  };
+}
+
+function buildOptimisticMilestoneRecord(
+  submission: OpportunityMilestoneSubmission,
+  key: string,
+): OpportunityWorkspaceMilestone {
+  return {
+    id: `optimistic-milestone:${key}`,
+    title: submission.title,
+    description: submission.description,
+    milestoneTypeKey: submission.milestoneTypeKey,
+    status: submission.status,
+    targetDate: submission.targetDate.toISOString(),
+    completedAt: submission.status === "COMPLETED" ? new Date().toISOString() : null,
+    deadlineReminderState: "NONE",
+    deadlineReminderUpdatedAt: null,
+  };
+}
+
+function doesMilestoneMatchOptimisticDraft(
+  milestone: OpportunityWorkspaceMilestone,
+  draft: OptimisticMilestoneDraft,
+) {
+  return (
+    buildMilestoneComparisonKey({
+      description: milestone.description,
+      milestoneTypeKey: milestone.milestoneTypeKey,
+      status: milestone.status,
+      targetDate: formatDateKey(milestone.targetDate),
+      title: milestone.title,
+    }) === draft.key
+  );
+}
+
+function buildMilestoneComparisonKey({
+  description,
+  milestoneTypeKey,
+  status,
+  targetDate,
+  title,
+}: {
+  description: string | null;
+  milestoneTypeKey: string | null;
+  status: OpportunityWorkspaceMilestone["status"];
+  targetDate: string;
+  title: string;
+}) {
+  return [
+    title.trim().toLowerCase(),
+    description?.trim().toLowerCase() ?? "",
+    milestoneTypeKey ?? "",
+    targetDate,
+    status,
+  ].join("|");
+}
+
+function formatDateKey(value: Date | string | null) {
+  if (!value) {
+    return "";
+  }
+
+  return new Date(value).toISOString().slice(0, 10);
 }
 
 function humanizeEnum(value: string) {

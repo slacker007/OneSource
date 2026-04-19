@@ -1,11 +1,16 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 
 const repoRoot = process.cwd();
-const sourceCacheRoot = path.join(os.homedir(), ".npm", "_cacache");
-const outputArchive = path.join(repoRoot, "vendor", "npm-offline-cache.tar.gz");
+const configuredCacheRoot =
+  process.env.npm_config_cache ?? process.env.NPM_CONFIG_CACHE;
+const sourceCacheRoot = path.join(
+  configuredCacheRoot ?? path.join(os.homedir(), ".npm"),
+  "_cacache",
+);
+const outputCacheRoot = path.join(repoRoot, "vendor", "npm-offline-cache");
+const legacyArchive = path.join(repoRoot, "vendor", "npm-offline-cache.tar.gz");
 const buildRoot = path.join(repoRoot, ".tmp-npm-offline-cache-build");
 const buildCacheRoot = path.join(buildRoot, "_cacache");
 
@@ -125,44 +130,44 @@ while (indexStack.length > 0) {
 
 if (matchedEntries === 0) {
   throw new Error(
-    "No dependency tarballs were copied. Refresh the host npm cache with `npm install` before rerunning this script.",
+    "No dependency tarballs were copied. Refresh the host npm cache with `npm ci --ignore-scripts` before rerunning this script.",
   );
 }
 
-fs.mkdirSync(path.dirname(outputArchive), { recursive: true });
-fs.rmSync(outputArchive, { force: true });
-
-const tarResult = spawnSync(
-  "tar",
-  [
-    "--sort=name",
-    "--mtime=@0",
-    "--owner=0",
-    "--group=0",
-    "--numeric-owner",
-    "-C",
-    buildRoot,
-    "-czf",
-    outputArchive,
-    ".",
-  ],
-  {
-    cwd: repoRoot,
-    stdio: "inherit",
-  },
-);
-
-if (tarResult.status !== 0) {
-  throw new Error("Failed to build offline npm cache archive.");
-}
+fs.mkdirSync(path.dirname(outputCacheRoot), { recursive: true });
+fs.rmSync(outputCacheRoot, { force: true, recursive: true });
+fs.cpSync(buildRoot, outputCacheRoot, {
+  dereference: true,
+  recursive: true,
+});
+fs.rmSync(legacyArchive, { force: true });
 
 fs.rmSync(buildRoot, { force: true, recursive: true });
 
-const archiveSizeMb = (
-  fs.statSync(outputArchive).size /
-  (1024 * 1024)
-).toFixed(1);
+const cacheSizeBytes = getDirectorySize(outputCacheRoot);
+const cacheSizeMb = (cacheSizeBytes / (1024 * 1024)).toFixed(1);
 
 console.log(
-  `Wrote ${outputArchive} from ${matchedEntries} cached tarball entries (${archiveSizeMb} MiB).`,
+  `Wrote ${outputCacheRoot} from ${matchedEntries} cached tarball entries (${cacheSizeMb} MiB).`,
 );
+
+function getDirectorySize(rootPath) {
+  let totalSize = 0;
+  const stack = [rootPath];
+
+  while (stack.length > 0) {
+    const currentPath = stack.pop();
+    const stat = fs.statSync(currentPath);
+
+    if (stat.isDirectory()) {
+      for (const entry of fs.readdirSync(currentPath)) {
+        stack.push(path.join(currentPath, entry));
+      }
+      continue;
+    }
+
+    totalSize += stat.size;
+  }
+
+  return totalSize;
+}

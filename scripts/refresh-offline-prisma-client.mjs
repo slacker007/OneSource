@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 
 const repoRoot = process.cwd();
 const sourceClientRoot = path.join(repoRoot, "node_modules", ".prisma", "client");
 const buildRoot = path.join(repoRoot, ".tmp-prisma-client-build");
-const outputArchive = path.join(repoRoot, "vendor", "prisma-client.tar.gz");
+const outputClientRoot = path.join(repoRoot, "vendor", "prisma-client");
+const legacyArchive = path.join(repoRoot, "vendor", "prisma-client.tar.gz");
 
 if (!fs.existsSync(sourceClientRoot)) {
   throw new Error(
@@ -21,38 +21,37 @@ fs.cpSync(sourceClientRoot, path.join(buildRoot, "client"), {
   recursive: true,
 });
 
-fs.mkdirSync(path.dirname(outputArchive), { recursive: true });
-fs.rmSync(outputArchive, { force: true });
-
-const tarResult = spawnSync(
-  "tar",
-  [
-    "--sort=name",
-    "--mtime=@0",
-    "--owner=0",
-    "--group=0",
-    "--numeric-owner",
-    "-C",
-    buildRoot,
-    "-czf",
-    outputArchive,
-    ".",
-  ],
-  {
-    cwd: repoRoot,
-    stdio: "inherit",
-  },
-);
-
-if (tarResult.status !== 0) {
-  throw new Error("Failed to build offline Prisma client archive.");
-}
+fs.mkdirSync(path.dirname(outputClientRoot), { recursive: true });
+fs.rmSync(outputClientRoot, { force: true, recursive: true });
+fs.cpSync(buildRoot, outputClientRoot, {
+  dereference: true,
+  recursive: true,
+});
+fs.rmSync(legacyArchive, { force: true });
 
 fs.rmSync(buildRoot, { force: true, recursive: true });
 
-const archiveSizeMb = (
-  fs.statSync(outputArchive).size /
-  (1024 * 1024)
-).toFixed(1);
+const clientSizeMb = (getDirectorySize(outputClientRoot) / (1024 * 1024)).toFixed(1);
 
-console.log(`Wrote ${outputArchive} (${archiveSizeMb} MiB).`);
+console.log(`Wrote ${outputClientRoot} (${clientSizeMb} MiB).`);
+
+function getDirectorySize(rootPath) {
+  let totalSize = 0;
+  const stack = [rootPath];
+
+  while (stack.length > 0) {
+    const currentPath = stack.pop();
+    const stat = fs.statSync(currentPath);
+
+    if (stat.isDirectory()) {
+      for (const entry of fs.readdirSync(currentPath)) {
+        stack.push(path.join(currentPath, entry));
+      }
+      continue;
+    }
+
+    totalSize += stat.size;
+  }
+
+  return totalSize;
+}

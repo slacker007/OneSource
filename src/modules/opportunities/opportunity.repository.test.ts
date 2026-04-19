@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   getDecisionConsoleSnapshot,
   getPersonalTaskBoardSnapshot,
+  getTaskBoardSnapshot,
   getOpportunityListSnapshot,
   getOpportunityWorkspaceSnapshot,
   getHomeDashboardSnapshot,
@@ -15,6 +16,8 @@ import {
   type OrganizationDashboardRecord,
   type OpportunityWorkspaceRecord,
   type OpportunityWorkspaceRepositoryClient,
+  type TaskBoardRecord,
+  type TaskBoardRepositoryClient,
 } from "@/modules/opportunities/opportunity.repository";
 
 function buildOrganizationProfileRecord() {
@@ -921,6 +924,71 @@ function buildPersonalTaskBoardRecord(): PersonalTaskBoardRecord {
   };
 }
 
+function buildTaskBoardRecord(): TaskBoardRecord {
+  return {
+    id: "org_123",
+    name: "Default Organization",
+    slug: "default-org",
+    opportunities: [
+      {
+        id: "opp_alpha",
+        title: "Enterprise Knowledge Management Support Services",
+        currentStageLabel: "Capture Active",
+        tasks: [
+          buildOpportunityWorkspaceRecord().tasks[0],
+          {
+            id: "task_blocked_unassigned",
+            title: "Validate staffing assumptions",
+            description: "Confirm the staffing mix before proposal review.",
+            status: "BLOCKED",
+            priority: "CRITICAL",
+            dueAt: new Date("2026-04-20T12:00:00.000Z"),
+            startedAt: null,
+            completedAt: null,
+            deadlineReminderState: "UPCOMING",
+            deadlineReminderUpdatedAt: new Date("2026-04-18T08:00:00.000Z"),
+            assigneeUserId: null,
+            assigneeUser: null,
+            createdByUser: {
+              name: "Alex Morgan",
+              email: "alex@example.com",
+            },
+          },
+        ],
+      },
+      {
+        id: "opp_beta",
+        title: "Army Cloud Operations Recompete",
+        currentStageLabel: "Qualified",
+        tasks: [
+          {
+            id: "task_completed",
+            title: "Prepare customer questions draft",
+            description: null,
+            status: "COMPLETED",
+            priority: "MEDIUM",
+            dueAt: new Date("2026-04-18T16:00:00.000Z"),
+            startedAt: new Date("2026-04-17T16:00:00.000Z"),
+            completedAt: new Date("2026-04-18T15:30:00.000Z"),
+            deadlineReminderState: "NONE",
+            deadlineReminderUpdatedAt: null,
+            assigneeUserId: "user_taylor",
+            assigneeUser: {
+              id: "user_taylor",
+              name: "Taylor Reed",
+              email: "taylor@example.com",
+            },
+            createdByUser: {
+              name: "OneSource Admin",
+              email: "admin@onesource.local",
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
 function createWorkspaceRepositoryClient(
   record: OpportunityWorkspaceRecord | null,
 ) {
@@ -939,6 +1007,14 @@ function createPersonalTaskBoardRepositoryClient(
       findFirst: vi.fn().mockResolvedValue(record),
     },
   } as unknown as PersonalTaskBoardRepositoryClient;
+}
+
+function createTaskBoardRepositoryClient(record: TaskBoardRecord | null) {
+  return {
+    organization: {
+      findUnique: vi.fn().mockResolvedValue(record),
+    },
+  } as unknown as TaskBoardRepositoryClient;
 }
 
 describe("opportunity.repository", () => {
@@ -1476,6 +1552,68 @@ describe("opportunity.repository", () => {
         },
       ],
     });
+  });
+
+  it("builds the multi-view task workspace snapshot", async () => {
+    const db = createTaskBoardRepositoryClient(buildTaskBoardRecord());
+
+    const snapshot = await getTaskBoardSnapshot({
+      db,
+      now: new Date("2026-04-18T12:00:00.000Z"),
+      userDisplayName: "Taylor Reed",
+      userId: "user_taylor",
+    });
+
+    expect(snapshot?.userDisplayName).toBe("Taylor Reed");
+    expect(snapshot?.summary).toMatchObject({
+      assignedTaskCount: 2,
+      openTaskCount: 2,
+      overdueTaskCount: 1,
+      upcomingTaskCount: 1,
+      blockedTaskCount: 1,
+      unassignedTaskCount: 1,
+      linkedOpportunityCount: 1,
+    });
+    expect(
+      snapshot?.myTasks.sections.find((section) => section.key === "needs_attention"),
+    ).toMatchObject({
+      taskCount: 1,
+      tasks: [
+        {
+          title: "Complete incumbent analysis brief",
+        },
+      ],
+    });
+    expect(
+      snapshot?.myTasks.sections.find((section) => section.key === "closed_loop"),
+    ).toMatchObject({
+      taskCount: 1,
+      tasks: [
+        {
+          title: "Prepare customer questions draft",
+        },
+      ],
+    });
+    expect(snapshot?.teamTasks.lanes).toMatchObject([
+      {
+        label: "Unassigned",
+        taskCount: 1,
+      },
+      {
+        label: "Taylor Reed",
+        taskCount: 1,
+      },
+    ]);
+
+    expect(snapshot?.calendar.buckets.map((bucket) => bucket.key)).toEqual([
+      "2026-04-16",
+      "2026-04-18",
+      "2026-04-20",
+    ]);
+    expect(snapshot?.kanban.columns.find((column) => column.key === "BLOCKED"))
+      .toMatchObject({
+        taskCount: 1,
+      });
   });
 
   it("parses and applies URL-synced opportunity list filters", async () => {

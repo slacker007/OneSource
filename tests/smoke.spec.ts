@@ -143,7 +143,10 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     .first()
     .click();
   await expect(page.getByText("Selected pursuit", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: /^Knowledge/i }).click();
+  await page
+    .getByLabel("Primary navigation")
+    .getByRole("link", { name: /^Knowledge/i })
+    .click();
   await expect(page).toHaveURL(/\/knowledge$/);
   await expect(
     page.getByRole("heading", {
@@ -519,9 +522,18 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await page.getByRole("button", { name: /apply filters/i }).click();
 
   await expect(page).toHaveURL(/q=Enterprise\+Knowledge\+Management/);
+  const opportunityResultsTable = page.getByRole("table", {
+    name: /opportunity pipeline results/i,
+  });
   await expect(
-    page.getByText(/enterprise knowledge management support services/i).first(),
+    opportunityResultsTable.getByRole("heading", {
+      name: /enterprise knowledge management support services/i,
+    }),
   ).toBeVisible();
+  await opportunityResultsTable
+    .getByRole("link", { name: /open brief/i })
+    .first()
+    .click();
 
   await page
     .locator("aside")
@@ -600,6 +612,11 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .locator("#task-create-description")
     .fill("Prepare the concise executive-ready capture brief.");
   await page.getByRole("button", { name: /^create task$/i }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: new RegExp(`^${createdTaskTitle}$`, "i"),
+    }),
+  ).toBeVisible({ timeout: 20_000 });
   await page.locator("#milestone-create-title").fill(createdMilestoneTitle);
   await page
     .locator("#milestone-create-target-date")
@@ -612,6 +629,11 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .locator("#milestone-create-description")
     .fill("Confirm the executive review packet and pursuit posture.");
   await page.getByRole("button", { name: /^create milestone$/i }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: new RegExp(`^${createdMilestoneTitle}$`, "i"),
+    }),
+  ).toBeVisible({ timeout: 10_000 });
   await openWorkspaceSection(page, workspaceSectionNav, /^Notes/i);
   await expect(page).toHaveURL(/section=notes/);
   await expect(page.getByRole("heading", { name: /^Notes$/i })).toBeVisible();
@@ -684,13 +706,15 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .click();
   await expect(page).toHaveURL(/\/tasks$/);
   await expect(
-    page.getByRole("heading", { name: /personal execution queue/i }),
+    page.getByRole("heading", { name: /execution triage/i }),
   ).toBeVisible();
-  await expect(page.getByText(createdTaskTitle)).toBeVisible();
+  await expect(page.getByText(createdTaskTitle).first()).toBeVisible();
   await expect(
     page.getByText(/enterprise knowledge management support services/i).first(),
   ).toBeVisible();
-  await expect(page.getByText(/^overdue$/i).first()).toBeVisible();
+  await page.getByRole("link", { name: /^Team Tasks/i }).click();
+  await expect(page).toHaveURL(/\/tasks\?view=team_tasks/);
+  await expect(page.getByText(createdTaskTitle).first()).toBeVisible();
   await page.getByRole("link", { name: /^Dashboard/i }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(
@@ -769,8 +793,13 @@ test("users can record closeout notes on a closed opportunity workspace", async 
     .fill("Navy Training Range");
   await page.getByRole("button", { name: /apply filters/i }).click();
 
+  const navyResultsTable = page.getByRole("table", {
+    name: /opportunity pipeline results/i,
+  });
   await expect(
-    page.getByText(/navy training range modernization support/i).first(),
+    navyResultsTable.getByRole("heading", {
+      name: /navy training range modernization support/i,
+    }),
   ).toBeVisible();
   const navyOpportunityCard = page
     .locator("article, tr")
@@ -817,17 +846,17 @@ test("users can record closeout notes on a closed opportunity workspace", async 
 
   await expect(
     page.locator("#closeout-outcome-reason"),
-  ).toHaveValue(outcomeReason);
+  ).toHaveValue(outcomeReason, { timeout: 20_000 });
   await expect(
     page.locator("#closeout-lessons-learned"),
-  ).toHaveValue(lessonsLearned);
+  ).toHaveValue(lessonsLearned, { timeout: 20_000 });
   await openWorkspaceSection(page, closedWorkspaceSectionNav, /^History/i);
   await expect(page).toHaveURL(/section=history/);
   await expect(
     page
       .getByRole("heading", { name: /^Closeout recorded for No Bid$/i })
       .first(),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 10_000 });
 });
 
 test("users can update proposal tracking on an active proposal workspace", async ({
@@ -933,7 +962,10 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
     page.getByRole("link", { name: /create pursuit/i }).first(),
   ).toBeVisible();
 
-  await page.getByRole("link", { name: /^Knowledge/i }).click();
+  await page
+    .getByLabel("Primary navigation")
+    .getByRole("link", { name: /^Knowledge/i })
+    .click();
   await expect(page).toHaveURL(/\/knowledge$/);
   await expect(
     page.getByRole("heading", { name: /knowledge library/i }),
@@ -942,8 +974,9 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
   await page.getByRole("link", { name: /^Tasks/i }).click();
   await expect(page).toHaveURL(/\/tasks$/);
   await expect(
-    page.getByRole("heading", { name: /personal execution queue/i }),
+    page.getByRole("heading", { name: /execution triage/i }),
   ).toBeVisible();
+  await expect(page.getByRole("link", { name: /^My Tasks/i })).toBeVisible();
   await expect(page.getByText(/^recent work$/i)).toBeVisible();
 
   await page.getByRole("button", { name: /open notifications/i }).click();

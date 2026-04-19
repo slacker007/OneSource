@@ -2,19 +2,26 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { PersonalTaskBoard } from "./personal-task-board";
-import type { PersonalTaskBoardSnapshot } from "@/modules/opportunities/opportunity.types";
+import type { TaskBoardSnapshot } from "@/modules/opportunities/opportunity.types";
 
-const snapshot: PersonalTaskBoardSnapshot = {
+const snapshot: TaskBoardSnapshot = {
   organization: {
     id: "org_123",
     name: "Default Organization",
     slug: "default-org",
   },
-  assignedTaskCount: 2,
-  completedTaskCount: 1,
-  overdueTaskCount: 1,
+  currentUserId: "user_taylor",
+  summary: {
+    assignedTaskCount: 2,
+    openTaskCount: 3,
+    overdueTaskCount: 1,
+    upcomingTaskCount: 1,
+    blockedTaskCount: 1,
+    unassignedTaskCount: 1,
+    linkedOpportunityCount: 3,
+  },
   userDisplayName: "Taylor Reed",
-  tasks: [
+  allTasks: [
     {
       id: "task_1",
       title: "Complete incumbent analysis brief",
@@ -51,56 +58,280 @@ const snapshot: PersonalTaskBoardSnapshot = {
       opportunityTitle: "Army Cloud Operations Recompete",
       opportunityStageLabel: "Qualified",
     },
+    {
+      id: "task_3",
+      title: "Confirm draft pricing assumptions",
+      description: "Finance needs an updated burn-rate check before the bid review.",
+      status: "BLOCKED",
+      priority: "CRITICAL",
+      dueAt: "2026-04-20T12:00:00.000Z",
+      deadlineReminderState: "UPCOMING",
+      deadlineReminderUpdatedAt: "2026-04-18T08:00:00.000Z",
+      startedAt: null,
+      completedAt: null,
+      assigneeUserId: null,
+      assigneeName: null,
+      createdByName: "Alex Morgan",
+      opportunityId: "opp_gamma",
+      opportunityTitle: "Navy Data Platform Modernization",
+      opportunityStageLabel: "Proposal in Development",
+    },
   ],
+  myTasks: {
+    tasks: [],
+    sections: [],
+  },
+  teamTasks: {
+    lanes: [],
+  },
+  calendar: {
+    buckets: [],
+  },
+  kanban: {
+    columns: [],
+  },
+};
+
+const populatedSnapshot: TaskBoardSnapshot = {
+  ...snapshot,
+  myTasks: {
+    tasks: [snapshot.allTasks[0], snapshot.allTasks[1]],
+    sections: [
+      {
+        key: "needs_attention",
+        label: "Needs attention",
+        description:
+          "Overdue, blocked, and critical work stays at the top of the queue.",
+        taskCount: 1,
+        tasks: [snapshot.allTasks[0]],
+      },
+      {
+        key: "closed_loop",
+        label: "Closed loop",
+        description:
+          "Completed or cancelled work stays visible for context without crowding the active queue.",
+        taskCount: 1,
+        tasks: [snapshot.allTasks[1]],
+      },
+    ],
+  },
+  teamTasks: {
+    lanes: [
+      {
+        key: "unassigned",
+        label: "Unassigned",
+        supportingText: "Tasks that still need an owner before execution can move.",
+        taskCount: 1,
+        overdueTaskCount: 0,
+        tasks: [snapshot.allTasks[2]],
+      },
+      {
+        key: "user_taylor",
+        label: "Taylor Reed",
+        supportingText: "Live work assigned across the portfolio.",
+        taskCount: 1,
+        overdueTaskCount: 1,
+        tasks: [snapshot.allTasks[0]],
+      },
+    ],
+  },
+  calendar: {
+    buckets: [
+      {
+        key: "2026-04-16",
+        label: "Apr 16",
+        supportingText: "Wed, Apr 16, 2026",
+        taskCount: 1,
+        overdueTaskCount: 1,
+        tasks: [snapshot.allTasks[0]],
+      },
+      {
+        key: "2026-04-20",
+        label: "Apr 20",
+        supportingText: "Mon, Apr 20, 2026",
+        taskCount: 1,
+        overdueTaskCount: 0,
+        tasks: [snapshot.allTasks[2]],
+      },
+      {
+        key: "no_due_date",
+        label: "No due date",
+        supportingText:
+          "Tasks without a committed due date stay visible here until planning catches up.",
+        taskCount: 0,
+        overdueTaskCount: 0,
+        tasks: [],
+      },
+    ],
+  },
+  kanban: {
+    columns: [
+      {
+        key: "BLOCKED",
+        label: "Blocked",
+        taskCount: 1,
+        overdueTaskCount: 0,
+        tasks: [snapshot.allTasks[2]],
+      },
+      {
+        key: "IN_PROGRESS",
+        label: "In progress",
+        taskCount: 1,
+        overdueTaskCount: 1,
+        tasks: [snapshot.allTasks[0]],
+      },
+      {
+        key: "NOT_STARTED",
+        label: "Not started",
+        taskCount: 0,
+        overdueTaskCount: 0,
+        tasks: [],
+      },
+      {
+        key: "COMPLETED",
+        label: "Completed",
+        taskCount: 1,
+        overdueTaskCount: 0,
+        tasks: [snapshot.allTasks[1]],
+      },
+      {
+        key: "CANCELLED",
+        label: "Cancelled",
+        taskCount: 0,
+        overdueTaskCount: 0,
+        tasks: [],
+      },
+    ],
+  },
 };
 
 describe("PersonalTaskBoard", () => {
-  it("renders assigned tasks with linked opportunity context", () => {
-    render(<PersonalTaskBoard snapshot={snapshot} />);
-
-    expect(
-      screen.getByRole("heading", { name: /personal execution queue/i }),
-    ).toBeInTheDocument();
-    expect(screen.getAllByText(/taylor reed/i)[0]).toBeInTheDocument();
-    expect(screen.getByText(/enterprise knowledge management support services/i)).toBeInTheDocument();
-    expect(screen.getByText(/army cloud operations recompete/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/^overdue$/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("link", { name: /open workspace/i })).toHaveLength(2);
-  });
-
-  it("renders a truthful empty state when no assigned tasks remain", () => {
+  it("renders my-tasks triage sections with preview context", () => {
     render(
       <PersonalTaskBoard
-        snapshot={{
-          ...snapshot,
-          assignedTaskCount: 0,
-          overdueTaskCount: 0,
-          tasks: [],
-        }}
+        snapshot={populatedSnapshot}
+        viewState={{ focusTaskId: "task_1", view: "my_tasks" }}
       />,
     );
 
     expect(
-      screen.getByRole("heading", { name: /personal execution queue/i }),
+      screen.getByRole("heading", { name: /execution triage/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/no assigned tasks/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /my tasks/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      screen.getByRole("heading", { name: /^needs attention$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/enterprise knowledge management support services/i).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText(/task preview/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /open task in workspace/i })).toHaveAttribute(
+      "href",
+      "/opportunities/opp_alpha?section=tasks",
+    );
+  });
+
+  it("renders the team-task view with assignee lanes and unassigned work", () => {
+    render(
+      <PersonalTaskBoard
+        snapshot={populatedSnapshot}
+        viewState={{ focusTaskId: "task_3", view: "team_tasks" }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: /team tasks/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      screen.getByRole("heading", { name: /^unassigned$/i }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/taylor reed/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/confirm draft pricing assumptions/i).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/navy data platform modernization/i).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("renders the calendar and kanban secondary views", () => {
+    const { rerender } = render(
+      <PersonalTaskBoard
+        snapshot={populatedSnapshot}
+        viewState={{ focusTaskId: "task_1", view: "calendar" }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: /calendar/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByRole("heading", { name: /^apr 16$/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/apr 16, 2026/i).length).toBeGreaterThan(0);
+
+    rerender(
+      <PersonalTaskBoard
+        snapshot={populatedSnapshot}
+        viewState={{ focusTaskId: "task_2", view: "kanban" }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: /kanban/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getAllByText(/^blocked$/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^completed$/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/prepare customer questions draft/i).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("renders a truthful empty state when no personal tasks remain", () => {
+    render(
+      <PersonalTaskBoard
+        snapshot={{
+          ...populatedSnapshot,
+          summary: {
+            ...populatedSnapshot.summary,
+            assignedTaskCount: 0,
+          },
+          myTasks: {
+            tasks: [],
+            sections: [],
+          },
+        }}
+        viewState={{ focusTaskId: null, view: "my_tasks" }}
+      />,
+    );
+
+    expect(screen.getByText(/no personal tasks/i)).toBeInTheDocument();
     expect(
       screen.getByText(
-        /assigned tasks will appear here once work is delegated from opportunity workspaces/i,
+        /assigned work will appear here once opportunity owners delegate execution tasks/i,
       ),
     ).toBeInTheDocument();
   });
 
   it("renders an error state when the task snapshot is unavailable", () => {
-    render(<PersonalTaskBoard snapshot={null} />);
+    render(
+      <PersonalTaskBoard
+        snapshot={null}
+        viewState={{ focusTaskId: null, view: "my_tasks" }}
+      />,
+    );
 
     expect(
-      screen.getByRole("heading", { name: /execution queue/i }),
+      screen.getByRole("heading", { name: /execution triage/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/task board is unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/task workspace is unavailable/i)).toBeInTheDocument();
     expect(
       screen.getByText(
-        /the assigned-task view could not be loaded for the current workspace/i,
+        /the task workspace could not be loaded for the current organization/i,
       ),
     ).toBeInTheDocument();
   });

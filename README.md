@@ -37,7 +37,7 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - `prisma`: Prisma schema, generated migrations, and seed defaults
 - `scripts`: runtime helper scripts including the multi-sweep worker, one-shot job entrypoints, and Docker cache helpers
 - `tests`: Playwright browser tests
-- `Makefile`: wrapper targets that prepare local Docker cache archives before builds
+- `Makefile`: wrapper targets for compose workflows, verification, and optional local Docker cache preparation
 - `docs/testing.md`: canonical host and compose verification workflows
 - `docs/deployment.md`: controlled internal-pilot deployment, rollback, and validation checklist
 - `docs/architecture.md`: current system topology, module boundaries, and Phase 0 constraints
@@ -63,7 +63,7 @@ cp .env.example .env
 npm install
 ```
 
-Host dependency installation is not required for compose workflows when Docker can reach the npm registry. In this environment the safer path is to use the `Makefile` wrappers, which prepare local cache archives under `vendor/` before Docker builds:
+Host dependency installation is not required for compose workflows when Docker can reach the npm registry. Optional local fallback cache directories under `vendor/` are only needed when a specific environment cannot install dependencies inside Docker and you already have a healthy host install:
 
 ```bash
 make docker-artifacts
@@ -123,15 +123,15 @@ The typed opportunity module under `src/modules/opportunities/` now exposes shar
 
 ## Optional Local Docker Dependency Cache
 
-Developer-generated cache archives under `vendor/` are not committed to the repo. Docker images install dependencies with normal `npm ci` by default, but the build will switch to `npm ci --offline` automatically when `vendor/npm-offline-cache.tar.gz` is present locally.
+Developer-generated cache directories under `vendor/` are not committed to the repo. Docker images install dependencies with normal `npm ci` by default, but the build will switch to `npm ci --offline` automatically when `vendor/npm-offline-cache` is present locally.
 
-`make docker-artifacts` is the canonical way to prepare those local archives. It refreshes dependencies when needed, regenerates the Prisma client when needed, and then refreshes both ignored tarballs before Docker builds:
+`make docker-artifacts` is the canonical way to prepare those local fallback caches, but it is optional and now expects an already-healthy host install. It no longer bootstraps `node_modules` on a cold repo:
 
 ```bash
 make docker-artifacts
 ```
 
-`vendor/prisma-client.tar.gz` is also an optional local artifact. When present, the Docker dependency stage overlays it after install so compose builds can reuse a host-generated Prisma client if the environment needs that fallback.
+`vendor/prisma-client` is also an optional local artifact. When present, the Docker dependency stage overlays it after install so compose builds can reuse a host-generated Prisma client if the environment needs that fallback. The dependency stage still accepts the older `*.tar.gz` files if they already exist locally, but new refreshes now write directories instead of archives.
 
 ## Required Environment Variables
 
@@ -175,16 +175,20 @@ The committed `.env.example` contains the canonical development defaults.
 - Compose lint: `make compose-test-lint`
 - Compose unit tests with coverage: `make compose-test`
 - Compose build validation: `make compose-test-build`
+- Compose migrate-and-seed bootstrap: `make compose-test-bootstrap`
 - Compose Chromium smoke test: `make compose-test-e2e`
-- Prepare local Docker archives only: `make docker-artifacts`
-- Direct Docker image build with prebuild archive refresh: `make docker-build`
+- Prepare local Docker fallback caches only: `make docker-artifacts`
+- Direct Docker image build: `make docker-build`
+- Reclaim repo-local development disk usage: `make clean-dev-artifacts`
 - Format check: `npm run format:check`
 - Apply formatting: `npm run format`
 - Compose stack status: `docker compose ps`
 - Compose logs: `docker compose logs -f web worker`
 - Compose teardown: `make compose-down`
 
-`npm run e2e` starts the app automatically through the Playwright `webServer` configuration and injects a default local `DATABASE_URL` when one is not already set. The Playwright config now also defaults `SAM_GOV_USE_FIXTURES=true` so the `sam.gov` smoke path stays deterministic unless a caller explicitly overrides it. The compose `make compose-test*` targets also force fixture mode for the same reason. When `PLAYWRIGHT_BASE_URL` is provided, Playwright skips the internal web server and targets the existing app instance instead; if that existing app should run deterministic `/sources` smoke coverage, start the app itself with `SAM_GOV_USE_FIXTURES=true` because Playwright cannot inject fixture mode into an already-running server. The current Chromium smoke suite runs serially because it mutates one shared seeded database; it covers the seeded dashboard stage-count, conversion-rate, pipeline-aging, and upcoming-deadline widgets, the refactored `/opportunities` saved-view plus filter-rail workflow and preview-first workspace entry path, the decision-console ranking flow plus the new bid-volume, score-band, and effort-versus-outcome analytics sections on `/analytics`, the opportunity workspace route plus seeded overdue and upcoming reminder badges, ranked in-workspace knowledge suggestions, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus download-link visibility, live proposal tracking updates, a live stage transition, and live closeout recording on a seeded closed opportunity, the guarded create-and-edit opportunity flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/knowledge` library browse and create flow with structured capability and vehicle retrieval filtering, and the `/sources` flows for connector-backed external search, saved-search re-entry, translated-query inspection, preview-and-link import behavior, and guarded CSV upload with preview, mapping, validation, and import into the tracked pipeline, plus desktop shell navigation, the small-screen navigation drawer, admin access to `/settings` including source-sync observability plus retry queueing, observed-outcome scoring recalibration, and viewer denial on direct `/settings` navigation. If you rerun the browser suite after any prior smoke flow has already mutated the shared seed data, reseed first with `npm run db:seed` so proposal, task, and closeout expectations return to their baseline values. After a full local database reset, rerun `npx prisma migrate deploy` and `npm run db:seed` before `make compose-test-e2e`; the compose browser target expects a populated schema and seeded demo users rather than bootstrapping them itself. In this environment the compose-managed Playwright path is the canonical browser check; the host-started `npm run e2e` path can surface low-level PostgreSQL `XX000 unexpected data beyond EOF` storage faults on the local bind-mounted database even when the compose-managed app and test flows pass cleanly.
+`make clean-dev-artifacts` is the canonical cleanup path when local disk usage grows too large. It stops the default and test compose stacks, removes repo-local compose images and volumes, then deletes disposable local artifacts such as `node_modules`, `.next`, coverage output, Playwright reports, bind-mounted PostgreSQL data, uploaded-document scratch data, generated type and build-info files, and the optional `vendor/npm-offline-cache` plus `vendor/prisma-client` fallback directories (along with any legacy `vendor/*.tar.gz` archives). By repo policy, agents should run this target at the end of each loop after verification and any required commit so the next loop starts from a cold local environment. Run `make compose-up` again afterward for container-first workflows, or restore host dependencies first if you specifically need `npm install` or `make docker-artifacts`.
+
+`npm run e2e` starts the app automatically through the Playwright `webServer` configuration and injects a default local `DATABASE_URL` when one is not already set. The Playwright config now also defaults `SAM_GOV_USE_FIXTURES=true` so the `sam.gov` smoke path stays deterministic unless a caller explicitly overrides it. The compose `make compose-test*` targets also force fixture mode for the same reason. When `PLAYWRIGHT_BASE_URL` is provided, Playwright skips the internal web server and targets the existing app instance instead; if that existing app should run deterministic `/sources` smoke coverage, start the app itself with `SAM_GOV_USE_FIXTURES=true` because Playwright cannot inject fixture mode into an already-running server. The current Chromium smoke suite runs serially because it mutates one shared seeded database; it covers the seeded dashboard stage-count, conversion-rate, pipeline-aging, and upcoming-deadline widgets, the refactored `/opportunities` saved-view plus filter-rail workflow and preview-first workspace entry path, the decision-console ranking flow plus the new bid-volume, score-band, and effort-versus-outcome analytics sections on `/analytics`, the opportunity workspace route plus seeded overdue and upcoming reminder badges, ranked in-workspace knowledge suggestions, live bid-decision recording, live task creation, live milestone creation, guarded note creation, guarded document upload plus download-link visibility, live proposal tracking updates, a live stage transition, and live closeout recording on a seeded closed opportunity, the guarded create-and-edit opportunity flow with browser-local draft restore, the `/tasks` personal execution queue with reminder state, the `/knowledge` library browse and create flow with structured capability and vehicle retrieval filtering, and the `/sources` flows for connector-backed external search, saved-search re-entry, translated-query inspection, preview-and-link import behavior, and guarded CSV upload with preview, mapping, validation, and import into the tracked pipeline, plus desktop shell navigation, the small-screen navigation drawer, admin access to `/settings` including source-sync observability plus retry queueing, observed-outcome scoring recalibration, and viewer denial on direct `/settings` navigation. If you rerun the browser suite after any prior smoke flow has already mutated the shared seed data, reseed first. The compose browser target now does that inside the disposable test container through `make compose-test-bootstrap` and `make compose-test-e2e`, so a full local reset no longer requires host-side `npx prisma migrate deploy` or `npm run db:seed` before the compose browser check. In this environment the compose-managed Playwright path is the canonical browser check; the host-started `npm run e2e` path can surface low-level PostgreSQL `XX000 unexpected data beyond EOF` storage faults on the local bind-mounted database even when the compose-managed app and test flows pass cleanly.
 
 Automated acceptance for the current `sam.gov` connector still uses deterministic fixture mode. Manual live upstream verification is now also recorded: on `2026-04-19`, the running app executed a credentialed `/sources` notice search against the real SAM.gov API, rendered a retained preview from the persisted `source_record`, and promoted that record into a new tracked opportunity. In environments that expose `HTTP_PROXY` or `HTTPS_PROXY`, the connector now honors those variables for live server-side requests.
 
@@ -202,7 +206,8 @@ The canonical loop is now:
 5. Append timestamped task notes to `NOTES.md` during the loop.
 6. Update durable docs in the same loop whenever setup, behavior, or requirements change.
 7. Run the narrowest relevant verification, and for code changes also run the full automated suite currently available in the repo.
-8. When the stack is needed, prefer the `make` wrappers such as `make compose-up` and `make compose-test-e2e` so local Docker cache archives are prepared automatically before the build starts.
+8. When the stack is needed, prefer the `make` wrappers such as `make compose-up` and `make compose-test-e2e` so compose boot, verification, and disposable test-database setup stay consistent.
+9. After verification and any required commit, run `make clean-dev-artifacts` unless the user explicitly asked to keep the environment running or unresolved debugging evidence must be preserved.
 
 ## Known Gaps
 

@@ -15,7 +15,7 @@ Current runtime components:
 - `worker`: Node.js process that validates env, sweeps reminders, due source searches, queued document parsing work, and stale opportunity scorecards on an interval, persists results, and emits structured summary logs
 - `playwright`: profile-gated Chromium test container used only for compose-backed browser verification
 
-The compose images install dependencies inside Docker rather than copying a host `node_modules` tree. By default the dependency stage runs `npm ci`, but it will switch to optional local offline archives under `vendor/` when those files have been generated for an environment that cannot reach the npm registry from containers. A repo-local `Makefile` now wraps Docker and compose entrypoints so those archives are prepared before builds start.
+The compose images install dependencies inside Docker rather than copying a host `node_modules` tree. By default the dependency stage runs `npm ci`, but it will switch to optional local offline cache directories under `vendor/` when those files have already been generated for an environment that cannot reach the npm registry from containers. The repo-local `Makefile` wraps Docker and compose entrypoints for consistent boot and verification, but compose targets no longer shell out to host `npm` as an implicit prerequisite.
 
 ## Repository Layout
 
@@ -190,7 +190,7 @@ Environment configuration is injected through `.env` / compose variables and val
 - `DOCUMENT_PARSER_MAX_ATTEMPTS`
 - `OPPORTUNITY_SCORECARD_BATCH_SIZE`
 
-Docker dependency installation defaults to online `npm ci`. Optional local fallback archives can be generated through `make docker-artifacts` when a specific environment needs offline container inputs, but those tarballs are intentionally ignored and are not durable repo inputs.
+Docker dependency installation defaults to online `npm ci`. Optional local fallback caches can be generated through `make docker-artifacts` when a specific environment needs offline container inputs and already has a healthy host install, but those directories are intentionally ignored and are not durable repo inputs.
 
 ## Testing Architecture
 

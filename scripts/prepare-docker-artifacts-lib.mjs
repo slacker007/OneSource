@@ -7,15 +7,15 @@ export function getDockerArtifactPaths(repoRoot) {
     packageLockJson: path.join(repoRoot, "package-lock.json"),
     nodeModulesLockMarker: path.join(repoRoot, "node_modules", ".package-lock.json"),
     prismaSchema: path.join(repoRoot, "prisma", "schema.prisma"),
-    prismaConfig: path.join(repoRoot, "prisma.config.ts"),
+    prismaConfig: path.join(repoRoot, "prisma.config.mjs"),
     npmRefreshScript: path.join(repoRoot, "scripts", "refresh-offline-npm-cache.mjs"),
     prismaRefreshScript: path.join(
       repoRoot,
       "scripts",
       "refresh-offline-prisma-client.mjs",
     ),
-    npmArchive: path.join(repoRoot, "vendor", "npm-offline-cache.tar.gz"),
-    prismaArchive: path.join(repoRoot, "vendor", "prisma-client.tar.gz"),
+    npmArchive: path.join(repoRoot, "vendor", "npm-offline-cache"),
+    prismaArchive: path.join(repoRoot, "vendor", "prisma-client"),
   };
 }
 
@@ -52,7 +52,7 @@ export function buildDockerArtifactPlan({
 }) {
   const paths = getDockerArtifactPaths(repoRoot);
 
-  const installNeeded = isOutputMissingOrOlderThanInputs(
+  const hostInstallMissingOrStale = isOutputMissingOrOlderThanInputs(
     paths.nodeModulesLockMarker,
     [paths.packageJson, paths.packageLockJson],
     existsSync,
@@ -60,7 +60,6 @@ export function buildDockerArtifactPlan({
   );
 
   const npmArchiveNeeded =
-    installNeeded ||
     isOutputMissingOrOlderThanInputs(
       paths.npmArchive,
       [paths.packageLockJson, paths.npmRefreshScript],
@@ -69,7 +68,6 @@ export function buildDockerArtifactPlan({
     );
 
   const prismaArchiveNeeded =
-    installNeeded ||
     isOutputMissingOrOlderThanInputs(
       paths.prismaArchive,
       [
@@ -84,36 +82,35 @@ export function buildDockerArtifactPlan({
 
   const steps = [];
 
-  if (installNeeded) {
-    steps.push({
-      label: "Install npm dependencies",
-      command: ["npm", "install"],
-    });
-  }
+  const blockedByHostInstall =
+    hostInstallMissingOrStale && (npmArchiveNeeded || prismaArchiveNeeded);
 
-  if (prismaArchiveNeeded) {
-    steps.push({
-      label: "Generate Prisma client",
-      command: ["npm", "run", "prisma:generate"],
-    });
-  }
+  if (!blockedByHostInstall) {
+    if (prismaArchiveNeeded) {
+      steps.push({
+        label: "Generate Prisma client",
+        command: ["npm", "run", "prisma:generate"],
+      });
+    }
 
-  if (npmArchiveNeeded) {
-    steps.push({
-      label: "Refresh offline npm cache archive",
-      command: ["npm", "run", "cache:npm:refresh"],
-    });
-  }
+    if (npmArchiveNeeded) {
+      steps.push({
+        label: "Refresh offline npm cache archive",
+        command: ["npm", "run", "cache:npm:refresh"],
+      });
+    }
 
-  if (prismaArchiveNeeded) {
-    steps.push({
-      label: "Refresh offline Prisma client archive",
-      command: ["npm", "run", "cache:prisma:refresh"],
-    });
+    if (prismaArchiveNeeded) {
+      steps.push({
+        label: "Refresh offline Prisma client archive",
+        command: ["npm", "run", "cache:prisma:refresh"],
+      });
+    }
   }
 
   return {
-    installNeeded,
+    blockedByHostInstall,
+    hostInstallReady: !hostInstallMissingOrStale,
     npmArchiveNeeded,
     paths,
     prismaArchiveNeeded,

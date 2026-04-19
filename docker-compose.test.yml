@@ -41,23 +41,32 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
-    volumes:
-      - ./.docker/postgres-data:/var/lib/postgresql/data
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  test:
+    build:
+      args: *build-args
+      context: .
+      target: runner
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *app-environment
+      NODE_ENV: test
 
   web:
     build:
       args: *build-args
       context: .
       target: runner
-    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
       <<: *app-environment
       NODE_ENV: production
-    ports:
-      - "3000:3000"
     command: npm run start:compose
     healthcheck:
       test:
@@ -72,38 +81,7 @@ services:
       retries: 10
       start_period: 15s
 
-  worker:
-    build:
-      args: *build-args
-      context: .
-      target: runner
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      <<: *app-environment
-      NODE_ENV: production
-      WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS}
-    command: npm run worker
-
-  test:
-    profiles: ["test"]
-    build:
-      args: *build-args
-      context: .
-      target: runner
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      <<: *app-environment
-      NODE_ENV: test
-    entrypoint: ["npm"]
-    command: ["test"]
-
   playwright:
-    profiles: ["test"]
     build:
       args: *build-args
       context: .

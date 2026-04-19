@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+} from "react";
+import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { FormField } from "@/components/ui/form-field";
@@ -35,12 +41,29 @@ export function OpportunityCloseoutManager({
   currentStageLabel,
   opportunityId,
 }: OpportunityCloseoutManagerProps) {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState(
     action,
     INITIAL_OPPORTUNITY_CLOSEOUT_ACTION_STATE,
   );
+  const lastRefreshStateRef = useRef<OpportunityCloseoutActionState | null>(null);
   const isClosedNoBid = currentStageKey === "no_bid";
   const formResetKey = currentCloseout?.id ?? `${currentStageKey ?? "unstaged"}-closeout`;
+
+  useEffect(() => {
+    if (state.successMessage && lastRefreshStateRef.current !== state) {
+      lastRefreshStateRef.current = state;
+      const refreshTimeout = window.setTimeout(() => {
+        startTransition(() => {
+          router.refresh();
+        });
+      }, 400);
+
+      return () => {
+        window.clearTimeout(refreshTimeout);
+      };
+    }
+  }, [router, state]);
 
   return (
     <form

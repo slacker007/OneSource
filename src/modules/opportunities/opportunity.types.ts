@@ -451,6 +451,77 @@ export type PersonalTaskBoardSnapshot = {
   tasks: PersonalTaskBoardItem[];
 };
 
+export type TaskBoardViewKey =
+  | "my_tasks"
+  | "team_tasks"
+  | "calendar"
+  | "kanban";
+
+export type TaskBoardItem = PersonalTaskBoardItem;
+
+export type TaskBoardQueueSection = {
+  key: "needs_attention" | "due_next" | "active_queue" | "closed_loop";
+  label: string;
+  description: string;
+  taskCount: number;
+  tasks: TaskBoardItem[];
+};
+
+export type TaskBoardTeamLane = {
+  key: string;
+  label: string;
+  supportingText: string;
+  taskCount: number;
+  overdueTaskCount: number;
+  tasks: TaskBoardItem[];
+};
+
+export type TaskBoardCalendarBucket = {
+  key: string;
+  label: string;
+  supportingText: string;
+  taskCount: number;
+  overdueTaskCount: number;
+  tasks: TaskBoardItem[];
+};
+
+export type TaskBoardKanbanColumn = {
+  key: OpportunityTaskStatus;
+  label: string;
+  taskCount: number;
+  overdueTaskCount: number;
+  tasks: TaskBoardItem[];
+};
+
+export type TaskBoardSnapshot = {
+  organization: OrganizationSummary;
+  currentUserId: string;
+  summary: {
+    assignedTaskCount: number;
+    openTaskCount: number;
+    overdueTaskCount: number;
+    upcomingTaskCount: number;
+    blockedTaskCount: number;
+    unassignedTaskCount: number;
+    linkedOpportunityCount: number;
+  };
+  userDisplayName: string;
+  allTasks: TaskBoardItem[];
+  myTasks: {
+    sections: TaskBoardQueueSection[];
+    tasks: TaskBoardItem[];
+  };
+  teamTasks: {
+    lanes: TaskBoardTeamLane[];
+  };
+  calendar: {
+    buckets: TaskBoardCalendarBucket[];
+  };
+  kanban: {
+    columns: TaskBoardKanbanColumn[];
+  };
+};
+
 export type OpportunityStageSummary = {
   stageKey: string;
   stageLabel: string;

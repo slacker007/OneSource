@@ -16,15 +16,24 @@ Integration tests do not exist yet. When database-backed integration tests are a
 
 ## Optional Offline Container Dependency Strategy
 
-Compose builds now default to normal `npm ci`. If the container environment cannot reach the npm registry, you can generate local fallback archives under `vendor/`; those artifacts are intentionally ignored by git and are not part of the committed repo state.
+Compose builds now default to normal `npm ci`. If the container environment cannot reach the npm registry, you can generate local fallback cache directories under `vendor/`; those artifacts are intentionally ignored by git and are not part of the committed repo state.
 
-When `vendor/npm-offline-cache.tar.gz` exists locally, the Docker dependency stage unpacks it and runs `npm ci --offline` automatically. When `vendor/prisma-client.tar.gz` exists locally, the same stage overlays that generated Prisma client after install.
+When `vendor/npm-offline-cache` exists locally, the Docker dependency stage runs `npm ci --offline` against that mounted cache directory automatically. When `vendor/prisma-client` exists locally, the same stage overlays that generated Prisma client after install. The dependency stage still accepts the older `*.tar.gz` artifacts if they already exist locally, but new refreshes now write directories instead of archives.
 
-Generate or refresh the local fallback archives with the `Makefile` wrapper whenever `package-lock.json` changes or a Docker build needs offline inputs:
+Generate or refresh the local fallback caches with the `Makefile` wrapper whenever `package-lock.json` changes or a Docker build needs offline inputs and you already have a healthy host install:
 
 ```bash
 make docker-artifacts
 ```
+
+When you need to reclaim disk space across the full local workflow rather than just refresh the Docker caches, use:
+
+```bash
+make clean-dev-artifacts
+```
+
+That cleanup target removes disposable repo-local outputs and caches, including `node_modules`, `.next`, coverage output, Playwright artifacts, local uploaded-document data, bind-mounted PostgreSQL data, generated `*.tsbuildinfo`, and optional `vendor/npm-offline-cache` plus `vendor/prisma-client` fallback directories after first stopping the default and test compose stacks. Any legacy `vendor/*.tar.gz` archives are removed too.
+By repo policy, successful loops should end with this command after verification and any required commit so the next agent starts from a clean local development environment with minimal disk usage.
 
 ## Host Verification Commands
 
@@ -105,7 +114,7 @@ For the current Phase 6 scoring slices, targeted verification should confirm:
 - the admin repository maps the organization scoring profile plus recommendation-threshold fields, observed closed-outcome summaries, and suggested recalibration weights into typed display fields without leaking raw Prisma payloads into the page layer
 - the admin console renders the scoring-profile sections, decision-threshold badges, weighted-criteria table, observed-outcome summaries, and recalibration form on the guarded `/settings` route
 - canonical browser verification should prefer `make compose-test-e2e`; in this environment the host-started `npm run e2e` path can hit low-level PostgreSQL `XX000 unexpected data beyond EOF` storage errors on the bind-mounted local database even when the compose-managed Playwright run passes
-- after a full local database reset, rerun `npx prisma migrate deploy` plus `npm run db:seed` before `make compose-test-e2e`; the compose Playwright target expects a migrated and seeded database and will otherwise fail sign-in immediately on the empty reset state
+- after a full local database reset, rerun `npx prisma migrate deploy` plus `npm run db:seed` before host-side browser checks; the compose Playwright target now bootstraps its disposable test database internally through `make compose-test-bootstrap`
 - the pure scoring engine returns six factor scores with deterministic explanations plus `GO`, `DEFER`, and `NO_GO` recommendation outcomes across strong-fit, high-risk, borderline, and missing-profile edge cases
 - the typed opportunity repository synthesizes a deterministic scorecard for workspaces and list snapshots when a persisted current scorecard is missing, including recommendation outcome and rationale
 - the typed opportunity repository maps both the current workspace bid decision and a bounded decision-history list so the scoring panel can show human overrides without querying raw Prisma payloads in the page layer
@@ -265,8 +274,8 @@ For launch-hardening recovery and pilot-readiness checks, the canonical disposab
 
 ```bash
 docker compose down -v --remove-orphans
-rm -rf .docker/postgres-data .data/opportunity-documents
-mkdir -p .docker/postgres-data .data/opportunity-documents
+rm -rf .data/opportunity-documents
+mkdir -p .data/opportunity-documents
 make compose-up-detached
 npx prisma migrate deploy
 npm run db:seed
@@ -315,8 +324,11 @@ make compose-test-e2e
 ```
 
 The Playwright workflow automatically starts PostgreSQL and the web app, waits for the app health check, then runs Chromium from the dedicated Playwright container. Compose-backed browser execution uses the same serialized Playwright configuration as host-side `npm run e2e`.
+The compose verification targets now run through [`docker-compose.test.yml`](/Users/maverick/Documents/RalphLoops/OneSource/docker-compose.test.yml:1), which uses a disposable `tmpfs` PostgreSQL data mount for the test stack so browser verification no longer depends on the host bind-mounted database directory.
 The `make compose-test*` targets force `SAM_GOV_USE_FIXTURES=true` so connector-backed `/sources` verification stays deterministic in CI-like local runs.
-Because the smoke suite mutates one shared seeded database, reseed with `npm run db:seed` before `make compose-test-e2e` if the database was already touched by an earlier host or compose smoke run in the same loop.
+Because the smoke suite mutates one shared seeded database inside the disposable test stack, `make compose-test-e2e` now starts from an empty `tmpfs` database, then runs `npx prisma migrate deploy` and `npm run db:seed` inside the disposable `test` container before Chromium runs. You can run that setup phase directly with `make compose-test-bootstrap`.
+If the compose browser run leaves `db` restarting, rerun `make compose-down` and then `make compose-test-e2e`. The test stack is intentionally disposable; no manual cleanup of PostgreSQL files is required beyond clearing `.data/opportunity-documents` if uploaded test artifacts need to be reset.
+After the loop is closed and any debugging evidence is no longer needed, run `make clean-dev-artifacts` instead of leaving the rebuilt verification environment in place.
 
 ## Runtime Support Commands
 

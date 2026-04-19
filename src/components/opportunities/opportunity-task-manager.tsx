@@ -1,6 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -14,6 +22,8 @@ import {
   OPPORTUNITY_TASK_PRIORITY_OPTIONS,
   OPPORTUNITY_TASK_STATUS_OPTIONS,
   type OpportunityTaskActionState,
+  type OpportunityTaskSubmission,
+  validateOpportunityTaskFormSubmission,
 } from "@/modules/opportunities/opportunity-task-form.schema";
 import type {
   OpportunityTaskAssigneeOption,
@@ -46,11 +56,31 @@ export function OpportunityTaskManager({
   tasks,
   updateAction,
 }: OpportunityTaskManagerProps) {
+  const router = useRouter();
   const [createState, createFormAction, createIsPending] = useActionState(
     createAction,
     INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
   );
   const createFormRef = useRef<HTMLFormElement>(null);
+  const [optimisticCreatedTask, setOptimisticCreatedTask] =
+    useState<OptimisticTaskDraft | null>(null);
+  const lastCreateRefreshStateRef =
+    useRef<OpportunityTaskActionState | null>(null);
+  const hasMaterializedOptimisticTask = optimisticCreatedTask
+    ? tasks.some((task) =>
+        doesTaskMatchOptimisticDraft(task, optimisticCreatedTask),
+      )
+    : false;
+  const shouldShowOptimisticTask = Boolean(
+    optimisticCreatedTask &&
+      !createState.formError &&
+      Object.keys(createState.fieldErrors).length === 0 &&
+      !hasMaterializedOptimisticTask,
+  );
+  const visibleTasks =
+    optimisticCreatedTask && shouldShowOptimisticTask
+      ? [optimisticCreatedTask.task, ...tasks]
+      : tasks;
 
   useEffect(() => {
     if (createState.successMessage) {
@@ -58,11 +88,37 @@ export function OpportunityTaskManager({
     }
   }, [createState.successMessage]);
 
+  useEffect(() => {
+    if (
+      createState.successMessage &&
+      lastCreateRefreshStateRef.current !== createState
+    ) {
+      lastCreateRefreshStateRef.current = createState;
+      const refreshTimeout = window.setTimeout(() => {
+        startTransition(() => {
+          router.refresh();
+        });
+      }, 400);
+
+      return () => {
+        window.clearTimeout(refreshTimeout);
+      };
+    }
+  }, [createState, router]);
+
   return (
     <div className="space-y-5">
       <form
         action={createFormAction}
         className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(244,248,246,0.9)] px-5 py-5"
+        onSubmitCapture={(event) => {
+          setOptimisticCreatedTask(
+            buildOptimisticTaskDraft(
+              event,
+              assigneeOptions,
+            ),
+          );
+        }}
         ref={createFormRef}
       >
         <input name="opportunityId" type="hidden" value={opportunityId} />
@@ -203,18 +259,24 @@ export function OpportunityTaskManager({
         </div>
       </form>
 
-      {tasks.length > 0 ? (
+      {visibleTasks.length > 0 ? (
         <div className="space-y-4">
-          {tasks.map((task) => (
-            <EditableTaskCard
-              assigneeOptions={assigneeOptions}
-              deleteAction={deleteAction}
-              key={buildTaskVersionKey(task)}
-              opportunityId={opportunityId}
-              task={task}
-              updateAction={updateAction}
-            />
-          ))}
+          {visibleTasks.map((task) =>
+            task.id.startsWith("optimistic-task:")
+              ? (
+                  <OptimisticTaskCard key={task.id} task={task} />
+                )
+              : (
+                  <EditableTaskCard
+                    assigneeOptions={assigneeOptions}
+                    deleteAction={deleteAction}
+                    key={buildTaskVersionKey(task)}
+                    opportunityId={opportunityId}
+                    task={task}
+                    updateAction={updateAction}
+                  />
+                ),
+          )}
         </div>
       ) : (
         <EmptyState
@@ -224,6 +286,39 @@ export function OpportunityTaskManager({
         />
       )}
     </div>
+  );
+}
+
+type OptimisticTaskDraft = {
+  key: string;
+  task: OpportunityWorkspaceTask;
+};
+
+function OptimisticTaskCard({ task }: { task: OpportunityWorkspaceTask }) {
+  return (
+    <article className="rounded-[24px] border border-[rgba(32,95,85,0.18)] bg-[rgba(229,243,239,0.9)] px-5 py-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <h3 className="text-base font-semibold text-foreground">{task.title}</h3>
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="accent">Saving</Badge>
+            <Badge tone={priorityTone(task.priority)}>{humanizeEnum(task.priority)}</Badge>
+            <Badge tone="muted">{humanizeEnum(task.status)}</Badge>
+          </div>
+        </div>
+        <p className="text-sm text-muted">
+          {task.dueAt ? `Due ${formatDate(task.dueAt)}` : "No due date"}
+        </p>
+      </div>
+
+      {task.description ? (
+        <p className="mt-4 text-sm leading-6 text-muted">{task.description}</p>
+      ) : null}
+
+      <p className="mt-4 text-sm text-muted">
+        Owner: {task.assigneeName ?? "Unassigned"} · Waiting for workspace refresh.
+      </p>
+    </article>
   );
 }
 
@@ -240,6 +335,7 @@ function EditableTaskCard({
   task: OpportunityWorkspaceTask;
   updateAction: OpportunityTaskManagerProps["updateAction"];
 }) {
+  const router = useRouter();
   const [updateState, updateFormAction, updateIsPending] = useActionState(
     updateAction,
     INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
@@ -248,6 +344,29 @@ function EditableTaskCard({
     deleteAction,
     INITIAL_OPPORTUNITY_TASK_ACTION_STATE,
   );
+  const lastRefreshStateRef = useRef<OpportunityTaskActionState | null>(null);
+
+  useEffect(() => {
+    const successfulState =
+      updateState.successMessage || deleteState.successMessage
+        ? updateState.successMessage
+          ? updateState
+          : deleteState
+        : null;
+
+    if (successfulState && lastRefreshStateRef.current !== successfulState) {
+      lastRefreshStateRef.current = successfulState;
+      const refreshTimeout = window.setTimeout(() => {
+        startTransition(() => {
+          router.refresh();
+        });
+      }, 400);
+
+      return () => {
+        window.clearTimeout(refreshTimeout);
+      };
+    }
+  }, [deleteState, router, updateState]);
 
   return (
     <article className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(246,239,228,0.55)] px-5 py-5">
@@ -442,6 +561,108 @@ function buildTaskVersionKey(task: OpportunityWorkspaceTask) {
     task.priority,
     task.dueAt ?? "",
   ].join("|");
+}
+
+function buildOptimisticTaskDraft(
+  event: FormEvent<HTMLFormElement>,
+  assigneeOptions: OpportunityTaskAssigneeOption[],
+): OptimisticTaskDraft | null {
+  const validation = validateOpportunityTaskFormSubmission(
+    new FormData(event.currentTarget),
+  );
+
+  if (!validation.success) {
+    return null;
+  }
+
+  const submission = validation.submission;
+  const key = buildTaskComparisonKey({
+    assigneeUserId: submission.assigneeUserId,
+    description: submission.description,
+    dueAt: formatDateKey(submission.dueAt),
+    priority: submission.priority,
+    status: submission.status,
+    title: submission.title,
+  });
+  const assigneeLabel =
+    assigneeOptions.find((option) => option.value === submission.assigneeUserId)
+      ?.label ?? null;
+
+  return {
+    key,
+    task: buildOptimisticTaskRecord(submission, assigneeLabel, key),
+  };
+}
+
+function buildOptimisticTaskRecord(
+  submission: OpportunityTaskSubmission,
+  assigneeLabel: string | null,
+  key: string,
+): OpportunityWorkspaceTask {
+  return {
+    id: `optimistic-task:${key}`,
+    title: submission.title,
+    description: submission.description,
+    status: submission.status,
+    priority: submission.priority,
+    dueAt: submission.dueAt?.toISOString() ?? null,
+    deadlineReminderState: "NONE",
+    deadlineReminderUpdatedAt: null,
+    assigneeUserId: submission.assigneeUserId,
+    assigneeName: assigneeLabel,
+    createdByName: null,
+    startedAt: submission.status === "IN_PROGRESS" ? new Date().toISOString() : null,
+    completedAt: submission.status === "COMPLETED" ? new Date().toISOString() : null,
+  };
+}
+
+function doesTaskMatchOptimisticDraft(
+  task: OpportunityWorkspaceTask,
+  draft: OptimisticTaskDraft,
+) {
+  return (
+    buildTaskComparisonKey({
+      assigneeUserId: task.assigneeUserId,
+      description: task.description,
+      dueAt: formatDateKey(task.dueAt),
+      priority: task.priority,
+      status: task.status,
+      title: task.title,
+    }) === draft.key
+  );
+}
+
+function buildTaskComparisonKey({
+  assigneeUserId,
+  description,
+  dueAt,
+  priority,
+  status,
+  title,
+}: {
+  assigneeUserId: string | null;
+  description: string | null;
+  dueAt: string;
+  priority: OpportunityWorkspaceTask["priority"];
+  status: OpportunityWorkspaceTask["status"];
+  title: string;
+}) {
+  return [
+    title.trim().toLowerCase(),
+    description?.trim().toLowerCase() ?? "",
+    assigneeUserId ?? "",
+    dueAt,
+    status,
+    priority,
+  ].join("|");
+}
+
+function formatDateKey(value: Date | string | null) {
+  if (!value) {
+    return "";
+  }
+
+  return new Date(value).toISOString().slice(0, 10);
 }
 
 function humanizeEnum(value: string) {

@@ -26,13 +26,22 @@ cp .env.example .env
 npm install
 ```
 
-Compose workflows do not depend on host `node_modules`. Docker images install with normal `npm ci` by default and can fall back to optional local cache archives under `vendor/` when container registry access is unavailable. The canonical entrypoint is now the repo `Makefile`, which prepares those local archives before Docker builds.
+Compose workflows do not depend on host `node_modules`. Docker images install with normal `npm ci` by default and can fall back to optional local cache directories under `vendor/` when container registry access is unavailable. The canonical entrypoint is now the repo `Makefile`, but the compose targets no longer shell out to host `npm` before they build.
 
-3. When dependency versions change, or when a Docker environment needs offline install inputs, refresh the optional local cache archives before rebuilding images:
+3. When dependency versions change, or when a Docker environment needs offline install inputs and you already have a healthy host install, refresh the optional local fallback caches before rebuilding images:
 
 ```bash
 make docker-artifacts
 ```
+
+If local disk space runs low, reclaim repo-local development artifacts with:
+
+```bash
+make clean-dev-artifacts
+```
+
+This target stops the default and test compose stacks, removes repo-local compose images and volumes, and deletes disposable local artifacts such as `node_modules`, `.next`, coverage output, Playwright reports, `.data/`, `.docker/postgres-data`, generated `*.tsbuildinfo`, and the optional `vendor/npm-offline-cache` plus `vendor/prisma-client` Docker fallback directories. Any legacy `vendor/*.tar.gz` archives are removed too.
+This is now the standard end-of-loop cleanup command for the repo, not just an occasional rescue step, because the local environment should be left in a low-disk cold state for the next agent.
 
 4. Configure the `sam.gov` connector mode you intend to operate:
 
@@ -130,15 +139,18 @@ When the local stack needs to return to the deterministic baseline, use this exa
 
 ```bash
 docker compose down -v --remove-orphans
-rm -rf .docker/postgres-data .data/opportunity-documents
-mkdir -p .docker/postgres-data .data/opportunity-documents
+rm -rf .data/opportunity-documents
+mkdir -p .data/opportunity-documents
 make compose-up-detached
 npx prisma migrate deploy
 npm run db:seed
 curl http://127.0.0.1:3000/api/health
 ```
 
-Use this flow before browser reruns when the shared seed has been heavily mutated, and use it immediately if PostgreSQL starts surfacing `XX000 unexpected data beyond EOF` corruption faults on this machine.
+Use this flow before browser reruns when the shared seed has been heavily mutated, and use it immediately if the disposable compose PostgreSQL volume starts surfacing `XX000 unexpected data beyond EOF` or similar corruption faults on this machine.
+
+If the goal is disk reclamation rather than a deterministic reset, prefer `make clean-dev-artifacts`; that broader cleanup also removes host dependencies, reports, caches, and compose images.
+After a routine successful loop, prefer `make clean-dev-artifacts` over ad hoc manual deletion so the cleanup scope stays consistent and documented.
 
 After a reset, reseed, or manual user-status change, older JWT session cookies may no longer map to an active seeded user. The app now treats that as an invalid session and redirects the next authenticated request back to `/sign-in` instead of attempting authenticated writes with a stale user ID. If `/sources` or another protected route suddenly returns you to sign-in after a reset, sign in again rather than reusing the old browser session.
 
@@ -251,7 +263,13 @@ Chromium Playwright against the compose-managed app:
 make compose-test-e2e
 ```
 
-The Playwright container waits for the `web` health check before running tests. Browser execution is intentionally serialized because the smoke suite mutates one shared seeded database.
+If you need the disposable compose test database migrated and seeded without launching Chromium yet, run:
+
+```bash
+make compose-test-bootstrap
+```
+
+The Playwright container waits for the `web` health check before running tests. Browser execution is intentionally serialized because the smoke suite mutates one shared seeded database, and the compose browser path now runs `prisma migrate deploy` plus `npm run db:seed` inside the disposable `test` container before Chromium starts.
 The `make compose-test*` targets force `SAM_GOV_USE_FIXTURES=true` so connector-backed `/sources` verification stays deterministic.
 
 ## Manual Runtime Validation
@@ -280,7 +298,7 @@ To verify the protected-route auth and authz slices manually after the stack is 
 4. Confirm the protected shell renders, the sign-out control is visible, and the admin-console link is shown.
 5. Open `/settings` and confirm the admin console renders for the admin user with the `Source sync observability`, `Organization scoring profile`, `Assigned roles`, and `Recent audit activity` sections visible.
 6. To recalibrate scoring, stay on `/settings`, review the `Scoring recalibration` section, then either submit `Apply observed-outcome suggestions` or enter manual thresholds and factor weights before saving. A successful save should show a new scoring-model version and a recalculated-scorecard notice.
-7. If host-started or compose-managed Playwright browser runs surface PostgreSQL `XX000 unexpected data beyond EOF` errors on this machine, repeat the `Disposable Local Reset And Reseed` flow before retrying because the current verified local stack still uses the bind-mounted `./.docker/postgres-data` directory.
+7. If host-started or compose-managed Playwright browser runs surface PostgreSQL `XX000 unexpected data beyond EOF` errors on this machine, repeat the `Disposable Local Reset And Reseed` flow before retrying so Docker recreates the disposable PostgreSQL volume from scratch.
 8. In the `Source sync observability` section, confirm the seeded `SAM.gov` rate-limited connector row, recent sync failure row, and failed import review row are all visible.
 9. Use one `Retry sync` control and confirm the page reloads with the queued success notice: `The saved search retry has been queued for the next sync sweep.`
 10. Sign out, sign back in as `avery.stone@onesource.local`, navigate directly to `/settings`, and confirm the app redirects to `/forbidden`.
@@ -405,12 +423,12 @@ Symptoms:
 
 - image builds or test containers fail before Next.js or Vitest starts
 - `npm ci` fails before Next.js or Vitest starts
-- `npm ci --offline` reports a missing cached tarball when using local fallback archives
+- `npm ci --offline` reports a missing cached tarball or cache entry when using local fallback caches
 
 Recovery:
 
 1. If the environment should support online installs, confirm the container runtime can reach the npm registry and re-run the compose command.
-2. If the environment needs offline inputs, regenerate the local archives with `make docker-artifacts`.
+2. If the environment needs offline inputs, regenerate the local fallback caches with `make docker-artifacts`.
 3. Re-run the compose test command.
 
 ### Browser Tests Fail
@@ -426,7 +444,7 @@ Recovery:
 1. Inspect the report artifacts in `playwright-report/` and `test-results/`.
 2. Confirm `web` is healthy with `docker compose ps` or `curl /api/health`.
 3. If the failure is in the host-side Playwright web server and the error references Turbopack cache corruption, clear the generated cache with `rm -rf .next`.
-4. Re-run either the host-side `npm run e2e` flow or the compose Playwright workflow depending on the failing environment. If you changed Playwright assertions around `/sources`, reseed first with `npm run db:seed` so duplicate-sensitive CSV checks start from a known state.
+4. Re-run either the host-side `npm run e2e` flow or the compose Playwright workflow depending on the failing environment. If you changed Playwright assertions around `/sources`, reseed first with `npm run db:seed` for host-side reruns or use `make compose-test-bootstrap` for the disposable compose stack.
 
 ## Operational Gaps
 

@@ -96,6 +96,8 @@ Every loop must follow this exact flow.
 - Run the narrowest meaningful verification commands for the changed area.
 - If the change is user-facing and the live application stack exists, run the relevant Playwright flow in Chromium against the running app, preferably through `docker compose`.
 - If the target checklist item is complete and verification passed, create a non-amended git commit for that item before ending the loop unless the user explicitly asked not to commit.
+- After verification, documentation updates, and any required commit are complete, run `make clean-dev-artifacts` so the next loop starts from a clean local development environment and repo-local disk usage stays minimized.
+- Skip that cleanup only when the user explicitly asks to keep the environment running or when preserving local artifacts is necessary to debug an unresolved blocker. If cleanup is skipped or fails, record the exact reason in `NOTES.md` and `PRD.md`.
 - Do not emit `<promise>complete</promise>` at the end of an ordinary loop or after completing a single checklist item. Reserve that literal marker for one final signal only, after all project tasks are complete and the entire project is done.
 - Update `NOTES.md` with the current stopping point, next intended step, blockers, and verification status before ending the loop so interrupted work can be resumed safely.
 - Update `PRD.md`:
@@ -228,6 +230,7 @@ Testing is required work, not cleanup work.
 - If the repo is early-stage and full test suites do not exist yet, run at least the directly relevant checks that do exist.
 - If verification cannot run, document exactly why in `PRD.md`.
 - Do not mark a checklist item complete if the required verification is still missing. If the full automated suite for a code-writing task does not pass, the item remains incomplete.
+- Run `make clean-dev-artifacts` only after verification is fully complete so cleanup does not erase local evidence needed to debug a failing loop.
 
 ## Commit And Change Management Standard
 
