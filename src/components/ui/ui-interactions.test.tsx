@@ -59,18 +59,33 @@ describe("UI interaction primitives", () => {
       </div>,
     );
 
-    expect(screen.getByRole("link", { name: /all pursuits/i })).toHaveAttribute(
+    const allPursuitsLink = screen.getByText(/all pursuits/i).closest("a");
+    const stageFilterChip = screen.getByText(/stage · qualified/i).closest("a");
+    const clearAllLink = screen.getByText(/clear all/i).closest("a");
+    const compactLink = screen.getByText(/^compact$/i).closest("a");
+
+    expect(allPursuitsLink).not.toBeNull();
+    expect(stageFilterChip).not.toBeNull();
+    expect(clearAllLink).not.toBeNull();
+    expect(compactLink).not.toBeNull();
+
+    expect(allPursuitsLink).toHaveAttribute(
       "aria-current",
       "page",
     );
-    expect(
-      screen.getByRole("link", { name: /remove stage · qualified/i }),
-    ).toHaveAttribute("href", "/opportunities?stage=qualified");
-    expect(screen.getByRole("link", { name: /clear all/i })).toHaveAttribute(
+    expect(stageFilterChip).toHaveAttribute(
+      "aria-label",
+      "Remove Stage · Qualified",
+    );
+    expect(stageFilterChip).toHaveAttribute(
+      "href",
+      "/opportunities?stage=qualified",
+    );
+    expect(clearAllLink).toHaveAttribute(
       "href",
       "/opportunities",
     );
-    expect(screen.getByRole("link", { name: /compact/i })).toHaveAttribute(
+    expect(compactLink).toHaveAttribute(
       "aria-current",
       "page",
     );

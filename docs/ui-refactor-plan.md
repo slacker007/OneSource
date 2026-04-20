@@ -353,15 +353,29 @@ Key outcomes:
 ### UI-13 Final Hardening
 
 Primary files:
-- Every changed route and shared primitive
-- `README.md`, `PRD.md`, `NOTES.md`, `docs/architecture.md`, `docs/testing.md`, `docs/runbook.md`, and `docs/security.md` as needed by the actual implementation
+- `src/components/opportunities/opportunity-form.tsx`
+- `src/components/home/dashboard-landing.tsx`
+- `src/components/sources/source-search.tsx`
+- `src/components/opportunities/opportunity-workspace.tsx`
+- `src/components/analytics/decision-console.tsx`
+- `src/components/layout/authenticated-app-shell.tsx`
+- `src/app/globals.css`
+- `tests/smoke.spec.ts`
+- `README.md`, `PRD.md`, `NOTES.md`, and `docs/testing.md`
+
+Implemented baseline:
+- Product copy was normalized across the authenticated experience by removing implementation-facing phrases such as seeded-org references, roadmap labels, and developer-facing field guidance from the dashboard, opportunity form, source-search, opportunity workspace, and analytics surfaces.
+- The shared authenticated shell was hardened for tablet-sized layouts by tightening flex child sizing, removing width forcing that caused document overflow, restoring explicit `body` margin reset coverage, and hiding shell-level horizontal overflow while preserving route-local scroll containers.
+- The Chromium smoke suite now includes a tablet-sized route sweep across every major authenticated route plus one opportunity workspace, using a width-based overflow assertion to catch document-level regressions before closeout.
+- The shared Playwright sign-in helper now waits for the authenticated redirect and visible signed-in shell state before continuing so multi-route browser checks do not race the auth transition.
+- Final durable docs now record the compose-first browser path, the need to rebuild `web` and `playwright` after route-level or smoke-spec changes in this sandbox, and the verification evidence for the completed UI refactor program.
 
 Key outcomes:
-- Full accessibility sweep
-- Responsive behavior validation
-- Copy cleanup complete
-- Performance smoothing on sticky and table-heavy routes
-- Final test matrix complete
+- Product-facing copy is consistent across the authenticated routes
+- Tablet responsiveness is verified across every major route
+- The shell no longer pushes document width beyond the viewport on the hardened paths
+- Browser regression coverage now exercises a final route-wide hardening pass
+- Final durable docs capture the completed UI operating model and verification workflow
 
 ## Testing Strategy
 

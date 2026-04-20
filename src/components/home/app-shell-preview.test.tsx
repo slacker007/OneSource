@@ -234,7 +234,7 @@ describe("DashboardLanding", () => {
 
     expect(screen.getByText(/dashboard data unavailable/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/seeded default organization/i),
+      screen.getByText(/current user still belongs to an active workspace/i),
     ).toBeInTheDocument();
   });
 });

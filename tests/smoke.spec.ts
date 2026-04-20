@@ -19,6 +19,8 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(LOCAL_DEMO_PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
 }
 
 function formatDateInputValue(date: Date) {
@@ -1102,7 +1104,9 @@ test.describe("tablet route sweep", () => {
     });
     await expect(routeResultsTable).toBeVisible();
     await routeResultsTable.getByRole("link", { name: /open brief/i }).first().click();
-    await page.getByRole("link", { name: /^Open workspace$/i }).click();
+    const selectedPreview = page.getByRole("complementary");
+    await expect(selectedPreview).toBeVisible();
+    await selectedPreview.getByRole("link", { name: /^Open workspace$/i }).click();
     await expect(page.getByRole("heading", { name: /^Summary$/i })).toBeVisible();
     expect(
       await page.evaluate(

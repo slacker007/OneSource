@@ -567,7 +567,7 @@ export function AppShellFrame({
   );
 
   return (
-    <div className="relative flex min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(32,95,85,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(168,93,42,0.1),transparent_24%)]">
+    <div className="relative flex min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(32,95,85,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(168,93,42,0.1),transparent_24%)]">
       <Drawer
         description="Responsive grouped navigation now keeps quick links, pinned work, and recent work in the mobile shell instead of scattering them across individual routes."
         eyebrow="OneSource"
@@ -799,9 +799,9 @@ export function AppShellFrame({
 
       {desktopShell}
 
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="border-border/80 sticky top-0 z-20 border-b bg-[rgba(247,243,232,0.88)] px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+          <div className="mx-auto flex max-w-7xl min-w-0 flex-col gap-4">
             <div className="flex items-center justify-between gap-4 lg:hidden">
               <div className="flex items-center gap-3">
                 <button
@@ -888,8 +888,8 @@ export function AppShellFrame({
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-7xl">{children}</div>
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto min-w-0 max-w-7xl">{children}</div>
         </main>
       </div>
     </div>
