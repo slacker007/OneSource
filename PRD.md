@@ -516,6 +516,7 @@ Normalization rules:
 ## Ralph Loops Operating Protocol
 
 This section is mandatory for every future coding iteration because conversation context is non-persistent.
+The unchecked boxes in this section are standing process controls for future loops, not remaining product-scope checklist items.
 
 - [ ] At the start of every loop, read `SPEC.md`, `PRD.md`, `README.md`, and inspect `git status`.
 - [ ] Treat `PRD.md` as the source of truth for scope, sequencing, and current progress.
@@ -865,6 +866,8 @@ Execution rules for every item in this program:
 
 ## Quality Bar
 
+The unchecked boxes below are standing engineering requirements for any future change, not incomplete deliverables on the project checklist.
+
 - [ ] Prefer server-side data access and validation over client-only logic.
 - [ ] Keep business rules in domain modules, not scattered across pages.
 - [ ] Add or update tests for every code change, including business logic, permissions, parsing, scoring, imports, and UI behavior where applicable.
@@ -876,8 +879,8 @@ Execution rules for every item in this program:
 
 Update this section at the end of every coding loop.
 
-- Current status: `P0-01` through `P10-04` remain complete, the MVP/Beta/Pilot release gates remain met, deferred follow-on `FP-01` remains complete, and the post-completion UI refactor program remains complete through `UI-13`. Another durable-memory follow-up on `2026-04-20T01:46:18Z` treated the standing completion request as a follow-up to completed `P0-03`, closed the missing `docs/adr/` repository-memory gap with a concrete ADR set for the implemented architecture, linked those ADRs from the durable docs, and removed stale completion language that still claimed `FP-01` was pending. No product code changes were required in this loop, the project still passes, `make clean-dev-artifacts` completed successfully at loop end, and the one-time completion marker had already been emitted on `2026-04-18T17:54:41Z`, so it was not re-emitted in this follow-up.
+- Current status: `P0-01` through `P10-04` remain complete, the MVP/Beta/Pilot release gates remain met, deferred follow-on `FP-01` remains complete, and the post-completion UI refactor program remains complete through `UI-13`. Another durable-memory follow-up on `2026-04-20T01:49:09Z` treated the standing completion request as a follow-up to completed `P0-03` because the tracked project checklist is already finished, clarified that the unchecked boxes under `Ralph Loops Operating Protocol`, `Definition Of Done`, and `Quality Bar` are standing guardrails rather than open scope, and reconfirmed that no new product or documentation gaps were found. No product code changes were required in this loop, the project remains complete, `make clean-dev-artifacts` completed successfully at loop end, and the one-time completion marker had already been emitted on `2026-04-18T17:54:41Z`, so it was not re-emitted in this follow-up.
 - Next recommended item: none. The tracked PRD checklist is complete.
 - Blockers: no open blocker remains on the project checklist. Prior non-blocking environment notes remain accurate: after route-level or smoke-spec changes in this sandbox, the compose browser path can still require an explicit `docker compose -f docker-compose.test.yml build web playwright` refresh before Chromium sees the latest app bundle and the latest browser assertions together; host-native Node tooling in this sandbox remains less trustworthy than the compose path, so the canonical verification workflow should continue to prefer `docker compose`; scheduled sync execution is only implemented for saved searches whose `sourceSystem` is `sam_gov`, so the seeded future-connector search still logs a warning and remains non-executable until those connectors land; and the CRM, document-repository, and communication adapters are deterministic dry runs only, so no live outbound credentials, webhook validation, or callback signatures are in scope yet.
-- Files touched in latest loop: `NOTES.md`, `PRD.md`, `README.md`, `docs/architecture.md`, `docs/deployment.md`, `docs/adr/README.md`, `docs/adr/0001-modular-monolith-and-compose-first-runtime.md`, `docs/adr/0002-source-agnostic-connector-boundary.md`, and `docs/adr/0003-deterministic-auditable-scoring.md`.
-- Tests run in latest loop: docs-focused verification plus standard cleanup. Commands run: `git status --short --branch`; `git diff --check`; `find docs/adr -maxdepth 1 -type f | sort`; `rg -n 'FP-01 still remains|still deferred to follow-on \`FP-01\`' docs README.md docs/architecture.md docs/deployment.md docs/runbook.md docs/security.md PRD.md`; `rg -n 'docs/adr|ADR 0001|ADR 0002|ADR 0003' README.md docs/architecture.md docs/adr/README.md`; and `make clean-dev-artifacts`. Verification in this loop did not use `docker compose` or Playwright because the change set is documentation-only; `make clean-dev-artifacts` invoked compose teardown only and completed successfully.
+- Files touched in latest loop: `NOTES.md` and `PRD.md`.
+- Tests run in latest loop: completion-audit verification plus standard cleanup. Commands run: `git status --short --branch`; `git log --oneline -5`; `sed -n '516,552p' PRD.md`; `sed -n '866,878p' PRD.md`; `sed -n '875,980p' PRD.md`; `rg -n "^- \\[ \\] (P|UI|FP|MVP Gate|Beta Gate|Pilot Gate)" PRD.md README.md docs -g '!docs/research/**'`; `rg -n 'TODO|FIXME|TBD|still pending|remaining unchecked|next recommended item' README.md PRD.md docs src tests prisma scripts`; `git diff --check`; and `make clean-dev-artifacts`. Verification in this loop did not use `docker compose` or Playwright because the change set is documentation-only; `make clean-dev-artifacts` invoked compose teardown only and completed successfully.
