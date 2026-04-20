@@ -43,24 +43,30 @@ make compose-test-e2e
 1. Start the compose-managed stack:
 
 ```bash
-make compose-up-detached
+docker compose up -d db
 ```
 
 2. Apply migrations against the running database:
 
 ```bash
-npx prisma migrate deploy
+docker compose run --rm --build web npx prisma migrate deploy
 ```
 
 3. Seed only when the target environment is intentionally disposable or demo-oriented:
 
 ```bash
-npm run db:seed
+docker compose run --rm --build web npm run db:seed
 ```
 
 Do not run the local demo seed against a persistent pilot environment unless the goal is to bootstrap the known demo workspace.
 
-4. Confirm service health:
+4. Start the full stack:
+
+```bash
+make compose-up-detached
+```
+
+5. Confirm service health:
 
 ```bash
 docker compose ps

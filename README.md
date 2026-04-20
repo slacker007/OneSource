@@ -78,7 +78,27 @@ npm run e2e:install
 
 The compose-managed Playwright workflow uses the official Playwright image and does not need a host browser install.
 
-4. Start the local PostgreSQL, web app, and worker stack:
+4. Bootstrap the default database schema and seed data before relying on the web and worker containers:
+
+Compose-first bootstrap:
+
+```bash
+docker compose up -d db
+docker compose run --rm --build web npx prisma migrate deploy
+docker compose run --rm --build web npm run db:seed
+```
+
+If you already have host dependencies installed, the equivalent host-assisted bootstrap is:
+
+```bash
+docker compose up -d db
+npx prisma migrate deploy
+npm run db:seed
+```
+
+`make compose-up` and `make compose-up-detached` do not run Prisma migrations or seed the default application stack for you. If you skip this bootstrap on a fresh database, Auth.js can fail with `The table public.users does not exist` and the worker can log `relation "public.opportunity_tasks" does not exist` even though PostgreSQL itself is reachable.
+
+5. Start the local PostgreSQL, web app, and worker stack:
 
 ```bash
 make compose-up
@@ -90,13 +110,13 @@ For a detached stack:
 make compose-up-detached
 ```
 
-5. Optional: run the app directly on the host instead of through Compose:
+6. Optional: run the app directly on the host instead of through Compose:
 
 ```bash
 npm run dev
 ```
 
-The app serves at `http://127.0.0.1:3000`, PostgreSQL is exposed on `127.0.0.1:5432`, and the readiness endpoint is `http://127.0.0.1:3000/api/health`.
+The app serves at `http://127.0.0.1:3000`, PostgreSQL is exposed on `127.0.0.1:5432`, and the readiness endpoint is `http://127.0.0.1:3000/api/health`. The current health endpoint checks database connectivity and document-storage readiness only; it does not verify that the full Prisma schema has been applied, so an unmigrated database can still return `status: "ok"` while app queries fail on missing tables.
 
 ## Database Workflow
 
@@ -106,7 +126,13 @@ Validate the Prisma schema:
 npm run prisma:validate
 ```
 
-Create and apply a development migration:
+Apply the checked-in migration set to the current database:
+
+```bash
+npx prisma migrate deploy
+```
+
+Create and apply a new development migration when the schema changes:
 
 ```bash
 npm run prisma:migrate:dev -- --name your_migration_name
@@ -118,7 +144,9 @@ Seed the baseline auth, opportunity, lineage, and knowledge data:
 npm run db:seed
 ```
 
-The current seed creates a default organization, the canonical system role set, seven realistic local users spanning admin, executive, BD, capture, proposal, contributor, and viewer roles, deterministic local password hashes for those seeded users, five agencies, five contract vehicles, five competitors, connector configs for `sam.gov`, `usaspending_api`, `gsa_ebuy`, and `csv_upload`, one imported `sam.gov` opportunity with retained raw and normalized payloads plus attachment and contact child records, one applied import decision that created the canonical opportunity, one `usaspending_api` enrichment search and retained award-centric source record with an applied link-to-existing import decision, additive recommendation-threshold defaults on the organization scoring profile, four additional manual opportunities spanning `qualified`, `capture_active`, `proposal_in_development`, `submitted`, and `no_bid` stages with `GO`, `DEFER`, and `NO_GO` score or decision outcomes, one seeded proposal record on the active proposal-stage workspace with checklist and linked-document relations, and three reusable knowledge assets spanning past performance, boilerplate content, and win themes with linked opportunities plus freeform, agency, capability, contract-type, and vehicle retrieval tags. The seed finishes by running the same deadline-reminder sweep the worker uses, so the live app starts with one overdue seeded task, visible upcoming milestone reminders, saved source-search state that the source-sync job can sweep, seeded workspace documents that already exercise downloadable local files, retained extracted text, queued extraction status, proposal-tracking data for the live workspace smoke flow, and an initial knowledge library that can be filtered immediately.
+The current seed creates a default organization, the canonical system role set, seven realistic local users spanning admin, executive, BD, capture, proposal, contributor, and viewer roles, deterministic local password hashes for those seeded users, five agencies, five contract vehicles, five competitors, connector configs for `sam.gov`, `usaspending_api`, `gsa_ebuy`, and `csv_upload`, one imported `sam.gov` opportunity with retained raw and normalized payloads plus attachment and contact child records already in `capture_active`, one applied import decision that created the canonical opportunity, one `usaspending_api` enrichment search and retained award-centric source record with an applied link-to-existing import decision, additive recommendation-threshold defaults on the organization scoring profile, four additional manual opportunities spanning `qualified`, `proposal_in_development`, `submitted`, and `no_bid` stages with `GO`, `DEFER`, and `NO_GO` score or decision outcomes, one seeded proposal record on the active proposal-stage workspace with checklist and linked-document relations, and three reusable knowledge assets spanning past performance, boilerplate content, and win themes with linked opportunities plus freeform, agency, capability, contract-type, and vehicle retrieval tags. The seed finishes by running the same deadline-reminder sweep the worker uses, so the live app starts with one overdue seeded task, visible upcoming milestone reminders, saved source-search state that the source-sync job can sweep, seeded workspace documents that already exercise downloadable local files, retained extracted text, queued extraction status, proposal-tracking data for the live workspace smoke flow, and an initial knowledge library that can be filtered immediately.
+
+If startup logs show `The table public.users does not exist` or `relation "public.opportunity_tasks" does not exist`, PostgreSQL is reachable but the checked-in migration set has not been applied to that database yet. Run the bootstrap sequence above, restart the stack if it was already running, and sign in again after reseeding so the browser does not reuse a stale JWT session cookie.
 
 The typed opportunity module under `src/modules/opportunities/` now exposes shared DTOs, dashboard and list read models, a dedicated opportunity-workspace read model, deterministic in-workspace knowledge-suggestion ranking, a decision-console read model, portfolio decision analytics for bid volume, call mix, score distribution, recommendation alignment, funnel conversion, active-stage aging, and effort-versus-outcome summaries, additive drill-through metadata for stage queues and oldest-stage pursuits, a pure deterministic scoring engine for capability fit, strategic alignment, vehicle access, relationship strength, schedule realism, and risk, seeded recommendation-threshold handling for deterministic `GO`/`DEFER`/`NO_GO` outputs, repository fallback scorecard calculation for unscored opportunities, dashboard command-center summaries for attention queue, top pursuits, task burden, recent source activity, stage distribution, stage-to-stage conversion rates, active-stage aging, and upcoming deadlines, task-assignee and personal-task-board snapshots, decision-history mapping, current closeout plus competitor-option mapping for closed workspaces, proposal-record mapping for status, owner, checklist completion, and linked artifacts, a persisted deadline-reminder state boundary for tasks plus milestones, a stage-policy boundary with required-field gating, form-validation boundaries for opportunities, proposals, tasks, milestones, notes, documents, bid decisions, and closeout postmortems, browser-draft helpers, local-disk document storage plus queued extraction status for supported text uploads, worker-driven text extraction retries for pending documents, persisted scorecard recalculation sweeps for stale opportunities and now profile-change invalidation, and audited write-service integration for guarded create, edit, proposal create-update-delete, stage-transition, task, milestone, note, document, bid-decision, and closeout flows. For the current analytics slice, effort is intentionally modeled as a proxy over tracked execution artifacts rather than hours because the schema does not yet store labor time. The typed source-integration module under `src/modules/source-integrations/` now owns canonical external-search query parsing, a reusable `sam.gov` connector with live and fixture execution modes, proxy-aware live request handling, graceful transport-error degradation, persisted `source_search_executions`, normalized `source_records`, materialized `source_record_attachments` plus `source_record_contacts` and `source_record_awards`, connector-scoped saved-search summaries for discovery re-entry, source-result preview payload shaping from retained lineage rows, duplicate detection against existing opportunities, guarded create-versus-link import application, scheduled saved-search sync sweeps for due `sam.gov` searches, and a CSV import boundary that parses uploaded files, auto-suggests header mappings, validates tracked-opportunity fields, and performs conservative duplicate review before import. The new typed integration module under `src/modules/integrations/` prepares canonical CRM, document-repository, and communication payloads from an opportunity workspace snapshot, exposes stable adapter contracts per integration domain, and ships deterministic dry-run stub adapters so future live outbound or inbound integrations can be added without rewriting the opportunity or source modules. The new typed shell module under `src/modules/shell/` now shapes command-surface sections plus shell notification summaries from opportunities, assigned tasks, knowledge assets, and saved searches so the authenticated layout can stay server-backed while the command center, pinned-work persistence, and alert review stay lightweight on the client. The new observability helpers under `src/lib/observability/` now provide structured JSON logging for both app routes and worker jobs, while `src/lib/runtime-health.ts` provides a multi-signal runtime snapshot that checks database and document-storage readiness for `/api/health`. The typed admin repository under `src/modules/admin/` now exposes organization-scoped user-role visibility, recent audit-log inspection, source connector health, recent sync runs, failed import review rows, saved-search registry summaries, the seeded organization scoring profile plus recommendation thresholds, and observed-outcome recalibration insights for the guarded `/settings` route; the new recalibration write boundary accepts suggested or manual factor-weight updates, records an audit event, bumps the scoring-model version, and immediately recalculates current scorecards without code edits. The typed knowledge module under `src/modules/knowledge/` now exposes structured tag parsing, URL-backed preview selection, richer knowledge-library preview payloads, list and form snapshots, validation, and audited create/update/delete writes for reusable knowledge assets with freeform plus agency/capability/contract-type/vehicle retrieval coverage. The authenticated `(app)` route group now renders through a shared OneSource workspace shell with a desktop sidebar, sticky top bar, keyboard-accessible command launcher, command-center dialog with quick-create, recent, pinned, and server-backed cross-entity results, a shell notification dialog, reusable mobile navigation drawer, permission-aware analytics navigation, and a dedicated route-level error boundary. The root app tree also now exposes a public route-level error boundary. The `/sources` route now combines connector-backed external search with visible connector switching, saved-search re-entry, collapsible advanced filters, denser list-detail scanning, translated-request inspection, import preview, and the guarded CSV intake workspace; `/knowledge` now hosts a preview-first library with asset-type views, a sticky taxonomy rail, a selected-asset side brief, quick copy action, and the existing guarded create/edit flows; `/settings` now hosts a dense operator workspace for connector operations, saved-search visibility, scoring recalibration, user-role coverage, and audit activity; and `/opportunities/new` plus `/opportunities/[opportunityId]/edit` provide guarded tracked-opportunity forms with server validation and browser-local draft restore. The `/tasks` route now hosts a real personal execution queue that surfaces assigned tasks with opportunity linkage plus overdue reminders, while `/analytics` now hosts a guarded decision console that combines the ranking table with denser comparison modules and one-click drill-through to the underlying opportunities.
 
@@ -162,6 +190,7 @@ The committed `.env.example` contains the canonical development defaults.
 
 - Lint: `npm run lint`
 - Prisma schema validation: `npm run prisma:validate`
+- Prisma checked-in migrations apply: `npx prisma migrate deploy`
 - Prisma dev migration creation and apply: `npm run prisma:migrate:dev -- --name your_migration_name`
 - Prisma seed: `npm run db:seed`
 - Unit tests with coverage: `npm test`
@@ -212,7 +241,7 @@ The canonical loop is now:
 
 ## Known Gaps
 
-- Audit emission now exists in the shared opportunity write-service boundary, but auth events and permission failures still do not emit audit rows.
+- Audit emission now exists across seed bootstrap, shared opportunity writes, source import, knowledge writes, scoring recalibration, reminder transitions, document parsing, and scorecard recalculation, but auth events and permission failures still do not emit audit rows.
 - Background sweeps now cover reminders, scheduled `sam.gov` sync, queued document parsing, and stale scorecard recalculation, but non-`sam.gov` connector execution, richer job observability, and later knowledge-system automation remain future enhancements.
 
 Those items are the remaining intentional post-checklist gaps; this README documents the current completed project baseline.

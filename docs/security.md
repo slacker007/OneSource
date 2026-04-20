@@ -20,10 +20,10 @@ The current repo includes the first live authentication, authorization, audit-em
 - server-side permission guards for restricted routes and mutating surfaces such as `/analytics`, `/settings`, source import actions under `/sources`, and `/opportunities/new` plus `/opportunities/[opportunityId]/edit`, with a public permission-denied route
 - structured JSON logging for degraded health checks plus opportunity-document download authentication, authorization, and local-disk failure paths
 - authenticated-shell navigation that hides the analytics route when the signed-in role set lacks `view_decision_support`
-- an admin console that lets admins inspect current role assignments, recent audit events, source-sync health, and the seeded organization scoring profile, and lets only `manage_workspace_settings` users recalibrate scoring weights and thresholds with audited server-side writes
+- an admin console that lets admins inspect current role assignments, recent audit events, source-sync health, and the seeded organization scoring profile, and lets only `manage_workspace_settings` users queue saved-search retries and recalibrate scoring weights and thresholds through audited server-side writes
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
-- shared audited opportunity write services for create, update, delete, import-decision, stage-transition, and bid-decision flows
+- shared audited opportunity write services for tracked-opportunity, proposal, task, milestone, note, document, import-decision, stage-transition, bid-decision, and closeout flows
 - boot-time environment validation for `DATABASE_URL`, `AUTH_SECRET`, `NEXTAUTH_URL`, and the optional `sam.gov` connector runtime settings
 - compose-managed PostgreSQL for local development
 
@@ -79,7 +79,7 @@ The `audit_logs` table is the durable sink for future security-relevant activity
 - optional IP address and user-agent capture
 - immutable occurrence timestamp
 
-Current audit producers are the bootstrap seed path, the shared opportunity write service under `src/modules/opportunities/opportunity-write.service.ts`, and the source-import canonicalization flow under `src/modules/source-integrations/source-import.service.ts`. Those boundaries emit structured audit rows for representative create, update, delete, import-decision, stage-transition, bid-decision, and canonical merge refresh flows.
+Current audit producers are the bootstrap seed path, the shared opportunity write service under `src/modules/opportunities/opportunity-write.service.ts`, the source-import canonicalization flow under `src/modules/source-integrations/source-import.service.ts`, the audited knowledge write service under `src/modules/knowledge/knowledge-write.service.ts`, the scoring-recalibration service under `src/modules/admin/scoring-recalibration.service.ts`, the deadline-reminder sweep, the document-parsing sweep, and the scorecard-recalculation sweep. Those boundaries emit structured audit rows for representative create, update, delete, import-decision, stage-transition, bid-decision, knowledge-asset, scoring-profile, reminder-transition, document-extraction, and scorecard-recalculation flows.
 
 ## Reviewed Permission Surfaces
 
@@ -90,7 +90,7 @@ The current launch-hardening review revalidated these server-enforced permission
 - `view_decision_support`
   - required for `/analytics`
 - `manage_source_searches`
-  - required for `/sources` import and CSV-ingest actions plus saved-search retry operations
+  - required for `/sources` import and CSV-ingest actions
 - `manage_pipeline`
   - required for tracked-opportunity create or edit routes, opportunity workspace mutations, and knowledge create or edit actions
 - `manage_workspace_settings`
@@ -104,7 +104,7 @@ Current review result: the repo’s major restricted routes still gate server-si
 - CSV import rows are treated as untrusted input. The browser preview is advisory only; the server action rebuilds the preview from uploaded CSV text, revalidates mapped fields, and rechecks duplicates before importing ready rows into the pipeline.
 - Document uploads are treated as untrusted input. The server action revalidates the file metadata, bounds file size, writes under the configured storage root, and only exposes downloads back through an authenticated organization-scoped route.
 - Plain-text extraction currently runs only for UTF-8 text-like uploads. Binary formats are retained with explicit `NOT_REQUESTED` extraction status so later retry jobs can process them without fabricating content.
-- The current admin console is read-only and meant for visibility, not user-role mutation or audit remediation workflows yet.
+- The current admin console is still primarily operational and read-heavy. It supports saved-search retry and scoring recalibration, but it does not yet support user-role mutation or audit remediation workflows.
 - Fixture-backed connector mode is for deterministic local and CI-style verification only; it is not evidence that live upstream credentials, rate limits, or validation failure handling have been exercised in this environment.
 - No auth-event or permission-failure audit emission yet
 - Auth events and permission failures still do not emit audit rows, and many future user-facing mutations have not been wired to the audited write-service boundary yet

@@ -54,7 +54,25 @@ This is now the standard end-of-loop cleanup command for the repo, not just an o
 
 ## Boot The Default Stack
 
-Start the app, database, and worker:
+Bootstrap the default database schema and seed the local workspace before relying on the web and worker services:
+
+Compose-first bootstrap:
+
+```bash
+docker compose up -d db
+docker compose run --rm --build web npx prisma migrate deploy
+docker compose run --rm --build web npm run db:seed
+```
+
+If you already have host dependencies installed, the equivalent host-assisted bootstrap is:
+
+```bash
+docker compose up -d db
+npx prisma migrate deploy
+npm run db:seed
+```
+
+Then start the full app, database, and worker stack:
 
 ```bash
 make compose-up
@@ -65,6 +83,8 @@ Detached mode:
 ```bash
 make compose-up-detached
 ```
+
+`make compose-up` and `make compose-up-detached` do not run Prisma migrations or seed data for the default stack. On a fresh database, skipping bootstrap commonly surfaces `public.users` or `public.opportunity_tasks` missing-table errors from the auth path and the worker.
 
 ## Health Checks
 
@@ -108,6 +128,7 @@ Expected healthy response shape:
 ```
 
 If PostgreSQL or the configured document-storage root is unavailable, the route returns HTTP `503` with `status: "degraded"` and the failing dependency details.
+The current health route checks database reachability and document-storage readiness only. It does not confirm that every Prisma-managed table exists, so a freshly created but unmigrated database can still return `status: "ok"` while application queries fail on missing relations.
 
 ## Prisma Workflows
 
@@ -115,6 +136,12 @@ Validate the schema:
 
 ```bash
 npm run prisma:validate
+```
+
+Apply the checked-in migration set to the current database:
+
+```bash
+npx prisma migrate deploy
 ```
 
 Create and apply a development migration against the running PostgreSQL instance:
@@ -129,7 +156,7 @@ Apply the current seed defaults:
 npm run db:seed
 ```
 
-The current seed is idempotent enough for local development. It upserts the default organization, system roles, and seven realistic local users; persists one organization scoring profile with target NAICS codes, focus agencies, relationship agencies, capability inventory rows, certification rows, selected vehicles, and six weighted scoring criteria; persists five agencies, five contract vehicles, and five competitors; creates connector configs for `sam.gov`, `usaspending_api`, `gsa_ebuy`, and `csv_upload`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; seeds four additional manual opportunities across `qualified`, `proposal_in_development`, `submitted`, and `no_bid`; seeds realistic workspace data with varied tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, closeouts, proposal tracking records, proposal checklist items, proposal-linked documents, activity events, retained extracted text, queued extraction status, and local-disk document paths; then runs the same deadline-reminder sweep used by the worker so the app opens with truthful overdue and upcoming reminder state before appending the bootstrap audit-log record.
+The current seed is idempotent enough for local development. It upserts the default organization, system roles, and seven realistic local users; persists one organization scoring profile with target NAICS codes, focus agencies, relationship agencies, capability inventory rows, certification rows, selected vehicles, and six weighted scoring criteria; persists five agencies, five contract vehicles, and five competitors; creates connector configs for `sam.gov`, `usaspending_api`, `gsa_ebuy`, and `csv_upload`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision already in `capture_active`; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; seeds four additional manual opportunities across `qualified`, `proposal_in_development`, `submitted`, and `no_bid`; seeds realistic workspace data with varied tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, closeouts, proposal tracking records, proposal checklist items, proposal-linked documents, activity events, retained extracted text, queued extraction status, and local-disk document paths; then runs the same deadline-reminder sweep used by the worker so the app opens with truthful overdue and upcoming reminder state before appending the bootstrap audit-log record.
 
 The same seed also writes deterministic local password hashes for all seven users so the credentials-provider sign-in flow works immediately in development. Use the admin email `admin@onesource.local` or the viewer email `avery.stone@onesource.local` plus the shared local development password documented in [src/lib/auth/local-demo-auth.mjs](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/local-demo-auth.mjs:1) for smoke verification only.
 
@@ -141,9 +168,10 @@ When the local stack needs to return to the deterministic baseline, use this exa
 docker compose down -v --remove-orphans
 rm -rf .data/opportunity-documents
 mkdir -p .data/opportunity-documents
+docker compose up -d db
+docker compose run --rm --build web npx prisma migrate deploy
+docker compose run --rm --build web npm run db:seed
 make compose-up-detached
-npx prisma migrate deploy
-npm run db:seed
 curl http://127.0.0.1:3000/api/health
 ```
 
@@ -328,11 +356,12 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e
 For the current repo, deployment readiness means a compose-managed internal pilot rather than a hosted multi-environment platform rollout.
 
 1. Prepare env vars and writable persistence paths.
-2. Start the stack with `make compose-up-detached`.
-3. Apply `npx prisma migrate deploy`.
-4. Seed only when intentionally bootstrapping a disposable or demo environment.
-5. Validate `curl http://127.0.0.1:3000/api/health`.
-6. Run `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e` or the canonical `make compose-test-e2e`.
+2. Start PostgreSQL with `docker compose up -d db`.
+3. Apply migrations with `docker compose run --rm --build web npx prisma migrate deploy`.
+4. Seed only when intentionally bootstrapping a disposable or demo environment, using `docker compose run --rm --build web npm run db:seed`.
+5. Start the stack with `make compose-up-detached`.
+6. Validate `curl http://127.0.0.1:3000/api/health`.
+7. Run `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e` or the canonical `make compose-test-e2e`.
 
 See [docs/deployment.md](/Users/maverick/Documents/RalphLoops/OneSource/docs/deployment.md) for the durable deployment checklist and rollback guidance.
 
@@ -380,6 +409,28 @@ Recovery:
 1. Inspect database logs with `docker compose logs db`.
 2. Confirm `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` match the composed `DATABASE_URL`.
 3. If the local data directory is intentionally disposable and corrupted, run the `Disposable Local Reset And Reseed` flow above.
+
+### Missing Prisma Tables Or Unbootstrapped Schema
+
+Symptoms:
+
+- web logs show `Invalid prisma.user.findUnique()` followed by `The table public.users does not exist in the current database`
+- PostgreSQL logs show `relation "public.opportunity_tasks" does not exist`
+- worker logs fail early on task, reminder, or scorecard queries
+- `/api/health` may still return `200` with `status: "ok"` because connectivity is healthy even though schema bootstrap is missing
+
+Recovery:
+
+1. If the current database should be preserved, apply the checked-in migrations and seed against the running compose database:
+
+```bash
+docker compose run --rm --build web npx prisma migrate deploy
+docker compose run --rm --build web npm run db:seed
+docker compose restart web worker
+```
+
+2. If the local database is disposable or may be corrupted, run the full `Disposable Local Reset And Reseed` flow instead.
+3. After reseeding, sign in again. Older JWT session cookies may no longer map to the current seeded user rows.
 
 ### Background Job Warnings Or Failures
 
