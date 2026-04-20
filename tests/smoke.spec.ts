@@ -372,12 +372,12 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page).toHaveURL(/\/settings$/);
   await expect(
     page.getByRole("heading", {
-      name: /admin console/i,
+      name: /workspace settings/i,
     }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /source sync observability/i,
+      name: /connector operations/i,
     }),
   ).toBeVisible();
   await expect(
@@ -395,6 +395,16 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
       name: /failed import review/i,
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /search registry/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", {
+      name: /saved searches/i,
+    }),
+  ).toBeVisible();
   await expect(page.getByText(/sam\.gov/i).first()).toBeVisible();
   await expect(page.getByText(/rate limited/i).first()).toBeVisible();
   await expect(page.getByText(/rejected/i).first()).toBeVisible();
@@ -407,7 +417,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /organization scoring profile/i,
+      name: /scoring profile/i,
     }),
   ).toBeVisible();
   await expect(
@@ -447,12 +457,12 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page.getByText(/model default_capture_v1/i)).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /assigned roles/i,
+      name: /users & roles/i,
     }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /recent audit activity/i,
+      name: /audit activity/i,
     }),
   ).toBeVisible();
   await expect(page.getByText(/admin@onesource\.local/i).first()).toBeVisible();

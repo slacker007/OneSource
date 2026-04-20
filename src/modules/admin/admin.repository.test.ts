@@ -360,6 +360,53 @@ function buildFailedImportReviews() {
   ];
 }
 
+function buildSavedSearches() {
+  return [
+    {
+      id: "saved_search_123",
+      sourceSystem: "sam_gov",
+      name: "Active Air Force Knowledge Management",
+      description: "Daily discovery coverage for Air Force knowledge pursuits.",
+      canonicalFilters: {
+        keywords: "knowledge management",
+        naicsCode: "541511",
+        organizationCode: "FA4861",
+        status: "active",
+        procurementTypes: ["r", "o"],
+        postedDateFrom: "04/01/2026",
+        postedDateTo: "04/18/2026",
+      },
+      createdAt: new Date("2026-04-17T08:00:00.000Z"),
+      updatedAt: new Date("2026-04-18T08:05:00.000Z"),
+      lastExecutedAt: new Date("2026-04-18T08:15:00.000Z"),
+      lastSyncedAt: new Date("2026-04-18T08:05:12.000Z"),
+      connectorConfig: {
+        sourceDisplayName: "SAM.gov",
+        connectorVersion: "sam-gov.v1",
+      },
+      createdByUser: {
+        name: "Alex Morgan",
+        email: "admin@onesource.local",
+      },
+    },
+    {
+      id: "saved_search_456",
+      sourceSystem: "usaspending_api",
+      name: "Award context backlog",
+      description: null,
+      canonicalFilters: {
+        organizationName: "Department of Veterans Affairs",
+      },
+      createdAt: new Date("2026-04-16T08:00:00.000Z"),
+      updatedAt: new Date("2026-04-18T07:00:00.000Z"),
+      lastExecutedAt: null,
+      lastSyncedAt: null,
+      connectorConfig: null,
+      createdByUser: null,
+    },
+  ];
+}
+
 function buildRecalibrationOpportunities() {
   return [
     {
@@ -436,6 +483,9 @@ function createRepositoryClient(record: OrganizationAdminRecord | null) {
     },
     sourceSyncRun: {
       findMany: vi.fn().mockResolvedValue(buildRecentSyncRuns()),
+    },
+    sourceSavedSearch: {
+      findMany: vi.fn().mockResolvedValue(buildSavedSearches()),
     },
     sourceImportDecision: {
       findMany: vi.fn().mockResolvedValue(buildFailedImportReviews()),
@@ -556,6 +606,27 @@ describe("admin.repository", () => {
     expect(snapshot?.sourceOperations.failedImportReviews[0]).toMatchObject({
       sourceTitle: "Enterprise Knowledge Management Support Services",
       status: "REJECTED",
+    });
+    expect(snapshot?.savedSearches[0]).toMatchObject({
+      name: "Active Air Force Knowledge Management",
+      sourceDisplayName: "SAM.gov",
+      connectorVersion: "sam-gov.v1",
+      createdByLabel: "Alex Morgan",
+      lastExecutedAt: "2026-04-18T08:15:00.000Z",
+      lastSyncedAt: "2026-04-18T08:05:12.000Z",
+      filterSummary: [
+        "Keywords: knowledge management",
+        "NAICS 541511",
+        "Agency FA4861",
+        "Status active",
+      ],
+    });
+    expect(snapshot?.savedSearches[1]).toMatchObject({
+      name: "Award context backlog",
+      sourceDisplayName: "Usaspending Api",
+      connectorVersion: null,
+      createdByLabel: "Unknown owner",
+      filterSummary: ["Agency Department of Veterans Affairs"],
     });
   });
 

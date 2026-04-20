@@ -244,6 +244,33 @@ const recentSourceSyncRunArgs =
   },
 });
 
+const adminSavedSearchArgs =
+  Prisma.validator<Prisma.SourceSavedSearchDefaultArgs>()({
+  select: {
+    id: true,
+    sourceSystem: true,
+    name: true,
+    description: true,
+    canonicalFilters: true,
+    createdAt: true,
+    updatedAt: true,
+    lastExecutedAt: true,
+    lastSyncedAt: true,
+    connectorConfig: {
+      select: {
+        sourceDisplayName: true,
+        connectorVersion: true,
+      },
+    },
+    createdByUser: {
+      select: {
+        name: true,
+        email: true,
+      },
+    },
+  },
+});
+
 const failedImportReviewArgs =
   Prisma.validator<Prisma.SourceImportDecisionDefaultArgs>()({
   select: {
@@ -337,6 +364,7 @@ export type AdminRepositoryClient = Pick<
   | "organization"
   | "opportunity"
   | "sourceConnectorConfig"
+  | "sourceSavedSearch"
   | "sourceImportDecision"
   | "sourceSyncRun"
 >;
@@ -349,6 +377,9 @@ export type SourceConnectorHealthPayload = Prisma.SourceConnectorConfigGetPayloa
 >;
 export type RecentSourceSyncRunPayload = Prisma.SourceSyncRunGetPayload<
   typeof recentSourceSyncRunArgs
+>;
+export type AdminSavedSearchPayload = Prisma.SourceSavedSearchGetPayload<
+  typeof adminSavedSearchArgs
 >;
 export type FailedImportReviewPayload = Prisma.SourceImportDecisionGetPayload<
   typeof failedImportReviewArgs
@@ -368,6 +399,7 @@ export async function getAdminWorkspaceSnapshot({
     organization,
     connectorHealthRecords,
     recentSyncRunRecords,
+    savedSearchRecords,
     failedImportReviews,
     recalibrationOpportunities,
   ] =
@@ -396,6 +428,14 @@ export async function getAdminWorkspaceSnapshot({
         },
         take: 8,
         ...recentSourceSyncRunArgs,
+      }),
+      db.sourceSavedSearch.findMany({
+        where: {
+          organizationId,
+        },
+        orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
+        take: 8,
+        ...adminSavedSearchArgs,
       }),
       db.sourceImportDecision.findMany({
         where: {
@@ -555,6 +595,25 @@ export async function getAdminWorkspaceSnapshot({
         failedImportReviews as AdminFailedImportDecisionRecord[],
       recentSyncRunRecords: recentSyncRunRecords as AdminRecentSourceSyncRunRecord[],
     }),
+    savedSearches: savedSearchRecords.map((savedSearch) => ({
+      id: savedSearch.id,
+      name: savedSearch.name,
+      description: savedSearch.description,
+      sourceSystem: savedSearch.sourceSystem,
+      sourceDisplayName:
+        savedSearch.connectorConfig?.sourceDisplayName ??
+        humanizeSourceSystem(savedSearch.sourceSystem),
+      connectorVersion: savedSearch.connectorConfig?.connectorVersion ?? null,
+      createdByLabel:
+        savedSearch.createdByUser?.name ??
+        savedSearch.createdByUser?.email ??
+        "Unknown owner",
+      createdAt: savedSearch.createdAt.toISOString(),
+      updatedAt: savedSearch.updatedAt.toISOString(),
+      lastExecutedAt: savedSearch.lastExecutedAt?.toISOString() ?? null,
+      lastSyncedAt: savedSearch.lastSyncedAt?.toISOString() ?? null,
+      filterSummary: buildSavedSearchFilterSummary(savedSearch),
+    })),
     users,
     recentAuditEvents: organization.auditLogs.map((auditLog) => ({
       id: auditLog.id,
@@ -619,6 +678,76 @@ function mapRecalibrationObservation(
       ]),
     ),
   };
+}
+
+function buildSavedSearchFilterSummary(savedSearch: AdminSavedSearchPayload) {
+  const filters = savedSearch.canonicalFilters;
+
+  if (!filters || typeof filters !== "object" || Array.isArray(filters)) {
+    return [];
+  }
+
+  const summary: string[] = [];
+  const record = filters as Record<string, unknown>;
+  const keywords = readJsonString(record.keywords);
+  const naicsCode = readJsonString(record.naicsCode);
+  const organizationCode = readJsonString(record.organizationCode);
+  const organizationName = readJsonString(record.organizationName);
+  const status = readJsonString(record.status);
+  const procurementTypes = readJsonStringArray(record.procurementTypes);
+  const postedDateFrom = readJsonString(record.postedDateFrom);
+  const postedDateTo = readJsonString(record.postedDateTo);
+
+  if (keywords) {
+    summary.push(`Keywords: ${keywords}`);
+  }
+
+  if (naicsCode) {
+    summary.push(`NAICS ${naicsCode}`);
+  }
+
+  if (organizationCode || organizationName) {
+    summary.push(
+      organizationCode
+        ? `Agency ${organizationCode}`
+        : `Agency ${organizationName}`,
+    );
+  }
+
+  if (status) {
+    summary.push(`Status ${status}`);
+  }
+
+  if (procurementTypes.length > 0) {
+    summary.push(`Types ${procurementTypes.join(", ")}`);
+  }
+
+  if (postedDateFrom && postedDateTo) {
+    summary.push(`Posted ${postedDateFrom} to ${postedDateTo}`);
+  }
+
+  return summary.slice(0, 4);
+}
+
+function readJsonString(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+function readJsonStringArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
+
+function humanizeSourceSystem(value: string) {
+  return value
+    .split("_")
+    .map((segment) => `${segment.charAt(0).toUpperCase()}${segment.slice(1)}`)
+    .join(" ");
 }
 
 function resolveRecalibrationOutcomeKey(

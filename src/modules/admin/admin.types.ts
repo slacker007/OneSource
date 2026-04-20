@@ -203,6 +203,21 @@ export type AdminSourceOperationsSnapshot = {
   failedImportReviews: AdminFailedImportReviewSummary[];
 };
 
+export type AdminSavedSearchSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  sourceSystem: string;
+  sourceDisplayName: string;
+  connectorVersion: string | null;
+  createdByLabel: string;
+  createdAt: string;
+  updatedAt: string;
+  lastExecutedAt: string | null;
+  lastSyncedAt: string | null;
+  filterSummary: string[];
+};
+
 export type AdminWorkspaceSnapshot = {
   organizationId: string;
   organizationName: string;
@@ -211,6 +226,7 @@ export type AdminWorkspaceSnapshot = {
   totalAuditLogCount: number;
   scoringProfile: AdminScoringProfileSummary | null;
   sourceOperations: AdminSourceOperationsSnapshot;
+  savedSearches: AdminSavedSearchSummary[];
   users: AdminUserSummary[];
   recentAuditEvents: AdminAuditEventSummary[];
 };

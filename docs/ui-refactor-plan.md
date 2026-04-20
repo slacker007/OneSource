@@ -335,6 +335,13 @@ Key outcomes:
 
 Primary files:
 - `src/components/admin/admin-console.tsx`
+- `src/modules/admin/admin.repository.ts`
+- `src/modules/admin/admin.types.ts`
+
+Implemented baseline:
+- `src/components/admin/admin-console.tsx` now renders `/settings` as a dense operator workspace with a product-facing header, section-jump navigation, an operator briefing, connector operations, a saved-search registry, a tighter scoring-profile section, and side-by-side users-and-roles plus audit sections instead of the earlier developer-console stack.
+- `src/modules/admin/admin.repository.ts` and `admin.types.ts` now expose additive saved-search summaries for connector ownership, filter coverage, execution timestamps, and owner display labels without creating a second admin query path.
+- The admin component suite, admin repository suite, and Chromium smoke flow now validate the product-facing settings copy, saved-search visibility, connector inspection, scoring-profile visibility, retry action, and viewer denial path together.
 
 Key outcomes:
 - Clear operator sections
@@ -374,6 +381,7 @@ Key outcomes:
 - Production build: `npm run build`
 - Seed reset before browser reruns when needed: `npm run db:seed`
 - Preferred browser path when available: `make compose-test-e2e`
+- In this sandbox, rebuild `web` and `playwright` first with `docker compose -f docker-compose.test.yml build web playwright` after route-level or smoke-spec changes so the compose browser run does not mix new assertions with a stale web image.
 - Fallback browser path already used in this repo when compose app builds are unstable: `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 SAM_GOV_USE_FIXTURES=true npm run e2e`
 - Diff hygiene: `git diff --check`
 

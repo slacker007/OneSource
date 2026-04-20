@@ -20,6 +20,28 @@ describe("AdminConsole", () => {
           totalUserCount: 2,
           adminUserCount: 1,
           totalAuditLogCount: 9,
+          savedSearches: [
+            {
+              id: "saved_search_123",
+              name: "Daily Air Force Search",
+              description:
+                "Daily discovery coverage for Air Force knowledge work.",
+              sourceSystem: "sam_gov",
+              sourceDisplayName: "SAM.gov",
+              connectorVersion: "sam-gov.v1",
+              createdByLabel: "Alex Morgan",
+              createdAt: "2026-04-17T08:00:00.000Z",
+              updatedAt: "2026-04-18T08:05:00.000Z",
+              lastExecutedAt: "2026-04-18T08:15:00.000Z",
+              lastSyncedAt: "2026-04-18T08:05:12.000Z",
+              filterSummary: [
+                "Keywords: knowledge management",
+                "NAICS 541511",
+                "Agency FA4861",
+                "Status active",
+              ],
+            },
+          ],
           sourceOperations: {
             totalConnectorCount: 4,
             activeConnectorCount: 3,
@@ -251,19 +273,25 @@ describe("AdminConsole", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: /admin console/i }),
+      screen.getByRole("heading", { name: /workspace settings/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /organization scoring profile/i }),
+      screen.getByRole("heading", { name: /operator briefing/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /source sync observability/i }),
+      screen.getByRole("heading", { name: /connector operations/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /assigned roles/i }),
+      screen.getByRole("heading", { name: /search registry/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /recent audit activity/i }),
+      screen.getByRole("heading", { name: /scoring profile/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /users & roles/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /audit activity/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("table", { name: /source connector health/i }),
@@ -275,13 +303,16 @@ describe("AdminConsole", () => {
       screen.getByRole("table", { name: /failed import review/i }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("table", { name: /saved searches/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.getAllByRole("button", { name: /retry sync/i }).length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getByRole("table", { name: /assigned roles/i }),
+      screen.getByRole("table", { name: /users and roles/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("table", { name: /recent audit activity/i }),
+      screen.getByRole("table", { name: /audit activity/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("table", { name: /organization capabilities/i }),
@@ -304,13 +335,15 @@ describe("AdminConsole", () => {
       screen.getByRole("button", { name: /save manual recalibration/i }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/admin@onesource\.local/i)).toHaveLength(2);
-    expect(screen.getByText(/default_capture_v1/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/default_capture_v1/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/rate limited/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/sam_gov_http_429/i)).toBeInTheDocument();
     expect(screen.getAllByText(/rejected/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/go >= 70\.00/i)).toBeInTheDocument();
     expect(screen.getByText(/risk floor >= 50\.00%/i)).toBeInTheDocument();
     expect(screen.getByText(/cloud platform engineering/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/daily air force search/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/keywords: knowledge management/i)).toBeInTheDocument();
     expect(screen.getAllByText(/30\.00/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/no roles assigned/i)).toBeInTheDocument();
     expect(screen.getByText("seed.bootstrap")).toBeInTheDocument();
@@ -349,6 +382,7 @@ describe("AdminConsole", () => {
           totalUserCount: 0,
           adminUserCount: 0,
           totalAuditLogCount: 0,
+          savedSearches: [],
           sourceOperations: {
             totalConnectorCount: 0,
             activeConnectorCount: 0,
@@ -368,7 +402,7 @@ describe("AdminConsole", () => {
       />,
     );
 
-    await user.click(screen.getByRole("heading", { name: /assigned roles/i }));
+    await user.click(screen.getByRole("heading", { name: /users & roles/i }));
 
     expect(
       screen.getByText(/no organization users are available yet/i),
@@ -383,7 +417,10 @@ describe("AdminConsole", () => {
       screen.getByText(/no failed import review items are queued/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/no organization scoring profile is available yet/i),
+      screen.getByText(/no saved searches are configured yet/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no scoring profile is available yet/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/no audit events are available yet/i),

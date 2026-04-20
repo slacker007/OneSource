@@ -39,110 +39,213 @@ export function AdminConsole({
     return (
       <section className="space-y-4">
         <p className="text-muted text-sm tracking-[0.26em] uppercase">
-          Admin surface
+          Settings
         </p>
         <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-          Admin console
+          Workspace settings
         </h1>
         <ErrorState
           message="Organization-scoped admin data could not be loaded for this session. Re-seed the local database or verify the authenticated user still belongs to an active organization."
-          title="Admin data is unavailable"
+          title="Workspace settings are unavailable"
         />
       </section>
     );
   }
 
   return (
-    <section className="border-border bg-surface flex w-full flex-col gap-6 rounded-[32px] border px-6 py-8 shadow-[0_24px_80px_rgba(20,37,34,0.12)] sm:px-8">
-      <div className="space-y-3">
-        <div className="flex flex-wrap gap-2">
-          <Badge>Admin surface</Badge>
-          <Badge tone="muted">shared table pattern</Badge>
-          <Badge tone="warning">server-guarded</Badge>
+    <section className="space-y-6">
+      <header className="border-border bg-surface rounded-[32px] border px-6 py-8 shadow-[0_24px_80px_rgba(20,37,34,0.12)] sm:px-8">
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Badge>Settings</Badge>
+            <Badge tone="muted">{snapshot.organizationName}</Badge>
+            <Badge tone="accent">Operator workspace</Badge>
+          </div>
+          <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
+            Workspace settings
+          </h1>
+          <p className="text-muted max-w-3xl text-sm leading-7">
+            Run the organization from one settings workspace: review connector
+            health, saved-search coverage, scoring inputs, role assignments,
+            and recent audit activity without leaving the protected admin
+            route.
+          </p>
+          {sourceSyncRetryNotice ? (
+            <div className="rounded-[24px] border border-border bg-white p-4">
+              <Badge tone={sourceSyncRetryNotice.tone}>Source sync retry</Badge>
+              <p className="text-muted mt-3 text-sm leading-6">
+                {sourceSyncRetryNotice.message}
+              </p>
+            </div>
+          ) : null}
+          {scoringRecalibrationNotice ? (
+            <div className="rounded-[24px] border border-border bg-white p-4">
+              <Badge tone={scoringRecalibrationNotice.tone}>
+                Scoring recalibration
+              </Badge>
+              <p className="text-muted mt-3 text-sm leading-6">
+                {scoringRecalibrationNotice.message}
+              </p>
+            </div>
+          ) : null}
         </div>
-        <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-          Admin console
-        </h1>
-        <p className="text-muted max-w-3xl text-sm leading-7">
-          Review assigned roles, recent audit activity, and the current seeded
-          scoring inputs for{" "}
-          <span className="text-foreground font-medium">
-            {snapshot.organizationName}
-          </span>
-          . This surface now reuses the shared badge, table, empty-state, and
-          error-state primitives established in `P3-02` while exposing the
-          structured organization profile needed for deterministic scoring.
-        </p>
-        {sourceSyncRetryNotice ? (
-          <div className="rounded-[24px] border border-border bg-white p-4">
-            <Badge tone={sourceSyncRetryNotice.tone}>Source sync retry</Badge>
-            <p className="text-muted mt-3 text-sm leading-6">
-              {sourceSyncRetryNotice.message}
-            </p>
-          </div>
-        ) : null}
-        {scoringRecalibrationNotice ? (
-          <div className="rounded-[24px] border border-border bg-white p-4">
-            <Badge tone={scoringRecalibrationNotice.tone}>
-              Scoring recalibration
-            </Badge>
-            <p className="text-muted mt-3 text-sm leading-6">
-              {scoringRecalibrationNotice.message}
-            </p>
-          </div>
-        ) : null}
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <SummaryCard
-          label="Active admin"
-          value={viewerLabel}
-          supportingText={sessionUser.email ?? "Signed-in session"}
-        />
-        <SummaryCard
-          label="Organization users"
-          value={String(snapshot.totalUserCount)}
-          supportingText="Scoped to the authenticated organization"
-        />
-        <SummaryCard
-          label="Admin assignments"
-          value={String(snapshot.adminUserCount)}
-          supportingText="Users carrying the admin role"
-        />
-        <SummaryCard
-          label="Audit rows"
-          value={String(snapshot.totalAuditLogCount)}
-          supportingText="Append-only records in the audit log"
-        />
-        <SummaryCard
-          label="Capabilities"
-          value={String(snapshot.scoringProfile?.capabilities.length ?? 0)}
-          supportingText="Seeded profile capabilities"
-        />
-        <SummaryCard
-          label="Criteria"
-          value={String(snapshot.scoringProfile?.scoringCriteria.length ?? 0)}
-          supportingText="Weighted scoring factors"
-        />
-      </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+          <SummaryCard
+            label="Current operator"
+            value={viewerLabel}
+            supportingText={sessionUser.email ?? "Signed-in session"}
+          />
+          <SummaryCard
+            label="People"
+            value={String(snapshot.totalUserCount)}
+            supportingText="Users in this workspace"
+          />
+          <SummaryCard
+            label="Admin seats"
+            value={String(snapshot.adminUserCount)}
+            supportingText="Users carrying the admin role"
+          />
+          <SummaryCard
+            label="Saved searches"
+            value={String(snapshot.savedSearches.length)}
+            supportingText="Discovery definitions under management"
+          />
+          <SummaryCard
+            label="Connector alerts"
+            value={String(
+              snapshot.sourceOperations.rateLimitedConnectorCount +
+                snapshot.sourceOperations.failedImportReviewCount,
+            )}
+            supportingText="Rate limits plus import review backlog"
+          />
+          <SummaryCard
+            label="Audit rows"
+            value={String(snapshot.totalAuditLogCount)}
+            supportingText="Recent organization-scoped events"
+          />
+        </div>
+
+        <nav
+          aria-label="Workspace settings sections"
+          className="mt-6 flex flex-wrap gap-2"
+        >
+          <SectionJumpLink href="#workspace-overview">Workspace</SectionJumpLink>
+          <SectionJumpLink href="#source-operations-heading">
+            Connectors
+          </SectionJumpLink>
+          <SectionJumpLink href="#saved-searches-heading">
+            Saved searches
+          </SectionJumpLink>
+          <SectionJumpLink href="#scoring-profile-heading">
+            Scoring profile
+          </SectionJumpLink>
+          <SectionJumpLink href="#assigned-roles-heading">
+            Users &amp; roles
+          </SectionJumpLink>
+          <SectionJumpLink href="#recent-audit-heading">Audit</SectionJumpLink>
+        </nav>
+      </header>
 
       <div className="grid gap-6">
+        <section
+          aria-labelledby="workspace-overview-heading"
+          className="border-border bg-surface space-y-4 rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6"
+          id="workspace-overview"
+        >
+          <div className="space-y-2">
+            <p className="text-muted text-xs tracking-[0.24em] uppercase">
+              Workspace overview
+            </p>
+            <h2
+              className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
+              id="workspace-overview-heading"
+            >
+              Operator briefing
+            </h2>
+            <p className="text-muted text-sm leading-6">
+              Keep the current workspace posture visible before you move into
+              connector, search, scoring, or access-control detail.
+            </p>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+            <article className="border-border bg-surface-muted rounded-[24px] border px-5 py-5">
+              <p className="text-muted text-xs tracking-[0.2em] uppercase">
+                Organization
+              </p>
+              <h3 className="text-foreground mt-3 text-xl font-semibold">
+                {snapshot.organizationName}
+              </h3>
+              <p className="text-muted mt-3 text-sm leading-6">
+                {snapshot.savedSearches.length === 0
+                  ? "This workspace has no saved discovery searches yet. Operators can still review connector health, profile settings, role coverage, and audit activity here."
+                  : `${snapshot.savedSearches.length} saved searches are currently tracked across ${snapshot.sourceOperations.totalConnectorCount} configured connectors, with ${snapshot.sourceOperations.rateLimitedConnectorCount} active connector alerts and ${snapshot.sourceOperations.failedImportReviewCount} import-review items waiting for attention.`}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Badge tone="muted">
+                  {snapshot.scoringProfile?.activeScoringModelKey ??
+                    "No active scoring model"}
+                </Badge>
+                <Badge tone="muted">
+                  {snapshot.scoringProfile?.activeScoringModelVersion ??
+                    "No profile version"}
+                </Badge>
+                <Badge tone="accent">
+                  {snapshot.sourceOperations.activeConnectorCount} active
+                  connectors
+                </Badge>
+              </div>
+            </article>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SummaryCard
+                label="Healthy connectors"
+                value={String(snapshot.sourceOperations.healthyConnectorCount)}
+                supportingText="Validated and not currently degraded"
+              />
+              <SummaryCard
+                label="Last successful sync"
+                value={
+                  snapshot.sourceOperations.lastSuccessfulSyncSourceDisplayName ??
+                  "No successful sync yet"
+                }
+                supportingText={
+                  snapshot.sourceOperations.lastSuccessfulSyncAt
+                    ? formatUtcTimestamp(snapshot.sourceOperations.lastSuccessfulSyncAt)
+                    : "No completed successful sync run is recorded yet"
+                }
+              />
+              <SummaryCard
+                label="Capabilities"
+                value={String(snapshot.scoringProfile?.capabilities.length ?? 0)}
+                supportingText="Active capability statements"
+              />
+              <SummaryCard
+                label="Criteria"
+                value={String(
+                  snapshot.scoringProfile?.scoringCriteria.length ?? 0,
+                )}
+                supportingText="Weighted scoring factors"
+              />
+            </div>
+          </div>
+        </section>
+
         <section aria-labelledby="source-operations-heading" className="space-y-4">
           <div className="space-y-2">
             <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Source operations
+              Connectors
             </p>
             <h2
               className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
               id="source-operations-heading"
             >
-              Source sync observability
+              Connector operations
             </h2>
             <p className="text-muted text-sm leading-6">
-              Connector health, last successful sync state, rate-limit posture,
-              and non-applied import reviews are surfaced here so operators can
-              inspect scheduled source behavior without leaving the guarded admin
-              surface.
+              Scan connector readiness, latest sync results, rate-limit posture,
+              and import backlog from one operational section.
             </p>
           </div>
 
@@ -457,6 +560,129 @@ export function AdminConsole({
         </section>
 
         <section
+          aria-labelledby="saved-searches-heading"
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <p className="text-muted text-xs tracking-[0.24em] uppercase">
+              Saved searches
+            </p>
+            <h2
+              className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
+              id="saved-searches-heading"
+            >
+              Search registry
+            </h2>
+            <p className="text-muted text-sm leading-6">
+              Keep reusable discovery definitions visible with connector
+              ownership, filter coverage, and latest execution timestamps.
+            </p>
+          </div>
+
+          <DataTable
+            ariaLabel="Saved searches"
+            columns={[
+              {
+                key: "search",
+                header: "Saved search",
+                className: "min-w-[16rem]",
+                cell: (savedSearch) => (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge tone="muted">{savedSearch.sourceDisplayName}</Badge>
+                      <Badge
+                        tone={
+                          savedSearch.sourceSystem === "sam_gov"
+                            ? "accent"
+                            : "warning"
+                        }
+                      >
+                        {savedSearch.sourceSystem === "sam_gov"
+                          ? "Sync ready"
+                          : "Connector pending"}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {savedSearch.name}
+                      </p>
+                      <p className="text-muted text-xs leading-5">
+                        {savedSearch.description ??
+                          "No operator description has been recorded yet."}
+                      </p>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: "filters",
+                header: "Filters",
+                cell: (savedSearch) =>
+                  savedSearch.filterSummary.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {savedSearch.filterSummary.map((summary) => (
+                        <Badge key={`${savedSearch.id}-${summary}`} tone="muted">
+                          {summary}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted">
+                      No parsed filter summary is available for this search.
+                    </p>
+                  ),
+              },
+              {
+                key: "activity",
+                header: "Activity",
+                cell: (savedSearch) => (
+                  <div className="space-y-2 text-xs text-muted">
+                    <p>
+                      Last executed:{" "}
+                      {savedSearch.lastExecutedAt
+                        ? formatUtcTimestamp(savedSearch.lastExecutedAt)
+                        : "Not run yet"}
+                    </p>
+                    <p>
+                      Last synced:{" "}
+                      {savedSearch.lastSyncedAt
+                        ? formatUtcTimestamp(savedSearch.lastSyncedAt)
+                        : "No sync recorded"}
+                    </p>
+                    <p>Updated {formatUtcTimestamp(savedSearch.updatedAt)}</p>
+                  </div>
+                ),
+              },
+              {
+                key: "ownership",
+                header: "Ownership",
+                cell: (savedSearch) => (
+                  <div className="space-y-2 text-xs text-muted">
+                    <p>Owner: {savedSearch.createdByLabel}</p>
+                    <p>
+                      Created {formatUtcTimestamp(savedSearch.createdAt)}
+                    </p>
+                    <p>
+                      {savedSearch.connectorVersion
+                        ? `Connector ${savedSearch.connectorVersion}`
+                        : "Connector version not recorded"}
+                    </p>
+                  </div>
+                ),
+              },
+            ]}
+            emptyState={
+              <EmptyState
+                message="Saved search visibility will appear here once the workspace records reusable discovery definitions."
+                title="No saved searches are configured yet"
+              />
+            }
+            getRowKey={(savedSearch) => savedSearch.id}
+            rows={snapshot.savedSearches}
+          />
+        </section>
+
+        <section
           aria-labelledby="scoring-profile-heading"
           className="space-y-4"
         >
@@ -468,12 +694,12 @@ export function AdminConsole({
               className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
               id="scoring-profile-heading"
             >
-              Organization scoring profile
+              Scoring profile
             </h2>
             <p className="text-muted text-sm leading-6">
-              `P6-01` seeds the structured scoring inputs here so later scoring
-              and decision-support slices can consume durable profile data
-              instead of hard-coded assumptions.
+              Review the weighted scoring model, qualification thresholds,
+              capability coverage, and recalibration evidence that shape
+              pipeline recommendations.
             </p>
           </div>
 
@@ -1000,181 +1226,196 @@ export function AdminConsole({
             </div>
           ) : (
             <EmptyState
-              message="Run the canonical seed path to create the default organization scoring profile before enabling deterministic scoring."
-              title="No organization scoring profile is available yet"
+              message="Seed or configure a scoring profile before relying on deterministic recommendation output."
+              title="No scoring profile is available yet"
             />
           )}
         </section>
 
-        <section aria-labelledby="assigned-roles-heading" className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              User visibility
-            </p>
-            <h2
-              className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
-              id="assigned-roles-heading"
-            >
-              Assigned roles
-            </h2>
-            <p className="text-muted text-sm leading-6">
-              Role assignments stay organization-scoped and now render through a
-              shared table treatment that later list and audit surfaces can
-              reuse.
-            </p>
-          </div>
+        <div className="grid gap-6 xl:grid-cols-2">
+          <section aria-labelledby="assigned-roles-heading" className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                User visibility
+              </p>
+              <h2
+                className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
+                id="assigned-roles-heading"
+              >
+                Users & roles
+              </h2>
+              <p className="text-muted text-sm leading-6">
+                Confirm status, assigned roles, and invitation coverage before
+                making policy or workflow changes elsewhere in the workspace.
+              </p>
+            </div>
 
-          <DataTable
-            ariaLabel="Assigned roles"
-            columns={[
-              {
-                key: "user",
-                header: "User",
-                cell: (user) => (
-                  <div>
-                    <p className="font-medium text-foreground">
-                      {user.name ?? user.email}
-                    </p>
-                    <p className="text-muted text-xs">{user.email}</p>
-                  </div>
-                ),
-              },
-              {
-                key: "status",
-                header: "Status",
-                cell: (user) => (
-                  <Badge tone={user.status === "ACTIVE" ? "accent" : "warning"}>
-                    {formatEnumLabel(user.status)}
-                  </Badge>
-                ),
-              },
-              {
-                key: "roles",
-                header: "Assigned roles",
-                cell: (user) =>
-                  user.roles.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {user.roles.map((role) => (
-                        <Badge
-                          key={`${user.id}-${role.key}`}
-                          title={`Assigned ${formatUtcTimestamp(role.assignedAt)}`}
-                          tone="muted"
-                        >
-                          {role.label}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <Badge tone="warning">No roles assigned</Badge>
-                  ),
-              },
-            ]}
-            emptyState={
-              <EmptyState
-                message="User assignments will appear here once the organization has seeded or created users."
-                title="No organization users are available yet"
-              />
-            }
-            getRowKey={(user) => user.id}
-            rows={snapshot.users}
-          />
-        </section>
-
-        <section
-          aria-labelledby="recent-audit-heading"
-          className="space-y-4"
-        >
-          <div className="space-y-2">
-            <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Audit visibility
-            </p>
-            <h2
-              className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
-              id="recent-audit-heading"
-            >
-              Recent audit activity
-            </h2>
-            <p className="text-muted text-sm leading-6">
-              Newest events render first so admins can inspect recent mutations
-              without leaving the app shell.
-            </p>
-          </div>
-
-          <DataTable
-            ariaLabel="Recent audit activity"
-            columns={[
-              {
-                key: "action",
-                header: "Action",
-                cell: (event) => (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      <Badge>{event.actionLabel}</Badge>
-                      <Badge tone="muted">{event.action}</Badge>
-                    </div>
-                    {event.summary ? (
-                      <p className="text-sm leading-6 text-muted">
-                        {event.summary}
+            <DataTable
+              ariaLabel="Users and roles"
+              columns={[
+                {
+                  key: "user",
+                  header: "User",
+                  cell: (user) => (
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {user.name ?? user.email}
                       </p>
-                    ) : null}
-                  </div>
-                ),
-              },
-              {
-                key: "actor",
-                header: "Actor",
-                cell: (event) => (
-                  <div>
-                    <p className="font-medium text-foreground">
-                      {event.actorLabel}
-                    </p>
-                    <p className="text-muted text-xs">
-                      {formatEnumLabel(event.actorType)}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "target",
-                header: "Target",
-                cell: (event) => (
-                  <div>
-                    <p className="font-medium text-foreground">
-                      {event.targetLabel}
-                    </p>
-                    <p className="text-muted text-xs">
-                      {formatEnumLabel(event.targetType)}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "occurredAt",
-                header: "Occurred",
-                cell: (event) => (
-                  <div className="space-y-2">
-                    <p>{formatUtcTimestamp(event.occurredAt)}</p>
-                    {event.metadataPreview ? (
-                      <pre className="overflow-x-auto rounded-[18px] bg-[rgba(15,28,31,0.05)] px-3 py-3 text-xs leading-5 break-all whitespace-pre-wrap">
-                        {event.metadataPreview}
-                      </pre>
-                    ) : null}
-                  </div>
-                ),
-              },
-            ]}
-            emptyState={
-              <EmptyState
-                message="Audit rows will appear here once write flows emit organization-scoped events."
-                title="No audit events are available yet"
-              />
-            }
-            getRowKey={(event) => event.id}
-            rows={snapshot.recentAuditEvents}
-          />
-        </section>
+                      <p className="text-muted text-xs">{user.email}</p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "status",
+                  header: "Status",
+                  cell: (user) => (
+                    <Badge tone={user.status === "ACTIVE" ? "accent" : "warning"}>
+                      {formatEnumLabel(user.status)}
+                    </Badge>
+                  ),
+                },
+                {
+                  key: "roles",
+                  header: "Assigned roles",
+                  cell: (user) =>
+                    user.roles.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {user.roles.map((role) => (
+                          <Badge
+                            key={`${user.id}-${role.key}`}
+                            title={`Assigned ${formatUtcTimestamp(role.assignedAt)}`}
+                            tone="muted"
+                          >
+                            {role.label}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <Badge tone="warning">No roles assigned</Badge>
+                    ),
+                },
+              ]}
+              emptyState={
+                <EmptyState
+                  message="User assignments will appear here once the organization has seeded or created users."
+                  title="No organization users are available yet"
+                />
+              }
+              getRowKey={(user) => user.id}
+              rows={snapshot.users}
+            />
+          </section>
+
+          <section aria-labelledby="recent-audit-heading" className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                Audit visibility
+              </p>
+              <h2
+                className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
+                id="recent-audit-heading"
+              >
+                Audit activity
+              </h2>
+              <p className="text-muted text-sm leading-6">
+                Newest events render first so operators can inspect recent
+                mutations without leaving the settings workspace.
+              </p>
+            </div>
+
+            <DataTable
+              ariaLabel="Audit activity"
+              columns={[
+                {
+                  key: "action",
+                  header: "Action",
+                  cell: (event) => (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge>{event.actionLabel}</Badge>
+                        <Badge tone="muted">{event.action}</Badge>
+                      </div>
+                      {event.summary ? (
+                        <p className="text-sm leading-6 text-muted">
+                          {event.summary}
+                        </p>
+                      ) : null}
+                    </div>
+                  ),
+                },
+                {
+                  key: "actor",
+                  header: "Actor",
+                  cell: (event) => (
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {event.actorLabel}
+                      </p>
+                      <p className="text-muted text-xs">
+                        {formatEnumLabel(event.actorType)}
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "target",
+                  header: "Target",
+                  cell: (event) => (
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {event.targetLabel}
+                      </p>
+                      <p className="text-muted text-xs">
+                        {formatEnumLabel(event.targetType)}
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "occurredAt",
+                  header: "Occurred",
+                  cell: (event) => (
+                    <div className="space-y-2">
+                      <p>{formatUtcTimestamp(event.occurredAt)}</p>
+                      {event.metadataPreview ? (
+                        <pre className="overflow-x-auto rounded-[18px] bg-[rgba(15,28,31,0.05)] px-3 py-3 text-xs leading-5 break-all whitespace-pre-wrap">
+                          {event.metadataPreview}
+                        </pre>
+                      ) : null}
+                    </div>
+                  ),
+                },
+              ]}
+              emptyState={
+                <EmptyState
+                  message="Audit rows will appear here once write flows emit organization-scoped events."
+                  title="No audit events are available yet"
+                />
+              }
+              getRowKey={(event) => event.id}
+              rows={snapshot.recentAuditEvents}
+            />
+          </section>
+        </div>
       </div>
     </section>
+  );
+}
+
+function SectionJumpLink({
+  children,
+  href,
+}: {
+  children: string;
+  href: string;
+}) {
+  return (
+    <a
+      className="inline-flex min-h-9 items-center rounded-[var(--radius-pill)] border border-border bg-surface-muted px-3 py-2 text-sm text-muted transition hover:border-border-strong hover:text-foreground"
+      href={href}
+    >
+      {children}
+    </a>
   );
 }
 
