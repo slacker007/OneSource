@@ -75,8 +75,8 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
                 Compare ranking, decision posture, score bands, funnel
                 conversion, stage aging, and execution effort from one
                 comparison-first workspace. The current value lens uses the
-                strategic-alignment score factor until a later PRD slice adds a
-                dedicated contract-value field.
+                strategic-alignment score factor as a proxy until contract
+                value is captured directly on opportunities.
               </p>
             </div>
           </div>

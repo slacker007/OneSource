@@ -1058,6 +1058,60 @@ test.describe("mobile navigation", () => {
   });
 });
 
+test.describe("tablet route sweep", () => {
+  test.use({
+    viewport: {
+      width: 960,
+      height: 1280,
+    },
+  });
+
+  test("major authenticated routes stay readable without horizontal overflow", async ({
+    page,
+  }) => {
+    await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
+
+    const routeChecks = [
+      { heading: /capture command center/i, route: "/" },
+      { heading: /opportunity pipeline/i, route: "/opportunities" },
+      { heading: /execution triage/i, route: "/tasks" },
+      { heading: /knowledge library/i, route: "/knowledge" },
+      { heading: /external source search/i, route: "/sources" },
+      { heading: /decision console/i, route: "/analytics" },
+      { heading: /workspace settings/i, route: "/settings" },
+    ];
+
+    for (const routeCheck of routeChecks) {
+      await page.goto(routeCheck.route);
+      await expect(
+        page.getByRole("heading", { name: routeCheck.heading }).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: /open command search/i }),
+      ).toBeVisible();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+        ),
+      ).toBe(true);
+    }
+
+    await page.goto("/opportunities");
+    const routeResultsTable = page.getByRole("table", {
+      name: /opportunity pipeline results/i,
+    });
+    await expect(routeResultsTable).toBeVisible();
+    await routeResultsTable.getByRole("link", { name: /open brief/i }).first().click();
+    await page.getByRole("link", { name: /^Open workspace$/i }).click();
+    await expect(page.getByRole("heading", { name: /^Summary$/i })).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+    ).toBe(true);
+  });
+});
+
 test("viewer users are blocked from the restricted settings route", async ({
   page,
 }) => {

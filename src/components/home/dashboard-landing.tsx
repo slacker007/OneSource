@@ -21,10 +21,10 @@ type DashboardLandingProps = {
 export function DashboardLanding({ snapshot }: DashboardLandingProps) {
   if (!snapshot) {
     return (
-      <ErrorState
-        message="The dashboard query did not return an organization snapshot. Verify the seeded default organization before relying on the landing page."
-        title="Dashboard data unavailable"
-      />
+        <ErrorState
+          message="The dashboard could not load organization data for this session. Verify the current user still belongs to an active workspace before relying on this view."
+          title="Dashboard data unavailable"
+        />
     );
   }
 
@@ -86,7 +86,7 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <DashboardKpiCard
-                  detail="Records visible in the current seeded workspace."
+                  detail="Records visible in the current workspace."
                   label="Tracked pursuits"
                   value={String(snapshot.trackedOpportunityCount)}
                 />

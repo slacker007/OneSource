@@ -173,8 +173,8 @@ export function OpportunityForm({
     snapshot.mode === "create" ? "Create opportunity" : "Edit opportunity";
   const helperCopy =
     snapshot.mode === "create"
-      ? "New opportunities start in the Identified stage until stage-transition controls ship in the next PRD slice."
-      : "Stage changes stay read-only here for now; dedicated transition controls are tracked separately in `P4-04`.";
+      ? "New opportunities begin in the Identified stage. Move them forward from the workspace when the record is ready for capture review."
+      : "Stage movement happens from the workspace so the team can capture rationale and readiness details in one place.";
 
   return (
     <section className="space-y-6">
@@ -292,7 +292,7 @@ export function OpportunityForm({
 
             <FormField
               error={formState.fieldErrors.leadAgencyId}
-              hint="Optional for now, but selecting the lead agency improves filtering and future scoring inputs."
+              hint="Optional. Selecting the lead agency improves filtering and scoring context."
               htmlFor="opportunity-form-lead-agency"
               label="Lead agency"
             >
@@ -365,7 +365,8 @@ export function OpportunityForm({
                 {snapshot.currentStageLabel}
               </p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Stage movement stays separate so future required-field gating and rationale capture can land cleanly in `P4-04`.
+                Move the pursuit forward from the workspace, where stage
+                rationale and required details stay together.
               </p>
             </div>
           </div>

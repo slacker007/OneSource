@@ -40,6 +40,31 @@ describe("OpportunityForm", () => {
     window.localStorage.clear();
   });
 
+  it("renders product-facing stage guidance", async () => {
+    render(
+      <OpportunityForm
+        action={mockAction}
+        feedback={null}
+        snapshot={snapshot}
+      />,
+    );
+
+    await screen.findByText(
+      /create a tracked opportunity/i,
+    );
+    expect(
+      screen.getByText(
+        /new opportunities begin in the identified stage\. move them forward from the workspace when the record is ready for capture review\./i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /move the pursuit forward from the workspace, where stage rationale and required details stay together\./i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/PRD slice|P4-04/i)).not.toBeInTheDocument();
+  });
+
   it("restores and persists browser-local drafts", async () => {
     window.localStorage.setItem(
       snapshot.draftStorageKey,

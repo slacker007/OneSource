@@ -158,7 +158,7 @@ export function SourceSearch({
             <SavedViewControls items={savedSearchItems} label="Saved searches" />
           ) : (
             <p className="text-sm text-muted">
-              No saved searches are seeded for{" "}
+              No saved searches are configured for{" "}
               <span className="font-medium text-foreground">
                 {snapshot.activeConnector?.sourceDisplayName ?? "this connector"}
               </span>

@@ -521,8 +521,8 @@ function SummaryWorkspaceSection({
             ) : (
               <div className="rounded-[22px] border border-white/12 bg-white/8 px-4 py-4">
                 <p className="text-sm leading-6 text-white">
-                  No material watch items are open in the current seeded score
-                  or decision context.
+                  No material watch items are open in the current score or
+                  decision context.
                 </p>
               </div>
             )}
