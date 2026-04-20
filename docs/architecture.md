@@ -2,7 +2,15 @@
 
 ## Purpose
 
-This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the full Phase 0 runtime scaffold, all current Phase 1 foundation slices, the first live Phase 2 authentication, authorization, auditability, and admin-visibility slices, the first three Phase 3 UI slices plus the current UI-05 dashboard command-center slice, the full current Phase 4 opportunity-management baseline, the first three Phase 5 collaboration slices, the full current Phase 6 scoring-and-decision-support baseline, the full current Phase 7 intake baseline, the first three Phase 8 knowledge-system slices, the full current Phase 9 analytics-and-feedback baseline, and the full Phase 10 proposal, integration, observability, and launch-hardening baseline on top of the Prisma foundation.
+This document records the truthful system architecture that exists in the repo today. It is intentionally narrower than the long-term product design in `SPEC.md` and `PRD.md`: the repo now includes the completed Phase 0 through Phase 10 implementation baseline, the completed post-project `FP-01` live `sam.gov` verification follow-up, and the completed UI hardening program through `UI-13`.
+
+High-impact decisions that should remain stable across future loops are now recorded under `docs/adr/`.
+
+## ADR Index
+
+- [ADR 0001](./adr/0001-modular-monolith-and-compose-first-runtime.md): modular monolith with a Compose-first local runtime
+- [ADR 0002](./adr/0002-source-agnostic-connector-boundary.md): source-agnostic connector boundary and canonical search DTOs
+- [ADR 0003](./adr/0003-deterministic-auditable-scoring.md): deterministic, explainable, and auditable scoring before ML-assisted decisioning
 
 ## Current System Shape
 
@@ -211,11 +219,10 @@ Current automated coverage consists of:
 
 ## Connector Strategy
 
-The first executable connector now exists behind a source-agnostic integration boundary. The `sam.gov` adapter translates canonical filters into the documented `/prod/opportunities/v2/search` request shape, executes in either live or deterministic fixture mode, persists execution envelopes plus retained source records and normalized attachment/contact/award child rows, and feeds the preview/import flow through stored lineage rows instead of page-local synthetic IDs. Scheduled sync orchestration now exists for due `sam.gov` saved searches through the same boundary, and the guarded admin console now surfaces connector health, latest successful sync state, recent rate-limit failures, failed import review rows, and retry queue controls from that retained history. Separately, `src/modules/integrations/` now defines the next integration layer above the opportunity workspace boundary: canonical payload builders for CRM, document-repository, and communication adapters plus deterministic dry-run stubs that prove those adapters can be swapped in without rewriting the core opportunity or source modules. The credentialed live verification run is intentionally deferred to post-project follow-on `FP-01`.
+The first executable connector now exists behind a source-agnostic integration boundary. The `sam.gov` adapter translates canonical filters into the documented `/prod/opportunities/v2/search` request shape, executes in either live or deterministic fixture mode, persists execution envelopes plus retained source records and normalized attachment/contact/award child rows, and feeds the preview/import flow through stored lineage rows instead of page-local synthetic IDs. Scheduled sync orchestration now exists for due `sam.gov` saved searches through the same boundary, and the guarded admin console now surfaces connector health, latest successful sync state, recent rate-limit failures, failed import review rows, and retry queue controls from that retained history. Separately, `src/modules/integrations/` now defines the next integration layer above the opportunity workspace boundary: canonical payload builders for CRM, document-repository, and communication adapters plus deterministic dry-run stubs that prove those adapters can be swapped in without rewriting the core opportunity or source modules. The credentialed live `sam.gov` verification run is complete and recorded in `PRD.md`, `README.md`, `docs/runbook.md`, `docs/security.md`, and `NOTES.md`.
 
 ## Known Gaps
 
-- The project checklist is complete, but `FP-01` still remains for one credentialed live `sam.gov` validation run with a real API key.
 - Only a subset of business workflows currently use role-based permission enforcement; `manage_pipeline`, `manage_source_searches`, and `manage_workspace_settings` now guard the current mutating or restricted surfaces, but finer-grained record-level authorization is still future work.
 - The opportunity write service now emits audit rows for representative business writes and is exercised by the tracked-opportunity forms plus source-import actions, but auth events and permission failures still need dedicated audit emission.
 - Scheduled ingestion now exists for due `sam.gov` saved searches and the guarded admin console now exposes source-sync observability plus retry queueing, but non-`sam.gov` connector execution and deeper operational telemetry remain future work.

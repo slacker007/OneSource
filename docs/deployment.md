@@ -104,7 +104,7 @@ make compose-down
 
 ## Known Deployment Limits
 
-- live `sam.gov` verification is still deferred to follow-on `FP-01`
+- live `sam.gov` verification is already recorded in the repo, but automated acceptance still depends on deterministic fixture mode rather than live upstream availability
 - CRM, document-repository, and communication adapters remain dry-run only
 - the compose stack is the only verified runtime target in-repo today
 - host-started Playwright `webServer` runs can be less stable than the compose-managed browser path on this machine

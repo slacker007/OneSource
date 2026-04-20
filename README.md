@@ -41,6 +41,7 @@ OneSource is a capture intelligence platform for government contracting teams. T
 - `docs/testing.md`: canonical host and compose verification workflows
 - `docs/deployment.md`: controlled internal-pilot deployment, rollback, and validation checklist
 - `docs/architecture.md`: current system topology, module boundaries, and Phase 0 constraints
+- `docs/adr`: durable architecture decision records for high-impact implemented choices
 - `docs/runbook.md`: operational commands, health checks, and failure recovery notes
 - `docs/security.md`: current auth, seed, secret-handling, and audit baseline
 - `docs/research`: dated external research notes
