@@ -5,16 +5,24 @@ import { describe, expect, it } from "vitest";
 import { AdminConsole } from "./admin-console";
 
 describe("AdminConsole", () => {
-  it(
-    "renders user-role visibility and recent audit activity",
-    () => {
+  it("renders user-role visibility and recent audit activity", () => {
     render(
       <AdminConsole
         recalibrateScoringProfileAction={async () => undefined}
         retrySourceSyncAction={async () => undefined}
+        scoringRecalibrationNotice={{
+          message:
+            "Manual scoring recalibration was saved. 3 scorecards were recalculated under model version 2026-04-18.",
+          tone: "accent",
+        }}
         sessionUser={{
           name: "Alex Morgan",
           email: "admin@onesource.local",
+        }}
+        sourceSyncRetryNotice={{
+          message:
+            "The saved search retry has been queued for the next sync sweep.",
+          tone: "accent",
         }}
         snapshot={{
           organizationId: "org_123",
@@ -70,7 +78,8 @@ describe("AdminConsole", () => {
                 lastSyncStatus: "FAILED",
                 healthStatus: "rate_limited",
                 rateLimitStrategy: "bounded_api_key",
-                rateLimitNotes: "postedFrom/postedTo required; limit capped at 1000.",
+                rateLimitNotes:
+                  "postedFrom/postedTo required; limit capped at 1000.",
                 latestRateLimitAt: "2026-04-18T08:15:00.000Z",
                 latestRateLimitMessage:
                   "SAM.gov returned HTTP 429: Too many requests.",
@@ -209,7 +218,8 @@ describe("AdminConsole", () => {
                 {
                   key: "capability_fit",
                   label: "Capability fit",
-                  description: "Measures capability match against the opportunity.",
+                  description:
+                    "Measures capability match against the opportunity.",
                   currentWeight: "30.00",
                   suggestedWeight: "32.00",
                   awardedAveragePercent: "92.00",
@@ -267,7 +277,7 @@ describe("AdminConsole", () => {
               targetLabel: "Default Organization",
               targetType: "organization",
               summary: "Initialized baseline organization.",
-              metadataPreview: "{\"seededOpportunityCount\":5}",
+              metadataPreview: '{"seededOpportunityCount":5}',
             },
           ],
         }}
@@ -276,6 +286,12 @@ describe("AdminConsole", () => {
 
     expect(
       screen.getByRole("heading", { name: /workspace settings/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/the saved search retry has been queued/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/manual scoring recalibration was saved/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /operator briefing/i }),
@@ -337,21 +353,25 @@ describe("AdminConsole", () => {
       screen.getByRole("button", { name: /save manual recalibration/i }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/admin@onesource\.local/i)).toHaveLength(2);
-    expect(screen.getAllByText(/default_capture_v1/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/default_capture_v1/i).length).toBeGreaterThan(
+      0,
+    );
     expect(screen.getAllByText(/rate limited/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/sam_gov_http_429/i)).toBeInTheDocument();
     expect(screen.getAllByText(/rejected/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/go >= 70\.00/i)).toBeInTheDocument();
     expect(screen.getByText(/risk floor >= 50\.00%/i)).toBeInTheDocument();
     expect(screen.getByText(/cloud platform engineering/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/daily air force search/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/keywords: knowledge management/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/daily air force search/i).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/keywords: knowledge management/i),
+    ).toBeInTheDocument();
     expect(screen.getAllByText(/30\.00/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/no roles assigned/i)).toBeInTheDocument();
     expect(screen.getByText("seed.bootstrap")).toBeInTheDocument();
-    },
-    10_000,
-  );
+  }, 10_000);
 
   it("renders a clear empty state when the organization snapshot is unavailable", () => {
     render(
