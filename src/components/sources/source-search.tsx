@@ -1,15 +1,14 @@
-import Link from "next/link";
-import type { ReactNode } from "react";
-
 import { CsvImportWorkspace } from "./csv-import-workspace";
 import {
   ActiveFilterChipBar,
   type ActiveFilterChip,
 } from "@/components/ui/active-filter-chip-bar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,6 +20,7 @@ import {
   type SavedViewControlItem,
 } from "@/components/ui/saved-view-controls";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import type { CsvImportWorkspaceSnapshot } from "@/modules/source-integrations/csv-import.service";
 import type {
   SourceImportDuplicateCandidate,
@@ -30,6 +30,10 @@ import type {
   CanonicalSourceSearchQuery,
   SourceSearchSnapshot,
 } from "@/modules/source-integrations/source-search.service";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
 
 type SourceSearchProps = {
   csvImportAction: (formData: FormData) => Promise<void>;
@@ -64,7 +68,9 @@ export function SourceSearch({
   if (!snapshot) {
     return (
       <section className="space-y-4">
-        <p className="text-muted text-sm tracking-[0.26em] uppercase">Sources</p>
+        <p className="text-muted text-sm tracking-[0.26em] uppercase">
+          Sources
+        </p>
         <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
           External source search
         </h1>
@@ -96,7 +102,10 @@ export function SourceSearch({
 
   return (
     <section className="space-y-6">
-      <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
+      <Surface
+        component="header"
+        sx={{ bgcolor: "background.paper", px: { xs: 3, sm: 4 }, py: 3 }}
+      >
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -110,9 +119,9 @@ export function SourceSearch({
               </h1>
               <p className="text-muted max-w-3xl text-sm leading-7">
                 Scan connector-backed discovery queues, reapply saved searches,
-                inspect the translated outbound request, and keep duplicate-aware
-                import preview beside the result set instead of jumping between
-                disconnected search and intake steps.
+                inspect the translated outbound request, and keep
+                duplicate-aware import preview beside the result set instead of
+                jumping between disconnected search and intake steps.
               </p>
             </div>
           </div>
@@ -155,18 +164,22 @@ export function SourceSearch({
         <div className="mt-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <SavedViewControls items={connectorItems} label="Connectors" />
           {savedSearchItems.length > 0 ? (
-            <SavedViewControls items={savedSearchItems} label="Saved searches" />
+            <SavedViewControls
+              items={savedSearchItems}
+              label="Saved searches"
+            />
           ) : (
-            <p className="text-sm text-muted">
+            <p className="text-muted text-sm">
               No saved searches are configured for{" "}
-              <span className="font-medium text-foreground">
-                {snapshot.activeConnector?.sourceDisplayName ?? "this connector"}
+              <span className="text-foreground font-medium">
+                {snapshot.activeConnector?.sourceDisplayName ??
+                  "this connector"}
               </span>
               .
             </p>
           )}
         </div>
-      </header>
+      </Surface>
 
       {importFeedbackBanner}
 
@@ -199,7 +212,7 @@ export function SourceSearch({
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_22rem]">
         <section className="space-y-4">
-          <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6">
+          <Surface component="section" sx={{ px: { xs: 2.5, sm: 3 }, py: 2.5 }}>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-muted text-xs tracking-[0.24em] uppercase">
@@ -208,19 +221,21 @@ export function SourceSearch({
                 <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
                   Connector-led search and filter queue
                 </h2>
-                <p className="mt-2 text-sm text-muted">
+                <p className="text-muted mt-2 text-sm">
                   Keep the high-frequency inputs visible, then open advanced
                   filters only when you need pagination, procurement-type, or
                   source-specific narrowing.
                 </p>
               </div>
 
-              <Link
-                className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+              <Button
+                density="compact"
                 href="/sources"
+                tone="neutral"
+                variant="text"
               >
                 Reset workspace
-              </Link>
+              </Button>
             </div>
 
             <form action="/sources" className="mt-6 space-y-5">
@@ -291,239 +306,273 @@ export function SourceSearch({
                 </FormField>
               </div>
 
-              <details
-                className="border-border rounded-[24px] border bg-white px-4 py-4 shadow-[0_12px_28px_rgba(20,37,34,0.05)]"
-                open={advancedFiltersOpen}
-              >
-                <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+              <details className="rounded-[24px]" open={advancedFiltersOpen}>
+                <summary className="text-foreground cursor-pointer list-none text-sm font-semibold">
                   Advanced filters, procurement types, and pagination
                 </summary>
-                <div className="mt-4 space-y-5">
-                  <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-                    <FormField htmlFor="source-notice-id" label="Notice ID">
-                      <Input
-                        defaultValue={snapshot.formValues.noticeid}
-                        id="source-notice-id"
-                        name="noticeid"
-                        placeholder="FA4861-26-R-0001"
-                      />
-                    </FormField>
+                <Surface sx={{ mt: 1.5, px: 2, py: 2 }}>
+                  <div className="mt-4 space-y-5">
+                    <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+                      <FormField htmlFor="source-notice-id" label="Notice ID">
+                        <Input
+                          defaultValue={snapshot.formValues.noticeid}
+                          id="source-notice-id"
+                          name="noticeid"
+                          placeholder="FA4861-26-R-0001"
+                        />
+                      </FormField>
 
-                    <FormField
-                      htmlFor="source-solicitation"
-                      label="Solicitation number"
-                    >
-                      <Input
-                        defaultValue={snapshot.formValues.solnum}
-                        id="source-solicitation"
-                        name="solnum"
-                        placeholder="36C10B26Q0142"
-                      />
-                    </FormField>
-
-                    <FormField htmlFor="source-org-name" label="Organization name">
-                      <Input
-                        defaultValue={snapshot.formValues.organizationName}
-                        id="source-org-name"
-                        name="organizationName"
-                        placeholder="Department of Veterans Affairs"
-                      />
-                    </FormField>
-
-                    <FormField htmlFor="source-org-code" label="Organization code">
-                      <Input
-                        defaultValue={snapshot.formValues.organizationCode}
-                        id="source-org-code"
-                        name="organizationCode"
-                        placeholder="36C10B"
-                      />
-                    </FormField>
-
-                    <FormField
-                      htmlFor="source-state"
-                      label="Place of performance state"
-                    >
-                      <Input
-                        defaultValue={snapshot.formValues.state}
-                        id="source-state"
-                        maxLength={2}
-                        name="state"
-                        placeholder="VA"
-                      />
-                    </FormField>
-
-                    <FormField htmlFor="source-zip" label="Place of performance ZIP">
-                      <Input
-                        defaultValue={snapshot.formValues.zip}
-                        id="source-zip"
-                        name="zip"
-                        placeholder="22350"
-                      />
-                    </FormField>
-
-                    <FormField htmlFor="source-naics" label="NAICS code">
-                      <Input
-                        defaultValue={snapshot.formValues.ncode}
-                        id="source-naics"
-                        name="ncode"
-                        placeholder="541512"
-                      />
-                    </FormField>
-
-                    <FormField htmlFor="source-ccode" label="Classification code">
-                      <Input
-                        defaultValue={snapshot.formValues.ccode}
-                        id="source-ccode"
-                        name="ccode"
-                        placeholder="D302"
-                      />
-                    </FormField>
-
-                    <FormField htmlFor="source-set-aside" label="Set-aside code">
-                      <Input
-                        defaultValue={snapshot.formValues.typeOfSetAside}
-                        id="source-set-aside"
-                        name="typeOfSetAside"
-                        placeholder="SDVOSB"
-                      />
-                    </FormField>
-
-                    <FormField
-                      htmlFor="source-set-aside-description"
-                      label="Set-aside description"
-                    >
-                      <Input
-                        defaultValue={snapshot.formValues.typeOfSetAsideDescription}
-                        id="source-set-aside-description"
-                        name="typeOfSetAsideDescription"
-                        placeholder="Small business"
-                      />
-                    </FormField>
-
-                    <FormField
-                      htmlFor="source-rdlfrom"
-                      label="Response deadline from"
-                    >
-                      <Input
-                        defaultValue={snapshot.formValues.rdlfrom}
-                        id="source-rdlfrom"
-                        name="rdlfrom"
-                        type="date"
-                      />
-                    </FormField>
-
-                    <FormField htmlFor="source-rdlto" label="Response deadline to">
-                      <Input
-                        defaultValue={snapshot.formValues.rdlto}
-                        id="source-rdlto"
-                        name="rdlto"
-                        type="date"
-                      />
-                    </FormField>
-
-                    <FormField htmlFor="source-status" label="Status">
-                      <Select
-                        defaultValue={snapshot.formValues.status}
-                        id="source-status"
-                        name="status"
+                      <FormField
+                        htmlFor="source-solicitation"
+                        label="Solicitation number"
                       >
-                        {snapshot.activeCapability.statusOptions.map((option) => (
-                          <option key={option.label} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </Select>
-                    </FormField>
+                        <Input
+                          defaultValue={snapshot.formValues.solnum}
+                          id="source-solicitation"
+                          name="solnum"
+                          placeholder="36C10B26Q0142"
+                        />
+                      </FormField>
 
-                    <FormField htmlFor="source-limit" label="Page size">
-                      <Select
-                        defaultValue={snapshot.formValues.limit}
-                        id="source-limit"
-                        name="limit"
+                      <FormField
+                        htmlFor="source-org-name"
+                        label="Organization name"
                       >
-                        {snapshot.activeCapability.pageSizeOptions.map((pageSize) => (
-                          <option key={pageSize} value={pageSize}>
-                            {pageSize}
-                          </option>
-                        ))}
-                        <option value="250">250</option>
-                        <option value="500">500</option>
-                        <option value="1000">1000</option>
-                      </Select>
-                    </FormField>
+                        <Input
+                          defaultValue={snapshot.formValues.organizationName}
+                          id="source-org-name"
+                          name="organizationName"
+                          placeholder="Department of Veterans Affairs"
+                        />
+                      </FormField>
 
-                    <FormField
-                      hint="Maps directly to the `offset` parameter."
-                      htmlFor="source-offset"
-                      label="Offset"
-                    >
-                      <Input
-                        defaultValue={snapshot.formValues.offset}
-                        id="source-offset"
-                        min={0}
-                        name="offset"
-                        step={1}
-                        type="number"
-                      />
-                    </FormField>
-                  </div>
+                      <FormField
+                        htmlFor="source-org-code"
+                        label="Organization code"
+                      >
+                        <Input
+                          defaultValue={snapshot.formValues.organizationCode}
+                          id="source-org-code"
+                          name="organizationCode"
+                          placeholder="36C10B"
+                        />
+                      </FormField>
 
-                  <fieldset className="space-y-3">
-                    <legend className="text-foreground text-sm font-medium">
-                      Procurement types
-                    </legend>
-                    <p className="text-muted text-xs leading-5">
-                      The checkbox grid preserves the real `ptype[]` request
-                      model so one saved search can express multiple notice
-                      categories without connector-specific rewrites.
-                    </p>
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      {snapshot.activeCapability.procurementTypes.map((option) => (
-                        <label
-                          className="border-border flex gap-3 rounded-[20px] border bg-[color:color-mix(in_srgb,var(--surface-muted)_70%,white_30%)] px-4 py-3 text-sm"
-                          htmlFor={`ptype-${option.value}`}
-                          key={option.value}
+                      <FormField
+                        htmlFor="source-state"
+                        label="Place of performance state"
+                      >
+                        <Input
+                          defaultValue={snapshot.formValues.state}
+                          id="source-state"
+                          maxLength={2}
+                          name="state"
+                          placeholder="VA"
+                        />
+                      </FormField>
+
+                      <FormField
+                        htmlFor="source-zip"
+                        label="Place of performance ZIP"
+                      >
+                        <Input
+                          defaultValue={snapshot.formValues.zip}
+                          id="source-zip"
+                          name="zip"
+                          placeholder="22350"
+                        />
+                      </FormField>
+
+                      <FormField htmlFor="source-naics" label="NAICS code">
+                        <Input
+                          defaultValue={snapshot.formValues.ncode}
+                          id="source-naics"
+                          name="ncode"
+                          placeholder="541512"
+                        />
+                      </FormField>
+
+                      <FormField
+                        htmlFor="source-ccode"
+                        label="Classification code"
+                      >
+                        <Input
+                          defaultValue={snapshot.formValues.ccode}
+                          id="source-ccode"
+                          name="ccode"
+                          placeholder="D302"
+                        />
+                      </FormField>
+
+                      <FormField
+                        htmlFor="source-set-aside"
+                        label="Set-aside code"
+                      >
+                        <Input
+                          defaultValue={snapshot.formValues.typeOfSetAside}
+                          id="source-set-aside"
+                          name="typeOfSetAside"
+                          placeholder="SDVOSB"
+                        />
+                      </FormField>
+
+                      <FormField
+                        htmlFor="source-set-aside-description"
+                        label="Set-aside description"
+                      >
+                        <Input
+                          defaultValue={
+                            snapshot.formValues.typeOfSetAsideDescription
+                          }
+                          id="source-set-aside-description"
+                          name="typeOfSetAsideDescription"
+                          placeholder="Small business"
+                        />
+                      </FormField>
+
+                      <FormField
+                        htmlFor="source-rdlfrom"
+                        label="Response deadline from"
+                      >
+                        <Input
+                          defaultValue={snapshot.formValues.rdlfrom}
+                          id="source-rdlfrom"
+                          name="rdlfrom"
+                          type="date"
+                        />
+                      </FormField>
+
+                      <FormField
+                        htmlFor="source-rdlto"
+                        label="Response deadline to"
+                      >
+                        <Input
+                          defaultValue={snapshot.formValues.rdlto}
+                          id="source-rdlto"
+                          name="rdlto"
+                          type="date"
+                        />
+                      </FormField>
+
+                      <FormField htmlFor="source-status" label="Status">
+                        <Select
+                          defaultValue={snapshot.formValues.status}
+                          id="source-status"
+                          name="status"
                         >
-                          <input
-                            defaultChecked={snapshot.formValues.ptype.includes(
-                              option.value,
-                            )}
-                            id={`ptype-${option.value}`}
-                            name="ptype"
-                            type="checkbox"
-                            value={option.value}
-                          />
-                          <span className="space-y-1">
-                            <span className="block font-medium">{option.label}</span>
-                            <span className="text-muted block text-xs leading-5">
-                              {option.description}
-                            </span>
-                          </span>
-                        </label>
-                      ))}
+                          {snapshot.activeCapability.statusOptions.map(
+                            (option) => (
+                              <option key={option.label} value={option.value}>
+                                {option.label}
+                              </option>
+                            ),
+                          )}
+                        </Select>
+                      </FormField>
+
+                      <FormField htmlFor="source-limit" label="Page size">
+                        <Select
+                          defaultValue={snapshot.formValues.limit}
+                          id="source-limit"
+                          name="limit"
+                        >
+                          {snapshot.activeCapability.pageSizeOptions.map(
+                            (pageSize) => (
+                              <option key={pageSize} value={pageSize}>
+                                {pageSize}
+                              </option>
+                            ),
+                          )}
+                          <option value="250">250</option>
+                          <option value="500">500</option>
+                          <option value="1000">1000</option>
+                        </Select>
+                      </FormField>
+
+                      <FormField
+                        hint="Maps directly to the `offset` parameter."
+                        htmlFor="source-offset"
+                        label="Offset"
+                      >
+                        <Input
+                          defaultValue={snapshot.formValues.offset}
+                          id="source-offset"
+                          min={0}
+                          name="offset"
+                          step={1}
+                          type="number"
+                        />
+                      </FormField>
                     </div>
-                  </fieldset>
-                </div>
+
+                    <fieldset className="space-y-3">
+                      <legend className="text-foreground text-sm font-medium">
+                        Procurement types
+                      </legend>
+                      <p className="text-muted text-xs leading-5">
+                        The checkbox grid preserves the real `ptype[]` request
+                        model so one saved search can express multiple notice
+                        categories without connector-specific rewrites.
+                      </p>
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {snapshot.activeCapability.procurementTypes.map(
+                          (option) => (
+                            <Surface
+                              key={option.value}
+                              tone="muted"
+                              sx={{ px: 2, py: 1.5 }}
+                            >
+                              <FormControlLabel
+                                control={
+                                  <Checkbox
+                                    defaultChecked={snapshot.formValues.ptype.includes(
+                                      option.value,
+                                    )}
+                                    id={`ptype-${option.value}`}
+                                    name="ptype"
+                                    size="small"
+                                    value={option.value}
+                                  />
+                                }
+                                label={
+                                  <span className="space-y-1">
+                                    <span className="block font-medium">
+                                      {option.label}
+                                    </span>
+                                    <span className="text-muted block text-xs leading-5">
+                                      {option.description}
+                                    </span>
+                                  </span>
+                                }
+                                sx={{
+                                  alignItems: "flex-start",
+                                  gap: 1,
+                                  m: 0,
+                                  width: "100%",
+                                  "& .MuiFormControlLabel-label": {
+                                    flex: 1,
+                                  },
+                                }}
+                              />
+                            </Surface>
+                          ),
+                        )}
+                      </div>
+                    </fieldset>
+                  </div>
+                </Surface>
               </details>
 
               <div className="flex flex-wrap gap-3">
-                <button
-                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-                  type="submit"
-                >
-                  Search external opportunities
-                </button>
-                <Link
-                  className="border-border text-muted inline-flex min-h-12 items-center justify-center rounded-full border bg-white px-5 py-3 text-sm font-medium"
-                  href="/sources"
-                >
+                <Button type="submit">Search external opportunities</Button>
+                <Button href="/sources" tone="neutral" variant="outlined">
                   Clear all filters
-                </Link>
+                </Button>
               </div>
             </form>
-          </section>
+          </Surface>
 
-          <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6">
+          <Surface component="section" sx={{ px: { xs: 2.5, sm: 3 }, py: 2.5 }}>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
@@ -533,15 +582,16 @@ export function SourceSearch({
                   <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
                     {snapshot.resultCountLabel}
                   </h2>
-                  <p className="mt-2 text-sm text-muted">
-                    Compact scanning keeps opportunity, agency, import state, and
-                    preview access in one table instead of splitting discovery
-                    from the intake decision.
+                  <p className="text-muted mt-2 text-sm">
+                    Compact scanning keeps opportunity, agency, import state,
+                    and preview access in one table instead of splitting
+                    discovery from the intake decision.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge tone="muted">
-                    {snapshot.activeConnector?.sourceDisplayName ?? "Connector unknown"}
+                    {snapshot.activeConnector?.sourceDisplayName ??
+                      "Connector unknown"}
                   </Badge>
                   <Badge tone="warning">
                     {snapshot.executedAt
@@ -557,7 +607,7 @@ export function SourceSearch({
                 emptyLabel="No active chips beyond the selected connector or saved search."
               />
             </div>
-          </section>
+          </Surface>
 
           <DataTable
             ariaLabel="External source search results"
@@ -577,13 +627,13 @@ export function SourceSearch({
                     >
                       {result.title}
                     </a>
-                    <p className="text-xs text-muted">
+                    <p className="text-muted text-xs">
                       Notice {result.noticeId}
                       {result.solicitationNumber
                         ? ` · Solicitation ${result.solicitationNumber}`
                         : ""}
                     </p>
-                    <p className="text-sm leading-6 text-foreground">
+                    <p className="text-foreground text-sm leading-6">
                       {result.summary}
                     </p>
                   </div>
@@ -595,13 +645,13 @@ export function SourceSearch({
                 className: "min-w-[12rem]",
                 cell: (result) => (
                   <div className="space-y-2">
-                    <p className="font-medium text-foreground">
+                    <p className="text-foreground font-medium">
                       {result.organizationName}
                     </p>
-                    <p className="text-xs text-muted">
+                    <p className="text-muted text-xs">
                       {result.organizationCode ?? "No organization code"}
                     </p>
-                    <p className="text-xs text-muted">
+                    <p className="text-muted text-xs">
                       {result.placeOfPerformanceState ?? "No state"}
                       {result.placeOfPerformanceZip
                         ? ` · ${result.placeOfPerformanceZip}`
@@ -616,10 +666,10 @@ export function SourceSearch({
                 className: "min-w-[10rem]",
                 cell: (result) => (
                   <div className="space-y-2">
-                    <p className="font-medium text-foreground">
+                    <p className="text-foreground font-medium">
                       Posted {formatShortDate(result.postedDate)}
                     </p>
-                    <p className="text-xs text-muted">
+                    <p className="text-muted text-xs">
                       {result.responseDeadline
                         ? `Due ${formatShortDate(result.responseDeadline)}`
                         : "No deadline returned"}
@@ -635,7 +685,9 @@ export function SourceSearch({
                 cell: (result) => (
                   <InlineImportState
                     previewSnapshot={
-                      previewSnapshot?.result.id === result.id ? previewSnapshot : null
+                      previewSnapshot?.result.id === result.id
+                        ? previewSnapshot
+                        : null
                     }
                     resultId={result.id}
                   />
@@ -646,14 +698,24 @@ export function SourceSearch({
                 header: "Action",
                 className: "min-w-[10rem]",
                 cell: (result) => (
-                  <Link
-                    className="inline-flex min-h-10 w-full items-center justify-center rounded-full border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.06)] px-4 py-2 text-sm font-medium text-[rgb(19,78,68)]"
+                  <Button
+                    density="compact"
                     href={buildPreviewHref(sanitizedReturnPath, result.id)}
+                    tone={
+                      previewSnapshot?.result.id === result.id
+                        ? "primary"
+                        : "neutral"
+                    }
+                    variant={
+                      previewSnapshot?.result.id === result.id
+                        ? "soft"
+                        : "outlined"
+                    }
                   >
                     {previewSnapshot?.result.id === result.id
                       ? "Preview open"
                       : "Inspect import"}
-                  </Link>
+                  </Button>
                 ),
               },
             ]}
@@ -678,7 +740,6 @@ export function SourceSearch({
               />
             ) : (
               <EmptyState
-                className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]"
                 message="Open any result row to inspect duplicate signals, the raw and normalized payloads, and the guarded create-or-link import actions."
                 title="Result preview and import actions"
               />
@@ -722,7 +783,9 @@ function SourceImportPreviewPanel({
   const recommendedCandidate =
     linkableCandidates.find(
       (candidate) => candidate.opportunityId === suggestedTargetOpportunityId,
-    ) ?? linkableCandidates[0] ?? null;
+    ) ??
+    linkableCandidates[0] ??
+    null;
   const metadata = buildPreviewMetadata(result);
 
   return (
@@ -730,20 +793,22 @@ function SourceImportPreviewPanel({
       <PreviewPanel
         actions={
           <>
-            <Link
-              className="inline-flex min-h-10 items-center justify-center rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-foreground"
+            <Button
+              density="compact"
               href={clearPreviewHref(returnPath)}
+              tone="neutral"
+              variant="outlined"
             >
               Close preview
-            </Link>
-            <a
-              className="inline-flex min-h-10 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
+            </Button>
+            <Button
+              density="compact"
               href={result.uiLink}
               rel="noreferrer"
               target="_blank"
             >
               Open source notice
-            </a>
+            </Button>
           </>
         }
         className="shadow-[0_16px_40px_rgba(20,37,34,0.08)]"
@@ -753,24 +818,44 @@ function SourceImportPreviewPanel({
         title={result.title}
       >
         {alreadyTrackedOpportunity ? (
-          <Callout tone="success" title="Already linked">
-            This source notice is already linked to the tracked opportunity{" "}
-            <span className="font-semibold">{alreadyTrackedOpportunity.title}</span>.
-            Stage: {alreadyTrackedOpportunity.currentStageLabel ?? "Unstaged"}.
-          </Callout>
+          <FeedbackBanner
+            message={
+              <>
+                This source notice is already linked to the tracked opportunity{" "}
+                <span className="font-semibold">
+                  {alreadyTrackedOpportunity.title}
+                </span>
+                . Stage:{" "}
+                {alreadyTrackedOpportunity.currentStageLabel ?? "Unstaged"}.
+              </>
+            }
+            title="Already linked"
+            tone="success"
+          />
         ) : null}
 
-        {!alreadyTrackedOpportunity && shouldAutoCanonicalize && recommendedCandidate ? (
-          <Callout tone="info" title="Canonical merge recommended">
-            The duplicate signals are strong enough to merge this result into{" "}
-            <span className="font-semibold">{recommendedCandidate.title}</span>{" "}
-            instead of creating a second canonical opportunity.
-          </Callout>
+        {!alreadyTrackedOpportunity &&
+        shouldAutoCanonicalize &&
+        recommendedCandidate ? (
+          <FeedbackBanner
+            message={
+              <>
+                The duplicate signals are strong enough to merge this result
+                into{" "}
+                <span className="font-semibold">
+                  {recommendedCandidate.title}
+                </span>{" "}
+                instead of creating a second canonical opportunity.
+              </>
+            }
+            title="Canonical merge recommended"
+            tone="info"
+          />
         ) : null}
 
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+            <h3 className="text-muted text-sm font-semibold tracking-[0.18em] uppercase">
               Duplicate candidates
             </h3>
             <Badge tone="muted">
@@ -788,7 +873,7 @@ function SourceImportPreviewPanel({
               ))}
             </div>
           ) : (
-            <p className="text-sm leading-6 text-muted">
+            <p className="text-muted text-sm leading-6">
               No likely duplicate opportunity crossed the current match
               threshold. Creating a new tracked opportunity is the clean path.
             </p>
@@ -798,135 +883,150 @@ function SourceImportPreviewPanel({
         {!alreadyTrackedOpportunity ? (
           <section className="space-y-4">
             {!shouldAutoCanonicalize ? (
-              <form
-                action={importAction}
-                className="space-y-3 rounded-[20px] border border-border bg-surface-muted px-4 py-4"
-              >
+              <form action={importAction} className="space-y-3">
                 <input name="mode" type="hidden" value="CREATE_OPPORTUNITY" />
                 <input name="sourceRecordId" type="hidden" value={result.id} />
                 <input name="returnPath" type="hidden" value={returnPath} />
-                <p className="text-sm font-semibold text-foreground">
-                  Create a new tracked opportunity
-                </p>
-                <p className="text-sm leading-6 text-muted">
-                  Use this when the result is net new or the candidate list does
-                  not represent the same pursuit.
-                </p>
-                <button
-                  className="inline-flex min-h-11 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
-                  type="submit"
-                >
-                  Create tracked opportunity
-                </button>
+                <Surface tone="muted" sx={{ px: 2.5, py: 2.5 }}>
+                  <p className="text-foreground text-sm font-semibold">
+                    Create a new tracked opportunity
+                  </p>
+                  <p className="text-muted mt-2 text-sm leading-6">
+                    Use this when the result is net new or the candidate list
+                    does not represent the same pursuit.
+                  </p>
+                  <Button sx={{ mt: 2 }} type="submit">
+                    Create tracked opportunity
+                  </Button>
+                </Surface>
               </form>
             ) : null}
 
             {linkableCandidates.length > 0 ? (
-              <form
-                action={importAction}
-                className="space-y-4 rounded-[20px] border border-border bg-surface-muted px-4 py-4"
-              >
+              <form action={importAction} className="space-y-4">
                 <input name="mode" type="hidden" value="LINK_TO_EXISTING" />
                 <input name="sourceRecordId" type="hidden" value={result.id} />
                 <input name="returnPath" type="hidden" value={returnPath} />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    {shouldAutoCanonicalize
-                      ? "Merge into the canonical opportunity"
-                      : "Link to an existing tracked opportunity"}
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-muted">
-                    {shouldAutoCanonicalize
-                      ? "The strongest duplicate candidate is treated as the canonical pursuit."
-                      : "Use the duplicate analysis to attach this source result to an already-tracked pursuit."}
-                  </p>
-                </div>
+                <Surface tone="muted" sx={{ px: 2.5, py: 2.5 }}>
+                  <div>
+                    <p className="text-foreground text-sm font-semibold">
+                      {shouldAutoCanonicalize
+                        ? "Merge into the canonical opportunity"
+                        : "Link to an existing tracked opportunity"}
+                    </p>
+                    <p className="text-muted mt-1 text-sm leading-6">
+                      {shouldAutoCanonicalize
+                        ? "The strongest duplicate candidate is treated as the canonical pursuit."
+                        : "Use the duplicate analysis to attach this source result to an already-tracked pursuit."}
+                    </p>
+                  </div>
 
-                <fieldset className="space-y-3">
-                  <legend className="sr-only">Duplicate opportunity choices</legend>
-                  {linkableCandidates.map((candidate, index) => (
-                    <label
-                      className="flex gap-3 rounded-[18px] border border-border bg-white px-4 py-3"
-                      htmlFor={`target-${candidate.opportunityId}`}
-                      key={candidate.opportunityId}
-                    >
-                      <input
-                        defaultChecked={
-                          candidate.opportunityId === suggestedTargetOpportunityId ||
-                          (suggestedTargetOpportunityId === null && index === 0)
-                        }
-                        id={`target-${candidate.opportunityId}`}
-                        name="targetOpportunityId"
-                        type="radio"
-                        value={candidate.opportunityId}
-                      />
-                      <span className="space-y-2">
-                        <span className="block font-medium text-foreground">
-                          {candidate.title}
-                        </span>
-                        <span className="flex flex-wrap gap-2">
-                          <Badge tone="muted">
-                            {formatMatchLabel(candidate.matchKind)}
-                          </Badge>
-                          <Badge>{candidate.matchScore} / 100</Badge>
-                          <Badge tone="warning">
-                            {candidate.currentStageLabel ?? "Unstaged"}
-                          </Badge>
-                        </span>
-                        <span className="block text-xs leading-5 text-muted">
-                          {candidate.matchReasons.join(" ")}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                </fieldset>
+                  <RadioGroup
+                    defaultValue={
+                      suggestedTargetOpportunityId ??
+                      linkableCandidates[0]?.opportunityId
+                    }
+                    name="targetOpportunityId"
+                    sx={{ gap: 1.5, mt: 2 }}
+                  >
+                    {linkableCandidates.map((candidate) => (
+                      <Surface
+                        key={candidate.opportunityId}
+                        sx={{ bgcolor: "background.paper", px: 2, py: 1.5 }}
+                      >
+                        <FormControlLabel
+                          control={
+                            <Radio
+                              id={`target-${candidate.opportunityId}`}
+                              size="small"
+                              value={candidate.opportunityId}
+                            />
+                          }
+                          label={
+                            <span className="space-y-2">
+                              <span className="text-foreground block font-medium">
+                                {candidate.title}
+                              </span>
+                              <span className="flex flex-wrap gap-2">
+                                <Badge tone="muted">
+                                  {formatMatchLabel(candidate.matchKind)}
+                                </Badge>
+                                <Badge>{candidate.matchScore} / 100</Badge>
+                                <Badge tone="warning">
+                                  {candidate.currentStageLabel ?? "Unstaged"}
+                                </Badge>
+                              </span>
+                              <span className="text-muted block text-xs leading-5">
+                                {candidate.matchReasons.join(" ")}
+                              </span>
+                            </span>
+                          }
+                          sx={{
+                            alignItems: "flex-start",
+                            gap: 1,
+                            m: 0,
+                            width: "100%",
+                            "& .MuiFormControlLabel-label": {
+                              flex: 1,
+                            },
+                          }}
+                        />
+                      </Surface>
+                    ))}
+                  </RadioGroup>
 
-                <button
-                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.08)] px-4 py-2 text-sm font-medium text-[rgb(19,78,68)]"
-                  type="submit"
-                >
-                  {shouldAutoCanonicalize
-                    ? "Merge into selected opportunity"
-                    : "Link to selected opportunity"}
-                </button>
+                  <Button sx={{ mt: 2 }} type="submit" variant="soft">
+                    {shouldAutoCanonicalize
+                      ? "Merge into selected opportunity"
+                      : "Link to selected opportunity"}
+                  </Button>
+                </Surface>
               </form>
             ) : null}
           </section>
         ) : null}
 
-        <details className="rounded-[20px] border border-border bg-surface-muted px-4 py-4">
-          <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+        <details className="rounded-[20px]">
+          <summary className="text-foreground cursor-pointer list-none text-sm font-semibold">
             Open raw and normalized payloads
           </summary>
-          <div className="mt-4 grid gap-4">
-            <JsonPreviewCard payload={importPreview.rawPayload} title="Raw payload" />
-            <JsonPreviewCard
-              payload={importPreview.normalizedPayload}
-              title="Normalized payload"
-            />
-          </div>
+          <Surface tone="muted" sx={{ mt: 1.5, px: 2.5, py: 2.5 }}>
+            <div className="mt-4 grid gap-4">
+              <JsonPreviewCard
+                payload={importPreview.rawPayload}
+                title="Raw payload"
+              />
+              <JsonPreviewCard
+                payload={importPreview.normalizedPayload}
+                title="Normalized payload"
+              />
+            </div>
+          </Surface>
         </details>
 
-        <section className="rounded-[20px] border border-warning/25 bg-warning-soft px-4 py-4">
-          <p className="text-sm font-semibold text-warning">Preview warnings</p>
-          <ul className="mt-3 space-y-2 text-sm leading-6 text-warning">
+        <Surface
+          sx={{
+            bgcolor: "warning.light",
+            borderColor: "warning.main",
+            px: 2.5,
+            py: 2.5,
+          }}
+        >
+          <p className="text-warning text-sm font-semibold">Preview warnings</p>
+          <ul className="text-warning mt-3 space-y-2 text-sm leading-6">
             {importPreview.warnings.map((warning) => (
               <li key={warning}>• {warning}</li>
             ))}
           </ul>
-        </section>
+        </Surface>
       </PreviewPanel>
     </div>
   );
 }
 
-function SourceExecutionCard({
-  snapshot,
-}: {
-  snapshot: SourceSearchSnapshot;
-}) {
+function SourceExecutionCard({ snapshot }: { snapshot: SourceSearchSnapshot }) {
   return (
-    <section className="border-border rounded-[24px] border bg-white px-5 py-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]">
+    <Surface sx={{ bgcolor: "background.paper", px: 2.5, py: 2.5 }}>
       <p className="text-muted text-xs tracking-[0.22em] uppercase">
         Execution summary
       </p>
@@ -941,86 +1041,89 @@ function SourceExecutionCard({
             : "Not executed"}
         </Badge>
       </div>
-      <p className="mt-4 text-sm leading-6 text-muted">{snapshot.executionMessage}</p>
-      <div className="mt-4 space-y-2 text-sm text-foreground">
+      <p className="text-muted mt-4 text-sm leading-6">
+        {snapshot.executionMessage}
+      </p>
+      <div className="text-foreground mt-4 space-y-2 text-sm">
         <p>
-          <span className="font-medium">Workspace:</span> {snapshot.organization.name}
+          <span className="font-medium">Workspace:</span>{" "}
+          {snapshot.organization.name}
         </p>
         <p>
           <span className="font-medium">Search execution:</span>{" "}
           {snapshot.searchExecutionId ?? "Unavailable"}
         </p>
       </div>
-    </section>
+    </Surface>
   );
 }
 
-function TranslatedQueryCard({
-  snapshot,
-}: {
-  snapshot: SourceSearchSnapshot;
-}) {
+function TranslatedQueryCard({ snapshot }: { snapshot: SourceSearchSnapshot }) {
   return (
     <details
-      className="border-border rounded-[24px] border bg-white px-5 py-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]"
+      className="rounded-[24px]"
       open={Boolean(snapshot.outboundRequest)}
     >
-      <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+      <summary className="text-foreground cursor-pointer list-none text-sm font-semibold">
         Translated query and connector capability
       </summary>
 
-      <div className="mt-4 space-y-4">
-        <section>
-          <p className="text-muted text-xs tracking-[0.22em] uppercase">
-            Supported filter contract
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {snapshot.activeCapability.supportedFilterLabels.map((label) => (
-              <Badge key={label} tone="muted">
-                {label}
-              </Badge>
-            ))}
-          </div>
-        </section>
+      <Surface sx={{ mt: 1.5, bgcolor: "background.paper", px: 2.5, py: 2.5 }}>
+        <div className="space-y-4">
+          <section>
+            <p className="text-muted text-xs tracking-[0.22em] uppercase">
+              Supported filter contract
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {snapshot.activeCapability.supportedFilterLabels.map((label) => (
+                <Badge key={label} tone="muted">
+                  {label}
+                </Badge>
+              ))}
+            </div>
+          </section>
 
-        <section>
-          <p className="text-muted text-xs tracking-[0.22em] uppercase">
-            Outbound request
-          </p>
-          {snapshot.outboundRequest ? (
-            <div className="mt-3 space-y-3 text-sm text-foreground">
-              <div>
-                <p className="text-xs font-semibold tracking-[0.18em] text-muted uppercase">
-                  Endpoint
-                </p>
-                <p className="mt-1 break-all">{snapshot.outboundRequest.endpoint}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold tracking-[0.18em] text-muted uppercase">
-                  Query params
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {Object.entries(snapshot.outboundRequest.queryParams).map(
-                    ([key, value]) => (
-                      <Badge key={key} tone="muted">
-                        {Array.isArray(value)
-                          ? `${key}: ${value.join(", ")}`
-                          : `${key}: ${value}`}
-                      </Badge>
-                    ),
-                  )}
+          <section>
+            <p className="text-muted text-xs tracking-[0.22em] uppercase">
+              Outbound request
+            </p>
+            {snapshot.outboundRequest ? (
+              <div className="text-foreground mt-3 space-y-3 text-sm">
+                <div>
+                  <p className="text-muted text-xs font-semibold tracking-[0.18em] uppercase">
+                    Endpoint
+                  </p>
+                  <p className="mt-1 break-all">
+                    {snapshot.outboundRequest.endpoint}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted text-xs font-semibold tracking-[0.18em] uppercase">
+                    Query params
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {Object.entries(snapshot.outboundRequest.queryParams).map(
+                      ([key, value]) => (
+                        <Badge key={key} tone="muted">
+                          {Array.isArray(value)
+                            ? `${key}: ${value.join(", ")}`
+                            : `${key}: ${value}`}
+                        </Badge>
+                      ),
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <EmptyState
-              className="mt-3"
-              message="A translated outbound request appears here once the query validates and an executable connector is selected."
-              title="No request generated"
-            />
-          )}
-        </section>
-      </div>
+            ) : (
+              <EmptyState
+                className="mt-3"
+                message="A translated outbound request appears here once the query validates and an executable connector is selected."
+                title="No request generated"
+              />
+            )}
+          </section>
+        </div>
+      </Surface>
     </details>
   );
 }
@@ -1036,7 +1139,7 @@ function InlineImportState({
     return (
       <div className="space-y-2">
         <Badge tone="muted">Preview pending</Badge>
-        <p className="text-xs leading-5 text-muted">
+        <p className="text-muted text-xs leading-5">
           Open this result to inspect duplicate signals and import state.
         </p>
       </div>
@@ -1047,7 +1150,7 @@ function InlineImportState({
     return (
       <div className="space-y-2">
         <Badge tone="success">Already linked</Badge>
-        <p className="text-xs leading-5 text-muted">
+        <p className="text-muted text-xs leading-5">
           {previewSnapshot.alreadyTrackedOpportunity.title}
         </p>
       </div>
@@ -1058,7 +1161,7 @@ function InlineImportState({
     return (
       <div className="space-y-2">
         <Badge tone="info">Merge recommended</Badge>
-        <p className="text-xs leading-5 text-muted">
+        <p className="text-muted text-xs leading-5">
           {previewSnapshot.duplicateCandidates.length} duplicate candidate
           {previewSnapshot.duplicateCandidates.length === 1 ? "" : "s"} reviewed
           for {resultId}.
@@ -1071,7 +1174,7 @@ function InlineImportState({
     return (
       <div className="space-y-2">
         <Badge tone="warning">Manual review</Badge>
-        <p className="text-xs leading-5 text-muted">
+        <p className="text-muted text-xs leading-5">
           Duplicate candidates need a human import choice.
         </p>
       </div>
@@ -1081,7 +1184,7 @@ function InlineImportState({
   return (
     <div className="space-y-2">
       <Badge tone="success">Ready to create</Badge>
-      <p className="text-xs leading-5 text-muted">
+      <p className="text-muted text-xs leading-5">
         No duplicate candidate crossed the current threshold.
       </p>
     </div>
@@ -1094,22 +1197,22 @@ function DuplicateCandidateCard({
   candidate: SourceImportDuplicateCandidate;
 }) {
   return (
-    <div className="rounded-[18px] border border-border bg-white px-4 py-3">
+    <Surface sx={{ bgcolor: "background.paper", px: 2, py: 1.75 }}>
       <div className="flex flex-wrap items-center gap-2">
-        <p className="font-medium text-foreground">{candidate.title}</p>
+        <p className="text-foreground font-medium">{candidate.title}</p>
         <Badge tone="muted">{formatMatchLabel(candidate.matchKind)}</Badge>
         <Badge>{candidate.matchScore} / 100</Badge>
       </div>
-      <p className="mt-2 text-sm text-muted">
+      <p className="text-muted mt-2 text-sm">
         Stage: {candidate.currentStageLabel ?? "Unstaged"} · Origin:{" "}
         {candidate.originSourceSystem ?? "unknown"}
       </p>
-      <ul className="mt-3 space-y-1 text-sm leading-6 text-foreground">
+      <ul className="text-foreground mt-3 space-y-1 text-sm leading-6">
         {candidate.matchReasons.map((reason) => (
           <li key={reason}>• {reason}</li>
         ))}
       </ul>
-    </div>
+    </Surface>
   );
 }
 
@@ -1121,38 +1224,18 @@ function JsonPreviewCard({
   title: string;
 }) {
   return (
-    <div className="rounded-[20px] border border-border bg-[rgba(15,28,31,0.02)] px-4 py-4">
-      <p className="text-sm font-semibold text-foreground">{title}</p>
+    <Surface tone="muted" sx={{ px: 2, py: 2 }}>
+      <p className="text-foreground text-sm font-semibold">{title}</p>
       <pre className="mt-3 overflow-x-auto rounded-[18px] bg-[rgb(15,28,31)] p-4 text-xs leading-6 text-[rgb(233,244,241)]">
         {JSON.stringify(payload, null, 2)}
       </pre>
-    </div>
+    </Surface>
   );
 }
 
-function Callout({
-  children,
-  tone,
-  title,
-}: {
-  children: ReactNode;
-  tone: "info" | "success";
-  title: string;
-}) {
-  const toneClasses =
-    tone === "success"
-      ? "border-success/20 bg-success-soft text-success"
-      : "border-info/20 bg-info-soft text-info";
-
-  return (
-    <div className={`rounded-[20px] border px-4 py-4 ${toneClasses}`}>
-      <p className="text-sm font-semibold">{title}</p>
-      <p className="mt-2 text-sm leading-6">{children}</p>
-    </div>
-  );
-}
-
-function buildImportFeedbackBanner(importFeedback: SourceSearchProps["importFeedback"]) {
+function buildImportFeedbackBanner(
+  importFeedback: SourceSearchProps["importFeedback"],
+) {
   if (importFeedback.error) {
     return (
       <ErrorState
@@ -1169,14 +1252,16 @@ function buildImportFeedbackBanner(importFeedback: SourceSearchProps["importFeed
   const statusMessage = formatImportStatus(importFeedback.status);
 
   return (
-    <div className="rounded-[24px] border border-[rgba(19,78,68,0.18)] bg-[rgba(19,78,68,0.07)] px-5 py-4">
-      <p className="text-sm font-semibold text-[rgb(16,66,57)]">
-        {statusMessage}
-      </p>
-      <p className="mt-2 text-sm text-[rgb(16,66,57)]">
-        Opportunity reference: {importFeedback.opportunityId ?? "Unavailable"}.
-      </p>
-    </div>
+    <FeedbackBanner
+      message={
+        <>
+          Opportunity reference: {importFeedback.opportunityId ?? "Unavailable"}
+          .
+        </>
+      }
+      title={statusMessage}
+      tone="success"
+    />
   );
 }
 
@@ -1220,12 +1305,9 @@ function buildResultEmptyState(snapshot: SourceSearchSnapshot) {
   return (
     <EmptyState
       action={
-        <Link
-          className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-          href="/sources"
-        >
+        <Button density="compact" href="/sources" variant="text">
           Reset to the default query
-        </Link>
+        </Button>
       }
       message="No external source records matched this filter set. Adjust the date range, remove a structured filter, or reapply a broader saved search."
       title="No external opportunities matched"
@@ -1261,7 +1343,8 @@ function buildSavedSearchItems(
   return savedSearches.map((savedSearch) => ({
     active:
       currentQuery !== null &&
-      buildSavedSearchHref(savedSearch.query) === buildSavedSearchHref(currentQuery),
+      buildSavedSearchHref(savedSearch.query) ===
+        buildSavedSearchHref(currentQuery),
     href: buildSavedSearchHref(savedSearch.query),
     label: savedSearch.name,
     supportingText: savedSearch.lastExecutedAt
@@ -1457,10 +1540,7 @@ function buildSavedSearchHref(query: CanonicalSourceSearchQuery) {
 
 function buildSourceSearchHref(
   returnPath: string,
-  updates: Record<
-    string,
-    string | null | number | string[]
-  >,
+  updates: Record<string, string | null | number | string[]>,
 ) {
   const [pathname, existingQuery = ""] = returnPath.split("?");
   const params = new URLSearchParams(existingQuery);
@@ -1567,7 +1647,9 @@ function formatImportStatus(status: string) {
   }
 }
 
-function formatMatchLabel(matchKind: SourceImportDuplicateCandidate["matchKind"]) {
+function formatMatchLabel(
+  matchKind: SourceImportDuplicateCandidate["matchKind"],
+) {
   switch (matchKind) {
     case "exact_source":
       return "Exact source match";
@@ -1620,10 +1702,10 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-white px-4 py-4 text-sm shadow-[0_12px_30px_rgba(20,37,34,0.06)]">
+    <Surface sx={{ bgcolor: "background.paper", px: 2, py: 2 }}>
       <p className="text-muted text-xs tracking-[0.2em] uppercase">{label}</p>
       <p className="text-foreground mt-2 font-semibold">{value}</p>
       <p className="text-muted mt-1 leading-6">{supportingText}</p>
-    </div>
+    </Surface>
   );
 }

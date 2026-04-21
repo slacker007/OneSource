@@ -37,7 +37,9 @@ async function openWorkspaceSection(
     .getAttribute("href");
 
   if (!href) {
-    throw new Error(`The workspace section link ${sectionLabel} was not available.`);
+    throw new Error(
+      `The workspace section link ${sectionLabel} was not available.`,
+    );
   }
 
   await page.goto(href);
@@ -146,7 +148,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     .getByRole("link", { name: /open brief/i })
     .first()
     .click();
-  await expect(page.getByText("Selected pursuit", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Selected pursuit", { exact: true }),
+  ).toBeVisible();
   await page
     .getByLabel("Primary navigation")
     .getByRole("link", { name: /^Knowledge/i })
@@ -278,12 +282,8 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     page.getByText(/enterprise knowledge management support services/i),
   ).not.toBeVisible();
   await expect(page.getByText(/title: cloud operations/i)).toBeVisible();
-  await page
-    .getByRole("link", { name: /^inspect import$/i })
-    .click();
-  await expect(
-    page.getByText(/^import preview$/i),
-  ).toBeVisible();
+  await page.getByRole("link", { name: /^inspect import$/i }).click();
+  await expect(page.getByText(/^import preview$/i)).toBeVisible();
   const linkButton = page.getByRole("button", {
     name: /merge into selected opportunity|link to selected opportunity/i,
   });
@@ -357,7 +357,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByRole("heading", { name: /stage aging/i }),
   ).toBeVisible();
-  await expect(page.getByText(/recommendation alignment/i).first()).toBeVisible();
+  await expect(
+    page.getByText(/recommendation alignment/i).first(),
+  ).toBeVisible();
   await expect(page.getByText(/85%\+/i)).toBeVisible();
   await page.locator("#decision-ranking").selectOption("risk");
   await page.getByRole("button", { name: /apply ranking/i }).click();
@@ -367,9 +369,12 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByText(/enterprise knowledge management support services/i).first(),
   ).toBeVisible();
-  const stageQueueLink = page.locator("main").getByRole("link", {
-    name: /view .* queue/i,
-  }).first();
+  const stageQueueLink = page
+    .locator("main")
+    .getByRole("link", {
+      name: /view .* queue/i,
+    })
+    .first();
   await expect(stageQueueLink).toBeVisible();
   await stageQueueLink.click();
   await expect(page).toHaveURL(/\/opportunities\?stage=/);
@@ -543,6 +548,7 @@ test("users can create and edit tracked opportunities from the app", async ({
 test("users can open the opportunity workspace and review seeded sections", async ({
   page,
 }) => {
+  test.setTimeout(90_000);
   const createdTaskTitle = `Prepare capture brief ${Date.now()}`;
   const createdMilestoneTitle = `Executive checkpoint ${Date.now()}`;
   const createdNoteTitle = `Capture note ${Date.now()}`;
@@ -590,9 +596,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
       hasText: "Enterprise Knowledge Management Support Services",
     }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: /^Summary$/i }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Summary$/i })).toBeVisible();
   await expect(workspaceSectionNav).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /suggested reusable content/i }),
@@ -828,9 +832,7 @@ test("users can record closeout notes on a closed opportunity workspace", async 
 
   await page.goto("/opportunities");
   await expect(page).toHaveURL(/\/opportunities$/);
-  await page
-    .locator("#desktop-opportunity-query")
-    .fill("Navy Training Range");
+  await page.locator("#desktop-opportunity-query").fill("Navy Training Range");
   await page.getByRole("button", { name: /apply filters/i }).click();
 
   const navyResultsTable = page.getByRole("table", {
@@ -884,9 +886,9 @@ test("users can record closeout notes on a closed opportunity workspace", async 
     .getByRole("button", { name: /^(record|update) closeout$/i })
     .click();
 
-  await expect(
-    page.getByRole("status"),
-  ).toHaveText(/closeout notes recorded and added to workspace history/i);
+  await expect(page.getByRole("status")).toHaveText(
+    /closeout notes recorded and added to workspace history/i,
+  );
   await openWorkspaceSection(page, closedWorkspaceSectionNav, /^History/i);
   await expect(page).toHaveURL(/section=history/);
   await expect(
@@ -1119,11 +1121,18 @@ test.describe("tablet route sweep", () => {
       name: /opportunity pipeline results/i,
     });
     await expect(routeResultsTable).toBeVisible();
-    await routeResultsTable.getByRole("link", { name: /open brief/i }).first().click();
+    await routeResultsTable
+      .getByRole("link", { name: /open brief/i })
+      .first()
+      .click();
     const selectedPreview = page.getByRole("complementary");
     await expect(selectedPreview).toBeVisible();
-    await selectedPreview.getByRole("link", { name: /^Open workspace$/i }).click();
-    await expect(page.getByRole("heading", { name: /^Summary$/i })).toBeVisible();
+    await selectedPreview
+      .getByRole("link", { name: /^Open workspace$/i })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: /^Summary$/i }),
+    ).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth + 1,

@@ -3,9 +3,9 @@
 DOCKER_IMAGE ?= onesource:local
 DOCKER_TARGET ?= runner
 COMPOSE ?= docker compose
-TEST_COMPOSE = $(COMPOSE) -f docker-compose.test.yml
+TEST_COMPOSE = $(COMPOSE) -p onesource-test -f docker-compose.test.yml
 
-.PHONY: help docker-artifacts docker-build compose-up compose-up-detached compose-test-lint compose-test compose-test-build compose-test-bootstrap compose-test-e2e compose-down clean-dev-artifacts
+.PHONY: help docker-artifacts docker-build compose-up compose-up-detached compose-test-image compose-test-env-up compose-test-browser-image compose-test-browser-image-fresh compose-test-lint compose-test compose-test-build compose-test-bootstrap compose-test-e2e compose-down clean-dev-artifacts
 
 help:
 	@printf '%s\n' \
@@ -13,6 +13,9 @@ help:
 		'make docker-build          Build the Docker image.' \
 		'make compose-up            Run docker compose up --build.' \
 		'make compose-up-detached   Run docker compose up --build -d.' \
+		'make compose-test-image    Rebuild the compose test runner image.' \
+		'make compose-test-browser-image Rebuild the compose browser images with cache.' \
+		'make compose-test-browser-image-fresh Rebuild the compose browser images without cache.' \
 		'make compose-test-lint     Run compose lint.' \
 		'make compose-test          Run compose unit tests.' \
 		'make compose-test-build    Run compose production build validation.' \
@@ -33,24 +36,40 @@ compose-up:
 compose-up-detached:
 	$(COMPOSE) up --build -d
 
+compose-test-image:
+	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) build test
+
+compose-test-env-up:
+	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) up -d --wait db test
+
+compose-test-browser-image:
+	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) build web playwright
+
+compose-test-browser-image-fresh:
+	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) build --no-cache web playwright
+
 compose-test-lint:
-	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) run --rm --build test npm run lint
+	$(MAKE) compose-test-env-up
+	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) exec -T test npm run lint
 
 compose-test:
-	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) run --rm --build test npm test
+	$(MAKE) compose-test-env-up
+	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) exec -T test npm test
 
 compose-test-build:
-	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) run --rm --build test npm run build
+	$(MAKE) compose-test-env-up
+	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) exec -T test npm run build
 
 compose-test-bootstrap:
-	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) up --build -d db
-	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) run --rm --build test npx prisma migrate deploy
-	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) run --rm --build test npm run db:seed
+	$(MAKE) compose-test-env-up
+	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) exec -T test npx prisma migrate deploy
+	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) exec -T test npm run db:seed
 
 compose-test-e2e:
 	-$(COMPOSE) down --remove-orphans
 	-$(TEST_COMPOSE) down --remove-orphans
 	$(MAKE) compose-test-bootstrap
+	$(MAKE) compose-test-browser-image
 	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) up --abort-on-container-exit --exit-code-from playwright playwright
 
 compose-down:

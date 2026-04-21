@@ -46,26 +46,60 @@ services:
     build:
       args: *build-args
       context: .
-      target: runner
+      target: test
     depends_on:
       db:
         condition: service_healthy
     environment:
       <<: *app-environment
       NODE_ENV: test
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        set -eu
+        mkdir -p node_modules
+        desired_hash="$$(cat package.json package-lock.json prisma/schema.prisma prisma.config.mjs | sha256sum | cut -d' ' -f1)"
+        current_hash="$$(cat node_modules/.onesource-deps-hash 2>/dev/null || true)"
+        image_hash="$$(cat /opt/onesource-test/package.json /opt/onesource-test/package-lock.json /opt/onesource-test/prisma/schema.prisma /opt/onesource-test/prisma.config.mjs | sha256sum | cut -d' ' -f1)"
+        if [ ! -x node_modules/.bin/vitest ] || [ "$$current_hash" != "$$desired_hash" ]; then
+          find node_modules -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+          if [ "$$desired_hash" = "$$image_hash" ]; then
+            cp -R /opt/onesource-test/node_modules/. node_modules/
+          else
+            npm ci
+            npm run prisma:generate
+          fi
+          printf "%s" "$$desired_hash" > node_modules/.onesource-deps-hash
+        fi
+        while sleep 3600; do :; done
+    volumes:
+      - .:/app
+      - test_node_modules:/app/node_modules
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /app/node_modules/.onesource-deps-hash && test -x /app/node_modules/.bin/eslint",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 2s
 
   web:
     build:
       args: *build-args
       context: .
-      target: runner
+      target: e2e-web
     depends_on:
       db:
         condition: service_healthy
     environment:
       <<: *app-environment
+      HOSTNAME: 0.0.0.0
       NODE_ENV: production
-    command: npm run start:compose
+    command: node server.js
     healthcheck:
       test:
         [
@@ -96,3 +130,6 @@ services:
     volumes:
       - ./playwright-report:/app/playwright-report
       - ./test-results:/app/test-results
+
+volumes:
+  test_node_modules:

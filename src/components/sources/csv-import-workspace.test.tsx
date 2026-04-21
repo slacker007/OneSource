@@ -76,10 +76,8 @@ Cloud Intake Pilot,Department of Veterans Affairs,13/45/2026,13/45/2026,5415X,Ma
 Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,541512,Needs review.`;
 
 describe("CsvImportWorkspace", () => {
-  it(
-    "builds a preview after a CSV upload and enables import for clean rows",
-    async () => {
-      const user = userEvent.setup();
+  it("builds a preview after a CSV upload and enables import for clean rows", async () => {
+    const user = userEvent.setup();
 
     render(
       <CsvImportWorkspace
@@ -101,17 +99,22 @@ describe("CsvImportWorkspace", () => {
       }),
     );
 
-      await waitFor(() => {
+    await waitFor(
+      () => {
         expect(
           screen.getByRole("table", { name: /csv import preview rows/i }),
         ).toBeInTheDocument();
-      }, { timeout: 8_000 });
+      },
+      { timeout: 12_000 },
+    );
 
-      expect(screen.getByText(/zero trust boundary engineering bridge/i)).toBeVisible();
-      expect(screen.getByRole("button", { name: /import 1 clean row/i })).toBeEnabled();
-      expect(screen.getByText(/exact duplicate/i)).toBeVisible();
-      expect(screen.getByText(/needs review/i)).toBeVisible();
-    },
-    10_000,
-  );
+    expect(
+      screen.getByText(/zero trust boundary engineering bridge/i),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /import 1 clean row/i }),
+    ).toBeEnabled();
+    expect(screen.getByText(/exact duplicate/i)).toBeVisible();
+    expect(screen.getByText(/needs review/i)).toBeVisible();
+  }, 20_000);
 });

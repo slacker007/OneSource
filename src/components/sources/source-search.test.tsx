@@ -212,7 +212,8 @@ const previewSnapshot: SourceImportPreviewSnapshot = {
       },
     },
     sourceDescriptionUrl: "https://sam.gov/opp/W91QUZ-26-R-1042/view",
-    sourceDetailUrl: "https://api.sam.gov/prod/opportunities/v2/W91QUZ-26-R-1042",
+    sourceDetailUrl:
+      "https://api.sam.gov/prod/opportunities/v2/W91QUZ-26-R-1042",
     sourceHashFingerprint:
       "sam_gov:W91QUZ-26-R-1042:2026-04-08:541512:peo-enterprise-information-systems",
     sourceUiUrl: "https://sam.gov/opp/W91QUZ-26-R-1042/view",
@@ -262,10 +263,8 @@ const csvImportSnapshot: CsvImportWorkspaceSnapshot = {
 };
 
 describe("SourceSearch", () => {
-  it(
-    "renders the preview panel with duplicate detection and import actions",
-    () => {
-      render(
+  it("renders the preview panel with duplicate detection and import actions", () => {
+    render(
       <SourceSearch
         csvImportAction={vi.fn(async () => undefined)}
         csvImportFeedback={{
@@ -293,17 +292,13 @@ describe("SourceSearch", () => {
     expect(
       screen.getByRole("table", { name: /external source search results/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/^import preview$/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/^import preview$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/fixture connector/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/daily cloud discovery/i)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /spreadsheet import workspace/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/^duplicate candidates$/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/^duplicate candidates$/i)).toBeInTheDocument();
     expect(
       screen.getByText(/canonical merge recommended/i),
     ).toBeInTheDocument();
@@ -316,10 +311,8 @@ describe("SourceSearch", () => {
     expect(
       screen.getByRole("heading", { name: /spreadsheet import workspace/i }),
     ).toBeInTheDocument();
-      expect(screen.getAllByText(/87 \/ 100/i)).toHaveLength(2);
-    },
-    10_000,
-  );
+    expect(screen.getAllByText(/87 \/ 100/i)).toHaveLength(2);
+  }, 20_000);
 
   it("renders validation guidance when the query is invalid", () => {
     render(

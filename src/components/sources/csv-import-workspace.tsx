@@ -3,11 +3,14 @@
 import { useState, useTransition } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import {
   buildCsvImportPreview,
   buildInitialCsvImportMapping,
@@ -96,8 +99,10 @@ export function CsvImportWorkspace({
     setMapping(null);
   }
 
+  const selectedFile = draftResult?.draft ?? null;
+
   return (
-    <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
+    <Surface component="section" sx={{ px: { xs: 3, sm: 4 }, py: 3 }}>
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -123,7 +128,9 @@ export function CsvImportWorkspace({
                 ? "Configured file-import connector"
                 : "Seed or enable the CSV connector"
             }
-            value={workspaceSnapshot?.connector?.sourceDisplayName ?? "Unavailable"}
+            value={
+              workspaceSnapshot?.connector?.sourceDisplayName ?? "Unavailable"
+            }
           />
           <SummaryCard
             label="Limit"
@@ -148,47 +155,58 @@ export function CsvImportWorkspace({
       ) : (
         <div className="mt-6 space-y-6">
           <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]">
+            <Surface sx={{ bgcolor: "background.paper", px: 2.5, py: 2.5 }}>
               <FormField
                 hint="The current guarded import accepts one CSV file up to 256 KB and previews at most 100 rows."
                 htmlFor="csv-import-file"
                 label="Upload CSV file"
               >
-                <input
-                  accept=".csv,text/csv"
-                  className="border-border file:border-0 file:bg-[rgba(19,78,68,0.08)] file:px-4 file:py-2 file:text-sm file:font-medium file:text-[rgb(19,78,68)] block min-h-12 w-full rounded-[18px] border bg-white px-4 py-3 text-sm text-foreground shadow-[0_12px_24px_rgba(19,36,34,0.05)]"
-                  id="csv-import-file"
-                  name="csvFile"
-                  onChange={(event) => {
-                    const file = event.currentTarget.files?.[0] ?? null;
-                    void handleFileChange(file);
-                  }}
-                  type="file"
-                />
-              </FormField>
-
-              {draftResult?.draft ? (
-                <div className="mt-4 rounded-[20px] bg-[rgba(19,78,68,0.05)] px-4 py-4 text-sm leading-6 text-foreground">
-                  <p className="font-medium">{draftResult.draft.fileName}</p>
-                  <p className="text-muted">
-                    {draftResult.draft.rows.length} preview rows detected across{" "}
-                    {draftResult.draft.headers.length} columns.
+                <div className="flex flex-col gap-3">
+                  <Button component="label" variant="outlined">
+                    {selectedFile ? "Replace CSV file" : "Choose CSV file"}
+                    <input
+                      accept=".csv,text/csv"
+                      className="sr-only"
+                      id="csv-import-file"
+                      name="csvFile"
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0] ?? null;
+                        void handleFileChange(file);
+                      }}
+                      type="file"
+                    />
+                  </Button>
+                  <p className="text-muted text-sm">
+                    {selectedFile
+                      ? `${selectedFile.fileName} selected`
+                      : "No file selected yet."}
                   </p>
                 </div>
+              </FormField>
+
+              {selectedFile ? (
+                <Surface tone="muted" sx={{ mt: 2, px: 2, py: 2 }}>
+                  <p className="font-medium">{selectedFile.fileName}</p>
+                  <p className="text-muted">
+                    {selectedFile.rows.length} preview rows detected across{" "}
+                    {selectedFile.headers.length} columns.
+                  </p>
+                </Surface>
               ) : null}
 
               <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  className="border-border text-muted inline-flex min-h-11 items-center justify-center rounded-full border bg-white px-4 py-2 text-sm font-medium"
+                <Button
                   onClick={handleReset}
+                  tone="neutral"
                   type="button"
+                  variant="outlined"
                 >
                   Clear upload
-                </button>
+                </Button>
               </div>
-            </div>
+            </Surface>
 
-            <div className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]">
+            <Surface sx={{ bgcolor: "background.paper", px: 2.5, py: 2.5 }}>
               <p className="text-muted text-xs tracking-[0.22em] uppercase">
                 Mapping contract
               </p>
@@ -207,12 +225,17 @@ export function CsvImportWorkspace({
                       disabled={!draftResult?.draft || !mapping}
                       id={`csv-mapping-${field.key}`}
                       onChange={(event) =>
-                        handleMappingChange(field.key, event.currentTarget.value)
+                        handleMappingChange(
+                          field.key,
+                          event.currentTarget.value,
+                        )
                       }
                       value={mapping?.[field.key] ?? ""}
                     >
                       <option value="">
-                        {field.required ? "Select a CSV column" : "Ignore this field"}
+                        {field.required
+                          ? "Select a CSV column"
+                          : "Ignore this field"}
                       </option>
                       {(draftResult?.draft?.headers ?? []).map((header) => (
                         <option key={header} value={header}>
@@ -223,7 +246,7 @@ export function CsvImportWorkspace({
                   </FormField>
                 ))}
               </div>
-            </div>
+            </Surface>
           </div>
 
           {draftResult?.errors.length ? (
@@ -280,7 +303,11 @@ export function CsvImportWorkspace({
               </div>
 
               <form action={action} className="space-y-4">
-                <input name="csvText" type="hidden" value={draftResult?.draft?.csvText ?? ""} />
+                <input
+                  name="csvText"
+                  type="hidden"
+                  value={draftResult?.draft?.csvText ?? ""}
+                />
                 <input
                   name="fileName"
                   type="hidden"
@@ -293,10 +320,10 @@ export function CsvImportWorkspace({
                 />
 
                 <div className="flex flex-wrap gap-3">
-                  <button
-                    className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)] disabled:cursor-not-allowed disabled:bg-[rgba(19,78,68,0.45)]"
+                  <Button
                     disabled={
-                      preview.hasBlockingErrors || preview.summary.readyRows === 0
+                      preview.hasBlockingErrors ||
+                      preview.summary.readyRows === 0
                     }
                     type="submit"
                   >
@@ -305,10 +332,10 @@ export function CsvImportWorkspace({
                           preview.summary.readyRows === 1 ? "" : "s"
                         }`
                       : "No clean rows to import"}
-                  </button>
+                  </Button>
                   <p className="text-muted text-sm leading-6">
-                    Rows flagged as invalid, duplicate, or review stay out of the
-                    pipeline until the CSV is corrected.
+                    Rows flagged as invalid, duplicate, or review stay out of
+                    the pipeline until the CSV is corrected.
                   </p>
                 </div>
               </form>
@@ -323,7 +350,9 @@ export function CsvImportWorkspace({
                     cell: (row) => (
                       <div>
                         <p className="font-medium">{row.rowNumber}</p>
-                        <p className="text-muted text-xs">{row.statusMessage}</p>
+                        <p className="text-muted text-xs">
+                          {row.statusMessage}
+                        </p>
                       </div>
                     ),
                   },
@@ -401,14 +430,13 @@ export function CsvImportWorkspace({
             </>
           ) : (
             <EmptyState
-              className="border-border rounded-[28px] border bg-white p-5 shadow-[0_14px_40px_rgba(19,36,34,0.06)]"
               message="Upload a CSV to auto-suggest header mappings, inspect validation issues, and preview conservative duplicate checks against the tracked pipeline."
               title="CSV preview"
             />
           )}
         </div>
       )}
-    </section>
+    </Surface>
   );
 }
 
@@ -420,21 +448,26 @@ function DuplicateReviewCell({ row }: { row: CsvImportPreviewRow }) {
   return (
     <div className="space-y-2">
       {row.duplicateCandidates.map((candidate) => (
-        <div
-          className="rounded-[18px] bg-[rgba(15,28,31,0.04)] px-3 py-3"
+        <Surface
           key={`${row.rowNumber}-${candidate.opportunityId}`}
+          tone="muted"
+          sx={{ px: 1.5, py: 1.5 }}
         >
           <p className="font-medium">{candidate.title}</p>
           <p className="text-muted text-xs">
-            {candidate.matchKind === "exact" ? "Exact duplicate" : "Needs review"}
-            {candidate.currentStageLabel ? ` • ${candidate.currentStageLabel}` : ""}
+            {candidate.matchKind === "exact"
+              ? "Exact duplicate"
+              : "Needs review"}
+            {candidate.currentStageLabel
+              ? ` • ${candidate.currentStageLabel}`
+              : ""}
           </p>
           {candidate.matchReasons.map((reason) => (
             <p className="text-muted text-xs" key={reason}>
               {reason}
             </p>
           ))}
-        </div>
+        </Surface>
       ))}
       {row.warnings.map((warning) => (
         <p className="text-xs text-[rgb(120,88,25)]" key={warning}>
@@ -460,13 +493,20 @@ function buildFeedbackBanner(feedback: CsvImportWorkspaceProps["feedback"]) {
   }
 
   return (
-    <div className="mt-6 rounded-[24px] border border-[rgba(19,78,68,0.14)] bg-[rgba(19,78,68,0.08)] px-5 py-4 text-sm leading-6 text-[rgb(19,78,68)]">
-      Imported {feedback.importedCount ?? 0} row
-      {(feedback.importedCount ?? 0) === 1 ? "" : "s"} into the tracked
-      pipeline. Skipped {feedback.skippedCount ?? 0} row
-      {(feedback.skippedCount ?? 0) === 1 ? "" : "s"} during server-side
-      validation and duplicate review.
-    </div>
+    <FeedbackBanner
+      className="mt-6"
+      message={
+        <>
+          Imported {feedback.importedCount ?? 0} row
+          {(feedback.importedCount ?? 0) === 1 ? "" : "s"} into the tracked
+          pipeline. Skipped {feedback.skippedCount ?? 0} row
+          {(feedback.skippedCount ?? 0) === 1 ? "" : "s"} during server-side
+          validation and duplicate review.
+        </>
+      }
+      title="CSV import completed"
+      tone="success"
+    />
   );
 }
 
@@ -480,11 +520,11 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <div className="border-border rounded-[22px] border bg-white px-4 py-4 shadow-[0_12px_24px_rgba(20,37,34,0.06)]">
+    <Surface sx={{ bgcolor: "background.paper", px: 2, py: 2 }}>
       <p className="text-muted text-xs tracking-[0.18em] uppercase">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
+      <p className="text-foreground mt-2 text-lg font-semibold">{value}</p>
       <p className="text-muted mt-2 text-xs leading-5">{supportingText}</p>
-    </div>
+    </Surface>
   );
 }
 

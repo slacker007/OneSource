@@ -112,4 +112,16 @@ describe("UI foundation primitives", () => {
       ),
     ).not.toThrow();
   });
+
+  it("server-renders feedback banners without serializing function-valued styles", () => {
+    expect(() =>
+      renderToString(
+        <FeedbackBanner
+          message="The selected external result is already linked."
+          title="Already linked"
+          tone="success"
+        />,
+      ),
+    ).not.toThrow();
+  });
 });

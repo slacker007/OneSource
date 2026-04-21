@@ -1,6 +1,5 @@
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
-import { alpha } from "@mui/material/styles";
 import type { AriaRole, ReactNode } from "react";
 
 export type FeedbackBannerTone = "info" | "success" | "warning" | "danger";
@@ -20,6 +19,13 @@ const severityByTone = {
   info: "info",
   success: "success",
   warning: "warning",
+} as const;
+
+const borderColorByTone = {
+  danger: "error.light",
+  info: "info.light",
+  success: "success.light",
+  warning: "warning.light",
 } as const;
 
 export function FeedbackBanner({
@@ -43,9 +49,9 @@ export function FeedbackBanner({
       severity={severityByTone[tone]}
       sx={{
         alignItems: "flex-start",
+        border: 1,
+        borderColor: borderColorByTone[tone],
         borderRadius: 3,
-        border: (theme) =>
-          `1px solid ${alpha(theme.palette[severityByTone[tone]].main, 0.2)}`,
         boxShadow: "0 16px 40px rgba(20, 37, 34, 0.08)",
         px: 2,
         py: 1.5,

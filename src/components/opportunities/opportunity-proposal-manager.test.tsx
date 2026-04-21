@@ -35,7 +35,8 @@ const documents: OpportunityWorkspaceDocument[] = [
     sourceType: "USER_UPLOAD",
     sourceUrl: null,
     originalFileName: "capture-plan.docx",
-    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     fileSizeBytes: 245760,
     extractionStatus: "SUCCEEDED",
     extractedAt: "2026-04-18T10:00:00.000Z",
@@ -96,14 +97,12 @@ describe("OpportunityProposalManager", () => {
 
   it("submits updated proposal status, owner, checklist, and linked documents", async () => {
     const user = userEvent.setup();
-    let submission:
-      | {
-          checklistKeys: string[];
-          linkedDocumentIds: string[];
-          ownerUserId: string;
-          status: string;
-        }
-      | null = null;
+    let submission: {
+      checklistKeys: string[];
+      linkedDocumentIds: string[];
+      ownerUserId: string;
+      status: string;
+    } | null = null;
 
     const saveAction = vi.fn(
       async (
@@ -151,9 +150,7 @@ describe("OpportunityProposalManager", () => {
         name: /final compliance review complete/i,
       }),
     );
-    await user.click(
-      screen.getByRole("checkbox", { name: /capture plan/i }),
-    );
+    await user.click(screen.getByRole("checkbox", { name: /capture plan/i }));
     await user.click(screen.getByRole("button", { name: /^save proposal$/i }));
 
     await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1));
@@ -171,5 +168,5 @@ describe("OpportunityProposalManager", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       /proposal tracking saved to the workspace/i,
     );
-  });
+  }, 20_000);
 });

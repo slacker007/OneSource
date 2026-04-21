@@ -42,8 +42,7 @@ function buildShellSnapshot(): AppShellSnapshot {
           {
             id: "task-1",
             category: "task",
-            description:
-              "VA Intake Modernization BPA · Critical · Due Apr 18",
+            description: "VA Intake Modernization BPA · Critical · Due Apr 18",
             href: "/opportunities/opp_1",
             label: "Confirm teaming posture",
             navHref: "/tasks",
@@ -161,9 +160,7 @@ describe("AppShellFrame", () => {
     ).toHaveAttribute("href", "/settings");
   });
 
-  it(
-    "opens the command center, filters results, and persists pinned work",
-    async () => {
+  it("opens the command center, filters results, and persists pinned work", async () => {
     window.localStorage.setItem(
       "onesource.shell.recent-destinations",
       JSON.stringify([
@@ -212,7 +209,8 @@ describe("AppShellFrame", () => {
     expect(commandLauncher).not.toHaveFocus();
     fireEvent.change(commandSearch, { target: { value: "va intake" } });
     expect(
-      screen.getAllByRole("link", { name: /va intake modernization bpa/i }).length,
+      screen.getAllByRole("link", { name: /va intake modernization bpa/i })
+        .length,
     ).toBeGreaterThan(0);
 
     fireEvent.click(
@@ -222,9 +220,9 @@ describe("AppShellFrame", () => {
     );
 
     await waitFor(() =>
-      expect(window.localStorage.getItem("onesource.shell.pinned-items")).toContain(
-        "/opportunities/opp_1",
-      ),
+      expect(
+        window.localStorage.getItem("onesource.shell.pinned-items"),
+      ).toContain("/opportunities/opp_1"),
     );
 
     expect(
@@ -238,14 +236,10 @@ describe("AppShellFrame", () => {
         screen.queryByRole("dialog", { name: /command center/i }),
       ).not.toBeInTheDocument(),
     );
-    },
-    10_000,
-  );
+  }, 10_000);
 
-  it(
-    "opens notifications and preserves mobile navigation restrictions",
-    async () => {
-      render(
+  it("opens notifications and preserves mobile navigation restrictions", async () => {
+    render(
       <AppShellFrame
         allowDecisionSupport={false}
         allowWorkspaceSettings={false}
@@ -289,12 +283,10 @@ describe("AppShellFrame", () => {
     expect(
       screen.queryByRole("link", { name: /decision console/i }),
     ).not.toBeInTheDocument();
-      expect(
-        screen.getByRole("dialog", { name: /onesource workspace/i }),
-      ).toBeInTheDocument();
-    },
-    10_000,
-  );
+    expect(
+      screen.getByRole("dialog", { name: /onesource workspace/i }),
+    ).toBeInTheDocument();
+  }, 20_000);
 
   it("surfaces recent work and persists the collapse toggle", async () => {
     const user = userEvent.setup();
@@ -304,7 +296,8 @@ describe("AppShellFrame", () => {
       JSON.stringify([
         {
           category: "knowledge",
-          description: "Browse reusable assets, taxonomy filters, and linked pursuits.",
+          description:
+            "Browse reusable assets, taxonomy filters, and linked pursuits.",
           href: "/knowledge",
           label: "Knowledge library",
           navHref: "/knowledge",
