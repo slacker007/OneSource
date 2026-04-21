@@ -1,3 +1,5 @@
+"use client";
+
 import MuiButton, { type ButtonProps as MuiButtonProps } from "@mui/material/Button";
 import { alpha, type SxProps, type Theme } from "@mui/material/styles";
 import Link from "next/link";

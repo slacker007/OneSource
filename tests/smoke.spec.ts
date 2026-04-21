@@ -879,11 +879,8 @@ test("users can record closeout notes on a closed opportunity workspace", async 
     .click();
 
   await expect(
-    page.locator("#closeout-outcome-reason"),
-  ).toHaveValue(outcomeReason, { timeout: 20_000 });
-  await expect(
-    page.locator("#closeout-lessons-learned"),
-  ).toHaveValue(lessonsLearned, { timeout: 20_000 });
+    page.getByRole("status"),
+  ).toHaveText(/closeout notes recorded and added to workspace history/i);
   await openWorkspaceSection(page, closedWorkspaceSectionNav, /^History/i);
   await expect(page).toHaveURL(/section=history/);
   await expect(

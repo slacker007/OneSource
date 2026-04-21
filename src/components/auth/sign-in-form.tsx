@@ -1,7 +1,8 @@
 "use client";
 
+import Stack from "@mui/material/Stack";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
@@ -13,26 +14,40 @@ type SignInFormProps = {
   defaultEmail?: string;
 };
 
+type SignInFieldErrors = {
+  email?: string;
+  password?: string;
+};
+
 export function SignInForm({ defaultEmail = "" }: SignInFormProps) {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [fieldErrors, setFieldErrors] = useState<SignInFieldErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function submitCredentials(email: string, password: string) {
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl: "/",
-    });
+    setIsSubmitting(true);
 
-    if (!result || result.error) {
-      setErrorMessage("Invalid email or password.");
-      return;
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: "/",
+      });
+
+      if (!result || result.error) {
+        setErrorMessage("Invalid email or password.");
+        return;
+      }
+
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setErrorMessage("Sign-in could not be completed.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    router.replace("/");
-    router.refresh();
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -42,59 +57,74 @@ export function SignInForm({ defaultEmail = "" }: SignInFormProps) {
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
 
-    if (!email || !password) {
-      setErrorMessage("Email and password are required.");
+    const nextFieldErrors: SignInFieldErrors = {
+      email: email ? undefined : "Enter your email address.",
+      password: password ? undefined : "Enter your password.",
+    };
+
+    if (nextFieldErrors.email || nextFieldErrors.password) {
+      setFieldErrors(nextFieldErrors);
+      setErrorMessage("Enter the required credentials to continue.");
       return;
     }
 
+    setFieldErrors({});
     setErrorMessage(null);
-
-    startTransition(() => {
-      void submitCredentials(email, password);
-    });
+    void submitCredentials(email, password);
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      <FormField label="Email" htmlFor="email">
-        <Input
-          autoComplete="email"
-          defaultValue={defaultEmail}
-          id="email"
-          name="email"
-          placeholder="admin@onesource.local"
-          type="email"
-        />
-      </FormField>
+    <form noValidate onSubmit={handleSubmit}>
+      <Stack spacing={2.5}>
+        <FormField error={fieldErrors.email} label="Email" htmlFor="email">
+          <Input
+            aria-invalid={Boolean(fieldErrors.email)}
+            autoComplete="email"
+            defaultValue={defaultEmail}
+            disabled={isSubmitting}
+            id="email"
+            name="email"
+            placeholder="admin@onesource.local"
+            required
+            type="email"
+          />
+        </FormField>
 
-      <FormField label="Password" htmlFor="password">
-        <Input
-          autoComplete="current-password"
-          id="password"
-          name="password"
-          placeholder="Local development password"
-          type="password"
-        />
-      </FormField>
+        <FormField error={fieldErrors.password} label="Password" htmlFor="password">
+          <Input
+            aria-invalid={Boolean(fieldErrors.password)}
+            autoComplete="current-password"
+            disabled={isSubmitting}
+            id="password"
+            name="password"
+            placeholder="Local development password"
+            required
+            type="password"
+          />
+        </FormField>
 
-      {errorMessage ? (
-        <FeedbackBanner
-          message={errorMessage}
-          title="Sign-in failed"
-          tone="warning"
-          className="w-full"
+        {errorMessage ? (
+          <FeedbackBanner
+            message={errorMessage}
+            title={
+              fieldErrors.email || fieldErrors.password
+                ? "Credentials required"
+                : "Sign-in failed"
+            }
+            tone="warning"
+          >
+          </FeedbackBanner>
+        ) : null}
+
+        <Button
+          disabled={isSubmitting}
+          fullWidth
+          type="submit"
+          variant="solid"
         >
-        </FeedbackBanner>
-      ) : null}
-
-      <Button
-        disabled={isPending}
-        fullWidth
-        type="submit"
-        variant="solid"
-      >
-        {isPending ? "Signing in..." : "Sign in"}
-      </Button>
+          {isSubmitting ? "Signing in..." : "Sign in"}
+        </Button>
+      </Stack>
     </form>
   );
 }
