@@ -1,3 +1,4 @@
+@layer theme, base, mui, components, utilities;
 @import "tailwindcss";
 
 :root {
@@ -27,9 +28,11 @@
   --radius-control: 14px;
   --radius-pill: 999px;
   --font-body:
-    "IBM Plex Sans", "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+    var(--font-ibm-plex-sans), "IBM Plex Sans", "Avenir Next", "Segoe UI",
+    "Helvetica Neue", sans-serif;
   --font-heading:
-    "Space Grotesk", "Avenir Next Condensed", "Trebuchet MS", sans-serif;
+    var(--font-space-grotesk), "Space Grotesk", "Avenir Next Condensed",
+    "Trebuchet MS", sans-serif;
 }
 
 @theme inline {

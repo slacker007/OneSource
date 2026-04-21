@@ -29,6 +29,12 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^9.0.0",
+    "@mui/material": "^9.0.0",
+    "@mui/material-nextjs": "^9.0.0",
+    "@mui/x-data-grid": "^9.0.2",
     "@prisma/client": "^6.19.3",
     "dotenv": "^17.4.2",
     "next": "16.2.4",

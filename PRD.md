@@ -41,7 +41,7 @@ Build the system in thin vertical slices, not horizontal layers in isolation. Ea
 Recommended stack:
 
 - Frontend and server application: Next.js with TypeScript
-- Styling and component primitives: Tailwind CSS plus accessible headless components
+- Styling and component primitives: Material UI with a shared app-owned wrapper layer; Tailwind CSS remains only as the temporary migration-era styling layer until the MUI cutover is complete
 - Database: PostgreSQL
 - ORM and migrations: Prisma
 - Validation: Zod
@@ -864,6 +864,76 @@ Execution rules for every item in this program:
       Done when: every major authenticated route follows the new shell and design system, implementation-facing copy is removed, keyboard and responsive behavior are documented and verified, all route-level flows remain functional, and docs capture the final operating model plus exact verification evidence.
       Verify with: focused accessibility and responsiveness checks for each changed route, full `npm run lint`, full `npm test`, full `npm run build`, `npm run db:seed`, Playwright Chromium verification for each major route against the live application, the compose-managed browser path when available, and `git diff --check`.
 
+## Post-Completion MUI Refactor Program
+
+The user has now requested a second post-completion UI program: move OneSource from the current Tailwind-heavy custom UI system onto Material UI with a OneSource-specific theme and app-owned wrapper layer, while preserving the current product scope, route map, permission model, audit behavior, and server-driven workflows.
+
+Treat this as a follow-up to completed `UI-13`, because the work replaces the rendering and interaction framework for already-implemented product areas rather than introducing a new product domain. The GitHub execution queue for this program is tracked in epic issue `#15` plus child issues `#1` through `#14`.
+
+Execution rules for every item in this program:
+
+- Preserve functional parity for the affected route or surface before moving to the next item.
+- Keep changes vertical and loop-safe: one checklist item per Ralph Loop unless a trivial dependent follow-up is required to make the selected item usable.
+- Do not remove current server-side validation, permission enforcement, auditability, or source-lineage behavior while changing UI structure.
+- Every code-writing item must add or update automated tests and pass the full repo test suite plus Playwright verification against a live app instance before it can be marked complete.
+- During the transition, Material UI is the primary UI foundation for new and migrated work; Tailwind remains only as the temporary compatibility layer until the cutover item removes it.
+
+- [x] MUI-01 Establish the MUI app foundation with official Next.js App Router cache integration, OneSource theme tokens, font wiring, and a root theme provider while preserving current route behavior.
+      Done when: the app boots with the supported `AppRouterCacheProvider` path, a shared MUI `ThemeProvider` and `CssBaseline` exist at the root, the initial OneSource palette and typography are encoded in one theme file, Tailwind and plain CSS can temporarily coexist through the documented CSS-layer ordering, and existing routes still build and render without route-level migration work.
+      Verify with: focused theme/provider tests, full `npm run lint`, full `npm test`, full `npm run build`, compose-backed Playwright Chromium verification against the live app, and `git diff --check`.
+
+- [ ] MUI-02 Define the OneSource MUI design system wrapper layer for buttons, fields, surfaces, chips, dialogs, drawers, feedback states, and skeletons so product code can stop depending on raw Tailwind-heavy primitives.
+      Done when: shared app-owned wrappers exist over Material UI for the common interactive and feedback patterns used across the app, variant naming and density rules are stable, and downstream route migrations can reuse them without inventing new styling contracts.
+      Verify with: focused wrapper tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright verification of at least one wrapper-backed route interaction.
+
+- [ ] MUI-03 Rebuild the authenticated shell, grouped navigation, command surface, and mobile drawer on Material UI while preserving permissions, keyboard behavior, and responsive access.
+      Done when: the authenticated shell no longer depends on the old Tailwind-first implementation and all current shell interactions still function through the MUI foundation.
+      Verify with: shell component tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright shell navigation coverage.
+
+- [ ] MUI-04 Rebuild the public auth surfaces on Material UI form and feedback patterns.
+      Done when: sign-in and related public auth screens are fully MUI-based while Auth.js behavior, validation, and seeded-user smoke coverage remain intact.
+      Verify with: auth surface tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright sign-in coverage.
+
+- [ ] MUI-05 Standardize empty, loading, error, permission, and transient feedback patterns on the MUI system.
+      Done when: routes stop reimplementing bespoke state containers and shared feedback behavior is delivered through one MUI-backed system.
+      Verify with: focused state-pattern tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright verification of representative route states.
+
+- [ ] MUI-06 Replace shared data-display primitives with MUI-native patterns, including Data Grid where appropriate.
+      Done when: dense list surfaces, preview/detail panels, and row-state behavior use one shared MUI-backed data-display foundation instead of the current Tailwind-first primitives.
+      Verify with: focused data-display tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright verification of at least one list-detail route.
+
+- [ ] MUI-07 Redesign and migrate the dashboard and analytics surfaces onto the MUI system.
+      Done when: dashboard and analytics operate through the MUI foundation with preserved data truth, drill-through behavior, and redesigned operator-facing presentation.
+      Verify with: dashboard and analytics tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright dashboard plus analytics coverage.
+
+- [ ] MUI-08 Migrate the opportunities route family, including list, forms, and workspace sections, onto the MUI system.
+      Done when: opportunities list, create/edit, and workspace flows are MUI-based while existing audited server actions, permissions, and route behaviors remain intact.
+      Verify with: opportunities tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright create/edit/workspace coverage.
+
+- [ ] MUI-09 Migrate the `/sources` discovery and import workspace onto the MUI system.
+      Done when: external discovery, duplicate review, import preview, and CSV intake operate through MUI-based UI patterns without regressing connector or import behavior.
+      Verify with: sources tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright search/import coverage.
+
+- [ ] MUI-10 Migrate the knowledge and tasks route families onto the MUI system.
+      Done when: `/knowledge` and `/tasks` are fully MUI-based while filtering, preview, copy, and CRUD flows remain functional.
+      Verify with: knowledge and tasks tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright route coverage for both areas.
+
+- [ ] MUI-11 Migrate the admin and settings/operator surfaces onto the MUI system.
+      Done when: `/settings` is fully MUI-based and current admin-only access plus viewer denial remain intact.
+      Verify with: admin and permission tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright admin access/denial coverage.
+
+- [ ] MUI-12 Remove Tailwind and the obsolete Tailwind-first UI layer after the MUI replacement is complete.
+      Done when: the app no longer depends on Tailwind as an active UI runtime layer and the superseded Tailwind-first primitives have been removed safely.
+      Verify with: full `npm run lint`, full `npm test`, full `npm run build`, full Playwright coverage, and `git diff --check`.
+
+- [ ] MUI-13 Rewrite automated tests to target the new MUI-backed UI contracts instead of brittle Tailwind-era DOM or class assumptions.
+      Done when: UI tests assert semantics, accessibility, state transitions, and wrapper contracts rather than old utility-class output.
+      Verify with: full `npm test`, full `npm run build`, and relevant Playwright reruns for impacted route families.
+
+- [ ] MUI-14 Run the final full regression, accessibility and responsiveness polish, and durable doc refresh for the MUI cutover.
+      Done when: the MUI cutover is fully verified, durable docs reflect the new architecture truthfully, and the route set is stable on the supported local workflow.
+      Verify with: full `npm run lint`, full `npm test`, full `npm run build`, compose-backed Playwright Chromium verification, and `git diff --check`.
+
 ## Quality Bar
 
 The unchecked boxes below are standing engineering requirements for any future change, not incomplete deliverables on the project checklist.
@@ -879,8 +949,8 @@ The unchecked boxes below are standing engineering requirements for any future c
 
 Update this section at the end of every coding loop.
 
-- Current status: `P0-01` through `P10-04` remain complete, the MVP/Beta/Pilot release gates remain met, deferred follow-on `FP-01` remains complete, and the post-completion UI refactor program remains complete through `UI-13`. This `2026-04-21T00:21:57Z` follow-up again treated the request as a follow-up to completed `P0-04` because the tracked project checklist is already finished. The documented compose-first bootstrap path was executed successfully against a fresh local `.env`: PostgreSQL started, the full checked-in Prisma migration set applied cleanly, the seed completed, `make compose-up-detached` started the db/web/worker stack, and the live health endpoint returned `status: "ok"` with both database and document-storage readiness. Browser verification also passed against the running stack through the Playwright CLI wrapper by signing in with the seeded admin account and confirming the authenticated dashboard loaded at `/`.
-- Next recommended item: none. The tracked PRD checklist is complete.
-- Blockers: no open blocker remains on the project checklist. The local development stack is currently healthy on the compose path. The previously documented missing-table failure remains recoverable with `docker compose run --rm --build web npx prisma migrate deploy`; `docker compose run --rm --build web npm run db:seed`; and `docker compose restart web worker` if the database is ever reset or becomes unmigrated again. Prior non-blocking environment notes remain accurate: after route-level or smoke-spec changes in this sandbox, the compose browser path can still require an explicit `docker compose -f docker-compose.test.yml build web playwright` refresh before Chromium sees the latest app bundle and the latest browser assertions together; scheduled sync execution is only implemented for saved searches whose `sourceSystem` is `sam_gov`, so the seeded future-connector search still logs a warning and remains non-executable until those connectors land; and the CRM, document-repository, and communication adapters are deterministic dry runs only, so no live outbound credentials, webhook validation, or callback signatures are in scope yet. `make clean-dev-artifacts` is intentionally skipped in this loop because the user wants the environment left running for local development.
-- Files touched in latest loop: `NOTES.md` and `PRD.md`. A local `.env` was also created from `.env.example` for development, but it remains gitignored and is not part of the tracked diff.
-- Tests run in latest loop: local-development readiness verification on the live compose stack. Commands run: `docker compose config -q`; `docker compose up -d db`; `docker compose run --rm --build web npx prisma migrate deploy`; `docker compose run --rm --build web npm run db:seed`; `make compose-up-detached`; `docker compose ps`; `docker compose logs --tail=60 web`; `curl -fsS http://127.0.0.1:3000/api/health`; and Playwright CLI verification of `/sign-in` plus the authenticated dashboard using the seeded admin account. Verification in this latest loop used `docker compose` and Playwright.
+- Current status: `P0-01` through `P10-04` remain complete, the MVP/Beta/Pilot release gates remain met, deferred follow-on `FP-01` remains complete, and the earlier post-completion UI refactor program remains complete through `UI-13`. A new post-completion MUI refactor program is now active, tracked in GitHub epic `#15` plus child issues `#1` through `#14`. This loop is implementing `MUI-01` as a follow-up to completed `UI-13`: the repo now has Material UI foundation dependencies, official Next.js App Router cache wiring, a shared OneSource MUI theme, and a root theme provider while the existing Tailwind UI remains in place as the temporary migration layer during the larger cutover.
+- Next recommended item: `MUI-02 Define the OneSource MUI design system wrapper layer`.
+- Blockers: no new blockers in `MUI-01`. Existing environment notes remain accurate: scheduled sync execution is only implemented for saved searches whose `sourceSystem` is `sam_gov`, and the CRM, document-repository, and communication adapters are deterministic dry runs only.
+- Files touched in latest loop: `package.json`, `package-lock.json`, `src/app/layout.tsx`, `src/app/globals.css`, `src/theme/onesource-theme.ts`, `src/theme/onesource-theme.test.ts`, `src/components/layout/app-theme-provider.tsx`, `src/components/layout/app-theme-provider.test.tsx`, `README.md`, `docs/architecture.md`, `PRD.md`, and `NOTES.md`.
+- Tests run in latest loop: `npm test -- src/components/layout/app-theme-provider.test.tsx src/theme/onesource-theme.test.ts`; `npm run lint`; `npm test`; `npm run build`; `make compose-test-e2e`; and `git diff --check`. Verification used `docker compose` for the browser-backed path and passed all 9 Chromium Playwright smoke tests. `make clean-dev-artifacts` then ran successfully and removed local app, test, build, and dependency artifacts so the next loop starts clean.
