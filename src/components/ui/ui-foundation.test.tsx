@@ -1,3 +1,4 @@
+import { renderToString } from "react-dom/server";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -92,5 +93,23 @@ describe("UI foundation primitives", () => {
     expect(screen.getByTestId("surface")).toHaveTextContent(/preview shell/i);
     expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
     expect(screen.getByTestId("skeleton")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("server-renders field wrappers around shared inputs without crashing", () => {
+    expect(() =>
+      renderToString(
+        <div>
+          <FormField hint="Search the queue." htmlFor="server-render-search" label="Search">
+            <Input id="server-render-search" name="q" type="search" />
+          </FormField>
+          <FormField htmlFor="server-render-status" label="Status">
+            <Select id="server-render-status" name="status">
+              <option value="">All statuses</option>
+              <option value="open">Open</option>
+            </Select>
+          </FormField>
+        </div>,
+      ),
+    ).not.toThrow();
   });
 });

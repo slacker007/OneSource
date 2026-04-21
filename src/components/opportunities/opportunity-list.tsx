@@ -6,6 +6,7 @@ import {
   type ActiveFilterChip,
 } from "@/components/ui/active-filter-chip-bar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DataTable,
   type DataTableDensity,
@@ -24,6 +25,7 @@ import {
   type SavedViewControlItem,
 } from "@/components/ui/saved-view-controls";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import type {
   OpportunityListDueWindow,
   OpportunityListItemSummary,
@@ -94,7 +96,10 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
 
   return (
     <section className="space-y-6">
-      <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
+      <Surface
+        component="header"
+        sx={{ bgcolor: "background.paper", px: { xs: 3, sm: 4 }, py: 3 }}
+      >
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -116,12 +121,9 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
           </div>
 
           <div className="flex flex-col items-start gap-3 xl:items-end">
-            <Link
-              className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-              href="/opportunities/new"
-            >
+            <Button href="/opportunities/new">
               Create tracked opportunity
-            </Link>
+            </Button>
             <p className="text-right text-sm text-muted">
               Organization workspace:{" "}
               <span className="font-medium text-foreground">
@@ -173,9 +175,12 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
           />
           <DensityToggle label="Row density" options={densityOptions} />
         </div>
-      </header>
+      </Surface>
 
-      <details className="border-border bg-surface rounded-[24px] border px-5 py-4 shadow-[0_14px_36px_rgba(20,37,34,0.06)] xl:hidden">
+      <Surface
+        component="details"
+        sx={{ display: { xl: "none" }, px: 2.5, py: 2 }}
+      >
         <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
           Open filters and sort
         </summary>
@@ -188,7 +193,7 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
             viewState={viewState}
           />
         </div>
-      </details>
+      </Surface>
 
       <div className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_24rem]">
         <aside className="hidden xl:block">
@@ -204,7 +209,7 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
         </aside>
 
         <section className="space-y-4">
-          <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6">
+          <Surface component="section" sx={{ px: { xs: 2.5, sm: 3 }, py: 2.5 }}>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
@@ -229,18 +234,16 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
                     className="flex flex-wrap gap-2 lg:justify-end"
                   >
                     {sortOptions.map((option) => (
-                      <Link
+                      <Button
                         aria-current={option.active ? "page" : undefined}
-                        className={
-                          option.active
-                            ? "inline-flex min-h-9 items-center rounded-[var(--radius-pill)] border border-accent bg-accent-soft px-3 py-2 text-sm font-medium text-foreground"
-                            : "inline-flex min-h-9 items-center rounded-[var(--radius-pill)] border border-border bg-surface-strong px-3 py-2 text-sm text-muted transition hover:border-border-strong hover:text-foreground"
-                        }
                         href={option.href}
                         key={option.label}
+                        density="compact"
+                        tone={option.active ? "primary" : "neutral"}
+                        variant={option.active ? "soft" : "outlined"}
                       >
                         {option.label}
-                      </Link>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -252,7 +255,7 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
                 emptyLabel="No active chips beyond the selected saved view."
               />
             </div>
-          </section>
+          </Surface>
 
           <DataTable
             ariaLabel="Opportunity pipeline results"
@@ -368,12 +371,9 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
             emptyState={
               <EmptyState
                 action={
-                  <Link
-                    className="inline-flex rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
-                    href={resetHref}
-                  >
+                  <Button density="compact" href={resetHref}>
                     Reset to all opportunities
-                  </Link>
+                  </Button>
                 }
                 message="Adjust the current filters or return to the default saved view to restore the tracked pipeline."
                 title="No opportunities match this filter set"
@@ -433,18 +433,20 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
           <PreviewPanel
             actions={
               <>
-                <Link
-                  className="inline-flex min-h-10 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.2)] transition hover:bg-[rgb(16,66,57)]"
+                <Button
+                  density="compact"
                   href={`/opportunities/${selectedOpportunity.id}`}
                 >
                   Open workspace
-                </Link>
-                <Link
-                  className="inline-flex min-h-10 items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-border-strong hover:bg-surface-muted"
+                </Button>
+                <Button
+                  density="compact"
                   href={`/opportunities/${selectedOpportunity.id}/edit`}
+                  tone="neutral"
+                  variant="outlined"
                 >
                   Edit record
-                </Link>
+                </Button>
               </>
             }
             className="xl:sticky xl:top-24"
@@ -509,7 +511,7 @@ function OpportunityFilterRail({
   viewState: OpportunityListViewState;
 }) {
   return (
-    <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+    <Surface component="section" sx={{ px: 2.5, py: 2.5 }}>
       <div className="space-y-2">
         <p className="text-muted text-xs tracking-[0.22em] uppercase">
           Filter rail
@@ -630,21 +632,20 @@ function OpportunityFilterRail({
         </FormField>
 
         <div className="flex flex-col gap-3">
-          <button
-            className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-            type="submit"
-          >
+          <Button type="submit">
             Apply filters
-          </button>
-          <Link
-            className="inline-flex min-h-10 items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-border-strong hover:bg-surface-muted"
+          </Button>
+          <Button
+            density="compact"
             href={resetHref}
+            tone="neutral"
+            variant="outlined"
           >
             Reset to all opportunities
-          </Link>
+          </Button>
         </div>
       </form>
-    </section>
+    </Surface>
   );
 }
 
@@ -688,24 +689,23 @@ function OpportunityCell({
       ) : null}
 
       <div className="flex flex-wrap gap-4">
-        <Link
-          className="inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-          href={previewHref}
-        >
+        <Button density="compact" href={previewHref} variant="text">
           Open brief
-        </Link>
-        <Link
-          className="inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+        </Button>
+        <Button
+          density="compact"
           href={`/opportunities/${opportunity.id}`}
+          variant="text"
         >
           Open workspace
-        </Link>
-        <Link
-          className="inline-flex text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+        </Button>
+        <Button
+          density="compact"
           href={`/opportunities/${opportunity.id}/edit`}
+          variant="text"
         >
           Edit opportunity
-        </Link>
+        </Button>
       </div>
     </div>
   );
@@ -722,10 +722,6 @@ function PaginationLink({
   disabled?: boolean;
   href: string;
 }) {
-  const className = active
-    ? "border-transparent bg-[rgb(19,78,68)] text-white"
-    : "border-border bg-white text-foreground";
-
   if (disabled) {
     return (
       <span
@@ -738,12 +734,14 @@ function PaginationLink({
   }
 
   return (
-    <Link
-      className={`inline-flex min-w-11 items-center justify-center rounded-full border px-4 py-2 text-sm font-medium transition ${className}`}
+    <Button
       href={href}
+      sx={{ minWidth: 44 }}
+      tone={active ? "primary" : "neutral"}
+      variant={active ? "solid" : "outlined"}
     >
       {children}
-    </Link>
+    </Button>
   );
 }
 
@@ -757,11 +755,11 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <article className="border-border rounded-[24px] border bg-white px-4 py-4 text-sm shadow-[0_12px_30px_rgba(20,37,34,0.06)]">
+    <Surface component="article" sx={{ px: 2, py: 2 }} className="text-sm">
       <p className="text-muted text-xs tracking-[0.2em] uppercase">{label}</p>
       <p className="mt-2 font-semibold text-foreground">{value}</p>
       <p className="mt-1 text-muted">{supportingText}</p>
-    </article>
+    </Surface>
   );
 }
 

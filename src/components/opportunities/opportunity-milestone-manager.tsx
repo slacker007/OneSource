@@ -12,10 +12,12 @@ import { useRouter } from "next/navigation";
 
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import {
   formatOpportunityMilestoneDateInputValue,
@@ -106,27 +108,27 @@ export function OpportunityMilestoneManager({
     <div className="space-y-5">
       <form
         action={createFormAction}
-        className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,249,239,0.86)] px-5 py-5"
         onSubmitCapture={(event) => {
           setOptimisticCreatedMilestone(buildOptimisticMilestoneDraft(event));
         }}
         ref={createFormRef}
       >
         <input name="opportunityId" type="hidden" value={opportunityId} />
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 className="text-base font-semibold text-foreground">
-              Add milestone
-            </h3>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Track capture checkpoints, proposal dates, and decision gates in the
-              same guarded workflow as the rest of the workspace.
-            </p>
+        <Surface sx={{ bgcolor: "rgba(255,249,239,0.86)", p: 2.5 }}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                Add milestone
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                Track capture checkpoints, proposal dates, and decision gates in the
+                same guarded workflow as the rest of the workspace.
+              </p>
+            </div>
+            <Badge tone="warning">Dashboard deadlines update automatically</Badge>
           </div>
-          <Badge tone="warning">Dashboard deadlines update automatically</Badge>
-        </div>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          <div className="mt-5 grid gap-4 xl:grid-cols-2">
           <FormField
             error={createState.fieldErrors.title}
             htmlFor="milestone-create-title"
@@ -189,40 +191,37 @@ export function OpportunityMilestoneManager({
               ))}
             </Select>
           </FormField>
-        </div>
+          </div>
 
-        <FormField
-          className="mt-4"
-          error={createState.fieldErrors.description}
-          htmlFor="milestone-create-description"
-          label="Description"
-        >
-          <Textarea
-            defaultValue=""
-            id="milestone-create-description"
-            name="description"
-            placeholder="Capture the decision criteria, deliverable, or review expectation."
-            rows={4}
-          />
-        </FormField>
-
-        <ActionFeedback
-          className="mt-4"
-          errorMessage={createState.formError}
-          errorTitle="Milestone needs attention"
-          successMessage={createState.successMessage}
-          successTitle="Milestone created"
-        />
-
-        <div className="mt-5 flex flex-wrap justify-end gap-3">
-          <button
-            className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)] disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={createIsPending}
-            type="submit"
+          <FormField
+            className="mt-4"
+            error={createState.fieldErrors.description}
+            htmlFor="milestone-create-description"
+            label="Description"
           >
-            {createIsPending ? "Creating milestone..." : "Create milestone"}
-          </button>
-        </div>
+            <Textarea
+              defaultValue=""
+              id="milestone-create-description"
+              name="description"
+              placeholder="Capture the decision criteria, deliverable, or review expectation."
+              rows={4}
+            />
+          </FormField>
+
+          <ActionFeedback
+            className="mt-4"
+            errorMessage={createState.formError}
+            errorTitle="Milestone needs attention"
+            successMessage={createState.successMessage}
+            successTitle="Milestone created"
+          />
+
+          <div className="mt-5 flex flex-wrap justify-end gap-3">
+            <Button disabled={createIsPending} type="submit">
+              {createIsPending ? "Creating milestone..." : "Create milestone"}
+            </Button>
+          </div>
+        </Surface>
       </form>
 
       {visibleMilestones.length > 0 ? (
@@ -353,7 +352,10 @@ function EditableMilestoneCard({
   }, [deleteState, router]);
 
   return (
-    <article className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(244,248,246,0.9)] px-5 py-5">
+    <Surface
+      component="article"
+      sx={{ bgcolor: "rgba(244,248,246,0.9)", p: 2.5 }}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <h3 className="text-base font-semibold text-foreground">
@@ -471,13 +473,15 @@ function EditableMilestoneCard({
           />
 
           <div className="flex flex-wrap justify-end gap-3">
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-foreground transition hover:bg-[rgba(15,28,31,0.03)] disabled:cursor-not-allowed disabled:opacity-60"
+            <Button
+              density="compact"
               disabled={updateIsPending}
+              tone="neutral"
               type="submit"
+              variant="outlined"
             >
               {updateIsPending ? "Saving..." : "Save milestone"}
-            </button>
+            </Button>
           </div>
         </form>
 
@@ -485,13 +489,15 @@ function EditableMilestoneCard({
           <input name="milestoneId" type="hidden" value={milestone.id} />
           <input name="opportunityId" type="hidden" value={opportunityId} />
 
-          <button
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-[rgba(126,67,31,0.28)] bg-[#fff8f1] px-4 py-2 text-sm font-medium text-[#7e431f] transition hover:bg-[#faefe0] disabled:cursor-not-allowed disabled:opacity-60"
+          <Button
+            density="compact"
             disabled={deleteIsPending}
+            tone="danger"
             type="submit"
+            variant="soft"
           >
             {deleteIsPending ? "Deleting..." : "Delete milestone"}
-          </button>
+          </Button>
         </form>
 
         <ActionFeedback
@@ -501,7 +507,7 @@ function EditableMilestoneCard({
           successTitle="Milestone removed"
         />
       </div>
-    </article>
+    </Surface>
   );
 }
 

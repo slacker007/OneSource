@@ -1,4 +1,4 @@
-import FormControl from "@mui/material/FormControl";
+import Box from "@mui/material/Box";
 import FormHelperText from "@mui/material/FormHelperText";
 import FormLabel from "@mui/material/FormLabel";
 import {
@@ -50,8 +50,16 @@ export function FormField({
       : children;
 
   return (
-    <FormControl className={className} error={Boolean(error)} fullWidth sx={{ gap: 1 }}>
+    <Box
+      className={className}
+      sx={{
+        display: "grid",
+        gap: 1,
+        width: "100%",
+      }}
+    >
       <FormLabel
+        error={Boolean(error)}
         htmlFor={childId}
         sx={{
           color: "text.primary",
@@ -65,6 +73,7 @@ export function FormField({
       {hint ? (
         <FormHelperText
           id={hintId}
+          component="div"
           sx={{
             color: "text.secondary",
             fontSize: "0.76rem",
@@ -78,7 +87,9 @@ export function FormField({
       {resolvedChildren}
       {error ? (
         <FormHelperText
+          error
           id={errorId}
+          component="div"
           sx={{
             fontSize: "0.76rem",
             fontWeight: 600,
@@ -89,6 +100,6 @@ export function FormField({
           {error}
         </FormHelperText>
       ) : null}
-    </FormControl>
+    </Box>
   );
 }

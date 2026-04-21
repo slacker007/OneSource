@@ -1,6 +1,4 @@
 "use client";
-
-import Link from "next/link";
 import {
   startTransition,
   useActionState,
@@ -12,10 +10,12 @@ import {
 } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import {
   INITIAL_OPPORTUNITY_FORM_ACTION_STATE,
@@ -179,7 +179,10 @@ export function OpportunityForm({
 
   return (
     <section className="space-y-6">
-      <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
+      <Surface
+        component="header"
+        sx={{ bgcolor: "background.paper", px: { xs: 3, sm: 4 }, py: 3 }}
+      >
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -221,7 +224,7 @@ export function OpportunityForm({
             />
           </div>
         </div>
-      </header>
+      </Surface>
 
       {feedback ? (
         <FeedbackBanner
@@ -251,7 +254,10 @@ export function OpportunityForm({
         />
       ) : null}
 
-      <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
+      <Surface
+        component="section"
+        sx={{ bgcolor: "background.paper", px: { xs: 3, sm: 4 }, py: 3 }}
+      >
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-muted text-xs tracking-[0.24em] uppercase">
@@ -393,11 +399,7 @@ export function OpportunityForm({
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap gap-3">
-              <button
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)] disabled:cursor-not-allowed disabled:opacity-70"
-                disabled={isPending}
-                type="submit"
-              >
+              <Button disabled={isPending} type="submit">
                 {isPending
                   ? snapshot.mode === "create"
                     ? "Creating opportunity..."
@@ -405,26 +407,28 @@ export function OpportunityForm({
                   : snapshot.mode === "create"
                     ? "Create opportunity"
                     : "Save changes"}
-              </button>
+              </Button>
 
-              <button
-                className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-white px-5 py-3 text-sm font-medium text-foreground transition hover:bg-[rgba(15,28,31,0.03)]"
+              <Button
                 onClick={handleResetToSavedValues}
+                tone="neutral"
                 type="button"
+                variant="outlined"
               >
                 Reset to saved values
-              </button>
+              </Button>
             </div>
 
-            <Link
-              className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+            <Button
+              density="compact"
               href="/opportunities"
+              variant="text"
             >
               Back to opportunity list
-            </Link>
+            </Button>
           </div>
         </form>
-      </section>
+      </Surface>
     </section>
   );
 }
@@ -439,11 +443,11 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <article className="border-border rounded-[24px] border bg-white px-4 py-4 text-sm shadow-[0_12px_30px_rgba(20,37,34,0.06)]">
+    <Surface component="article" sx={{ px: 2, py: 2 }} className="text-sm">
       <p className="text-muted text-xs tracking-[0.2em] uppercase">{label}</p>
       <p className="mt-2 font-semibold text-foreground">{value}</p>
       <p className="mt-1 text-muted">{supportingText}</p>
-    </article>
+    </Surface>
   );
 }
 

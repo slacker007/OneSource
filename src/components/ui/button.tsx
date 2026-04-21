@@ -13,6 +13,8 @@ type ButtonProps = Omit<MuiButtonProps, "color" | "size" | "variant"> & {
   children: ReactNode;
   density?: ButtonDensity;
   href?: string;
+  rel?: string;
+  target?: string;
   tone?: ButtonTone;
   variant?: ButtonVariant;
 };

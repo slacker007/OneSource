@@ -554,8 +554,8 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
   await expect(page).toHaveURL(/\/$/);
 
-  await page.goto("/opportunities");
-  await expect(page).toHaveURL(/\/opportunities$/);
+  await page.goto("/opportunities?view=all");
+  await expect(page).toHaveURL(/\/opportunities(\?view=all)?$/);
   await page
     .locator("#desktop-opportunity-query")
     .fill("Enterprise Knowledge Management");
@@ -566,9 +566,9 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     name: /opportunity pipeline results/i,
   });
   await expect(
-    opportunityResultsTable.getByRole("heading", {
-      name: /enterprise knowledge management support services/i,
-    }),
+    opportunityResultsTable.getByText(
+      /enterprise knowledge management support services/i,
+    ),
   ).toBeVisible();
   await opportunityResultsTable
     .getByRole("link", { name: /open brief/i })

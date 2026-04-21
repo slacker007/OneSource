@@ -10,8 +10,10 @@ import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { ActionFeedback } from "@/components/ui/action-feedback";
+import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import {
   INITIAL_OPPORTUNITY_CLOSEOUT_ACTION_STATE,
@@ -54,41 +56,32 @@ export function OpportunityCloseoutManager({
   useEffect(() => {
     if (state.successMessage && lastRefreshStateRef.current !== state) {
       lastRefreshStateRef.current = state;
-      const refreshTimeout = window.setTimeout(() => {
-        startTransition(() => {
-          router.refresh();
-        });
-      }, 400);
-
-      return () => {
-        window.clearTimeout(refreshTimeout);
-      };
+      startTransition(() => {
+        router.refresh();
+      });
     }
   }, [router, state]);
 
   return (
-    <form
-      action={formAction}
-      className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-white px-5 py-5"
-      key={formResetKey}
-    >
+    <form action={formAction} key={formResetKey}>
       <input name="opportunityId" type="hidden" value={opportunityId} />
       <input name="currentStageKey" type="hidden" value={currentStageKey ?? ""} />
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold text-foreground">
-            {currentCloseout ? "Update closeout notes" : "Record closeout notes"}
-          </h3>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            Save the final outcome rationale and postmortem while the decision
-            context is still fresh.
-          </p>
+      <Surface sx={{ bgcolor: "background.paper", p: 2.5 }}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">
+              {currentCloseout ? "Update closeout notes" : "Record closeout notes"}
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              Save the final outcome rationale and postmortem while the decision
+              context is still fresh.
+            </p>
+          </div>
+          <Badge tone="muted">{currentStageLabel}</Badge>
         </div>
-        <Badge tone="muted">{currentStageLabel}</Badge>
-      </div>
 
-      <div className="mt-5 space-y-4">
+        <div className="mt-5 space-y-4">
         <FormField
           error={state.fieldErrors.competitorId}
           hint={
@@ -142,29 +135,26 @@ export function OpportunityCloseoutManager({
             rows={5}
           />
         </FormField>
-      </div>
+        </div>
 
-      <ActionFeedback
-        className="mt-4"
-        errorMessage={state.formError}
-        errorTitle="Closeout needs attention"
-        successMessage={state.successMessage}
-        successTitle="Closeout saved"
-      />
+        <ActionFeedback
+          className="mt-4"
+          errorMessage={state.formError}
+          errorTitle="Closeout needs attention"
+          successMessage={state.successMessage}
+          successTitle="Closeout saved"
+        />
 
-      <div className="mt-5 flex flex-wrap justify-end gap-3">
-        <button
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)] disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isPending}
-          type="submit"
-        >
-          {isPending
-            ? "Saving closeout..."
-            : currentCloseout
-              ? "Update closeout"
-              : "Record closeout"}
-        </button>
-      </div>
+        <div className="mt-5 flex flex-wrap justify-end gap-3">
+          <Button disabled={isPending} type="submit">
+            {isPending
+              ? "Saving closeout..."
+              : currentCloseout
+                ? "Update closeout"
+                : "Record closeout"}
+          </Button>
+        </div>
+      </Surface>
     </form>
   );
 }
