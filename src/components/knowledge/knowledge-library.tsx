@@ -1,7 +1,7 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { KnowledgeCopyButton } from "@/components/knowledge/knowledge-copy-button";
+import { Button } from "@/components/ui/button";
 import {
   ActiveFilterChipBar,
   type ActiveFilterChip,
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,6 +22,7 @@ import {
   type SavedViewControlItem,
 } from "@/components/ui/saved-view-controls";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import type {
   KnowledgeAssetListQuery,
   KnowledgeAssetSummary,
@@ -93,7 +95,7 @@ export function KnowledgeLibrary({
 
   return (
     <section className="space-y-6">
-      <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
+      <Surface component="header" sx={{ px: { sm: 4, xs: 3 }, py: 3 }}>
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -116,12 +118,9 @@ export function KnowledgeLibrary({
 
           <div className="flex flex-col items-start gap-3 xl:items-end">
             {allowManageKnowledge ? (
-              <Link
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-                href="/knowledge/new"
-              >
+              <Button href="/knowledge/new">
                 Create knowledge asset
-              </Link>
+              </Button>
             ) : null}
             <p className="text-right text-sm text-muted">
               Library workspace:{" "}
@@ -162,13 +161,19 @@ export function KnowledgeLibrary({
         <div className="mt-6">
           <SavedViewControls items={assetViewItems} label="Asset views" />
         </div>
-      </header>
+      </Surface>
 
       {notice ? (
-        <Banner
+        <FeedbackBanner
           message={notice.message}
           title={notice.title}
-          tone={notice.tone}
+          tone={
+            notice.tone === "accent"
+              ? "success"
+              : notice.tone === "warning"
+                ? "warning"
+                : "danger"
+          }
         />
       ) : null}
 
@@ -201,7 +206,7 @@ export function KnowledgeLibrary({
         </aside>
 
         <section className="space-y-4">
-          <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6">
+          <Surface component="section" sx={{ px: { sm: 3, xs: 2.5 }, py: 2.5 }}>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
@@ -235,7 +240,7 @@ export function KnowledgeLibrary({
                 emptyLabel="No active filter chips beyond the selected asset view."
               />
             </div>
-          </section>
+          </Surface>
 
           <DataTable
             ariaLabel="Knowledge asset results"
@@ -281,12 +286,9 @@ export function KnowledgeLibrary({
             emptyState={
               <EmptyState
                 action={
-                  <Link
-                    className="inline-flex rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white"
-                    href={resetHref}
-                  >
+                  <Button density="compact" href={resetHref}>
                     Reset the library view
-                  </Link>
+                  </Button>
                 }
                 message="Create a reusable knowledge asset or clear the current filters to restore the full strategic library."
                 title="No knowledge assets match the current view"
@@ -307,12 +309,14 @@ export function KnowledgeLibrary({
                   text={selectedAsset.body}
                 />
                 {allowManageKnowledge ? (
-                  <Link
-                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-border-strong hover:bg-surface-muted"
+                  <Button
+                    density="compact"
                     href={`/knowledge/${selectedAsset.id}/edit`}
+                    tone="neutral"
+                    variant="outlined"
                   >
                     Edit asset
-                  </Link>
+                  </Button>
                 ) : null}
               </>
             }
@@ -326,9 +330,16 @@ export function KnowledgeLibrary({
             title={selectedAsset.title}
           >
             <PreviewSection title="Reusable content">
-              <div className="rounded-[20px] border border-border bg-surface-strong px-4 py-4 text-sm leading-7 whitespace-pre-wrap text-foreground">
+              <Surface
+                sx={{
+                  bgcolor: "rgba(18, 33, 40, 0.035)",
+                  borderRadius: 2.5,
+                  px: 2,
+                  py: 2,
+                }}
+              >
                 {selectedAsset.body}
-              </div>
+              </Surface>
             </PreviewSection>
 
             <PreviewSection title="Structured coverage">
@@ -366,20 +377,30 @@ export function KnowledgeLibrary({
                 <div className="space-y-3">
                   {selectedAsset.linkedOpportunities.map((opportunity) => (
                     <article
-                      className="rounded-[20px] border border-border bg-surface-strong px-4 py-4"
+                      className="px-4 py-4"
                       key={opportunity.id}
                     >
+                      <Surface
+                        sx={{
+                          bgcolor: "rgba(18, 33, 40, 0.035)",
+                          borderRadius: 2.5,
+                          px: 2,
+                          py: 2,
+                        }}
+                      >
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <Link
-                          className="font-medium text-foreground underline-offset-4 hover:underline"
+                        <Button
                           href={`/opportunities/${opportunity.id}`}
+                          tone="neutral"
+                          variant="text"
                         >
                           {opportunity.title}
-                        </Link>
+                        </Button>
                         <Badge tone="muted">
                           {opportunity.currentStageLabel}
                         </Badge>
                       </div>
+                      </Surface>
                     </article>
                   ))}
                 </div>
@@ -410,7 +431,7 @@ function KnowledgeFilterRail({
   viewState: KnowledgeLibraryViewState;
 }) {
   return (
-    <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+    <Surface component="section" sx={{ px: 2.5, py: 2.5 }}>
       <div className="space-y-2">
         <p className="text-muted text-xs tracking-[0.22em] uppercase">
           Filter rail
@@ -555,18 +576,18 @@ function KnowledgeFilterRail({
         </FormField>
 
         <div className="space-y-3">
-          <button
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-            type="submit"
-          >
+          <Button fullWidth type="submit">
             Apply filters
-          </button>
-          <Link
-            className="inline-flex min-h-10 w-full items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-border-strong hover:bg-surface-muted"
+          </Button>
+          <Button
+            density="compact"
+            fullWidth
             href={resetHref}
+            tone="neutral"
+            variant="outlined"
           >
             Clear all filters
-          </Link>
+          </Button>
         </div>
       </form>
 
@@ -612,7 +633,7 @@ function KnowledgeFilterRail({
           viewState={viewState}
         />
       </div>
-    </section>
+    </Surface>
   );
 }
 
@@ -650,22 +671,20 @@ function TaxonomyShortcutSection({
             const nextValue = activeValue === option.value ? null : option.value;
 
             return (
-              <Link
+              <Button
                 aria-current={activeValue === option.value ? "page" : undefined}
-                className={
-                  activeValue === option.value
-                    ? "inline-flex min-h-9 items-center rounded-[var(--radius-pill)] border border-accent bg-accent-soft px-3 py-2 text-sm font-medium text-foreground"
-                    : "inline-flex min-h-9 items-center rounded-[var(--radius-pill)] border border-border bg-surface-strong px-3 py-2 text-sm text-muted transition hover:border-border-strong hover:text-foreground"
-                }
+                density="compact"
                 href={buildKnowledgeLibraryHref(query, viewState, {
                   [field]: nextValue,
                   previewAssetId: null,
                 })}
                 key={option.value}
                 title={option.description ?? option.label}
+                tone="neutral"
+                variant={activeValue === option.value ? "soft" : "outlined"}
               >
                 {option.label}
-              </Link>
+              </Button>
             );
           })}
         </div>
@@ -773,19 +792,18 @@ function KnowledgeActionsCell({
           : "Updater unavailable"}
       </p>
       <div className="flex flex-wrap gap-2">
-        <Link
-          className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-          href={previewHref}
-        >
+        <Button density="compact" href={previewHref} variant="text">
           Preview asset
-        </Link>
+        </Button>
         {allowManageKnowledge ? (
-          <Link
-            className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
+          <Button
+            density="compact"
             href={`/knowledge/${asset.id}/edit`}
+            tone="neutral"
+            variant="text"
           >
             Edit
-          </Link>
+          </Button>
         ) : null}
       </div>
     </div>
@@ -869,32 +887,13 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <article className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-white px-4 py-4">
+    <Surface component="article" sx={{ borderRadius: 3, px: 2, py: 2 }}>
       <p className="text-muted text-xs tracking-[0.18em] uppercase">{label}</p>
       <p className="font-heading text-foreground mt-3 text-3xl font-semibold tracking-[-0.04em]">
         {value}
       </p>
       <p className="text-muted mt-2 text-xs leading-5">{supportingText}</p>
-    </article>
-  );
-}
-
-function Banner({
-  message,
-  title,
-  tone,
-}: {
-  message: string;
-  title: string;
-  tone: "accent" | "warning" | "danger";
-}) {
-  return (
-    <section className="border-border rounded-[28px] border bg-white px-6 py-5 shadow-[0_14px_34px_rgba(20,37,34,0.06)]">
-      <div className="flex flex-wrap gap-3">
-        <Badge tone={tone}>{title}</Badge>
-      </div>
-      <p className="text-muted mt-3 text-sm leading-6">{message}</p>
-    </section>
+    </Surface>
   );
 }
 
