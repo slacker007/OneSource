@@ -12,7 +12,7 @@ This document records the canonical verification workflows for the repo as of th
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
-The repo-level Vitest configuration now sets `testTimeout: 10_000`. Keep that as part of the canonical contract for the current MUI-heavy coverage suite; several routed render tests exceed the default 5-second timeout under compose coverage, and ad hoc per-run timeout overrides should no longer be needed.
+The repo-level Vitest configuration now sets `testTimeout: 10_000`. Keep that as part of the canonical contract for the current MUI-heavy coverage suite; several routed render and shared data-display tests exceed the default 5-second timeout under compose coverage, and ad hoc per-run timeout overrides should no longer be needed.
 
 Integration tests do not exist yet. When database-backed integration tests are added, the compose `test` service is the canonical place to run them because it joins the same network as PostgreSQL and receives the compose-managed `DATABASE_URL`.
 

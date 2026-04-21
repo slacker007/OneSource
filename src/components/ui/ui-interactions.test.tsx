@@ -137,7 +137,7 @@ describe("UI interaction primitives", () => {
     expect(screen.getByRole("row", { selected: true })).toHaveTextContent(
       /army cloud operations/i,
     );
-    expect(screen.getByText(/sorted ascending/i)).toHaveClass("sr-only");
+    expect(screen.getByText(/sorted ascending/i)).toBeInTheDocument();
     expect(screen.getByRole("row", { selected: true })).toHaveAttribute(
       "tabindex",
       "0",

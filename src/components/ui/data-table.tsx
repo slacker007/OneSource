@@ -1,5 +1,14 @@
+import Box from "@mui/material/Box";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 
+import { Surface } from "@/components/ui/surface";
 import { cn } from "@/lib/cn";
 
 export type DataTableDensity = "compact" | "comfortable";
@@ -41,84 +50,160 @@ export function DataTable<Row>({
   selectedRowId,
   stickyHeader = true,
 }: DataTableProps<Row>) {
-  const cellPaddingClass =
-    density === "compact" ? "px-4 py-2.5 text-[0.92rem]" : "px-4 py-3.5 text-sm";
+  const compact = density === "compact";
 
   return (
-    <div className={cn("ui-surface overflow-hidden", className)}>
-      <div className="overflow-x-auto">
-        <table aria-label={ariaLabel} className="min-w-full border-collapse">
-          {caption ? <caption className="sr-only">{caption}</caption> : null}
-          <thead className="bg-surface-muted">
-            <tr>
+    <Surface className={className} sx={{ overflow: "hidden" }}>
+      <TableContainer>
+        <Table
+          aria-label={ariaLabel}
+          size={compact ? "small" : "medium"}
+          stickyHeader={stickyHeader}
+          sx={{
+            minWidth: "100%",
+            tableLayout: "auto",
+            "& .MuiTableCell-root": {
+              borderBottomColor: "divider",
+              verticalAlign: "top",
+            },
+          }}
+        >
+          {caption ? (
+            <caption
+              style={{
+                border: 0,
+                clip: "rect(0 0 0 0)",
+                height: "1px",
+                margin: "-1px",
+                overflow: "hidden",
+                padding: 0,
+                position: "absolute",
+                whiteSpace: "nowrap",
+                width: "1px",
+              }}
+            >
+              {caption}
+            </caption>
+          ) : null}
+          <TableHead>
+            <TableRow>
               {columns.map((column) => (
-                <th
+                <TableCell
                   key={column.key}
                   className={cn(
-                    "px-4 py-3 text-left text-[0.68rem] font-semibold tracking-[0.18em] text-muted uppercase",
-                    stickyHeader &&
-                      "sticky top-0 z-10 bg-[color:color-mix(in_srgb,var(--surface-muted)_88%,white_12%)] backdrop-blur",
                     column.headerClassName,
                   )}
+                  component="th"
                   scope="col"
+                  sx={{
+                    backgroundColor: alpha("#122128", 0.035),
+                    fontSize: "0.68rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                    px: 2,
+                    py: 1.75,
+                    textTransform: "uppercase",
+                    ...(stickyHeader
+                      ? {
+                          backdropFilter: "blur(14px)",
+                          backgroundColor: alpha("#f7f4ec", 0.92),
+                        }
+                      : {}),
+                  }}
                 >
-                  <div className="flex items-center gap-2">
+                  <Box sx={{ alignItems: "center", display: "flex", gap: 1 }}>
                     <span>{column.header}</span>
                     {column.sortDirection ? (
-                      <span
+                      <Box
                         aria-hidden="true"
-                        className="text-[0.78rem] text-foreground"
+                        component="span"
+                        sx={{ color: "text.primary", fontSize: "0.78rem" }}
                       >
                         {column.sortDirection === "asc" ? "↑" : "↓"}
-                      </span>
+                      </Box>
                     ) : null}
                     {column.sortDirection ? (
-                      <span className="sr-only">
+                      <Box
+                        component="span"
+                        sx={{
+                          border: 0,
+                          clip: "rect(0 0 0 0)",
+                          height: "1px",
+                          margin: "-1px",
+                          overflow: "hidden",
+                          padding: 0,
+                          position: "absolute",
+                          whiteSpace: "nowrap",
+                          width: "1px",
+                        }}
+                      >
                         Sorted {column.sortDirection === "asc" ? "ascending" : "descending"}
-                      </span>
+                      </Box>
                     ) : null}
-                  </div>
-                </th>
+                  </Box>
+                </TableCell>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {rows.length > 0 ? (
               rows.map((row) => (
-                <tr
+                <TableRow
                   key={getRowKey(row)}
                   aria-selected={selectedRowId === getRowKey(row)}
-                  tabIndex={0}
+                  hover
+                  selected={selectedRowId === getRowKey(row)}
                   className={cn(
-                    "border-border border-t align-top transition-colors hover:bg-[color:color-mix(in_srgb,var(--surface-muted)_68%,white_32%)] focus-visible:bg-[color:color-mix(in_srgb,var(--accent-soft)_55%,white_45%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35 focus-visible:ring-inset",
-                    selectedRowId === getRowKey(row) &&
-                      "bg-[color:color-mix(in_srgb,var(--accent-soft)_55%,white_45%)]",
                     getRowClassName?.(row),
                   )}
+                  tabIndex={0}
+                  sx={{
+                    transition: "background-color 160ms ease",
+                    "&.Mui-selected": {
+                      backgroundColor: alpha("#1e5d66", 0.1),
+                    },
+                    "&.Mui-selected:hover": {
+                      backgroundColor: alpha("#1e5d66", 0.14),
+                    },
+                    "&:focus-visible": {
+                      backgroundColor: alpha("#1e5d66", 0.12),
+                      outline: `2px solid ${alpha("#1e5d66", 0.32)}`,
+                      outlineOffset: "-2px",
+                    },
+                    "&:hover": {
+                      backgroundColor: alpha("#122128", 0.035),
+                    },
+                  }}
                 >
                   {columns.map((column) => (
-                    <td
+                    <TableCell
                       key={column.key}
                       className={cn(
-                        cellPaddingClass + " leading-6 text-foreground",
+                        "text-foreground",
                         column.className,
                       )}
+                      sx={{
+                        fontSize: compact ? "0.92rem" : "0.95rem",
+                        lineHeight: 1.65,
+                        px: 2,
+                        py: compact ? 1.5 : 2.25,
+                      }}
                     >
                       {column.cell(row)}
-                    </td>
+                    </TableCell>
                   ))}
-                </tr>
+                </TableRow>
               ))
             ) : (
-              <tr className="border-border border-t">
-                <td className="p-4" colSpan={columns.length}>
+              <TableRow>
+                <TableCell colSpan={columns.length} sx={{ p: 2 }}>
                   {emptyState}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Surface>
   );
 }

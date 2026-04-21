@@ -1,5 +1,10 @@
+import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import type { ReactNode } from "react";
 
+import { Surface } from "@/components/ui/surface";
 import { cn } from "@/lib/cn";
 
 export type PreviewPanelMetadataItem = {
@@ -25,42 +30,85 @@ export function PreviewPanel({
   title: ReactNode;
 }) {
   return (
-    <aside
+    <Surface
       className={cn(
-        "ui-surface flex h-full flex-col gap-5 px-5 py-5 sm:px-6",
+        "h-full",
         className,
       )}
+      component="aside"
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 2.5,
+        px: { sm: 3, xs: 2.5 },
+        py: 2.5,
+      }}
     >
-      <div className="space-y-3">
+      <Stack spacing={1.5}>
         {eyebrow ? (
-          <p className="text-muted text-xs tracking-[0.2em] uppercase">{eyebrow}</p>
+          <Typography
+            color="text.secondary"
+            sx={{ letterSpacing: "0.2em" }}
+            variant="overline"
+          >
+            {eyebrow}
+          </Typography>
         ) : null}
-        <div className="space-y-2">
-          <h2 className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]">
+        <Stack spacing={1}>
+          <Typography component="h2" variant="h2">
             {title}
-          </h2>
+          </Typography>
           {description ? (
-            <div className="text-muted text-sm leading-6">{description}</div>
+            <Box color="text.secondary" sx={{ fontSize: "0.95rem", lineHeight: 1.75 }}>
+              {description}
+            </Box>
           ) : null}
-        </div>
-      </div>
+        </Stack>
+      </Stack>
 
       {metadata.length > 0 ? (
-        <dl className="grid gap-3 border-border border-y py-4 sm:grid-cols-2">
+        <Box>
+          <Divider />
+          <Box
+            component="dl"
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: { sm: "repeat(2, minmax(0, 1fr))", xs: "1fr" },
+              py: 2.25,
+            }}
+          >
           {metadata.map((item) => (
-            <div key={item.label}>
-              <dt className="text-muted text-[0.68rem] font-semibold tracking-[0.18em] uppercase">
+            <Box key={item.label}>
+              <Typography
+                color="text.secondary"
+                component="dt"
+                sx={{ letterSpacing: "0.18em" }}
+                variant="overline"
+              >
                 {item.label}
-              </dt>
-              <dd className="mt-1 text-sm leading-6 text-foreground">{item.value}</dd>
-            </div>
+              </Typography>
+              <Box
+                color="text.primary"
+                component="dd"
+                sx={{ mt: 0.75, fontSize: "0.95rem", lineHeight: 1.7, ml: 0 }}
+              >
+                {item.value}
+              </Box>
+            </Box>
           ))}
-        </dl>
+          </Box>
+          <Divider />
+        </Box>
       ) : null}
 
-      {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+      {actions ? (
+        <Stack direction="row" sx={{ columnGap: 1.5, flexWrap: "wrap", rowGap: 1.5 }}>
+          {actions}
+        </Stack>
+      ) : null}
 
-      {children ? <div className="space-y-4 text-sm">{children}</div> : null}
-    </aside>
+      {children ? <Stack spacing={2}>{children}</Stack> : null}
+    </Surface>
   );
 }
