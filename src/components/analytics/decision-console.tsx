@@ -1,12 +1,21 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Typography from "@mui/material/Typography";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import type {
   BidDecisionOutcome,
   DecisionConsoleItem,
@@ -58,7 +67,10 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
 
   return (
     <section className="space-y-6">
-      <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
+      <Surface
+        component="header"
+        sx={{ px: { sm: 4, xs: 3 }, py: 3 }}
+      >
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -81,7 +93,15 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-border bg-surface-muted px-5 py-4 text-sm">
+          <Surface
+            sx={{
+              bgcolor: "rgba(18, 33, 40, 0.035)",
+              borderRadius: 3,
+              px: 2.5,
+              py: 2,
+            }}
+            tone="muted"
+          >
             <p className="text-muted text-xs tracking-[0.2em] uppercase">
               Current ranking scope
             </p>
@@ -92,7 +112,7 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
               {snapshot.comparedOpportunityCount} opportunities in the current
               comparison set
             </p>
-          </div>
+          </Surface>
         </div>
 
         <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -123,7 +143,16 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
           />
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-border bg-surface-muted px-5 py-5">
+        <Surface
+          sx={{
+            bgcolor: "rgba(18, 33, 40, 0.035)",
+            borderRadius: 3,
+            mt: 3,
+            px: 2.5,
+            py: 2.5,
+          }}
+          tone="muted"
+        >
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="space-y-2">
               <p className="text-muted text-xs tracking-[0.22em] uppercase">
@@ -175,17 +204,17 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
               </FormField>
 
               <div className="flex items-end">
-                <button
-                  className="inline-flex min-h-12 w-full items-center justify-center rounded-[var(--radius-pill)] bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white transition hover:bg-[rgb(16,66,57)]"
+                <Button
+                  className="w-full"
                   type="submit"
                 >
                   Apply ranking
-                </button>
+                </Button>
               </div>
             </form>
           </div>
-        </div>
-      </header>
+        </Surface>
+      </Surface>
 
       <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.18fr)_minmax(22rem,0.82fr)]">
         <section className="space-y-4">
@@ -320,7 +349,10 @@ function AnalyticsSection({
   title: string;
 }) {
   return (
-    <section className="border-border bg-surface rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6">
+    <Surface
+      component="section"
+      sx={{ px: { sm: 3, xs: 2.5 }, py: 2.5 }}
+    >
       <div className="space-y-2">
         <p className="text-muted text-xs tracking-[0.22em] uppercase">
           {eyebrow}
@@ -332,7 +364,7 @@ function AnalyticsSection({
       </div>
 
       <div className="mt-5">{children}</div>
-    </section>
+    </Surface>
   );
 }
 
@@ -346,11 +378,19 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <div className="border-border bg-surface-muted rounded-[22px] border px-5 py-4">
+    <Surface
+      sx={{
+        bgcolor: "rgba(18, 33, 40, 0.035)",
+        borderRadius: 2.75,
+        px: 2.5,
+        py: 2,
+      }}
+      tone="muted"
+    >
       <p className="text-muted text-xs tracking-[0.2em] uppercase">{label}</p>
       <p className="text-foreground mt-3 text-3xl font-semibold">{value}</p>
       <p className="text-muted mt-2 text-sm leading-6">{supportingText}</p>
-    </div>
+    </Surface>
   );
 }
 
@@ -573,13 +613,21 @@ function DecisionMetric({
   value: string;
 }) {
   return (
-    <div className="border-border bg-surface-muted rounded-[20px] border px-4 py-4">
+    <Surface
+      sx={{
+        bgcolor: "rgba(18, 33, 40, 0.035)",
+        borderRadius: 2.5,
+        px: 2,
+        py: 2,
+      }}
+      tone="muted"
+    >
       <p className="text-muted text-[0.68rem] tracking-[0.18em] uppercase">
         {label}
       </p>
       <p className="text-foreground mt-3 text-2xl font-semibold">{value}</p>
       <p className="text-muted mt-2 text-sm leading-6">{supportingText}</p>
-    </div>
+    </Surface>
   );
 }
 
@@ -593,7 +641,15 @@ function OpportunityWatchlist({
   title: string;
 }) {
   return (
-    <div className="space-y-3 rounded-[22px] border border-border bg-surface-muted px-4 py-4">
+    <Surface
+      sx={{
+        bgcolor: "rgba(18, 33, 40, 0.035)",
+        borderRadius: 2.75,
+        px: 2,
+        py: 2,
+      }}
+      tone="muted"
+    >
       <div className="space-y-1">
         <p className="text-muted text-[0.68rem] tracking-[0.18em] uppercase">
           {title}
@@ -604,7 +660,7 @@ function OpportunityWatchlist({
       </div>
 
       <OpportunityLinkList emptyLabel={emptyLabel} items={items} />
-    </div>
+    </Surface>
   );
 }
 
@@ -693,40 +749,53 @@ function ComparisonTable({
   rows: ReactNode[][];
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table
-        aria-label={ariaLabel}
-        className="min-w-full border-collapse text-left text-sm"
-      >
-        <thead>
-          <tr className="border-b border-border">
+    <TableContainer>
+      <Table aria-label={ariaLabel} size="small" sx={{ minWidth: "100%" }}>
+        <TableHead>
+          <TableRow>
             {headers.map((header) => (
-              <th
-                className="px-0 py-3 pr-4 text-[0.72rem] font-medium tracking-[0.18em] text-muted uppercase"
+              <TableCell
                 key={header}
                 scope="col"
+                sx={{
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  letterSpacing: "0.18em",
+                  pl: 0,
+                  pr: 2,
+                  py: 1.5,
+                  textTransform: "uppercase",
+                }}
               >
-                {header}
-              </th>
+                <Typography color="text.secondary" variant="inherit">
+                  {header}
+                </Typography>
+              </TableCell>
             ))}
-          </tr>
-        </thead>
-        <tbody>
+          </TableRow>
+        </TableHead>
+        <TableBody>
           {rows.map((row, rowIndex) => (
-            <tr
-              className={rowIndex === rows.length - 1 ? "" : "border-b border-border"}
-              key={rowIndex}
-            >
+            <TableRow key={rowIndex}>
               {row.map((cell, cellIndex) => (
-                <td className="px-0 py-4 pr-4 align-top" key={cellIndex}>
+                <TableCell
+                  key={cellIndex}
+                  sx={{
+                    borderBottomStyle: rowIndex === rows.length - 1 ? "none" : "solid",
+                    pl: 0,
+                    pr: 2,
+                    py: 2,
+                    verticalAlign: "top",
+                  }}
+                >
                   {cell}
-                </td>
+                </TableCell>
               ))}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 }
 

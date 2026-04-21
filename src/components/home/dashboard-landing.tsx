@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { Surface } from "@/components/ui/surface";
 import type {
   DashboardAttentionItem,
   DashboardDeadlineSummary,
@@ -31,7 +33,16 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
   return (
     <section className="space-y-6">
       <div className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
-        <article className="border-border overflow-hidden rounded-[30px] border bg-[linear-gradient(135deg,rgba(16,58,53,1),rgba(21,74,66,0.96),rgba(244,250,247,0.72))] p-6 text-white shadow-[0_22px_60px_rgba(16,58,53,0.26)]">
+        <Surface
+          component="article"
+          sx={{
+            background:
+              "linear-gradient(135deg, rgba(16,58,53,1), rgba(21,74,66,0.96), rgba(244,250,247,0.72))",
+            color: "#ffffff",
+            overflow: "hidden",
+            p: 3,
+          }}
+        >
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-4">
@@ -122,9 +133,16 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
               />
             )}
           </div>
-        </article>
+        </Surface>
 
-        <article className="border-border rounded-[30px] border bg-[linear-gradient(180deg,rgba(255,250,241,0.98),rgba(245,238,224,0.94))] p-6 shadow-[0_18px_48px_rgba(67,49,33,0.12)]">
+        <Surface
+          component="article"
+          sx={{
+            background:
+              "linear-gradient(180deg, rgba(255,250,241,0.98), rgba(245,238,224,0.94))",
+            p: 3,
+          }}
+        >
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <p className="text-xs tracking-[0.22em] text-[#8b6e56] uppercase">
@@ -162,11 +180,11 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
               title="No ranked opportunities"
             />
           )}
-        </article>
+        </Surface>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.02fr_0.98fr]">
-        <article className="border-border rounded-[30px] border bg-[#f6efe4] p-6 shadow-[0_18px_48px_rgba(67,49,33,0.1)]">
+        <Surface component="article" sx={{ backgroundColor: "#f6efe4", p: 3 }}>
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <p className="text-xs tracking-[0.22em] text-[#8b6e56] uppercase">
@@ -200,9 +218,9 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
               title="No near-term deadlines"
             />
           )}
-        </article>
+        </Surface>
 
-        <article className="border-border rounded-[30px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+        <Surface component="article" sx={{ p: 3 }}>
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <p className="text-muted text-xs tracking-[0.22em] uppercase">
@@ -263,11 +281,18 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
               title="No execution load yet"
             />
           )}
-        </article>
+        </Surface>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <article className="border-border rounded-[30px] border bg-[linear-gradient(180deg,rgba(244,250,247,1),rgba(232,244,239,0.96))] p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+        <Surface
+          component="article"
+          sx={{
+            background:
+              "linear-gradient(180deg, rgba(244,250,247,1), rgba(232,244,239,0.96))",
+            p: 3,
+          }}
+        >
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <p className="text-muted text-xs tracking-[0.22em] uppercase">
@@ -358,9 +383,16 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
               )}
             </div>
           </div>
-        </article>
+        </Surface>
 
-        <article className="border-border rounded-[30px] border bg-[linear-gradient(180deg,rgba(251,252,255,1),rgba(239,244,255,0.92))] p-6 shadow-[0_16px_40px_rgba(18,52,88,0.08)]">
+        <Surface
+          component="article"
+          sx={{
+            background:
+              "linear-gradient(180deg, rgba(251,252,255,1), rgba(239,244,255,0.92))",
+            p: 3,
+          }}
+        >
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <p className="text-[0.7rem] tracking-[0.22em] text-[#5d7395] uppercase">
@@ -395,7 +427,7 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
               title="No recent source activity"
             />
           )}
-        </article>
+        </Surface>
       </div>
     </section>
   );
@@ -411,16 +443,13 @@ function ActionLink({
   tone: "primary" | "secondary";
 }) {
   return (
-    <Link
-      className={
-        tone === "primary"
-          ? "inline-flex min-h-11 items-center justify-center rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-[rgb(16,58,53)] transition hover:bg-[rgba(255,255,255,0.92)]"
-          : "text-foreground inline-flex min-h-11 items-center justify-center rounded-full border border-[rgba(15,28,31,0.12)] bg-white/82 px-4 py-2.5 text-sm font-semibold transition hover:bg-white"
-      }
+    <Button
       href={href}
+      tone="neutral"
+      variant={tone === "primary" ? "solid" : "outlined"}
     >
       {label}
-    </Link>
+    </Button>
   );
 }
 
@@ -434,7 +463,16 @@ function DashboardKpiCard({
   value: string;
 }) {
   return (
-    <article className="rounded-[22px] border border-white/12 bg-white/8 px-4 py-4 shadow-[0_12px_32px_rgba(7,22,20,0.12)] backdrop-blur">
+    <Surface
+      component="article"
+      sx={{
+        backgroundColor: "rgba(255,255,255,0.08)",
+        borderColor: "rgba(255,255,255,0.12)",
+        boxShadow: "0 12px 32px rgba(7, 22, 20, 0.12)",
+        px: 2,
+        py: 2,
+      }}
+    >
       <p className="text-xs tracking-[0.2em] text-white/68 uppercase">
         {label}
       </p>
@@ -442,13 +480,20 @@ function DashboardKpiCard({
         {value}
       </p>
       <p className="mt-2 text-sm leading-6 text-white/72">{detail}</p>
-    </article>
+    </Surface>
   );
 }
 
 function AttentionQueueCard({ item }: { item: DashboardAttentionItem }) {
   return (
-    <div className="rounded-[24px] border border-white/12 bg-white/7 p-5 shadow-[0_12px_28px_rgba(7,22,20,0.1)]">
+    <Surface
+      sx={{
+        backgroundColor: "rgba(255,255,255,0.07)",
+        borderColor: "rgba(255,255,255,0.12)",
+        boxShadow: "0 12px 28px rgba(7, 22, 20, 0.1)",
+        p: 2.5,
+      }}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <p className="text-xs tracking-[0.18em] text-white/66 uppercase">
@@ -480,7 +525,7 @@ function AttentionQueueCard({ item }: { item: DashboardAttentionItem }) {
           Open workspace for {item.opportunityTitle}
         </Link>
       </div>
-    </div>
+    </Surface>
   );
 }
 
@@ -500,7 +545,13 @@ function TopOpportunityCard({
     "Pending";
 
   return (
-    <div className="rounded-[24px] border border-[rgba(67,49,33,0.08)] bg-white/82 p-5">
+    <Surface
+      sx={{
+        backgroundColor: "rgba(255,255,255,0.82)",
+        borderColor: "rgba(67,49,33,0.08)",
+        p: 2.5,
+      }}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <p className="text-xs tracking-[0.18em] text-[#8b6e56] uppercase">
@@ -549,27 +600,45 @@ function TopOpportunityCard({
           Open workspace for {opportunity.title}
         </Link>
       </div>
-    </div>
+    </Surface>
   );
 }
 
 function OpportunitySignal({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[18px] border border-[rgba(67,49,33,0.08)] bg-[rgba(255,255,255,0.72)] px-4 py-3">
+    <Surface
+      sx={{
+        backgroundColor: "rgba(255,255,255,0.72)",
+        borderColor: "rgba(67,49,33,0.08)",
+        borderRadius: 2.25,
+        px: 2,
+        py: 1.5,
+      }}
+    >
       <p className="text-muted text-[0.68rem] tracking-[0.18em] uppercase">
         {label}
       </p>
       <p className="text-foreground mt-2 text-sm font-semibold">{value}</p>
-    </div>
+    </Surface>
   );
 }
 
 function DeadlineCard({ deadline }: { deadline: DashboardDeadlineSummary }) {
   return (
-    <Link
-      className="rounded-[24px] border border-[rgba(67,49,33,0.08)] bg-white/78 px-5 py-4 transition hover:bg-white"
-      href={`/opportunities/${deadline.opportunityId}`}
-    >
+    <Link href={`/opportunities/${deadline.opportunityId}`}>
+      <Surface
+        sx={{
+          backgroundColor: "rgba(255,255,255,0.78)",
+          borderColor: "rgba(67,49,33,0.08)",
+          display: "block",
+          px: 2.5,
+          py: 2,
+          transition: "background-color 160ms ease",
+          "&:hover": {
+            backgroundColor: "#ffffff",
+          },
+        }}
+      >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
           <p className="text-muted text-xs tracking-[0.18em] uppercase">
@@ -590,6 +659,7 @@ function DeadlineCard({ deadline }: { deadline: DashboardDeadlineSummary }) {
             : "Response deadline"}
         </Badge>
       </div>
+      </Surface>
     </Link>
   );
 }
@@ -604,7 +674,14 @@ function TaskBurdenStat({
   value: string;
 }) {
   return (
-    <div className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-[rgba(244,250,247,0.72)] px-4 py-4">
+    <Surface
+      sx={{
+        backgroundColor: "rgba(244,250,247,0.72)",
+        borderColor: "rgba(15,28,31,0.08)",
+        px: 2,
+        py: 2,
+      }}
+    >
       <p className="text-muted text-[0.68rem] tracking-[0.18em] uppercase">
         {label}
       </p>
@@ -612,7 +689,7 @@ function TaskBurdenStat({
         {value}
       </p>
       <p className="text-muted mt-2 text-sm leading-6">{supportingText}</p>
-    </div>
+    </Surface>
   );
 }
 
@@ -622,7 +699,14 @@ function TaskBurdenOpportunityCard({
   item: DashboardTaskBurdenOpportunity;
 }) {
   return (
-    <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(248,250,252,0.96)] px-5 py-4">
+    <Surface
+      sx={{
+        backgroundColor: "rgba(248,250,252,0.96)",
+        borderColor: "rgba(15,28,31,0.08)",
+        px: 2.5,
+        py: 2,
+      }}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <p className="text-muted text-xs tracking-[0.18em] uppercase">
@@ -651,7 +735,7 @@ function TaskBurdenOpportunityCard({
           Open workspace for {item.opportunityTitle}
         </Link>
       </div>
-    </div>
+    </Surface>
   );
 }
 
@@ -661,7 +745,14 @@ function ConversionRateRow({
   summary: PipelineConversionSummary;
 }) {
   return (
-    <div className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-white/80 px-4 py-4">
+    <Surface
+      sx={{
+        backgroundColor: "rgba(255,255,255,0.8)",
+        borderColor: "rgba(15,28,31,0.08)",
+        px: 2,
+        py: 2,
+      }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-muted text-xs tracking-[0.18em] uppercase">
@@ -675,13 +766,20 @@ function ConversionRateRow({
           {summary.numerator}/{summary.denominator}
         </Badge>
       </div>
-    </div>
+    </Surface>
   );
 }
 
 function StageAgingCard({ summary }: { summary: PipelineStageAgingSummary }) {
   return (
-    <div className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,255,255,0.82)] px-5 py-4">
+    <Surface
+      sx={{
+        backgroundColor: "rgba(255,255,255,0.82)",
+        borderColor: "rgba(15,28,31,0.08)",
+        px: 2.5,
+        py: 2,
+      }}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-muted text-xs tracking-[0.18em] uppercase">
@@ -701,7 +799,7 @@ function StageAgingCard({ summary }: { summary: PipelineStageAgingSummary }) {
         Oldest current stage: {formatDayCount(summary.oldestAgeDays)} on{" "}
         {summary.oldestOpportunityTitle}
       </p>
-    </div>
+    </Surface>
   );
 }
 
@@ -711,10 +809,20 @@ function SourceActivityCard({
   activity: DashboardSourceActivitySummary;
 }) {
   return (
-    <Link
-      className="block rounded-[24px] border border-[rgba(18,52,88,0.08)] bg-white/82 px-5 py-4 transition hover:bg-white"
-      href={`/opportunities?source=${encodeURIComponent(activity.sourceSystem)}`}
-    >
+    <Link href={`/opportunities?source=${encodeURIComponent(activity.sourceSystem)}`}>
+      <Surface
+        sx={{
+          backgroundColor: "rgba(255,255,255,0.82)",
+          borderColor: "rgba(18,52,88,0.08)",
+          display: "block",
+          px: 2.5,
+          py: 2,
+          transition: "background-color 160ms ease",
+          "&:hover": {
+            backgroundColor: "#ffffff",
+          },
+        }}
+      >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <p className="text-[0.68rem] tracking-[0.18em] text-[#5d7395] uppercase">
@@ -738,6 +846,7 @@ function SourceActivityCard({
         <span>{activity.recordsImported} imported</span>
         <span>{activity.recordsFailed} failed</span>
       </div>
+      </Surface>
     </Link>
   );
 }
