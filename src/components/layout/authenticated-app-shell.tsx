@@ -1,5 +1,11 @@
 "use client";
 
+import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
+import OutlinedInput from "@mui/material/OutlinedInput";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { alpha } from "@mui/material/styles";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -16,8 +22,10 @@ import {
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Drawer } from "@/components/ui/drawer";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Surface } from "@/components/ui/surface";
 import { hasAppPermission } from "@/lib/auth/permissions";
-import { cn } from "@/lib/cn";
 import type {
   AppShellCommandCategory,
   AppShellCommandItem,
@@ -32,6 +40,13 @@ const SHELL_RECENT_DESTINATIONS_STORAGE_KEY =
   "onesource.shell.recent-destinations";
 const SHELL_PINNED_ITEM_LIMIT = 6;
 const SHELL_RECENT_DESTINATION_LIMIT = 4;
+const SHELL_DARK_SURFACE_BG = "rgba(15,28,31,0.98)";
+const SHELL_PANEL_BG = "rgba(255,255,255,0.05)";
+const SHELL_PANEL_BORDER = "rgba(255,255,255,0.08)";
+const SHELL_TEXT_PRIMARY = "#f5f5f4";
+const SHELL_TEXT_SECONDARY = "rgba(245,245,244,0.78)";
+const SHELL_TEXT_MUTED = "rgba(214,211,209,0.72)";
+const SHELL_TEXT_FAINT = "rgba(168,162,158,0.74)";
 
 type NavItem = {
   description: string;
@@ -473,53 +488,136 @@ export function AppShellFrame({
   }
 
   const desktopShell = (
-    <aside
-      className={cn(
-        "border-border hidden shrink-0 border-r bg-[rgba(15,28,31,0.98)] py-6 text-stone-100 lg:flex lg:flex-col lg:justify-between",
-        isRailCollapsed ? "w-64 px-4" : "w-[21rem] px-6",
-      )}
+    <Box
+      component="aside"
+      sx={{
+        bgcolor: SHELL_DARK_SURFACE_BG,
+        borderRight: `1px solid ${SHELL_PANEL_BORDER}`,
+        color: SHELL_TEXT_PRIMARY,
+        display: {
+          xs: "none",
+          lg: "flex",
+        },
+        flexDirection: "column",
+        flexShrink: 0,
+        justifyContent: "space-between",
+        px: isRailCollapsed ? 2 : 3,
+        py: 3,
+        width: isRailCollapsed ? 256 : 336,
+      }}
     >
-      <div className="space-y-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-stone-200">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#dca167]" />
-              OneSource
-            </div>
+      <Stack spacing={2.5}>
+        <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between" }}>
+          <Stack spacing={1.5}>
+            <Box
+              sx={{
+                alignItems: "center",
+                bgcolor: SHELL_PANEL_BG,
+                border: `1px solid ${SHELL_PANEL_BORDER}`,
+                borderRadius: 999,
+                color: SHELL_TEXT_SECONDARY,
+                display: "inline-flex",
+                gap: 1.5,
+                px: 2,
+                py: 1,
+                width: "fit-content",
+              }}
+            >
+              <Box
+                sx={{
+                  bgcolor: "#dca167",
+                  borderRadius: "999px",
+                  height: 10,
+                  width: 10,
+                }}
+              />
+              <Typography sx={{ fontSize: "0.92rem", fontWeight: 500 }}>
+                OneSource
+              </Typography>
+            </Box>
             {!isRailCollapsed ? (
-              <div className="space-y-2">
-                <p className="font-heading text-3xl leading-tight font-semibold">
+              <Stack spacing={1}>
+                <Typography
+                  sx={{
+                    color: SHELL_TEXT_PRIMARY,
+                    fontFamily: "var(--font-heading), sans-serif",
+                    fontSize: "1.95rem",
+                    fontWeight: 600,
+                    lineHeight: 1.12,
+                  }}
+                >
                   Capture command, discovery, and execution in one rail.
-                </p>
-                <p className="text-sm leading-6 text-stone-300">
+                </Typography>
+                <Typography
+                  sx={{
+                    color: SHELL_TEXT_SECONDARY,
+                    fontSize: "0.9rem",
+                    lineHeight: 1.7,
+                  }}
+                >
                   Grouped navigation now feeds a command center with pinned work,
                   recent context, and alert review instead of leaving the shell as
                   a passive frame.
-                </p>
-              </div>
+                </Typography>
+              </Stack>
             ) : null}
-          </div>
-          <button
+          </Stack>
+          <Button
             aria-label={
               isRailCollapsed
                 ? "Expand navigation rail"
                 : "Collapse navigation rail"
             }
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium tracking-[0.18em] uppercase text-stone-200 transition hover:bg-white/10"
+            density="compact"
             onClick={() => updateCollapsedRailPreference(!isRailCollapsed)}
+            sx={{
+              alignSelf: "flex-start",
+              borderColor: SHELL_PANEL_BORDER,
+              color: SHELL_TEXT_PRIMARY,
+              whiteSpace: "nowrap",
+              "&:hover": {
+                bgcolor: alpha("#ffffff", 0.08),
+                borderColor: alpha("#ffffff", 0.2),
+              },
+            }}
+            tone="neutral"
             type="button"
+            variant="outlined"
           >
             {isRailCollapsed ? "Expand" : "Collapse"}
-          </button>
-        </div>
+          </Button>
+        </Stack>
 
-        <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-          <p className="text-sm font-medium text-white">{displayName}</p>
-          <p className="mt-1 text-sm text-stone-300">{sessionUser.email}</p>
-          <p className="mt-3 text-xs tracking-[0.18em] text-stone-400 uppercase">
+        <Surface
+          sx={{
+            bgcolor: SHELL_PANEL_BG,
+            borderColor: SHELL_PANEL_BORDER,
+            boxShadow: "none",
+            color: SHELL_TEXT_PRIMARY,
+            p: 2.25,
+          }}
+        >
+          <Typography sx={{ color: "inherit", fontSize: "0.96rem", fontWeight: 600 }}>
+            {displayName}
+          </Typography>
+          <Typography
+            sx={{ color: SHELL_TEXT_SECONDARY, fontSize: "0.88rem", mt: 0.75 }}
+          >
+            {sessionUser.email}
+          </Typography>
+          <Typography
+            sx={{
+              color: SHELL_TEXT_FAINT,
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              mt: 1.5,
+              textTransform: "uppercase",
+            }}
+          >
             {roleSummary}
-          </p>
-        </div>
+          </Typography>
+        </Surface>
 
         <NavigationMenu
           collapsed={isRailCollapsed}
@@ -548,26 +646,62 @@ export function AppShellFrame({
           items={visibleRecentItems}
           onRememberItem={rememberRecentItem}
         />
-      </div>
+      </Stack>
 
-      <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-        <p className="text-xs tracking-[0.24em] text-stone-400 uppercase">
+      <Surface
+        sx={{
+          bgcolor: SHELL_PANEL_BG,
+          borderColor: SHELL_PANEL_BORDER,
+          boxShadow: "none",
+          color: SHELL_TEXT_PRIMARY,
+          mt: 3,
+          p: 2.25,
+        }}
+      >
+        <Typography
+          sx={{
+            color: SHELL_TEXT_FAINT,
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            letterSpacing: "0.24em",
+            textTransform: "uppercase",
+          }}
+        >
           Current focus
-        </p>
-        <p className="font-heading mt-3 text-2xl font-semibold text-white">
+        </Typography>
+        <Typography
+          sx={{
+            color: "inherit",
+            fontFamily: "var(--font-heading), sans-serif",
+            fontSize: "1.6rem",
+            fontWeight: 600,
+            mt: 1.75,
+          }}
+        >
           {activeDestination.label}
-        </p>
+        </Typography>
         {!isRailCollapsed ? (
-          <p className="mt-3 text-sm leading-6 text-stone-300">
+          <Typography
+            sx={{ color: SHELL_TEXT_SECONDARY, fontSize: "0.92rem", lineHeight: 1.7, mt: 1.5 }}
+          >
             {activeDestination.description}
-          </p>
+          </Typography>
         ) : null}
-      </div>
-    </aside>
+      </Surface>
+    </Box>
   );
 
   return (
-    <div className="relative flex min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(32,95,85,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(168,93,42,0.1),transparent_24%)]">
+    <Box
+      sx={{
+        background:
+          "radial-gradient(circle at top left, rgba(32,95,85,0.12), transparent 28%), radial-gradient(circle at bottom right, rgba(168,93,42,0.1), transparent 24%)",
+        display: "flex",
+        minHeight: "100vh",
+        overflowX: "hidden",
+        position: "relative",
+      }}
+    >
       <Drawer
         description="Responsive grouped navigation now keeps quick links, pinned work, and recent work in the mobile shell instead of scattering them across individual routes."
         eyebrow="OneSource"
@@ -575,13 +709,37 @@ export function AppShellFrame({
         open={isMobileNavOpen}
         title="OneSource workspace"
       >
-        <div className="mt-6 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-          <p className="text-sm font-medium text-white">{displayName}</p>
-          <p className="mt-1 text-sm text-stone-300">{sessionUser.email}</p>
-          <p className="mt-3 text-xs tracking-[0.18em] text-stone-400 uppercase">
+        <Surface
+          sx={{
+            bgcolor: SHELL_PANEL_BG,
+            borderColor: SHELL_PANEL_BORDER,
+            boxShadow: "none",
+            color: SHELL_TEXT_PRIMARY,
+            mt: 2.5,
+            p: 2.25,
+          }}
+        >
+          <Typography sx={{ color: "inherit", fontSize: "0.96rem", fontWeight: 600 }}>
+            {displayName}
+          </Typography>
+          <Typography
+            sx={{ color: SHELL_TEXT_SECONDARY, fontSize: "0.88rem", mt: 0.75 }}
+          >
+            {sessionUser.email}
+          </Typography>
+          <Typography
+            sx={{
+              color: SHELL_TEXT_FAINT,
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              mt: 1.5,
+              textTransform: "uppercase",
+            }}
+          >
             {roleSummary}
-          </p>
-        </div>
+          </Typography>
+        </Surface>
 
         <NavigationMenu
           currentPath={currentPath}
@@ -617,19 +775,42 @@ export function AppShellFrame({
       <Dialog
         description="Use the keyboard or the result list to jump to core views, quick-create flows, active pursuits, assigned tasks, saved searches, or recent knowledge."
         footer={
-          <div className="flex flex-col gap-2 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-            <p>Use ↑ and ↓ to move, then press Enter to open the selected result.</p>
-            <p>{flatCommandItems.length} items available in the shell command center.</p>
-          </div>
+          <Stack
+            direction={{ sm: "row", xs: "column" }}
+            spacing={1}
+            sx={{ justifyContent: "space-between" }}
+          >
+            <Typography sx={{ color: "text.secondary", fontSize: "0.92rem" }}>
+              Use ↑ and ↓ to move, then press Enter to open the selected result.
+            </Typography>
+            <Typography sx={{ color: "text.secondary", fontSize: "0.92rem" }}>
+              {flatCommandItems.length} items available in the shell command center.
+            </Typography>
+          </Stack>
         }
         onClose={closeCommandSurface}
         open={isCommandOpen}
         title="Command center"
       >
-        <div className="space-y-4">
-          <label className="block">
-            <span className="sr-only">Command search</span>
-            <input
+        <Stack spacing={2}>
+          <Box component="label" sx={{ display: "block" }}>
+            <Box
+              component="span"
+              sx={{
+                border: 0,
+                clip: "rect(0 0 0 0)",
+                height: 1,
+                m: -1,
+                overflow: "hidden",
+                p: 0,
+                position: "absolute",
+                whiteSpace: "nowrap",
+                width: 1,
+              }}
+            >
+              Command search
+            </Box>
+            <OutlinedInput
               aria-activedescendant={
                 resolvedActiveCommandItemId
                   ? getCommandOptionId(
@@ -640,29 +821,51 @@ export function AppShellFrame({
               }
               aria-controls={commandListboxId}
               aria-label="Command search"
-              className="border-border text-foreground w-full rounded-[24px] border bg-white px-4 py-3 text-sm shadow-[0_12px_28px_rgba(20,37,34,0.06)] transition outline-none focus:border-[rgba(32,95,85,0.4)]"
+              fullWidth
+              inputRef={commandInputRef}
               onChange={(event) => setCommandQuery(event.target.value)}
               onKeyDown={handleCommandInputKeyDown}
               placeholder="Search workspaces, tasks, knowledge, or saved searches"
-              ref={commandInputRef}
+              sx={{
+                bgcolor: alpha("#ffffff", 0.82),
+                borderRadius: 3,
+                boxShadow: "0 12px 28px rgba(20,37,34,0.06)",
+                "& .MuiOutlinedInput-input": {
+                  fontSize: "0.94rem",
+                  py: 1.75,
+                },
+              }}
               type="search"
               value={commandQuery}
             />
-          </label>
+          </Box>
 
           {flatCommandItems.length > 0 ? (
-            <div
+            <Stack
               aria-label="Command results"
-              className="max-h-[28rem] space-y-4 overflow-y-auto pr-1"
               id={commandListboxId}
               role="listbox"
+              spacing={2}
+              sx={{ maxHeight: "28rem", overflowY: "auto", pr: 0.5 }}
             >
-              {commandSections.map((section) => (
-                <section key={section.key} className="space-y-2">
-                  <p className="text-muted text-xs tracking-[0.22em] uppercase">
+              {commandSections.map((section, sectionIndex) => (
+                <Box component="section" key={section.key}>
+                  {sectionIndex > 0 ? (
+                    <Divider sx={{ borderColor: alpha("#122128", 0.08), mb: 2 }} />
+                  ) : null}
+                  <Typography
+                    sx={{
+                      color: "text.secondary",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.22em",
+                      mb: 1.5,
+                      textTransform: "uppercase",
+                    }}
+                  >
                     {section.label}
-                  </p>
-                  <div className="space-y-2">
+                  </Typography>
+                  <Stack spacing={1.25}>
                     {section.items.map((item) => {
                       const optionId = getCommandOptionId(
                         commandOptionIdPrefix,
@@ -675,75 +878,144 @@ export function AppShellFrame({
                         createWorkbenchItemFromCommandItem(item);
 
                       return (
-                        <div
+                        <Surface
                           aria-selected={resolvedActiveCommandItemId === item.id}
-                          className={cn(
-                            "rounded-[24px] border bg-white/72 p-2 transition",
-                            resolvedActiveCommandItemId === item.id
-                              ? "border-[rgba(32,95,85,0.28)] shadow-[0_16px_36px_rgba(20,37,34,0.12)]"
-                              : "border-[rgba(15,28,31,0.08)]",
-                          )}
                           id={optionId}
                           key={item.id}
                           onMouseEnter={() => setActiveCommandItemId(item.id)}
                           role="option"
+                          sx={{
+                            bgcolor:
+                              resolvedActiveCommandItemId === item.id
+                                ? alpha("#1e5d66", 0.07)
+                                : alpha("#ffffff", 0.72),
+                            borderColor:
+                              resolvedActiveCommandItemId === item.id
+                                ? alpha("#1e5d66", 0.26)
+                                : alpha("#122128", 0.08),
+                            boxShadow:
+                              resolvedActiveCommandItemId === item.id
+                                ? "0 16px 36px rgba(20,37,34,0.12)"
+                                : "0 10px 24px rgba(20,37,34,0.06)",
+                            p: 1,
+                          }}
                         >
-                          <div className="flex items-start gap-2">
-                            <Link
-                              className="flex-1 rounded-[20px] px-3 py-3 transition hover:bg-[rgba(32,95,85,0.06)] focus:bg-[rgba(32,95,85,0.08)] focus:outline-none"
+                          <Stack direction="row" spacing={1}>
+                            <Box
+                              component={Link}
                               href={item.href}
                               id={getCommandLinkId(commandOptionIdPrefix, item.id)}
                               onClick={() => handleCommandItemSelection(workbenchItem)}
+                              sx={{
+                                borderRadius: 2.5,
+                                color: "inherit",
+                                display: "block",
+                                flex: 1,
+                                px: 1.5,
+                                py: 1.5,
+                                textDecoration: "none",
+                                "&:focus-visible": {
+                                  bgcolor: alpha("#1e5d66", 0.08),
+                                  outline: "2px solid rgba(30,93,102,0.3)",
+                                  outlineOffset: 2,
+                                },
+                                "&:hover": {
+                                  bgcolor: alpha("#1e5d66", 0.05),
+                                },
+                              }}
                             >
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-sm font-medium text-foreground">
-                                  {item.label}
-                                </span>
-                                <span className="text-muted text-[0.68rem] tracking-[0.18em] uppercase">
-                                  {formatCommandCategoryLabel(item.category)}
-                                </span>
-                              </div>
-                              <p className="mt-1 text-sm leading-6 text-muted">
-                                {item.description}
-                              </p>
-                              {item.supportingText ? (
-                                <p className="mt-2 text-xs tracking-[0.16em] text-muted uppercase">
-                                  {item.supportingText}
-                                </p>
-                              ) : null}
-                            </Link>
-                            <button
+                              <Stack spacing={0.75}>
+                                <Stack
+                                  direction="row"
+                                  spacing={2}
+                                  sx={{
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
+                                  <Typography sx={{ fontSize: "0.94rem", fontWeight: 600 }}>
+                                    {item.label}
+                                  </Typography>
+                                  <Typography
+                                    sx={{
+                                      color: "text.secondary",
+                                      fontSize: "0.68rem",
+                                      fontWeight: 700,
+                                      letterSpacing: "0.18em",
+                                      textTransform: "uppercase",
+                                    }}
+                                  >
+                                    {formatCommandCategoryLabel(item.category)}
+                                  </Typography>
+                                </Stack>
+                                <Typography
+                                  sx={{
+                                    color: "text.secondary",
+                                    fontSize: "0.88rem",
+                                    lineHeight: 1.65,
+                                  }}
+                                >
+                                  {item.description}
+                                </Typography>
+                                {item.supportingText ? (
+                                  <Typography
+                                    sx={{
+                                      color: "text.secondary",
+                                      fontSize: "0.68rem",
+                                      fontWeight: 700,
+                                      letterSpacing: "0.16em",
+                                      textTransform: "uppercase",
+                                    }}
+                                  >
+                                    {item.supportingText}
+                                  </Typography>
+                                ) : null}
+                              </Stack>
+                            </Box>
+                            <Button
                               aria-label={
                                 isPinned
                                   ? `Remove ${item.label} from pinned work`
                                   : `Pin ${item.label} to pinned work`
                               }
-                              className={cn(
-                                "rounded-full border px-3 py-2 text-xs font-medium tracking-[0.16em] uppercase transition",
-                                isPinned
-                                  ? "border-[rgba(32,95,85,0.22)] bg-[rgba(32,95,85,0.12)] text-foreground"
-                                  : "border-border bg-white text-muted hover:border-[rgba(32,95,85,0.2)] hover:text-foreground",
-                              )}
+                              density="compact"
                               onClick={() => togglePinnedItem(workbenchItem)}
+                              sx={{
+                                alignSelf: "flex-start",
+                                minWidth: 92,
+                              }}
+                              tone="neutral"
                               type="button"
+                              variant={isPinned ? "soft" : "outlined"}
                             >
                               {isPinned ? "Pinned" : "Pin"}
-                            </button>
-                          </div>
-                        </div>
+                            </Button>
+                          </Stack>
+                        </Surface>
                       );
                     })}
-                  </div>
-                </section>
+                  </Stack>
+                </Box>
               ))}
-            </div>
+            </Stack>
           ) : (
-            <div className="rounded-[24px] border border-dashed border-border bg-white/70 px-5 py-8 text-sm leading-6 text-muted">
-              No shell results match the current command query. Try a pursuit
-              title, task name, knowledge asset, or saved search.
-            </div>
+            <Surface
+              sx={{
+                bgcolor: alpha("#ffffff", 0.72),
+                borderColor: alpha("#122128", 0.12),
+                borderStyle: "dashed",
+                p: 3,
+              }}
+            >
+              <Typography
+                sx={{ color: "text.secondary", fontSize: "0.92rem", lineHeight: 1.7 }}
+              >
+                No shell results match the current command query. Try a pursuit
+                title, task name, knowledge asset, or saved search.
+              </Typography>
+            </Surface>
           )}
-        </div>
+        </Stack>
       </Dialog>
 
       <Dialog
@@ -753,146 +1025,299 @@ export function AppShellFrame({
         title="Notifications"
       >
         {shellSnapshot.notifications.items.length > 0 ? (
-          <div className="space-y-3">
+          <Stack spacing={1.5}>
             {shellSnapshot.notifications.items.map((notification) => (
-              <Link
-                className="block rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-white px-5 py-4 transition hover:border-[rgba(32,95,85,0.2)] hover:bg-[rgba(32,95,85,0.04)]"
+              <Box
+                component={Link}
                 href={notification.href}
                 key={notification.id}
                 onClick={() => setIsNotificationsOpen(false)}
+                sx={{
+                  bgcolor: alpha("#ffffff", 0.84),
+                  border: "1px solid",
+                  borderColor: alpha("#122128", 0.08),
+                  borderRadius: 3,
+                  color: "inherit",
+                  display: "block",
+                  px: 2.5,
+                  py: 2,
+                  textDecoration: "none",
+                  transition: "background-color 140ms ease, border-color 140ms ease",
+                  "&:hover": {
+                    bgcolor: alpha("#1e5d66", 0.04),
+                    borderColor: alpha("#1e5d66", 0.22),
+                  },
+                }}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-foreground">
+                <Stack
+                  direction="row"
+                  spacing={2}
+                  sx={{
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Typography sx={{ fontSize: "0.94rem", fontWeight: 600 }}>
                     {notification.title}
-                  </p>
-                  <span
-                    className={cn(
-                      "rounded-full px-2.5 py-1 text-[0.68rem] tracking-[0.16em] uppercase",
-                      notification.tone === "danger"
-                        ? "bg-[rgba(173,70,49,0.12)] text-[#8f3422]"
-                        : notification.tone === "warning"
-                          ? "bg-[rgba(220,161,103,0.16)] text-[#8b5e2d]"
-                          : "bg-[rgba(32,95,85,0.12)] text-[#1b5f53]",
-                    )}
-                  >
+                  </Typography>
+                  <Badge tone={getNotificationBadgeTone(notification.tone)}>
                     {notification.tone}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-muted">
+                  </Badge>
+                </Stack>
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    fontSize: "0.88rem",
+                    lineHeight: 1.65,
+                    mt: 1,
+                  }}
+                >
                   {notification.summary}
-                </p>
+                </Typography>
                 {notification.timestamp ? (
-                  <p className="mt-2 text-xs tracking-[0.16em] text-muted uppercase">
+                  <Typography
+                    sx={{
+                      color: "text.secondary",
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.16em",
+                      mt: 1.5,
+                      textTransform: "uppercase",
+                    }}
+                  >
                     {formatDateTime(notification.timestamp)}
-                  </p>
+                  </Typography>
                 ) : null}
-              </Link>
+              </Box>
             ))}
-          </div>
+          </Stack>
         ) : (
-          <div className="rounded-[24px] border border-dashed border-border bg-white/70 px-5 py-8 text-sm leading-6 text-muted">
-            No active alerts are queued in the shell right now. Overdue tasks,
-            upcoming reminders, and saved-search issues will appear here.
-          </div>
+          <Surface
+            sx={{
+              bgcolor: alpha("#ffffff", 0.72),
+              borderColor: alpha("#122128", 0.12),
+              borderStyle: "dashed",
+              p: 3,
+            }}
+          >
+            <Typography
+              sx={{ color: "text.secondary", fontSize: "0.92rem", lineHeight: 1.7 }}
+            >
+              No active alerts are queued in the shell right now. Overdue tasks,
+              upcoming reminders, and saved-search issues will appear here.
+            </Typography>
+          </Surface>
         )}
       </Dialog>
 
       {desktopShell}
 
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="border-border/80 sticky top-0 z-20 border-b bg-[rgba(247,243,232,0.88)] px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
-          <div className="mx-auto flex max-w-7xl min-w-0 flex-col gap-4">
-            <div className="flex items-center justify-between gap-4 lg:hidden">
-              <div className="flex items-center gap-3">
-                <button
+      <Box sx={{ display: "flex", flex: 1, flexDirection: "column", minWidth: 0 }}>
+        <Box
+          component="header"
+          sx={{
+            backdropFilter: "blur(18px)",
+            backgroundColor: "rgba(247,243,232,0.88)",
+            borderBottom: "1px solid rgba(18,33,40,0.12)",
+            position: "sticky",
+            px: { lg: 4, sm: 3, xs: 2 },
+            py: 2,
+            top: 0,
+            zIndex: 20,
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, marginX: "auto", maxWidth: 1280, minWidth: 0 }}>
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                alignItems: "center",
+                display: { lg: "none" },
+                justifyContent: "space-between",
+              }}
+            >
+              <Stack direction="row" spacing={1.5}>
+                <Button
                   aria-controls="mobile-navigation"
                   aria-expanded={isMobileNavOpen}
                   aria-label="Open navigation menu"
-                  className="border-border text-foreground inline-flex h-11 w-11 items-center justify-center rounded-full border bg-white text-sm font-medium shadow-[0_10px_24px_rgba(20,37,34,0.08)]"
+                  density="compact"
                   onClick={() => setIsMobileNavOpen(true)}
+                  sx={{ minWidth: 0, px: 1.75 }}
+                  tone="neutral"
                   type="button"
+                  variant="outlined"
                 >
                   Menu
-                </button>
-                <div>
-                  <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                </Button>
+                <Box>
+                  <Typography
+                    sx={{
+                      color: "text.secondary",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.24em",
+                      textTransform: "uppercase",
+                    }}
+                  >
                     {activeGroup.title}
-                  </p>
-                  <p className="font-heading text-xl font-semibold">
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: "var(--font-heading), sans-serif",
+                      fontSize: "1.25rem",
+                      fontWeight: 600,
+                    }}
+                  >
                     {activeDestination.label}
-                  </p>
-                </div>
-              </div>
-              <div className="sm:hidden">
+                  </Typography>
+                </Box>
+              </Stack>
+              <Box sx={{ display: { sm: "none" } }}>
                 <SignOutButton />
-              </div>
-            </div>
+              </Box>
+            </Stack>
 
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="space-y-2">
-                <p className="text-muted hidden text-xs tracking-[0.24em] uppercase lg:block">
+            <Stack
+              direction={{ xl: "row", xs: "column" }}
+              spacing={3}
+              sx={{ justifyContent: "space-between" }}
+            >
+              <Stack spacing={1}>
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    display: { lg: "block", xs: "none" },
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.24em",
+                    textTransform: "uppercase",
+                  }}
+                >
                   {activeGroup.title}
-                </p>
-                <p className="font-heading hidden text-3xl font-semibold tracking-[-0.04em] lg:block">
+                </Typography>
+                <Typography
+                  sx={{
+                    display: { lg: "block", xs: "none" },
+                    fontFamily: "var(--font-heading), sans-serif",
+                    fontSize: "2rem",
+                    fontWeight: 600,
+                    letterSpacing: "-0.04em",
+                  }}
+                >
                   {activeDestination.label}
-                </p>
-                <p className="text-muted max-w-2xl text-sm leading-6">
+                </Typography>
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    fontSize: "0.92rem",
+                    lineHeight: 1.7,
+                    maxWidth: 720,
+                  }}
+                >
                   {activeDestination.description}
-                </p>
-              </div>
+                </Typography>
+              </Stack>
 
-              <div className="flex flex-col gap-3 xl:min-w-[42rem] xl:items-end">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center xl:w-full xl:justify-end">
-                  <button
+              <Stack spacing={1.5} sx={{ minWidth: { xl: 672 } }}>
+                <Stack
+                  direction={{ sm: "row", xs: "column" }}
+                  spacing={1.5}
+                  sx={{ justifyContent: { xl: "flex-end" } }}
+                >
+                  <Button
                     aria-expanded={isCommandOpen}
                     aria-haspopup="dialog"
                     aria-label="Open command search"
-                    className="border-border flex flex-1 items-center justify-between rounded-full border bg-white px-4 py-3 text-left shadow-[0_12px_28px_rgba(20,37,34,0.06)] transition hover:border-[rgba(32,95,85,0.22)] xl:max-w-xl"
                     onClick={() => setIsCommandOpen(true)}
+                    sx={{
+                      bgcolor: "background.paper",
+                      borderColor: "divider",
+                      borderRadius: 999,
+                      boxShadow: "0 12px 28px rgba(20,37,34,0.06)",
+                      justifyContent: "space-between",
+                      px: 2,
+                      py: 1.5,
+                      width: "100%",
+                      "&:hover": {
+                        borderColor: alpha("#1e5d66", 0.24),
+                      },
+                    }}
+                    tone="neutral"
                     type="button"
+                    variant="outlined"
                   >
-                    <span className="text-sm text-muted">
-                      Search work, tasks, knowledge, or saved searches
-                    </span>
-                    <span className="rounded-full border border-[rgba(18,33,40,0.12)] bg-[rgba(18,33,40,0.04)] px-2 py-1 text-[0.68rem] tracking-[0.18em] uppercase text-muted">
-                      Cmd K
-                    </span>
-                  </button>
-                  <button
+                    <Stack
+                      direction="row"
+                      spacing={1.5}
+                      sx={{
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        width: "100%",
+                      }}
+                    >
+                      <Typography sx={{ color: "text.secondary", fontSize: "0.9rem" }}>
+                        Search work, tasks, knowledge, or saved searches
+                      </Typography>
+                      <Badge tone="muted">Cmd K</Badge>
+                    </Stack>
+                  </Button>
+                  <Button
                     aria-expanded={isNotificationsOpen}
                     aria-haspopup="dialog"
                     aria-label="Open notifications"
-                    className="border-border inline-flex items-center justify-center gap-2 rounded-full border bg-white px-4 py-3 text-sm font-medium shadow-[0_12px_28px_rgba(20,37,34,0.06)] transition hover:border-[rgba(32,95,85,0.22)]"
                     onClick={() => setIsNotificationsOpen(true)}
+                    sx={{
+                      boxShadow: "0 12px 28px rgba(20,37,34,0.06)",
+                      whiteSpace: "nowrap",
+                    }}
+                    tone="neutral"
                     type="button"
+                    variant="outlined"
                   >
-                    Alerts
-                    <span className="rounded-full bg-[rgba(32,95,85,0.12)] px-2 py-1 text-xs text-foreground">
-                      {notificationCount}
-                    </span>
-                  </button>
-                </div>
-                <div className="flex items-center justify-between gap-3 sm:justify-end">
-                  <div className="text-right">
-                    <p className="text-foreground text-sm font-medium">
+                    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                      <Typography
+                        component="span"
+                        sx={{ fontSize: "0.92rem", fontWeight: 600 }}
+                      >
+                        Alerts
+                      </Typography>
+                      <Badge tone={notificationCount > 0 ? "accent" : "muted"}>
+                        {notificationCount}
+                      </Badge>
+                    </Stack>
+                  </Button>
+                </Stack>
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  sx={{
+                    alignItems: "center",
+                    justifyContent: { sm: "flex-end", xs: "space-between" },
+                  }}
+                >
+                  <Box sx={{ textAlign: "right" }}>
+                    <Typography sx={{ fontSize: "0.92rem", fontWeight: 600 }}>
                       {displayName}
-                    </p>
-                    <p className="text-muted text-xs">{sessionUser.email}</p>
-                  </div>
-                  <div className="hidden sm:block">
+                    </Typography>
+                    <Typography sx={{ color: "text.secondary", fontSize: "0.76rem" }}>
+                      {sessionUser.email}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: { sm: "block", xs: "none" } }}>
                     <SignOutButton />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
+                  </Box>
+                </Stack>
+              </Stack>
+            </Stack>
+          </Box>
+        </Box>
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto min-w-0 max-w-7xl">{children}</div>
-        </main>
-      </div>
-    </div>
+        <Box component="main" sx={{ flex: 1, minWidth: 0, px: { lg: 4, sm: 3, xs: 2 }, py: 3 }}>
+          <Box sx={{ marginX: "auto", maxWidth: 1280, minWidth: 0 }}>{children}</Box>
+        </Box>
+      </Box>
+    </Box>
   );
 }
 
@@ -912,52 +1337,98 @@ function NavigationMenu({
   title: string;
 }) {
   return (
-    <nav aria-label={title} className="space-y-5">
+    <Stack
+      component="nav"
+      aria-label={title}
+      id={title === "Mobile navigation" ? "mobile-navigation" : undefined}
+      spacing={2.5}
+    >
       {groups.map((group) => (
-        <section key={group.title} className="space-y-2">
-          <div>
-            <p className="text-xs tracking-[0.24em] text-stone-400 uppercase">
+        <Box component="section" key={group.title}>
+          <Box>
+            <Typography
+              sx={{
+                color: SHELL_TEXT_FAINT,
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                letterSpacing: "0.24em",
+                textTransform: "uppercase",
+              }}
+            >
               {group.title}
-            </p>
+            </Typography>
             {!collapsed ? (
-              <p className="mt-1 text-xs leading-5 text-stone-500">
+              <Typography
+                sx={{
+                  color: SHELL_TEXT_MUTED,
+                  fontSize: "0.76rem",
+                  lineHeight: 1.6,
+                  mt: 0.5,
+                }}
+              >
                 {group.description}
-              </p>
+              </Typography>
             ) : null}
-          </div>
-          <div className="space-y-2">
+          </Box>
+          <Stack spacing={1.25} sx={{ mt: 1.25 }}>
             {group.items.map((item) => {
               const active = isRouteActive(item.href, currentPath);
 
               return (
-                <Link
+                <Box
+                  component={Link}
                   key={item.href}
                   aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "block rounded-[20px] border px-4 py-3 transition",
-                    active
-                      ? "border-white/18 bg-white/12 text-white shadow-[0_12px_30px_rgba(15,28,31,0.18)]"
-                      : "border-transparent text-stone-300 hover:border-white/10 hover:bg-white/6 hover:text-white",
-                  )}
                   href={item.href}
                   onClick={() => {
                     onNavigate?.();
                     onRememberItem?.(createWorkbenchItemFromNavItem(item));
                   }}
+                  sx={{
+                    bgcolor: active ? alpha("#ffffff", 0.08) : "transparent",
+                    border: "1px solid",
+                    borderColor: active ? alpha("#ffffff", 0.16) : "transparent",
+                    borderRadius: 2.5,
+                    boxShadow: active
+                      ? "0 12px 30px rgba(15,28,31,0.18)"
+                      : "none",
+                    color: active ? SHELL_TEXT_PRIMARY : SHELL_TEXT_SECONDARY,
+                    display: "block",
+                    px: 2,
+                    py: 1.5,
+                    textDecoration: "none",
+                    transition:
+                      "background-color 140ms ease, border-color 140ms ease, color 140ms ease",
+                    "&:hover": {
+                      bgcolor: alpha("#ffffff", 0.06),
+                      borderColor: alpha("#ffffff", 0.1),
+                      color: SHELL_TEXT_PRIMARY,
+                    },
+                  }}
                 >
-                  <span className="block text-sm font-medium">{item.label}</span>
+                  <Typography sx={{ color: "inherit", fontSize: "0.92rem", fontWeight: 600 }}>
+                    {item.label}
+                  </Typography>
                   {!collapsed ? (
-                    <span className="mt-1 block text-xs leading-5 text-current/72">
+                    <Typography
+                      sx={{
+                        color: active ? SHELL_TEXT_SECONDARY : SHELL_TEXT_MUTED,
+                        display: "block",
+                        fontSize: "0.76rem",
+                        lineHeight: 1.6,
+                        mt: 0.5,
+                      }}
+                    >
                       {item.description}
-                    </span>
+                    </Typography>
                   ) : null}
-                </Link>
+                </Box>
               );
             })}
-          </div>
-        </section>
+          </Stack>
+        </Box>
       ))}
-    </nav>
+    </Stack>
   );
 }
 
@@ -975,48 +1446,84 @@ function QuickLinksPanel({
   onRememberItem?: (item: AppShellWorkbenchItem) => void;
 }) {
   return (
-    <section
-      className={cn(
-        "rounded-[24px] border border-white/10 bg-white/5 px-4 py-4",
-        mobile ? "mt-5" : "",
-      )}
+    <Surface
+      component="section"
+      sx={{
+        bgcolor: SHELL_PANEL_BG,
+        borderColor: SHELL_PANEL_BORDER,
+        boxShadow: "none",
+        color: SHELL_TEXT_PRIMARY,
+        mt: mobile ? 2.5 : 0,
+        p: 2.25,
+      }}
     >
-      <p className="text-xs tracking-[0.24em] text-stone-400 uppercase">
+      <Typography
+        sx={{
+          color: SHELL_TEXT_FAINT,
+          fontSize: "0.72rem",
+          fontWeight: 700,
+          letterSpacing: "0.24em",
+          textTransform: "uppercase",
+        }}
+      >
         Quick links
-      </p>
+      </Typography>
       {!collapsed ? (
-        <p className="mt-1 text-xs leading-5 text-stone-500">
+        <Typography
+          sx={{ color: SHELL_TEXT_MUTED, fontSize: "0.76rem", lineHeight: 1.6, mt: 0.5 }}
+        >
           Frequent jumps that stay attached to the shell.
-        </p>
+        </Typography>
       ) : null}
-      <div className="mt-3 space-y-2">
+      <Stack spacing={1.25} sx={{ mt: 1.5 }}>
         {links.map((link) => {
           const active = isRouteActive(link.href, currentPath);
 
           return (
-            <Link
+            <Box
+              component={Link}
               key={link.href}
               aria-current={active ? "page" : undefined}
-              className={cn(
-                "block rounded-[18px] border px-3 py-3 transition",
-                active
-                  ? "border-white/16 bg-white/12 text-white"
-                  : "border-transparent text-stone-300 hover:border-white/10 hover:bg-white/6 hover:text-white",
-              )}
               href={link.href}
               onClick={() => onRememberItem?.(createWorkbenchItemFromNavItem(link))}
+              sx={{
+                bgcolor: active ? alpha("#ffffff", 0.08) : "transparent",
+                border: "1px solid",
+                borderColor: active ? alpha("#ffffff", 0.16) : "transparent",
+                borderRadius: 2.25,
+                color: active ? SHELL_TEXT_PRIMARY : SHELL_TEXT_SECONDARY,
+                display: "block",
+                px: 1.75,
+                py: 1.5,
+                textDecoration: "none",
+                "&:hover": {
+                  bgcolor: alpha("#ffffff", 0.06),
+                  borderColor: alpha("#ffffff", 0.1),
+                  color: SHELL_TEXT_PRIMARY,
+                },
+              }}
             >
-              <span className="block text-sm font-medium">{link.label}</span>
+              <Typography sx={{ color: "inherit", fontSize: "0.9rem", fontWeight: 600 }}>
+                {link.label}
+              </Typography>
               {!collapsed ? (
-                <span className="mt-1 block text-xs leading-5 text-current/72">
+                <Typography
+                  sx={{
+                    color: active ? SHELL_TEXT_SECONDARY : SHELL_TEXT_MUTED,
+                    display: "block",
+                    fontSize: "0.76rem",
+                    lineHeight: 1.6,
+                    mt: 0.5,
+                  }}
+                >
                   {link.description}
-                </span>
+                </Typography>
               ) : null}
-            </Link>
+            </Box>
           );
         })}
-      </div>
-    </section>
+      </Stack>
+    </Surface>
   );
 }
 
@@ -1036,71 +1543,140 @@ function PinnedWorkPanel({
   onTogglePinnedItem: (item: AppShellWorkbenchItem) => void;
 }) {
   return (
-    <section
-      className={cn(
-        "rounded-[24px] border border-white/10 bg-white/5 px-4 py-4",
-        mobile ? "mt-5" : "",
-      )}
+    <Surface
+      component="section"
+      sx={{
+        bgcolor: SHELL_PANEL_BG,
+        borderColor: SHELL_PANEL_BORDER,
+        boxShadow: "none",
+        color: SHELL_TEXT_PRIMARY,
+        mt: mobile ? 2.5 : 0,
+        p: 2.25,
+      }}
     >
-      <p className="text-xs tracking-[0.24em] text-stone-400 uppercase">
+      <Typography
+        sx={{
+          color: SHELL_TEXT_FAINT,
+          fontSize: "0.72rem",
+          fontWeight: 700,
+          letterSpacing: "0.24em",
+          textTransform: "uppercase",
+        }}
+      >
         Pinned work
-      </p>
+      </Typography>
       {!collapsed ? (
-        <p className="mt-1 text-xs leading-5 text-stone-500">
+        <Typography
+          sx={{ color: SHELL_TEXT_MUTED, fontSize: "0.76rem", lineHeight: 1.6, mt: 0.5 }}
+        >
           Keep recurring pursuits, saved views, and quick return points visible in
           the shell.
-        </p>
+        </Typography>
       ) : null}
 
       {items.length > 0 ? (
-        <div className="mt-3 space-y-2">
+        <Stack spacing={1.25} sx={{ mt: 1.5 }}>
           {items.map((item) => (
-            <div
-              className="rounded-[18px] border border-transparent px-3 py-3 transition hover:border-white/10 hover:bg-white/6"
+            <Box
               key={item.href}
+              sx={{
+                border: "1px solid transparent",
+                borderRadius: 2.25,
+                px: 1.75,
+                py: 1.5,
+                transition: "background-color 140ms ease, border-color 140ms ease",
+                "&:hover": {
+                  bgcolor: alpha("#ffffff", 0.04),
+                  borderColor: alpha("#ffffff", 0.08),
+                },
+              }}
             >
-              <div className="flex items-start gap-2">
-                <Link
-                  className="flex-1 text-stone-300 transition hover:text-white"
+              <Stack direction="row" spacing={1}>
+                <Box
+                  component={Link}
                   href={item.href}
                   onClick={() => {
                     onNavigate?.();
                     onRememberItem?.(item);
                   }}
+                  sx={{
+                    color: SHELL_TEXT_SECONDARY,
+                    flex: 1,
+                    textDecoration: "none",
+                    "&:hover": {
+                      color: SHELL_TEXT_PRIMARY,
+                    },
+                  }}
                 >
-                  <span className="block text-sm font-medium">{item.label}</span>
+                  <Typography sx={{ color: "inherit", fontSize: "0.9rem", fontWeight: 600 }}>
+                    {item.label}
+                  </Typography>
                   {!collapsed ? (
-                    <>
-                      <span className="mt-1 block text-xs leading-5 text-current/72">
+                    <Box>
+                      <Typography
+                        sx={{
+                          color: SHELL_TEXT_MUTED,
+                          display: "block",
+                          fontSize: "0.76rem",
+                          lineHeight: 1.6,
+                          mt: 0.5,
+                        }}
+                      >
                         {item.description}
-                      </span>
+                      </Typography>
                       {item.supportingText ? (
-                        <span className="mt-2 block text-[0.68rem] tracking-[0.16em] text-current/56 uppercase">
+                        <Typography
+                          sx={{
+                            color: SHELL_TEXT_FAINT,
+                            display: "block",
+                            fontSize: "0.68rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.16em",
+                            mt: 1,
+                            textTransform: "uppercase",
+                          }}
+                        >
                           {item.supportingText}
-                        </span>
+                        </Typography>
                       ) : null}
-                    </>
+                    </Box>
                   ) : null}
-                </Link>
-                <button
+                </Box>
+                <Button
                   aria-label={`Remove ${item.label} from pinned work`}
-                  className="rounded-full border border-white/10 bg-white/5 px-2.5 py-2 text-[0.68rem] tracking-[0.16em] uppercase text-stone-300 transition hover:bg-white/10 hover:text-white"
+                  density="compact"
                   onClick={() => onTogglePinnedItem(item)}
+                  sx={{
+                    alignSelf: "flex-start",
+                    borderColor: SHELL_PANEL_BORDER,
+                    color: SHELL_TEXT_SECONDARY,
+                    minWidth: 0,
+                    px: 1.25,
+                    "&:hover": {
+                      bgcolor: alpha("#ffffff", 0.08),
+                      borderColor: alpha("#ffffff", 0.18),
+                      color: SHELL_TEXT_PRIMARY,
+                    },
+                  }}
+                  tone="neutral"
                   type="button"
+                  variant="outlined"
                 >
                   Remove
-                </button>
-              </div>
-            </div>
+                </Button>
+              </Stack>
+            </Box>
           ))}
-        </div>
+        </Stack>
       ) : (
-        <p className="mt-3 text-sm leading-6 text-stone-400">
+        <Typography
+          sx={{ color: SHELL_TEXT_MUTED, fontSize: "0.88rem", lineHeight: 1.7, mt: 1.5 }}
+        >
           Pin a pursuit or view from the command center and it will stay visible
           here.
-        </p>
+        </Typography>
       )}
-    </section>
+    </Surface>
   );
 }
 
@@ -1118,57 +1694,115 @@ function RecentWorkPanel({
   onRememberItem?: (item: AppShellWorkbenchItem) => void;
 }) {
   return (
-    <section
-      className={cn(
-        "rounded-[24px] border border-white/10 bg-white/5 px-4 py-4",
-        mobile ? "mt-5" : "",
-      )}
+    <Surface
+      component="section"
+      sx={{
+        bgcolor: SHELL_PANEL_BG,
+        borderColor: SHELL_PANEL_BORDER,
+        boxShadow: "none",
+        color: SHELL_TEXT_PRIMARY,
+        mt: mobile ? 2.5 : 0,
+        p: 2.25,
+      }}
     >
-      <p className="text-xs tracking-[0.24em] text-stone-400 uppercase">
+      <Typography
+        sx={{
+          color: SHELL_TEXT_FAINT,
+          fontSize: "0.72rem",
+          fontWeight: 700,
+          letterSpacing: "0.24em",
+          textTransform: "uppercase",
+        }}
+      >
         Recent work
-      </p>
+      </Typography>
       {!collapsed ? (
-        <p className="mt-1 text-xs leading-5 text-stone-500">
+        <Typography
+          sx={{ color: SHELL_TEXT_MUTED, fontSize: "0.76rem", lineHeight: 1.6, mt: 0.5 }}
+        >
           Resume the most recent shell views, pursuits, and quick-return items.
-        </p>
+        </Typography>
       ) : null}
 
       {items.length > 0 ? (
-        <div className="mt-3 space-y-2">
+        <Stack spacing={1.25} sx={{ mt: 1.5 }}>
           {items.map((item) => (
-            <Link
+            <Box
+              component={Link}
               key={item.href}
-              className="block rounded-[18px] border border-transparent px-3 py-3 text-stone-300 transition hover:border-white/10 hover:bg-white/6 hover:text-white"
               href={item.href}
               onClick={() => {
                 onNavigate?.();
                 onRememberItem?.(item);
               }}
+              sx={{
+                border: "1px solid transparent",
+                borderRadius: 2.25,
+                color: SHELL_TEXT_SECONDARY,
+                display: "block",
+                px: 1.75,
+                py: 1.5,
+                textDecoration: "none",
+                transition: "background-color 140ms ease, border-color 140ms ease",
+                "&:hover": {
+                  bgcolor: alpha("#ffffff", 0.04),
+                  borderColor: alpha("#ffffff", 0.08),
+                  color: SHELL_TEXT_PRIMARY,
+                },
+              }}
             >
-              <span className="block text-sm font-medium">{item.label}</span>
+              <Typography sx={{ color: "inherit", fontSize: "0.9rem", fontWeight: 600 }}>
+                {item.label}
+              </Typography>
               {!collapsed ? (
-                <>
-                  <span className="mt-1 block text-xs leading-5 text-current/72">
+                <Box>
+                  <Typography
+                    sx={{
+                      color: SHELL_TEXT_MUTED,
+                      display: "block",
+                      fontSize: "0.76rem",
+                      lineHeight: 1.6,
+                      mt: 0.5,
+                    }}
+                  >
                     {item.description}
-                  </span>
+                  </Typography>
                   {item.supportingText ? (
-                    <span className="mt-2 block text-[0.68rem] tracking-[0.16em] text-current/56 uppercase">
+                    <Typography
+                      sx={{
+                        color: SHELL_TEXT_FAINT,
+                        display: "block",
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        letterSpacing: "0.16em",
+                        mt: 1,
+                        textTransform: "uppercase",
+                      }}
+                    >
                       {item.supportingText}
-                    </span>
+                    </Typography>
                   ) : null}
-                </>
+                </Box>
               ) : null}
-            </Link>
+            </Box>
           ))}
-        </div>
+        </Stack>
       ) : (
-        <p className="mt-3 text-sm leading-6 text-stone-400">
+        <Typography
+          sx={{ color: SHELL_TEXT_MUTED, fontSize: "0.88rem", lineHeight: 1.7, mt: 1.5 }}
+        >
           Open a route or jump to work from the command center and it will appear
           here for quick return.
-        </p>
+        </Typography>
       )}
-    </section>
+    </Surface>
   );
+}
+
+function getNotificationBadgeTone(
+  tone: "accent" | "danger" | "warning",
+): "accent" | "danger" | "warning" {
+  return tone;
 }
 
 function buildNavGroups({

@@ -3,6 +3,8 @@
 import { useTransition } from "react";
 import { signOut } from "next-auth/react";
 
+import { Button } from "@/components/ui/button";
+
 export function SignOutButton() {
   const [isPending, startTransition] = useTransition();
 
@@ -15,13 +17,14 @@ export function SignOutButton() {
   }
 
   return (
-    <button
-      className="border-border text-foreground hover:bg-surface-strong inline-flex items-center justify-center rounded-full border bg-white px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+    <Button
       disabled={isPending}
       onClick={handleSignOut}
+      tone="neutral"
       type="button"
+      variant="outlined"
     >
       {isPending ? "Signing out..." : "Sign out"}
-    </button>
+    </Button>
   );
 }
