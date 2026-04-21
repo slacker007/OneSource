@@ -196,6 +196,10 @@ describe("AppShellFrame", () => {
       </AppShellFrame>,
     );
 
+    const commandLauncher = screen.getByRole("button", {
+      name: /open command search/i,
+    });
+
     fireEvent.keyDown(window, { key: "k", metaKey: true });
     expect(
       screen.getByRole("dialog", { name: /command center/i }),
@@ -204,6 +208,8 @@ describe("AppShellFrame", () => {
     const commandSearch = screen.getByRole("searchbox", {
       name: /command search/i,
     });
+    await waitFor(() => expect(commandSearch).toHaveFocus());
+    expect(commandLauncher).not.toHaveFocus();
     await user.type(commandSearch, "va intake");
     expect(
       screen.getAllByRole("link", { name: /va intake modernization bpa/i }).length,
@@ -263,13 +269,17 @@ describe("AppShellFrame", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/critical task overdue/i)).toBeInTheDocument();
 
+    const mobileNavigationButton = screen.getByRole("button", {
+      name: /open navigation menu/i,
+    });
     await user.click(
-      screen.getByRole("button", { name: /open navigation menu/i }),
+      mobileNavigationButton,
     );
 
     expect(
       screen.getByRole("navigation", { name: /mobile navigation/i }),
     ).toBeInTheDocument();
+    expect(mobileNavigationButton).not.toHaveFocus();
     expect(
       screen.queryByRole("link", { name: /^settings$/i }),
     ).not.toBeInTheDocument();

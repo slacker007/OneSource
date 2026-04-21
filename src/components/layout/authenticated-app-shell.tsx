@@ -11,6 +11,7 @@ import { usePathname } from "next/navigation";
 import {
   useDeferredValue,
   useEffect,
+  useEffectEvent,
   useId,
   useRef,
   useState,
@@ -362,17 +363,19 @@ export function AppShellFrame({
     };
   }, [isCommandOpen]);
 
-  useEffect(() => {
-    function handleKeyboardShortcut(event: globalThis.KeyboardEvent) {
+  const handleKeyboardShortcut = useEffectEvent(
+    (event: globalThis.KeyboardEvent) => {
       if (
         (event.metaKey || event.ctrlKey) &&
         event.key.toLowerCase() === "k"
       ) {
         event.preventDefault();
-        setIsCommandOpen(true);
+        openCommandSurface();
       }
-    }
+    },
+  );
 
+  useEffect(() => {
     window.addEventListener("keydown", handleKeyboardShortcut);
 
     return () => {
@@ -418,6 +421,29 @@ export function AppShellFrame({
     setIsCommandOpen(false);
     setCommandQuery("");
     setActiveCommandItemId(null);
+  }
+
+  function blurActiveShellElement() {
+    const activeElement = document.activeElement;
+
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+  }
+
+  function openCommandSurface() {
+    blurActiveShellElement();
+    setIsCommandOpen(true);
+  }
+
+  function openMobileNavigation() {
+    blurActiveShellElement();
+    setIsMobileNavOpen(true);
+  }
+
+  function openNotificationsSurface() {
+    blurActiveShellElement();
+    setIsNotificationsOpen(true);
   }
 
   function handleCommandItemSelection(item: AppShellWorkbenchItem) {
@@ -1142,7 +1168,7 @@ export function AppShellFrame({
                   aria-expanded={isMobileNavOpen}
                   aria-label="Open navigation menu"
                   density="compact"
-                  onClick={() => setIsMobileNavOpen(true)}
+                  onClick={openMobileNavigation}
                   sx={{ minWidth: 0, px: 1.75 }}
                   tone="neutral"
                   type="button"
@@ -1229,7 +1255,7 @@ export function AppShellFrame({
                     aria-expanded={isCommandOpen}
                     aria-haspopup="dialog"
                     aria-label="Open command search"
-                    onClick={() => setIsCommandOpen(true)}
+                    onClick={openCommandSurface}
                     sx={{
                       bgcolor: "background.paper",
                       borderColor: "divider",
@@ -1266,7 +1292,7 @@ export function AppShellFrame({
                     aria-expanded={isNotificationsOpen}
                     aria-haspopup="dialog"
                     aria-label="Open notifications"
-                    onClick={() => setIsNotificationsOpen(true)}
+                    onClick={openNotificationsSurface}
                     sx={{
                       boxShadow: "0 12px 28px rgba(20,37,34,0.06)",
                       whiteSpace: "nowrap",
