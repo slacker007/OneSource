@@ -4,6 +4,11 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
 import { signIn } from "next-auth/react";
 
+import { Button } from "@/components/ui/button";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+
 type SignInFormProps = {
   defaultEmail?: string;
 };
@@ -51,58 +56,45 @@ export function SignInForm({ defaultEmail = "" }: SignInFormProps) {
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
-      <div className="space-y-2">
-        <label
-          className="text-foreground text-sm font-medium"
-          htmlFor="email"
-        >
-          Email
-        </label>
-        <input
+      <FormField label="Email" htmlFor="email">
+        <Input
           autoComplete="email"
-          className="border-border focus:border-accent focus:ring-accent/20 text-foreground w-full rounded-2xl border bg-white px-4 py-3 text-sm outline-none ring-0 transition-shadow focus:ring-4"
           defaultValue={defaultEmail}
           id="email"
           name="email"
           placeholder="admin@onesource.local"
           type="email"
         />
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <label
-          className="text-foreground text-sm font-medium"
-          htmlFor="password"
-        >
-          Password
-        </label>
-        <input
+      <FormField label="Password" htmlFor="password">
+        <Input
           autoComplete="current-password"
-          className="border-border focus:border-accent focus:ring-accent/20 text-foreground w-full rounded-2xl border bg-white px-4 py-3 text-sm outline-none ring-0 transition-shadow focus:ring-4"
           id="password"
           name="password"
           placeholder="Local development password"
           type="password"
         />
-      </div>
+      </FormField>
 
       {errorMessage ? (
-        <p
-          aria-live="polite"
-          className="rounded-2xl border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-          role="alert"
+        <FeedbackBanner
+          message={errorMessage}
+          title="Sign-in failed"
+          tone="warning"
+          className="w-full"
         >
-          {errorMessage}
-        </p>
+        </FeedbackBanner>
       ) : null}
 
-      <button
-        className="bg-accent hover:bg-accent-strong inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+      <Button
         disabled={isPending}
+        fullWidth
         type="submit"
+        variant="solid"
       >
         {isPending ? "Signing in..." : "Sign in"}
-      </button>
+      </Button>
     </form>
   );
 }

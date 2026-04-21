@@ -1,17 +1,81 @@
-import type { InputHTMLAttributes } from "react";
+import OutlinedInput from "@mui/material/OutlinedInput";
+import type { SxProps, Theme } from "@mui/material/styles";
+import type { InputHTMLAttributes, ReactNode } from "react";
 
-import { cn } from "@/lib/cn";
+export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
+  endAdornment?: ReactNode;
+  density?: "comfortable" | "compact";
+  startAdornment?: ReactNode;
+  sx?: SxProps<Theme>;
+};
 
-type InputProps = InputHTMLAttributes<HTMLInputElement>;
+export function Input({
+  autoComplete,
+  autoFocus,
+  defaultValue,
+  density = "comfortable",
+  disabled,
+  endAdornment,
+  id,
+  name,
+  onBlur,
+  onChange,
+  onFocus,
+  placeholder,
+  readOnly,
+  required,
+  startAdornment,
+  sx,
+  type,
+  value,
+  ...props
+}: InputProps) {
+  const hasError =
+    props["aria-invalid"] === true || props["aria-invalid"] === "true";
 
-export function Input({ className, ...props }: InputProps) {
   return (
-    <input
-      className={cn(
-        "ui-field px-3.5 py-2.5 text-sm",
-        className,
-      )}
-      {...props}
+    <OutlinedInput
+      autoComplete={autoComplete}
+      autoFocus={autoFocus}
+      defaultValue={defaultValue}
+      disabled={disabled}
+      endAdornment={endAdornment}
+      error={hasError}
+      fullWidth
+      id={id}
+      inputProps={props}
+      name={name}
+      onBlur={onBlur}
+      onChange={onChange}
+      onFocus={onFocus}
+      placeholder={placeholder}
+      readOnly={readOnly}
+      required={required}
+      size="small"
+      startAdornment={startAdornment}
+      sx={
+        [
+          {
+            fontSize: "0.92rem",
+          },
+          density === "compact"
+            ? {
+                "& .MuiOutlinedInput-input": {
+                  px: 1.5,
+                  py: 1.125,
+                },
+              }
+            : {
+                "& .MuiOutlinedInput-input": {
+                  px: 1.75,
+                  py: 1.25,
+                },
+              },
+          ...(sx ? [sx] : []),
+        ] as SxProps<Theme>
+      }
+      type={type}
+      value={value}
     />
   );
 }

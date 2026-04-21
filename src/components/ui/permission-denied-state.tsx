@@ -1,7 +1,10 @@
-import Link from "next/link";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 
-import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
+import { Surface } from "@/components/ui/surface";
 
 type PermissionDeniedStateProps = {
   action?: ReactNode;
@@ -21,20 +24,62 @@ export function PermissionDeniedState({
   const resolvedTitle = title ?? `You do not have access to ${blockedArea}.`;
 
   return (
-    <section className={cn("ui-state ui-state-permission", className)}>
-      <p className="ui-state-eyebrow">Permission denied</p>
-      <h1 className="ui-state-title">{resolvedTitle}</h1>
-      <p className="ui-state-body">{message}</p>
-      <div className="ui-state-actions">
+    <Surface
+      className={className}
+      component="section"
+      sx={{
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.9), rgba(250,252,255,0.96))",
+        borderColor: alpha("#295b78", 0.18),
+        p: 2.5,
+      }}
+    >
+      <Stack spacing={1.25}>
+        <Typography
+          sx={{
+            color: "info.main",
+            fontSize: "0.68rem",
+            fontWeight: 700,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+          }}
+        >
+          Permission denied
+        </Typography>
+        <Typography
+          component="h1"
+          sx={{
+            color: "info.main",
+            fontFamily: "var(--font-heading), sans-serif",
+            fontSize: "1.28rem",
+            fontWeight: 600,
+            letterSpacing: "-0.03em",
+          }}
+        >
+          {resolvedTitle}
+        </Typography>
+        <Typography
+          sx={{
+            color: "text.secondary",
+            fontSize: "0.94rem",
+            lineHeight: 1.6,
+            maxWidth: "62ch",
+          }}
+        >
+          {message}
+        </Typography>
+        <div>
         {action ?? (
-          <Link
+          <Button
             href="/"
-            className="inline-flex items-center rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft"
+            tone="primary"
+            variant="solid"
           >
             Return to dashboard
-          </Link>
+          </Button>
         )}
-      </div>
-    </section>
+        </div>
+      </Stack>
+    </Surface>
   );
 }

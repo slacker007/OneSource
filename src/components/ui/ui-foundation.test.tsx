@@ -1,14 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { PermissionDeniedState } from "@/components/ui/permission-denied-state";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 
 describe("UI foundation primitives", () => {
@@ -21,9 +24,9 @@ describe("UI foundation primitives", () => {
       </div>,
     );
 
-    expect(screen.getByText("Go")).toHaveClass("bg-success-soft");
-    expect(screen.getByText("Watch")).toHaveClass("bg-warning-soft");
-    expect(screen.getByText("Blocked")).toHaveClass("bg-danger-soft");
+    expect(screen.getByText("Go")).toBeInTheDocument();
+    expect(screen.getByText("Watch")).toBeInTheDocument();
+    expect(screen.getByText("Blocked")).toBeInTheDocument();
   });
 
   it("renders empty, error, and permission-denied states with shared copy structure", () => {
@@ -45,14 +48,18 @@ describe("UI foundation primitives", () => {
     expect(screen.getByText(/no matching records/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /create record/i })).toBeInTheDocument();
     expect(screen.getByText(/attention required/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /you do not have access to workspace settings/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /you do not have access to workspace settings/i,
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /return to dashboard/i })).toHaveAttribute(
       "href",
       "/",
     );
   });
 
-  it("renders compact field primitives and skeletons", () => {
+  it("renders field wrappers, buttons, banners, surfaces, and skeletons", () => {
     render(
       <div>
         <FormField error="Required field" hint="Compact input styling." label="Title">
@@ -62,17 +69,27 @@ describe("UI foundation primitives", () => {
           <option>Open</option>
         </Select>
         <Textarea aria-label="Summary" />
-        <Skeleton className="h-12 w-48" data-testid="skeleton" />
+        <FeedbackBanner
+          message="The latest change was saved."
+          title="Saved"
+          tone="success"
+        />
+        <Surface data-testid="surface">Preview shell</Surface>
+        <Button type="button">Continue</Button>
+        <Skeleton data-testid="skeleton" height={48} width={192} />
       </div>,
     );
 
-    expect(screen.getByPlaceholderText(/opportunity title/i)).toHaveClass(
-      "ui-field",
+    expect(screen.getByPlaceholderText(/opportunity title/i)).toHaveAttribute(
+      "aria-describedby",
+      expect.stringContaining("-hint"),
     );
-    expect(screen.getByRole("combobox", { name: /status/i })).toHaveClass("ui-field");
-    expect(screen.getByRole("textbox", { name: /summary/i })).toHaveClass("ui-field");
-    expect(screen.getByText(/required field/i)).toHaveClass("text-danger");
+    expect(screen.getByRole("combobox", { name: /status/i })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /summary/i })).toBeInTheDocument();
+    expect(screen.getByText(/required field/i)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/saved/i);
+    expect(screen.getByTestId("surface")).toHaveTextContent(/preview shell/i);
+    expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
     expect(screen.getByTestId("skeleton")).toHaveAttribute("aria-hidden", "true");
-    expect(screen.getByTestId("skeleton")).toHaveClass("ui-skeleton");
   });
 });
