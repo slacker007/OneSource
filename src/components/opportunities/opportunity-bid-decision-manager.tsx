@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 
+import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Badge } from "@/components/ui/badge";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
@@ -144,23 +145,13 @@ export function OpportunityBidDecisionManager({
         />
       </FormField>
 
-      {state.formError ? (
-        <p
-          className="mt-4 rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-          role="alert"
-        >
-          {state.formError}
-        </p>
-      ) : null}
-
-      {state.successMessage ? (
-        <p
-          className="mt-4 rounded-[18px] border border-[rgba(150,214,198,0.35)] bg-[rgba(229,243,239,0.12)] px-4 py-3 text-sm text-white"
-          role="status"
-        >
-          {state.successMessage}
-        </p>
-      ) : null}
+      <ActionFeedback
+        className="mt-4"
+        errorMessage={state.formError}
+        errorTitle="Decision needs attention"
+        successMessage={state.successMessage}
+        successTitle="Decision recorded"
+      />
 
       <div className="mt-5 flex flex-wrap justify-end gap-3">
         <button

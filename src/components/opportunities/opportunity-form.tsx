@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -223,24 +224,28 @@ export function OpportunityForm({
       </header>
 
       {feedback ? (
-        <Banner
+        <FeedbackBanner
           message={feedback.message}
+          role="status"
           title={feedback.title}
-          tone={feedback.tone}
+          tone="success"
         />
       ) : null}
 
       {restoredDraft ? (
-        <Banner
+        <FeedbackBanner
           message="The restored values have not been saved to the database yet."
+          role="status"
           title="Unsaved draft restored"
           tone="warning"
         />
       ) : null}
 
       {formState.formError ? (
-        <Banner
+        <FeedbackBanner
+          ariaLive="assertive"
           message={formState.formError}
+          role="alert"
           title="Opportunity form needs attention"
           tone="danger"
         />
@@ -421,33 +426,6 @@ export function OpportunityForm({
         </form>
       </section>
     </section>
-  );
-}
-
-function Banner({
-  message,
-  title,
-  tone,
-}: {
-  message: string;
-  title: string;
-  tone: "danger" | "success" | "warning";
-}) {
-  const toneClassName =
-    tone === "success"
-      ? "border-[rgba(19,78,68,0.24)] bg-[rgba(227,242,239,0.95)] text-[rgb(19,78,68)]"
-      : tone === "warning"
-        ? "border-[rgba(182,125,39,0.24)] bg-[rgba(255,247,227,0.96)] text-[rgb(133,97,38)]"
-        : "border-[rgba(146,86,57,0.24)] bg-[rgba(253,241,236,0.96)] text-[rgb(133,69,49)]";
-
-  return (
-    <div
-      className={`rounded-[24px] border px-5 py-4 shadow-[0_12px_30px_rgba(20,37,34,0.05)] ${toneClassName}`}
-      role="status"
-    >
-      <p className="text-sm font-semibold">{title}</p>
-      <p className="mt-1 text-sm leading-6">{message}</p>
-    </div>
   );
 }
 

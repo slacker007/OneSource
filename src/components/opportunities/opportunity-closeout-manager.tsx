@@ -9,6 +9,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { ActionFeedback } from "@/components/ui/action-feedback";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -143,23 +144,13 @@ export function OpportunityCloseoutManager({
         </FormField>
       </div>
 
-      {state.formError ? (
-        <p
-          className="mt-4 rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-          role="alert"
-        >
-          {state.formError}
-        </p>
-      ) : null}
-
-      {state.successMessage ? (
-        <p
-          className="mt-4 rounded-[18px] border border-[rgba(32,95,85,0.25)] bg-[rgba(229,243,239,0.85)] px-4 py-3 text-sm text-[rgb(16,66,57)]"
-          role="status"
-        >
-          {state.successMessage}
-        </p>
-      ) : null}
+      <ActionFeedback
+        className="mt-4"
+        errorMessage={state.formError}
+        errorTitle="Closeout needs attention"
+        successMessage={state.successMessage}
+        successTitle="Closeout saved"
+      />
 
       <div className="mt-5 flex flex-wrap justify-end gap-3">
         <button

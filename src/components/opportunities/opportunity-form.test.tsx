@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { OpportunityForm } from "./opportunity-form";
@@ -75,8 +74,6 @@ describe("OpportunityForm", () => {
       }),
     );
 
-    const user = userEvent.setup();
-
     render(
       <OpportunityForm
         action={mockAction}
@@ -90,11 +87,9 @@ describe("OpportunityForm", () => {
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue(/restored pursuit title/i)).toBeInTheDocument();
 
-    await user.clear(screen.getByLabelText(/opportunity title/i));
-    await user.type(
-      screen.getByLabelText(/opportunity title/i),
-      "Updated local draft",
-    );
+    fireEvent.change(screen.getByLabelText(/opportunity title/i), {
+      target: { value: "Updated local draft" },
+    });
 
     await waitFor(() => {
       expect(

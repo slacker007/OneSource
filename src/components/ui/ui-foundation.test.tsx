@@ -71,6 +71,7 @@ describe("UI foundation primitives", () => {
         <Textarea aria-label="Summary" />
         <FeedbackBanner
           message="The latest change was saved."
+          role="status"
           title="Saved"
           tone="success"
         />
@@ -87,7 +88,7 @@ describe("UI foundation primitives", () => {
     expect(screen.getByRole("combobox", { name: /status/i })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /summary/i })).toBeInTheDocument();
     expect(screen.getByText(/required field/i)).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(/saved/i);
+    expect(screen.getByRole("status")).toHaveTextContent(/saved/i);
     expect(screen.getByTestId("surface")).toHaveTextContent(/preview shell/i);
     expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
     expect(screen.getByTestId("skeleton")).toHaveAttribute("aria-hidden", "true");

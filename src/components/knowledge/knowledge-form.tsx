@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState, type ChangeEvent } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -161,16 +162,19 @@ export function KnowledgeForm({
       </header>
 
       {feedback ? (
-        <Banner
+        <FeedbackBanner
           message={feedback.message}
+          role="status"
           title={feedback.title}
-          tone={feedback.tone}
+          tone={feedback.tone === "warning" ? "warning" : "info"}
         />
       ) : null}
 
       {formState.formError ? (
-        <Banner
+        <FeedbackBanner
+          ariaLive="assertive"
           message={formState.formError}
+          role="alert"
           title="Knowledge asset needs attention"
           tone="danger"
         />
@@ -464,25 +468,6 @@ function SummaryCard({
       </p>
       <p className="text-muted mt-2 text-xs leading-5">{supportingText}</p>
     </article>
-  );
-}
-
-function Banner({
-  message,
-  title,
-  tone,
-}: {
-  message: string;
-  title: string;
-  tone: "accent" | "warning" | "danger";
-}) {
-  return (
-    <section className="border-border rounded-[28px] border bg-white px-6 py-5 shadow-[0_14px_34px_rgba(20,37,34,0.06)]">
-      <div className="flex flex-wrap gap-3">
-        <Badge tone={tone}>{title}</Badge>
-      </div>
-      <p className="text-muted mt-3 text-sm leading-6">{message}</p>
-    </section>
   );
 }
 

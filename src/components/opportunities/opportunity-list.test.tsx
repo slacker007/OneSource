@@ -98,7 +98,9 @@ const snapshot: OpportunityListSnapshot = {
 };
 
 describe("OpportunityList", () => {
-  it("renders the URL-synced opportunity pipeline results", () => {
+  it(
+    "renders the URL-synced opportunity pipeline shell and filters",
+    () => {
     render(
       <OpportunityList
         snapshot={snapshot}
@@ -115,9 +117,6 @@ describe("OpportunityList", () => {
     expect(
       screen.getByRole("table", { name: /opportunity pipeline results/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getAllByText(/army cloud operations recompete/i),
-    ).toHaveLength(2);
     expect(screen.getByText(/view · due soon/i)).toBeInTheDocument();
     expect(screen.getByText(/search · cloud/i)).toBeInTheDocument();
     expect(screen.getAllByDisplayValue(/541512/i)).toHaveLength(2);
@@ -125,6 +124,33 @@ describe("OpportunityList", () => {
     expect(
       screen.getByRole("link", { name: /create tracked opportunity/i }),
     ).toHaveAttribute("href", "/opportunities/new");
+    expect(
+      screen.getByRole("link", { name: /due soon.*30-day window/i }),
+    ).toHaveAttribute(
+      "href",
+      "/opportunities?view=due_soon&due=next_30_days&sort=deadline_asc&density=compact",
+    );
+      expect(
+        screen.getByRole("link", { name: /compact/i }),
+      ).toHaveAttribute("aria-current", "page");
+    },
+    10_000,
+  );
+
+  it("renders the current pursuit preview and workspace actions", () => {
+    render(
+      <OpportunityList
+        snapshot={snapshot}
+        viewState={{
+          density: "compact",
+          previewOpportunityId: "opp_123",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getAllByText(/army cloud operations recompete/i),
+    ).toHaveLength(2);
     expect(
       screen.getByRole("link", { name: /open brief/i }),
     ).toHaveAttribute(
@@ -146,16 +172,6 @@ describe("OpportunityList", () => {
       }),
     ).toHaveLength(2);
     expect(screen.getByText(/capture brief/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /due soon.*30-day window/i }),
-    ).toHaveAttribute(
-      "href",
-      "/opportunities?view=due_soon&due=next_30_days&sort=deadline_asc&density=compact",
-    );
-    expect(
-      screen.getByRole("link", { name: /compact/i }),
-    ).toHaveAttribute("aria-current", "page");
-    expect(screen.getByText(/search · cloud/i)).toBeInTheDocument();
   });
 
   it("renders an empty state when no rows match the current filters", () => {

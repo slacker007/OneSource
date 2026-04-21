@@ -12,6 +12,8 @@ This document records the canonical verification workflows for the repo as of th
 - Schema verification: Prisma validate, migration generation and apply, and seed execution
 - Containerized verification: `docker compose` test workflows for lint, build, unit tests, and Chromium end-to-end checks
 
+The repo-level Vitest configuration now sets `testTimeout: 10_000`. Keep that as part of the canonical contract for the current MUI-heavy coverage suite; several routed render tests exceed the default 5-second timeout under compose coverage, and ad hoc per-run timeout overrides should no longer be needed.
+
 Integration tests do not exist yet. When database-backed integration tests are added, the compose `test` service is the canonical place to run them because it joins the same network as PostgreSQL and receives the compose-managed `DATABASE_URL`.
 
 ## Optional Offline Container Dependency Strategy
@@ -325,10 +327,10 @@ make compose-test-e2e
 ```
 
 The Playwright workflow automatically starts PostgreSQL and the web app, waits for the app health check, then runs Chromium from the dedicated Playwright container. Compose-backed browser execution uses the same serialized Playwright configuration as host-side `npm run e2e`.
-The compose verification targets now run through [`docker-compose.test.yml`](/Users/maverick/Documents/RalphLoops/OneSource/docker-compose.test.yml:1), which uses a disposable `tmpfs` PostgreSQL data mount for the test stack so browser verification no longer depends on the host bind-mounted database directory.
+The compose verification targets now run through [`docker-compose.test.yml`](/Users/maverick/Documents/RalphLoops/OneSource/docker-compose.test.yml:1), which uses a disposable `tmpfs` PostgreSQL data mount for the test stack so browser verification no longer depends on the host bind-mounted database directory. The test-stack PostgreSQL service also stays internal to the compose network and no longer publishes host port `5432`, which avoids collisions with unrelated local Postgres containers.
 The `make compose-test*` targets force `SAM_GOV_USE_FIXTURES=true` so connector-backed `/sources` verification stays deterministic in CI-like local runs.
 Because the smoke suite mutates one shared seeded database inside the disposable test stack, `make compose-test-e2e` now starts from an empty `tmpfs` database, then runs `npx prisma migrate deploy` and `npm run db:seed` inside the disposable `test` container before Chromium runs. You can run that setup phase directly with `make compose-test-bootstrap`.
-After route-level or smoke-spec edits in this sandbox, explicitly refresh both browser-facing images with `docker compose -f docker-compose.test.yml build web playwright` before rerunning `make compose-test-e2e`; otherwise Chromium can execute the newest browser assertions against an older `web` image.
+After route-level or smoke-spec edits in this sandbox, explicitly refresh both browser-facing images with `docker compose -f docker-compose.test.yml build --no-cache web playwright` before rerunning `make compose-test-e2e`; otherwise Chromium can execute the newest browser assertions against an older `web` image.
 The current `make compose-test-e2e` target begins by running `docker compose down --remove-orphans`, so it will stop a user-kept default `web`/`worker` stack before the disposable browser stack starts. If the live environment needs to remain available after browser verification, restore it with `docker compose up --build -d web worker`; if earlier direct `docker compose -f docker-compose.test.yml run --rm --build test ...` commands recreated `db`, rerun the documented default-stack `npx prisma migrate deploy` plus `npm run db:seed` bootstrap first.
 If the compose browser run leaves `db` restarting, rerun `make compose-down` and then `make compose-test-e2e`. The test stack is intentionally disposable; no manual cleanup of PostgreSQL files is required beyond clearing `.data/opportunity-documents` if uploaded test artifacts need to be reset.
 After the loop is closed and any debugging evidence is no longer needed, run `make clean-dev-artifacts` instead of leaving the rebuilt verification environment in place.

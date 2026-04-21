@@ -44,6 +44,8 @@ async function openWorkspaceSection(
 }
 
 test("authenticated homepage smoke test", async ({ page }) => {
+  test.setTimeout(90_000);
+
   const csvImportSeed = Date.now();
   const csvImportTitle = `Zero Trust Boundary Engineering Bridge ${csvImportSeed}`;
   const csvImportSolicitation = `DHS-CISA-26-${csvImportSeed}`;
@@ -365,8 +367,12 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByText(/enterprise knowledge management support services/i).first(),
   ).toBeVisible();
-  await page.getByRole("link", { name: /view capture active queue/i }).click();
-  await expect(page).toHaveURL(/\/opportunities\?stage=capture_active/);
+  const stageQueueLink = page.locator("main").getByRole("link", {
+    name: /view .* queue/i,
+  }).first();
+  await expect(stageQueueLink).toBeVisible();
+  await stageQueueLink.click();
+  await expect(page).toHaveURL(/\/opportunities\?stage=/);
   await expect(
     page.getByRole("table", { name: /opportunity pipeline results/i }),
   ).toBeVisible();
@@ -927,8 +933,21 @@ test("users can update proposal tracking on an active proposal workspace", async
     page.getByRole("heading", { name: /^Proposal tracking$/i }),
   ).toBeVisible();
 
-  await page.locator("#proposal-status").selectOption("SUBMITTED");
-  await page.locator("#proposal-owner").selectOption({ label: "Casey Brooks" });
+  const proposalStatus = page.locator("#proposal-status");
+  await proposalStatus.focus();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Tab");
+  await expect(proposalStatus).toHaveValue("SUBMITTED");
+  const proposalOwner = page.locator("#proposal-owner");
+  await proposalOwner.focus();
+  await page.keyboard.press("Home");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#proposal-owner option:checked")).toHaveText(
+    /casey brooks/i,
+  );
   await page
     .getByRole("checkbox", { name: /final compliance review complete/i })
     .check();

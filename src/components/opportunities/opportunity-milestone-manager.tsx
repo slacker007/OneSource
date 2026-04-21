@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
+import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField } from "@/components/ui/form-field";
@@ -205,23 +206,13 @@ export function OpportunityMilestoneManager({
           />
         </FormField>
 
-        {createState.formError ? (
-          <p
-            className="mt-4 rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-            role="alert"
-          >
-            {createState.formError}
-          </p>
-        ) : null}
-
-        {createState.successMessage ? (
-          <p
-            className="mt-4 rounded-[18px] border border-[rgba(32,95,85,0.25)] bg-[rgba(229,243,239,0.85)] px-4 py-3 text-sm text-[rgb(16,66,57)]"
-            role="status"
-          >
-            {createState.successMessage}
-          </p>
-        ) : null}
+        <ActionFeedback
+          className="mt-4"
+          errorMessage={createState.formError}
+          errorTitle="Milestone needs attention"
+          successMessage={createState.successMessage}
+          successTitle="Milestone created"
+        />
 
         <div className="mt-5 flex flex-wrap justify-end gap-3">
           <button
@@ -472,23 +463,12 @@ function EditableMilestoneCard({
             />
           </FormField>
 
-          {updateState.formError ? (
-            <p
-              className="rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-              role="alert"
-            >
-              {updateState.formError}
-            </p>
-          ) : null}
-
-          {updateState.successMessage ? (
-            <p
-              className="rounded-[18px] border border-[rgba(32,95,85,0.25)] bg-[rgba(229,243,239,0.85)] px-4 py-3 text-sm text-[rgb(16,66,57)]"
-              role="status"
-            >
-              {updateState.successMessage}
-            </p>
-          ) : null}
+          <ActionFeedback
+            errorMessage={updateState.formError}
+            errorTitle="Milestone update needs attention"
+            successMessage={updateState.successMessage}
+            successTitle="Milestone updated"
+          />
 
           <div className="flex flex-wrap justify-end gap-3">
             <button
@@ -514,23 +494,12 @@ function EditableMilestoneCard({
           </button>
         </form>
 
-        {deleteState.formError ? (
-          <p
-            className="rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-            role="alert"
-          >
-            {deleteState.formError}
-          </p>
-        ) : null}
-
-        {deleteState.successMessage ? (
-          <p
-            className="rounded-[18px] border border-[rgba(32,95,85,0.25)] bg-[rgba(229,243,239,0.85)] px-4 py-3 text-sm text-[rgb(16,66,57)]"
-            role="status"
-          >
-            {deleteState.successMessage}
-          </p>
-        ) : null}
+        <ActionFeedback
+          errorMessage={deleteState.formError}
+          errorTitle="Milestone deletion needs attention"
+          successMessage={deleteState.successMessage}
+          successTitle="Milestone removed"
+        />
       </div>
     </article>
   );

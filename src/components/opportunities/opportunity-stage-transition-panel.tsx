@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 
+import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField } from "@/components/ui/form-field";
@@ -189,23 +190,12 @@ export function OpportunityStageTransitionPanel({
             ) : null}
           </div>
 
-          {formState.formError ? (
-            <p
-              className="rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-              role="alert"
-            >
-              {formState.formError}
-            </p>
-          ) : null}
-
-          {formState.successMessage ? (
-            <p
-              className="rounded-[18px] border border-[rgba(32,95,85,0.25)] bg-[rgba(229,243,239,0.85)] px-4 py-3 text-sm text-[rgb(16,66,57)]"
-              role="status"
-            >
-              {formState.successMessage}
-            </p>
-          ) : null}
+          <ActionFeedback
+            errorMessage={formState.formError}
+            errorTitle="Stage transition needs attention"
+            successMessage={formState.successMessage}
+            successTitle="Stage updated"
+          />
         </form>
       )}
     </article>

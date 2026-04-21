@@ -7,9 +7,11 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type FormEvent,
 } from "react";
 import { useRouter } from "next/navigation";
 
+import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField } from "@/components/ui/form-field";
@@ -126,14 +128,11 @@ export function OpportunityProposalManager({
         <form action={deleteFormAction}>
           <input name="opportunityId" type="hidden" value={opportunityId} />
           <input name="proposalId" type="hidden" value={currentProposal.id} />
-          {deleteState.formError ? (
-            <p
-              className="mb-3 rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-              role="alert"
-            >
-              {deleteState.formError}
-            </p>
-          ) : null}
+          <ActionFeedback
+            className="mb-3"
+            errorMessage={deleteState.formError}
+            errorTitle="Proposal deletion needs attention"
+          />
           <button
             className="inline-flex min-h-12 items-center justify-center rounded-full border border-[rgba(148,53,53,0.22)] bg-[rgba(148,53,53,0.08)] px-5 py-3 text-sm font-medium text-[rgb(125,39,39)] transition hover:bg-[rgba(148,53,53,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
             disabled={deleteIsPending}
@@ -182,6 +181,24 @@ function ProposalTrackingForm({
   );
   const completedChecklistKeys = new Set(selectedChecklistKeys);
   const linkedDocumentIds = new Set(selectedLinkedDocumentIds);
+
+  function readSelectValue(
+    event: ChangeEvent<HTMLSelectElement> | FormEvent<HTMLElement>,
+  ) {
+    return (event.target as HTMLSelectElement).value;
+  }
+
+  function handleStatusInput(
+    event: ChangeEvent<HTMLSelectElement> | FormEvent<HTMLElement>,
+  ) {
+    setSelectedStatus(readSelectValue(event) as OpportunityProposalStatus);
+  }
+
+  function handleOwnerInput(
+    event: ChangeEvent<HTMLSelectElement> | FormEvent<HTMLElement>,
+  ) {
+    setSelectedOwnerUserId(readSelectValue(event));
+  }
 
   function handleChecklistChange(event: ChangeEvent<HTMLInputElement>) {
     setSelectedChecklistKeys((currentKeys) =>
@@ -236,9 +253,8 @@ function ProposalTrackingForm({
           <Select
             id="proposal-status"
             name="status"
-            onChange={(event) =>
-              setSelectedStatus(event.currentTarget.value as OpportunityProposalStatus)
-            }
+            onChange={handleStatusInput}
+            onInput={handleStatusInput}
             value={selectedStatus}
           >
             {OPPORTUNITY_PROPOSAL_STATUSES.map((status) => (
@@ -257,7 +273,8 @@ function ProposalTrackingForm({
           <Select
             id="proposal-owner"
             name="ownerUserId"
-            onChange={(event) => setSelectedOwnerUserId(event.currentTarget.value)}
+            onChange={handleOwnerInput}
+            onInput={handleOwnerInput}
             value={selectedOwnerUserId}
           >
             <option value="">Unassigned</option>
@@ -363,23 +380,13 @@ function ProposalTrackingForm({
         )}
       </section>
 
-      {saveState.formError ? (
-        <p
-          className="mt-4 rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-          role="alert"
-        >
-          {saveState.formError}
-        </p>
-      ) : null}
-
-      {saveState.successMessage ? (
-        <p
-          className="mt-4 rounded-[18px] border border-[rgba(32,95,85,0.25)] bg-[rgba(229,243,239,0.85)] px-4 py-3 text-sm text-[rgb(16,66,57)]"
-          role="status"
-        >
-          {saveState.successMessage}
-        </p>
-      ) : null}
+      <ActionFeedback
+        className="mt-4"
+        errorMessage={saveState.formError}
+        errorTitle="Proposal tracking needs attention"
+        successMessage={saveState.successMessage}
+        successTitle="Proposal tracking saved"
+      />
 
       <div className="mt-5 flex flex-wrap justify-end gap-3">
         <button

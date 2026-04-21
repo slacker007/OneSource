@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 
+import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Badge } from "@/components/ui/badge";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -118,23 +119,13 @@ export function OpportunityDocumentManager({
         explicit metadata so later parser upgrades can revisit them safely.
       </p>
 
-      {createState.formError ? (
-        <p
-          className="mt-4 rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-          role="alert"
-        >
-          {createState.formError}
-        </p>
-      ) : null}
-
-      {createState.successMessage ? (
-        <p
-          className="mt-4 rounded-[18px] border border-[rgba(32,95,85,0.25)] bg-[rgba(229,243,239,0.85)] px-4 py-3 text-sm text-[rgb(16,66,57)]"
-          role="status"
-        >
-          {createState.successMessage}
-        </p>
-      ) : null}
+      <ActionFeedback
+        className="mt-4"
+        errorMessage={createState.formError}
+        errorTitle="Upload needs attention"
+        successMessage={createState.successMessage}
+        successTitle="Document stored"
+      />
 
       <div className="mt-5 flex flex-wrap justify-end gap-3">
         <button

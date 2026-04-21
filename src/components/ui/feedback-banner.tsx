@@ -1,14 +1,16 @@
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import { alpha } from "@mui/material/styles";
-import type { ReactNode } from "react";
+import type { AriaRole, ReactNode } from "react";
 
 export type FeedbackBannerTone = "info" | "success" | "warning" | "danger";
 
 type FeedbackBannerProps = {
+  ariaLive?: "assertive" | "off" | "polite";
   action?: ReactNode;
   className?: string;
   message: ReactNode;
+  role?: AriaRole;
   title: ReactNode;
   tone?: FeedbackBannerTone;
 };
@@ -21,16 +23,23 @@ const severityByTone = {
 } as const;
 
 export function FeedbackBanner({
+  ariaLive,
   action,
   className,
   message,
+  role,
   title,
   tone = "info",
 }: FeedbackBannerProps) {
+  const resolvedRole = role ?? (tone === "success" ? "status" : "alert");
+  const resolvedAriaLive =
+    ariaLive ?? (resolvedRole === "status" ? "polite" : "assertive");
+
   return (
     <Alert
+      aria-live={resolvedAriaLive}
       className={className}
-      role="alert"
+      role={resolvedRole}
       severity={severityByTone[tone]}
       sx={{
         alignItems: "flex-start",

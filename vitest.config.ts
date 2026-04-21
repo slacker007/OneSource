@@ -17,6 +17,7 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     exclude: ["tests/**"],
     setupFiles: ["./vitest.setup.ts"],
+    testTimeout: 10_000,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

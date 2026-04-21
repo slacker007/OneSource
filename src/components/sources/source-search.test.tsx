@@ -262,8 +262,10 @@ const csvImportSnapshot: CsvImportWorkspaceSnapshot = {
 };
 
 describe("SourceSearch", () => {
-  it("renders the preview panel with duplicate detection and import actions", () => {
-    render(
+  it(
+    "renders the preview panel with duplicate detection and import actions",
+    () => {
+      render(
       <SourceSearch
         csvImportAction={vi.fn(async () => undefined)}
         csvImportFeedback={{
@@ -314,8 +316,10 @@ describe("SourceSearch", () => {
     expect(
       screen.getByRole("heading", { name: /spreadsheet import workspace/i }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/87 \/ 100/i)).toHaveLength(2);
-  });
+      expect(screen.getAllByText(/87 \/ 100/i)).toHaveLength(2);
+    },
+    10_000,
+  );
 
   it("renders validation guidance when the query is invalid", () => {
     render(

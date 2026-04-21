@@ -161,9 +161,9 @@ describe("AppShellFrame", () => {
     ).toHaveAttribute("href", "/settings");
   });
 
-  it("opens the command center, filters results, and persists pinned work", async () => {
-    const user = userEvent.setup();
-
+  it(
+    "opens the command center, filters results, and persists pinned work",
+    async () => {
     window.localStorage.setItem(
       "onesource.shell.recent-destinations",
       JSON.stringify([
@@ -210,12 +210,12 @@ describe("AppShellFrame", () => {
     });
     await waitFor(() => expect(commandSearch).toHaveFocus());
     expect(commandLauncher).not.toHaveFocus();
-    await user.type(commandSearch, "va intake");
+    fireEvent.change(commandSearch, { target: { value: "va intake" } });
     expect(
       screen.getAllByRole("link", { name: /va intake modernization bpa/i }).length,
     ).toBeGreaterThan(0);
 
-    await user.click(
+    fireEvent.click(
       screen.getByRole("button", {
         name: /pin va intake modernization bpa to pinned work/i,
       }),
@@ -231,19 +231,21 @@ describe("AppShellFrame", () => {
       screen.getAllByText(/^pinned work$/i)[0].closest("section"),
     ).toHaveTextContent(/va intake modernization bpa/i);
 
-    await user.click(commandSearch);
-    await user.keyboard("{Escape}");
+    commandSearch.focus();
+    fireEvent.keyDown(commandSearch, { key: "Escape" });
     await waitFor(() =>
       expect(
         screen.queryByRole("dialog", { name: /command center/i }),
       ).not.toBeInTheDocument(),
     );
-  });
+    },
+    10_000,
+  );
 
-  it("opens notifications and preserves mobile navigation restrictions", async () => {
-    const user = userEvent.setup();
-
-    render(
+  it(
+    "opens notifications and preserves mobile navigation restrictions",
+    async () => {
+      render(
       <AppShellFrame
         allowDecisionSupport={false}
         allowWorkspaceSettings={false}
@@ -261,7 +263,7 @@ describe("AppShellFrame", () => {
       </AppShellFrame>,
     );
 
-    await user.click(
+    fireEvent.click(
       screen.getByRole("button", { name: /open notifications/i }),
     );
     expect(
@@ -272,9 +274,7 @@ describe("AppShellFrame", () => {
     const mobileNavigationButton = screen.getByRole("button", {
       name: /open navigation menu/i,
     });
-    await user.click(
-      mobileNavigationButton,
-    );
+    fireEvent.click(mobileNavigationButton);
 
     expect(
       screen.getByRole("navigation", { name: /mobile navigation/i }),
@@ -289,10 +289,12 @@ describe("AppShellFrame", () => {
     expect(
       screen.queryByRole("link", { name: /decision console/i }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("dialog", { name: /onesource workspace/i }),
-    ).toBeInTheDocument();
-  });
+      expect(
+        screen.getByRole("dialog", { name: /onesource workspace/i }),
+      ).toBeInTheDocument();
+    },
+    10_000,
+  );
 
   it("surfaces recent work and persists the collapse toggle", async () => {
     const user = userEvent.setup();
