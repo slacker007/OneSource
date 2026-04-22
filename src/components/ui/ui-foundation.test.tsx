@@ -78,6 +78,12 @@ describe("UI foundation primitives", () => {
         />
         <Surface data-testid="surface">Preview shell</Surface>
         <Button type="button">Continue</Button>
+        <Button data-testid="primary-solid-button" tone="primary" type="button" variant="solid">
+          Review deadline queue
+        </Button>
+        <Button data-testid="primary-solid-link-button" href="/opportunities?due=next_30_days">
+          Review deadline queue
+        </Button>
         <Skeleton data-testid="skeleton" height={48} width={192} />
       </div>,
     );
@@ -92,6 +98,12 @@ describe("UI foundation primitives", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/saved/i);
     expect(screen.getByTestId("surface")).toHaveTextContent(/preview shell/i);
     expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
+    expect(
+      window.getComputedStyle(screen.getByTestId("primary-solid-button")).color,
+    ).toBe("rgb(255, 255, 255)");
+    expect(
+      window.getComputedStyle(screen.getByTestId("primary-solid-link-button")).color,
+    ).toBe("rgb(255, 255, 255)");
     expect(screen.getByTestId("skeleton")).toHaveAttribute("aria-hidden", "true");
   });
 

@@ -26,10 +26,12 @@ export function Button({
   density = "comfortable",
   href,
   sx,
+  style,
   tone = "primary",
   variant = "solid",
   ...props
 }: ButtonProps) {
+  let resolvedLinkColor: string | undefined;
   const muiVariant =
     variant === "solid"
       ? "contained"
@@ -61,6 +63,7 @@ export function Button({
   ];
 
   if (tone === "neutral" && variant === "solid") {
+    resolvedLinkColor = onesourceTokens.color.text.primary;
     resolvedSx.push({
       bgcolor: onesourceTokens.color.surface.raised,
       border: `1px solid ${onesourceTokens.color.border.subtle}`,
@@ -72,6 +75,7 @@ export function Button({
   }
 
   if (tone === "neutral" && variant === "outlined") {
+    resolvedLinkColor = onesourceTokens.color.text.primary;
     resolvedSx.push({
       borderColor: onesourceTokens.color.border.subtle,
       color: onesourceTokens.color.text.primary,
@@ -83,6 +87,7 @@ export function Button({
   }
 
   if (tone === "neutral" && variant === "soft") {
+    resolvedLinkColor = onesourceTokens.color.text.primary;
     resolvedSx.push({
       bgcolor: onesourceTokens.color.surface.muted,
       color: onesourceTokens.color.text.primary,
@@ -93,6 +98,7 @@ export function Button({
   }
 
   if (tone === "primary" && variant === "soft") {
+    resolvedLinkColor = onesourceTokens.color.accent.dark;
     resolvedSx.push({
       bgcolor: onesourceTokens.color.accent.soft,
       color: onesourceTokens.color.accent.dark,
@@ -102,7 +108,30 @@ export function Button({
     });
   }
 
+  if (tone === "primary" && variant === "solid") {
+    resolvedLinkColor = onesourceTokens.color.text.inverse;
+    resolvedSx.push({
+      bgcolor: onesourceTokens.color.accent.main,
+      color: onesourceTokens.color.text.inverse,
+      "&:hover": {
+        bgcolor: onesourceTokens.color.accent.dark,
+      },
+    });
+  }
+
+  if (tone === "danger" && variant === "solid") {
+    resolvedLinkColor = onesourceTokens.color.text.inverse;
+    resolvedSx.push({
+      bgcolor: onesourceTokens.color.status.danger.main,
+      color: onesourceTokens.color.text.inverse,
+      "&:hover": {
+        bgcolor: "#7f312b",
+      },
+    });
+  }
+
   if (tone === "danger" && variant === "soft") {
+    resolvedLinkColor = onesourceTokens.color.status.danger.main;
     resolvedSx.push({
       bgcolor: onesourceTokens.color.status.danger.soft,
       color: onesourceTokens.color.status.danger.main,
@@ -115,6 +144,15 @@ export function Button({
   if (variant === "text") {
     resolvedSx.push({
       px: density === "compact" ? 1 : 1.25,
+    });
+  }
+
+  if (href && resolvedLinkColor) {
+    resolvedSx.push({
+      "&, &:link, &:visited": {
+        color: resolvedLinkColor,
+        textDecoration: "none",
+      },
     });
   }
 
@@ -134,6 +172,14 @@ export function Button({
     color: tone === "danger" ? "error" : "primary",
     sx: resolvedSx as SxProps<Theme>,
     variant: muiVariant,
+    style:
+      href && resolvedLinkColor
+        ? {
+            ...style,
+            WebkitTextFillColor: resolvedLinkColor,
+            color: resolvedLinkColor,
+          }
+        : style,
     ...props,
   } as const;
 

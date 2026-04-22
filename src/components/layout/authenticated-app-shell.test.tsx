@@ -148,9 +148,9 @@ describe("AppShellFrame", () => {
     expect(screen.getByText(/org id org_123/i)).toBeInTheDocument();
     expect(screen.getAllByText(/^external discovery$/i)[0]).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /workbench/i })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /^pinned$/i }),
-    ).toHaveAttribute("aria-pressed", "true");
+    const pinnedButton = screen.getByRole("button", { name: /^pinned$/i });
+    expect(pinnedButton).toHaveAttribute("aria-pressed", "true");
+    expect(window.getComputedStyle(pinnedButton).color).toBe("rgb(245, 245, 244)");
     expect(screen.queryByRole("region", { name: /quick links/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/^current focus$/i)).not.toBeInTheDocument();
   });

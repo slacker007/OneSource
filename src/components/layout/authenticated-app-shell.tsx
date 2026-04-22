@@ -1667,7 +1667,17 @@ function WorkbenchPanel({
           aria-pressed={isPinnedView}
           density="compact"
           onClick={() => onViewChange("pinned")}
-          sx={{ flex: 1 }}
+          sx={{
+            flex: 1,
+            borderColor: alpha("#ffffff", isPinnedView ? 0.18 : 0.14),
+            bgcolor: isPinnedView ? alpha("#ffffff", 0.14) : "transparent",
+            color: isPinnedView ? SHELL_TEXT_PRIMARY : SHELL_TEXT_SECONDARY,
+            "&:hover": {
+              bgcolor: alpha("#ffffff", isPinnedView ? 0.18 : 0.08),
+              borderColor: alpha("#ffffff", 0.2),
+              color: SHELL_TEXT_PRIMARY,
+            },
+          }}
           tone="neutral"
           type="button"
           variant={isPinnedView ? "soft" : "outlined"}
@@ -1678,7 +1688,17 @@ function WorkbenchPanel({
           aria-pressed={!isPinnedView}
           density="compact"
           onClick={() => onViewChange("recent")}
-          sx={{ flex: 1 }}
+          sx={{
+            flex: 1,
+            borderColor: alpha("#ffffff", !isPinnedView ? 0.18 : 0.14),
+            bgcolor: !isPinnedView ? alpha("#ffffff", 0.14) : "transparent",
+            color: !isPinnedView ? SHELL_TEXT_PRIMARY : SHELL_TEXT_SECONDARY,
+            "&:hover": {
+              bgcolor: alpha("#ffffff", !isPinnedView ? 0.18 : 0.08),
+              borderColor: alpha("#ffffff", 0.2),
+              color: SHELL_TEXT_PRIMARY,
+            },
+          }}
           tone="neutral"
           type="button"
           variant={!isPinnedView ? "soft" : "outlined"}

@@ -130,6 +130,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     page.getByRole("button", { name: /open command search/i }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /^Review deadline queue$/i }).first(),
+  ).toHaveCSS("color", "rgb(255, 255, 255)");
   await page.getByRole("link", { name: /^View pipeline$/i }).click();
   await expect(page).toHaveURL(/\/opportunities$/);
   await expect(
@@ -976,6 +979,9 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
   await expect(
     workbench.getByRole("button", { name: /^pinned$/i }),
   ).toBeVisible();
+  await expect(
+    workbench.getByRole("button", { name: /^pinned$/i }),
+  ).toHaveCSS("color", "rgb(245, 245, 244)");
   await expect(
     page.getByRole("button", { name: /collapse navigation rail/i }),
   ).toBeVisible();

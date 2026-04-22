@@ -476,7 +476,7 @@ const onesourceTheme = createTheme({
           color: onesourceTokens.color.text.primary,
           textRendering: "optimizeLegibility",
         },
-        a: {
+        "a:not(.MuiButtonBase-root)": {
           color: "inherit",
           textDecoration: "none",
         },
