@@ -113,6 +113,7 @@ export function OpportunityTaskManager({
     <div className="space-y-5">
       <form
         action={createFormAction}
+        aria-label="Add execution task"
         onSubmitCapture={(event) => {
           setOptimisticCreatedTask(
             buildOptimisticTaskDraft(

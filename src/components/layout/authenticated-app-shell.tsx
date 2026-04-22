@@ -1473,6 +1473,7 @@ function QuickLinksPanel({
 }) {
   return (
     <Surface
+      aria-label="Quick links"
       component="section"
       sx={{
         bgcolor: SHELL_PANEL_BG,
@@ -1570,6 +1571,7 @@ function PinnedWorkPanel({
 }) {
   return (
     <Surface
+      aria-label="Pinned work"
       component="section"
       sx={{
         bgcolor: SHELL_PANEL_BG,
@@ -1721,6 +1723,7 @@ function RecentWorkPanel({
 }) {
   return (
     <Surface
+      aria-label="Recent work"
       component="section"
       sx={{
         bgcolor: SHELL_PANEL_BG,

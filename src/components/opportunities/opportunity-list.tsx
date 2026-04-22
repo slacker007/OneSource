@@ -455,6 +455,7 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
               "Open the workspace for scoring, stage movement, tasks, and documents."
             }
             eyebrow="Selected pursuit"
+            label="Selected pursuit"
             metadata={buildPreviewMetadata(selectedOpportunity)}
             title={selectedOpportunity.title}
           >

@@ -147,7 +147,7 @@ describe("AppShellFrame", () => {
     expect(screen.getAllByText(/^external discovery$/i)[0]).toBeInTheDocument();
 
     const quickLinks = within(
-      screen.getAllByText(/^quick links$/i)[0].closest("section")!,
+      screen.getByRole("region", { name: /quick links/i }),
     );
     expect(
       quickLinks.getByRole("link", { name: /create pursuit/i }),
@@ -226,7 +226,7 @@ describe("AppShellFrame", () => {
     );
 
     expect(
-      screen.getAllByText(/^pinned work$/i)[0].closest("section"),
+      screen.getByRole("region", { name: /pinned work/i }),
     ).toHaveTextContent(/va intake modernization bpa/i);
 
     commandSearch.focus();
@@ -333,7 +333,7 @@ describe("AppShellFrame", () => {
     );
 
     const recentWork = within(
-      screen.getAllByText(/^recent work$/i)[0].closest("section")!,
+      screen.getByRole("region", { name: /recent work/i }),
     );
     expect(
       recentWork.getByRole("link", { name: /knowledge library/i }),

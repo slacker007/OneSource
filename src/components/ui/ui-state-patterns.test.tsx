@@ -60,7 +60,6 @@ describe("UI state patterns", () => {
       </LoadingSurface>,
     );
 
-    expect(container.querySelectorAll(".MuiSkeleton-root").length).toBeGreaterThan(0);
-    expect(container.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(7);
   });
 });

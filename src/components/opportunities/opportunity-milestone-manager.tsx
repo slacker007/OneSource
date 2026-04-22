@@ -108,6 +108,7 @@ export function OpportunityMilestoneManager({
     <div className="space-y-5">
       <form
         action={createFormAction}
+        aria-label="Add milestone"
         onSubmitCapture={(event) => {
           setOptimisticCreatedMilestone(buildOptimisticMilestoneDraft(event));
         }}

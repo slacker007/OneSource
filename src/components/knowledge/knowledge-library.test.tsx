@@ -135,7 +135,7 @@ describe("KnowledgeLibrary", () => {
     expect(screen.getAllByText(/oasis-plus-unr/i).length).toBeGreaterThan(0);
 
     const previewHeading = within(
-      screen.getByText(/^selected asset$/i).closest("aside") as HTMLElement,
+      screen.getByRole("complementary", { name: /selected asset/i }),
     ).getByRole("heading", {
       name: /army cloud transition win theme/i,
     });
@@ -168,7 +168,7 @@ describe("KnowledgeLibrary", () => {
     );
 
     const previewHeading = within(
-      screen.getByText(/^selected asset$/i).closest("aside") as HTMLElement,
+      screen.getByRole("complementary", { name: /selected asset/i }),
     ).getByRole("heading", {
       name: /va intake boilerplate/i,
     });

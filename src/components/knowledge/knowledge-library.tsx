@@ -326,6 +326,7 @@ export function KnowledgeLibrary({
               "Reusable content, structured retrieval coverage, and linked pursuits remain visible here while you browse."
             }
             eyebrow="Selected asset"
+            label="Selected asset"
             metadata={buildPreviewMetadata(selectedAsset)}
             title={selectedAsset.title}
           >

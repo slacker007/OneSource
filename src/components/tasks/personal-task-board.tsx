@@ -198,6 +198,7 @@ export function PersonalTaskBoard({
             "Choose a task from the active view to inspect ownership, due-date pressure, and the linked pursuit."
           }
           eyebrow="Task preview"
+          label="Task preview"
           metadata={
             focusedTask
               ? [

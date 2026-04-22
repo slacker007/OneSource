@@ -122,11 +122,13 @@ describe("OpportunityList", () => {
     expect(
       screen.getByRole("link", { name: /create tracked opportunity/i }),
     ).toHaveAttribute("href", "/opportunities/new");
-    expect(screen.getByText(/3 · 30-day window/i).closest("a")).toHaveAttribute(
+    expect(
+      screen.getByRole("link", { name: /due soon\s*3 · 30-day window/i }),
+    ).toHaveAttribute(
       "href",
       "/opportunities?view=due_soon&due=next_30_days&sort=deadline_asc&density=compact",
     );
-    expect(screen.getByText(/compact/i).closest("a")).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^compact$/i })).toHaveAttribute(
       "aria-current",
       "page",
     );

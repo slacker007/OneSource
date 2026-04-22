@@ -59,15 +59,14 @@ describe("UI interaction primitives", () => {
       </div>,
     );
 
-    const allPursuitsLink = screen.getByText(/all pursuits/i).closest("a");
-    const stageFilterChip = screen.getByText(/stage · qualified/i).closest("a");
-    const clearAllLink = screen.getByText(/clear all/i).closest("a");
-    const compactLink = screen.getByText(/^compact$/i).closest("a");
-
-    expect(allPursuitsLink).not.toBeNull();
-    expect(stageFilterChip).not.toBeNull();
-    expect(clearAllLink).not.toBeNull();
-    expect(compactLink).not.toBeNull();
+    const allPursuitsLink = screen.getByRole("link", {
+      name: /all pursuits\s*default/i,
+    });
+    const stageFilterChip = screen.getByRole("link", {
+      name: /remove stage · qualified/i,
+    });
+    const clearAllLink = screen.getByRole("link", { name: /clear all/i });
+    const compactLink = screen.getByRole("link", { name: /^compact$/i });
 
     expect(allPursuitsLink).toHaveAttribute(
       "aria-current",
@@ -120,6 +119,7 @@ describe("UI interaction primitives", () => {
         <PreviewPanel
           description="Opportunity summary and current next steps."
           eyebrow="Preview"
+          label="Selected preview"
           metadata={[
             { label: "Stage", value: "Qualified" },
             { label: "Deadline", value: "May 8, 2026" },

@@ -18,6 +18,7 @@ export function PreviewPanel({
   className,
   description,
   eyebrow,
+  label,
   metadata = [],
   title,
 }: {
@@ -26,11 +27,13 @@ export function PreviewPanel({
   className?: string;
   description?: ReactNode;
   eyebrow?: ReactNode;
+  label?: string;
   metadata?: PreviewPanelMetadataItem[];
   title: ReactNode;
 }) {
   return (
     <Surface
+      aria-label={label}
       className={cn(
         "h-full",
         className,

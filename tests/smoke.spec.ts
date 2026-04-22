@@ -582,8 +582,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .click();
 
   await page
-    .locator("aside")
-    .filter({ hasText: /selected pursuit/i })
+    .getByRole("complementary", { name: /selected pursuit/i })
     .getByRole("link", { name: /^Open workspace$/i })
     .click();
 
@@ -773,8 +772,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .fill("Enterprise Knowledge Management");
   await page.getByRole("button", { name: /apply filters/i }).click();
   await page
-    .locator("aside")
-    .filter({ hasText: /selected pursuit/i })
+    .getByRole("complementary", { name: /selected pursuit/i })
     .getByRole("link", { name: /^Open workspace$/i })
     .click();
   const reopenedWorkspaceSectionNav = page.getByRole("navigation", {
@@ -843,8 +841,8 @@ test("users can record closeout notes on a closed opportunity workspace", async 
       name: /navy training range modernization support/i,
     }),
   ).toBeVisible();
-  const navyOpportunityCard = page
-    .locator("article, tr")
+  const navyOpportunityCard = navyResultsTable
+    .getByRole("row")
     .filter({
       hasText: /navy training range modernization support/i,
     })
@@ -912,7 +910,10 @@ test("users can update proposal tracking on an active proposal workspace", async
   await page.getByRole("button", { name: /apply filters/i }).click();
 
   const vaOpportunityCard = page
-    .locator("article, tr")
+    .getByRole("table", {
+      name: /opportunity pipeline results/i,
+    })
+    .getByRole("row")
     .filter({
       hasText: /va claims intake automation bpa/i,
     })

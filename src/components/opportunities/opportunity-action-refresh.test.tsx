@@ -102,13 +102,9 @@ describe("opportunity action refresh behavior", () => {
       />,
     );
 
-    const createForm = screen
-      .getByRole("heading", { name: /add milestone/i })
-      .closest("form");
-
-    expect(createForm).not.toBeNull();
-
-    const createFormQueries = within(createForm as HTMLFormElement);
+    const createFormQueries = within(
+      screen.getByRole("form", { name: /add milestone/i }),
+    );
 
     fireEvent.change(createFormQueries.getByLabelText(/milestone title/i), {
       target: { value: "Executive checkpoint" },
@@ -160,13 +156,9 @@ describe("opportunity action refresh behavior", () => {
       />,
     );
 
-    const createForm = screen
-      .getByRole("heading", { name: /add execution task/i })
-      .closest("form");
-
-    expect(createForm).not.toBeNull();
-
-    const createFormQueries = within(createForm as HTMLFormElement);
+    const createFormQueries = within(
+      screen.getByRole("form", { name: /add execution task/i }),
+    );
 
     fireEvent.change(createFormQueries.getByLabelText(/task title/i), {
       target: { value: "Capture kickoff" },

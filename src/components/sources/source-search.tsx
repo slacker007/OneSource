@@ -814,6 +814,7 @@ function SourceImportPreviewPanel({
         className="shadow-[0_16px_40px_rgba(20,37,34,0.08)]"
         description="Review the duplicate assessment, inspect the persisted source payload, and then either create a new tracked opportunity or attach the source notice to the canonical record already in the workspace."
         eyebrow="Import preview"
+        label="Import preview"
         metadata={metadata}
         title={result.title}
       >
