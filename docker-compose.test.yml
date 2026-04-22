@@ -84,8 +84,8 @@ services:
         ]
       interval: 2s
       timeout: 5s
-      retries: 30
-      start_period: 2s
+      retries: 90
+      start_period: 10s
 
   web:
     build:

@@ -954,7 +954,7 @@ test("users can update proposal tracking on an active proposal workspace", async
     .getByRole("checkbox", { name: /final compliance review complete/i })
     .check();
   await page
-    .getByRole("checkbox", { name: /compliance matrix qualification brief/i })
+    .getByRole("checkbox", { name: /requirement matrix reviewed/i })
     .check();
   await page.getByRole("button", { name: /^save proposal$/i }).click();
 
@@ -967,7 +967,7 @@ test("users can update proposal tracking on an active proposal workspace", async
   ).toBeChecked();
   await expect(
     page.getByRole("checkbox", {
-      name: /compliance matrix qualification brief/i,
+      name: /requirement matrix reviewed/i,
     }),
   ).toBeChecked();
 });

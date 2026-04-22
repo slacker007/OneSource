@@ -22,6 +22,8 @@ describe("compose test stack configuration", () => {
     expect(testServiceBlock).toContain(
       "test -f /app/node_modules/.onesource-deps-hash && test -x /app/node_modules/.bin/eslint",
     );
+    expect(testServiceBlock).toContain("retries: 90");
+    expect(testServiceBlock).toContain("start_period: 10s");
   });
 
   it("defines a dedicated test Docker stage that skips the app build", () => {
