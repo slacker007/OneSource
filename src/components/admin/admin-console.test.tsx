@@ -1,11 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { AdminConsole } from "./admin-console";
 
 describe("AdminConsole", () => {
-  it("renders user-role visibility and recent audit activity", () => {
+  it("renders the settings operations hub and recent audit activity", () => {
     render(
       <AdminConsole
         recalibrateScoringProfileAction={async () => undefined}
@@ -235,37 +234,6 @@ describe("AdminConsole", () => {
                 "Observed outcomes cover 3 closed opportunities and highlight where weights can shift.",
             },
           },
-          users: [
-            {
-              id: "user_admin",
-              name: "Alex Morgan",
-              email: "admin@onesource.local",
-              status: "ACTIVE",
-              roleKeys: ["admin", "executive"],
-              roleLabels: ["Admin", "Executive"],
-              roles: [
-                {
-                  key: "admin",
-                  label: "Admin",
-                  assignedAt: "2026-04-18T01:00:00.000Z",
-                },
-                {
-                  key: "executive",
-                  label: "Executive",
-                  assignedAt: "2026-04-18T01:01:00.000Z",
-                },
-              ],
-            },
-            {
-              id: "user_viewer",
-              name: null,
-              email: "avery.stone@onesource.local",
-              status: "INVITED",
-              roleKeys: [],
-              roleLabels: [],
-              roles: [],
-            },
-          ],
           recentAuditEvents: [
             {
               id: "audit_1",
@@ -306,9 +274,6 @@ describe("AdminConsole", () => {
       screen.getByRole("heading", { name: /scoring profile/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /users & roles/i }),
-    ).toBeInTheDocument();
-    expect(
       screen.getByRole("heading", { name: /audit activity/i }),
     ).toBeInTheDocument();
     expect(
@@ -326,9 +291,6 @@ describe("AdminConsole", () => {
     expect(
       screen.getAllByRole("button", { name: /retry sync/i }).length,
     ).toBeGreaterThan(0);
-    expect(
-      screen.getByRole("table", { name: /users and roles/i }),
-    ).toBeInTheDocument();
     expect(
       screen.getByRole("table", { name: /audit activity/i }),
     ).toBeInTheDocument();
@@ -352,7 +314,7 @@ describe("AdminConsole", () => {
     expect(
       screen.getByRole("button", { name: /save manual recalibration/i }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/admin@onesource\.local/i)).toHaveLength(2);
+    expect(screen.getAllByText(/admin@onesource\.local/i)).toHaveLength(1);
     expect(screen.getAllByText(/default_capture_v1/i).length).toBeGreaterThan(
       0,
     );
@@ -369,7 +331,6 @@ describe("AdminConsole", () => {
       screen.getByText(/keywords: knowledge management/i),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/30\.00/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/no roles assigned/i)).toBeInTheDocument();
     expect(screen.getByText("seed.bootstrap")).toBeInTheDocument();
   }, 20_000);
 
@@ -390,9 +351,7 @@ describe("AdminConsole", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows empty shared table states when snapshot lists are empty", async () => {
-    const user = userEvent.setup();
-
+  it("shows empty shared table states when snapshot lists are empty", () => {
     render(
       <AdminConsole
         recalibrateScoringProfileAction={async () => undefined}
@@ -420,17 +379,11 @@ describe("AdminConsole", () => {
             failedImportReviews: [],
           },
           scoringProfile: null,
-          users: [],
           recentAuditEvents: [],
         }}
       />,
     );
 
-    await user.click(screen.getByRole("heading", { name: /users & roles/i }));
-
-    expect(
-      screen.getByText(/no organization users are available yet/i),
-    ).toBeInTheDocument();
     expect(
       screen.getByText(/no source connectors are configured yet/i),
     ).toBeInTheDocument();

@@ -147,17 +147,30 @@ const SETTINGS_NAV_GROUP: NavGroup = {
     {
       href: "/settings",
       label: "Settings",
-      description: "Manage workspace controls, roles, and audit views.",
+      description: "Manage workspace operations, scoring, and audit views.",
+    },
+    {
+      href: "/settings/users",
+      label: "Users & Roles",
+      description: "Administer invited, active, and disabled users.",
     },
   ],
 };
 
 const SHELL_ROUTE_DEFINITIONS: ShellRouteDefinition[] = [
   {
+    matcher: "/settings/users",
+    label: "Users & roles",
+    description:
+      "Manage workspace users, assigned system roles, and access state.",
+    navHref: "/settings/users",
+    requires: "workspace_settings",
+  },
+  {
     matcher: "/settings",
     label: "Workspace settings",
     description:
-      "Operate users, connectors, saved searches, and audit controls.",
+      "Operate connectors, saved searches, scoring, and audit controls.",
     navHref: "/settings",
     requires: "workspace_settings",
   },

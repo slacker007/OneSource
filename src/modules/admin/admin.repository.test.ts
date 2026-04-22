@@ -1,12 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  getAdminWorkspaceSnapshot,
+  getAdminSettingsSnapshot,
+  getAdminUserManagementSnapshot,
   type AdminRepositoryClient,
-  type OrganizationAdminRecord,
+  type OrganizationSettingsRecord,
+  type OrganizationUserManagementRecord,
 } from "./admin.repository";
 
-function buildOrganizationAdminRecord(): OrganizationAdminRecord {
+function buildOrganizationAdminRecord():
+  | OrganizationSettingsRecord
+  | OrganizationUserManagementRecord {
   return {
     id: "org_123",
     name: "Default Organization",
@@ -88,6 +92,23 @@ function buildOrganizationAdminRecord(): OrganizationAdminRecord {
       users: 3,
       auditLogs: 18,
     },
+    roles: [
+      {
+        key: "admin",
+        name: "Admin",
+        description: "Manages workspace configuration and users.",
+      },
+      {
+        key: "executive",
+        name: "Executive",
+        description: "Reviews portfolio health and bid decisions.",
+      },
+      {
+        key: "capture_manager",
+        name: "Capture Manager",
+        description: "Owns pursuit execution workflows.",
+      },
+    ],
     users: [
       {
         id: "user_admin",
@@ -470,10 +491,15 @@ function buildRecalibrationOpportunities() {
   ];
 }
 
-function createRepositoryClient(record: OrganizationAdminRecord | null) {
+function createRepositoryClient(
+  record: OrganizationSettingsRecord | OrganizationUserManagementRecord | null,
+) {
   return {
     organization: {
       findUnique: vi.fn().mockResolvedValue(record),
+    },
+    user: {
+      count: vi.fn().mockResolvedValue(1),
     },
     opportunity: {
       findMany: vi.fn().mockResolvedValue(buildRecalibrationOpportunities()),
@@ -494,10 +520,10 @@ function createRepositoryClient(record: OrganizationAdminRecord | null) {
 }
 
 describe("admin.repository", () => {
-  it("maps organization users and recent audit events into admin read models", async () => {
+  it("maps settings operations into the admin settings snapshot", async () => {
     const db = createRepositoryClient(buildOrganizationAdminRecord());
 
-    const snapshot = await getAdminWorkspaceSnapshot({
+    const snapshot = await getAdminSettingsSnapshot({
       db,
       organizationId: "org_123",
     });
@@ -554,18 +580,6 @@ describe("admin.repository", () => {
       suggestedWeight: "30.00",
       outcomeLiftPercent: "38.00",
       recommendation: "hold",
-    });
-
-    expect(snapshot?.users[0]).toMatchObject({
-      name: "Alex Morgan",
-      email: "admin@onesource.local",
-      roleKeys: ["admin", "executive"],
-      roleLabels: ["Admin", "Executive"],
-    });
-    expect(snapshot?.users[2]).toMatchObject({
-      email: "avery.stone@onesource.local",
-      roleKeys: [],
-      roleLabels: [],
     });
 
     expect(snapshot?.recentAuditEvents[0]).toMatchObject({
@@ -630,11 +644,66 @@ describe("admin.repository", () => {
     });
   });
 
+  it("maps workspace users and role options into the user-management snapshot", async () => {
+    const db = createRepositoryClient(buildOrganizationAdminRecord());
+
+    const snapshot = await getAdminUserManagementSnapshot({
+      db,
+      organizationId: "org_123",
+    });
+
+    expect(snapshot).not.toBeNull();
+    expect(snapshot).toMatchObject({
+      organizationName: "Default Organization",
+      totalUserCount: 3,
+      activeUserCount: 2,
+      invitedUserCount: 1,
+      disabledUserCount: 0,
+      adminUserCount: 1,
+    });
+    expect(snapshot?.roleOptions).toEqual([
+      {
+        key: "admin",
+        label: "Admin",
+        description: "Manages workspace configuration and users.",
+      },
+      {
+        key: "executive",
+        label: "Executive",
+        description: "Reviews portfolio health and bid decisions.",
+      },
+      {
+        key: "capture_manager",
+        label: "Capture Manager",
+        description: "Owns pursuit execution workflows.",
+      },
+    ]);
+    expect(snapshot?.users[0]).toMatchObject({
+      name: "Alex Morgan",
+      email: "admin@onesource.local",
+      latestRoleAssignedAt: "2026-04-17T12:01:00.000Z",
+      roleKeys: ["admin", "executive"],
+      roleLabels: ["Admin", "Executive"],
+    });
+    expect(snapshot?.users[2]).toMatchObject({
+      email: "avery.stone@onesource.local",
+      latestRoleAssignedAt: null,
+      roleKeys: [],
+      roleLabels: [],
+    });
+  });
+
   it("returns null when the organization is missing", async () => {
     const db = createRepositoryClient(null);
 
     await expect(
-      getAdminWorkspaceSnapshot({
+      getAdminSettingsSnapshot({
+        db,
+        organizationId: "missing_org",
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      getAdminUserManagementSnapshot({
         db,
         organizationId: "missing_org",
       }),

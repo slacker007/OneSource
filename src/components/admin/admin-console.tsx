@@ -2,7 +2,16 @@ import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
-import type { AdminWorkspaceSnapshot } from "@/modules/admin/admin.types";
+import type { AdminSettingsSnapshot } from "@/modules/admin/admin.types";
+import {
+  formatEnumLabel,
+  formatUtcTimestamp,
+  mapFeedbackBannerTone,
+  MetricPair,
+  ProfileBadgeGroup,
+  SectionJumpLink,
+  SummaryCard,
+} from "@/components/admin/admin-shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -22,7 +31,7 @@ type AdminConsoleProps = {
     email?: string | null;
   };
   retrySourceSyncAction: (formData: FormData) => Promise<void>;
-  snapshot: AdminWorkspaceSnapshot | null;
+  snapshot: AdminSettingsSnapshot | null;
   scoringRecalibrationNotice?: {
     message: string;
     tone: "accent" | "warning" | "danger";
@@ -92,9 +101,9 @@ export function AdminConsole({
               Workspace settings
             </Typography>
             <Typography color="text.secondary" sx={{ maxWidth: "52rem" }}>
-              Run the organization from one settings workspace: review connector
-              health, saved-search coverage, scoring inputs, role assignments, and
-              recent audit activity without leaving the protected admin route.
+              Run the workspace from one operator hub: review connector
+              health, saved-search coverage, scoring inputs, and recent audit
+              activity without dragging user administration into the same page.
             </Typography>
             {sourceSyncRetryNotice ? (
               <FeedbackBanner
@@ -177,9 +186,6 @@ export function AdminConsole({
             </SectionJumpLink>
             <SectionJumpLink href="#scoring-profile-heading">
               Scoring profile
-            </SectionJumpLink>
-            <SectionJumpLink href="#assigned-roles-heading">
-              Users &amp; roles
             </SectionJumpLink>
             <SectionJumpLink href="#recent-audit-heading">Audit</SectionJumpLink>
           </Stack>
@@ -1318,86 +1324,7 @@ export function AdminConsole({
           )}
         </section>
 
-        <div className="grid gap-6 xl:grid-cols-2">
-          <section
-            aria-labelledby="assigned-roles-heading"
-            className="space-y-4"
-          >
-            <div className="space-y-2">
-              <p className="text-muted text-xs tracking-[0.24em] uppercase">
-                User visibility
-              </p>
-              <h2
-                className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
-                id="assigned-roles-heading"
-              >
-                Users & roles
-              </h2>
-              <p className="text-muted text-sm leading-6">
-                Confirm status, assigned roles, and invitation coverage before
-                making policy or workflow changes elsewhere in the workspace.
-              </p>
-            </div>
-
-            <DataTable
-              ariaLabel="Users and roles"
-              columns={[
-                {
-                  key: "user",
-                  header: "User",
-                  cell: (user) => (
-                    <div>
-                      <p className="text-foreground font-medium">
-                        {user.name ?? user.email}
-                      </p>
-                      <p className="text-muted text-xs">{user.email}</p>
-                    </div>
-                  ),
-                },
-                {
-                  key: "status",
-                  header: "Status",
-                  cell: (user) => (
-                    <Badge
-                      tone={user.status === "ACTIVE" ? "accent" : "warning"}
-                    >
-                      {formatEnumLabel(user.status)}
-                    </Badge>
-                  ),
-                },
-                {
-                  key: "roles",
-                  header: "Assigned roles",
-                  cell: (user) =>
-                    user.roles.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {user.roles.map((role) => (
-                          <Badge
-                            key={`${user.id}-${role.key}`}
-                            title={`Assigned ${formatUtcTimestamp(role.assignedAt)}`}
-                            tone="muted"
-                          >
-                            {role.label}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <Badge tone="warning">No roles assigned</Badge>
-                    ),
-                },
-              ]}
-              emptyState={
-                <EmptyState
-                  message="User assignments will appear here once the organization has seeded or created users."
-                  title="No organization users are available yet"
-                />
-              }
-              getRowKey={(user) => user.id}
-              rows={snapshot.users}
-            />
-          </section>
-
-          <section aria-labelledby="recent-audit-heading" className="space-y-4">
+        <section aria-labelledby="recent-audit-heading" className="space-y-4">
             <div className="space-y-2">
               <p className="text-muted text-xs tracking-[0.24em] uppercase">
                 Audit visibility
@@ -1486,135 +1413,12 @@ export function AdminConsole({
               getRowKey={(event) => event.id}
               rows={snapshot.recentAuditEvents}
             />
-          </section>
-        </div>
+        </section>
       </div>
     </section>
   );
 }
 
-function SectionJumpLink({
-  children,
-  href,
-}: {
-  children: string;
-  href: string;
-}) {
-  return (
-    <Button
-      density="compact"
-      href={href}
-      sx={{ minHeight: 36 }}
-      tone="neutral"
-      variant="soft"
-    >
-      {children}
-    </Button>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  supportingText,
-}: {
-  label: string;
-  value: string;
-  supportingText: string;
-}) {
-  return (
-    <Surface density="compact" sx={{ p: 2.5 }}>
-      <Typography
-        sx={{
-          color: onesourceTokens.color.text.muted,
-          fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
-          fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
-          letterSpacing: "0.22em",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </Typography>
-      <Typography sx={{ mt: 1.5 }} variant="h6">
-        {value}
-      </Typography>
-      <Typography color="text.secondary" sx={{ mt: 1 }} variant="body2">
-        {supportingText}
-      </Typography>
-    </Surface>
-  );
-}
-
-function MetricPair({ label, value }: { label: string; value: string }) {
-  return (
-    <Surface density="compact" sx={{ px: 1.5, py: 1.5 }} tone="muted">
-      <Typography
-        sx={{
-          color: onesourceTokens.color.text.muted,
-          fontSize: "11px",
-          fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
-          letterSpacing: "0.16em",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </Typography>
-      <Typography sx={{ mt: 1 }} variant="body2">
-        {value}
-      </Typography>
-    </Surface>
-  );
-}
-
-function ProfileBadgeGroup({
-  badges,
-  emptyLabel,
-  title,
-}: {
-  badges: string[];
-  emptyLabel: string;
-  title: string;
-}) {
-  return (
-    <Surface density="compact" sx={{ p: 2.5 }}>
-      <Typography
-        sx={{
-          color: onesourceTokens.color.text.muted,
-          fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
-          fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
-          letterSpacing: "0.22em",
-          textTransform: "uppercase",
-        }}
-      >
-        {title}
-      </Typography>
-      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mt: 1.5 }}>
-        {badges.length > 0 ? (
-          badges.map((badge) => (
-            <Badge key={`${title}-${badge}`} tone="muted">
-              {badge}
-            </Badge>
-          ))
-        ) : (
-          <Badge tone="warning">{emptyLabel}</Badge>
-        )}
-      </Stack>
-    </Surface>
-  );
-}
-
-function mapFeedbackBannerTone(
-  tone: "accent" | "warning" | "danger",
-): "success" | "warning" | "danger" {
-  switch (tone) {
-    case "accent":
-      return "success";
-    case "warning":
-      return "warning";
-    case "danger":
-      return "danger";
-  }
-}
 
 function getConnectorHealthTone(status: string) {
   switch (status) {
@@ -1678,19 +1482,4 @@ function getOutcomeTone(status: string) {
     default:
       return "muted";
   }
-}
-
-function formatEnumLabel(value: string) {
-  return value
-    .split(/[_\s-]+/g)
-    .filter(Boolean)
-    .map(
-      (segment) =>
-        segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase(),
-    )
-    .join(" ");
-}
-
-function formatUtcTimestamp(value: string) {
-  return value.replace("T", " ").replace(".000Z", " UTC");
 }

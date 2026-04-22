@@ -19,9 +19,16 @@ export type AdminUserSummary = {
   name: string | null;
   email: string;
   status: UserStatus;
+  latestRoleAssignedAt: string | null;
   roleKeys: string[];
   roleLabels: string[];
   roles: AdminUserRoleSummary[];
+};
+
+export type AdminRoleOption = {
+  key: string;
+  label: string;
+  description: string | null;
 };
 
 export type AdminAuditEventSummary = {
@@ -218,7 +225,7 @@ export type AdminSavedSearchSummary = {
   filterSummary: string[];
 };
 
-export type AdminWorkspaceSnapshot = {
+export type AdminSettingsSnapshot = {
   organizationId: string;
   organizationName: string;
   totalUserCount: number;
@@ -227,6 +234,17 @@ export type AdminWorkspaceSnapshot = {
   scoringProfile: AdminScoringProfileSummary | null;
   sourceOperations: AdminSourceOperationsSnapshot;
   savedSearches: AdminSavedSearchSummary[];
-  users: AdminUserSummary[];
   recentAuditEvents: AdminAuditEventSummary[];
+};
+
+export type AdminUserManagementSnapshot = {
+  organizationId: string;
+  organizationName: string;
+  totalUserCount: number;
+  activeUserCount: number;
+  invitedUserCount: number;
+  disabledUserCount: number;
+  adminUserCount: number;
+  roleOptions: AdminRoleOption[];
+  users: AdminUserSummary[];
 };

@@ -5,7 +5,11 @@ import {
   ActiveFilterChipBar,
   type ActiveFilterChip,
 } from "@/components/ui/active-filter-chip-bar";
-import { DataTable } from "@/components/ui/data-table";
+import {
+  DATA_TABLE_SURFACE_OVERFLOW,
+  DATA_TABLE_SURFACE_RADIUS_PX,
+  DataTable,
+} from "@/components/ui/data-table";
 import { DensityToggle } from "@/components/ui/density-toggle";
 import { PreviewPanel } from "@/components/ui/preview-panel";
 import { PreviewPanelSkeleton } from "@/components/ui/preview-panel-skeleton";
@@ -147,5 +151,8 @@ describe("UI interaction primitives", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText(/capture brief/i)[0]).toBeInTheDocument();
     expect(screen.getAllByRole("table")).toHaveLength(1);
+
+    expect(DATA_TABLE_SURFACE_RADIUS_PX).toBe("12px");
+    expect(DATA_TABLE_SURFACE_OVERFLOW).toBe("visible");
   });
 });

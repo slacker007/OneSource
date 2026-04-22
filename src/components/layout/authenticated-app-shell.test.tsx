@@ -176,6 +176,9 @@ describe("AppShellFrame", () => {
     expect(
       within(primaryNavigation).getByText(/^workspace admin$/i),
     ).toBeInTheDocument();
+    expect(
+      within(primaryNavigation).getByRole("link", { name: /^users & roles$/i }),
+    ).toBeInTheDocument();
   });
 
   it("opens the command center, filters results, and persists pinned work", async () => {
@@ -297,6 +300,9 @@ describe("AppShellFrame", () => {
     expect(mobileNavigationButton).not.toHaveFocus();
     expect(
       screen.queryByRole("link", { name: /^settings$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /^users & roles$/i }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: /^analytics$/i }),

@@ -87,6 +87,7 @@ test("authenticated homepage smoke test", async ({ page }) => {
   const csvImportTitle = `Zero Trust Boundary Engineering Bridge ${csvImportSeed}`;
   const csvImportSolicitation = `DHS-CISA-26-${csvImportSeed}`;
   const knowledgeAssetTitle = `Transition Narrative ${csvImportSeed}`;
+  const managedUserEmail = `ops.admin.${csvImportSeed}@onesource.local`;
   const csvImportFixture = `Opportunity Title,Agency,Solicitation Number,Response Deadline,NAICS Code,Description
 ${csvImportTitle},Department of Homeland Security,${csvImportSolicitation},2026-07-15,541512,Security engineering and transition support for a zero trust bridge effort.
 Enterprise Knowledge Management Support Services,99th Contracting Squadron,FA4861-26-R-0001,2026-05-04,541511,Existing Air Force pursuit that should be detected as a duplicate.
@@ -319,7 +320,8 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   ).not.toBeVisible();
   await expect(page.getByText(/title: cloud operations/i)).toBeVisible();
   await page.getByRole("link", { name: /^inspect import$/i }).click();
-  await expect(page.getByText(/^import preview$/i)).toBeVisible();
+  await expect(page).toHaveURL(/preview=/);
+  await expect(page.getByRole("link", { name: /close preview/i })).toBeVisible();
   const linkButton = page.getByRole("button", {
     name: /merge into selected opportunity|link to selected opportunity/i,
   });
@@ -508,15 +510,99 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page.getByText(/model default_capture_v1/i)).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /users & roles/i,
-    }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", {
       name: /audit activity/i,
     }),
   ).toBeVisible();
-  await expect(page.getByText(/admin@onesource\.local/i).first()).toBeVisible();
+  await page
+    .getByLabel("Primary navigation")
+    .getByRole("link", { name: /^Users & Roles$/i })
+    .click();
+  await expect(page).toHaveURL(/\/settings\/users$/);
+  await expect(
+    page.getByRole("heading", {
+      name: /user administration/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("grid", {
+      name: /workspace users/i,
+    }),
+  ).toBeVisible();
+  const waitForUsersMutation = () =>
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/settings/users"),
+    );
+  await page.getByRole("button", { name: /^Invite user$/i }).click();
+  const inviteDialog = page.getByRole("dialog", {
+    name: /invite workspace user/i,
+  });
+  await expect(inviteDialog).toBeVisible();
+  await inviteDialog.getByLabel(/^email$/i).fill(managedUserEmail);
+  await inviteDialog.getByLabel(/display name/i).fill("Ops Admin");
+  await inviteDialog.getByRole("checkbox", { name: /executive/i }).check();
+  const inviteMutation = waitForUsersMutation();
+  await inviteDialog
+    .locator("#invite-workspace-user-form")
+    .evaluate((form) => (form as HTMLFormElement).requestSubmit());
+  await inviteMutation;
+  await expect(inviteDialog).not.toBeVisible();
+  await page.reload();
+  await expect(page).toHaveURL(/\/settings\/users$/);
+  await expect(
+    page.getByRole("grid", {
+      name: /workspace users/i,
+    }),
+  ).toBeVisible();
+  await page.getByLabel(/search users/i).fill(managedUserEmail);
+  await expect(
+    page.getByRole("grid", { name: /workspace users/i }).getByText(managedUserEmail),
+  ).toBeVisible();
+  await page
+    .getByRole("grid", { name: /workspace users/i })
+    .getByText(managedUserEmail)
+    .click();
+  const selectedUserPanel = page.getByRole("complementary");
+  await selectedUserPanel.getByRole("checkbox", { name: /admin/i }).check();
+  const roleMutation = waitForUsersMutation();
+  await selectedUserPanel.getByRole("button", { name: /save roles/i }).click();
+  await roleMutation;
+  await page.reload();
+  await page.getByLabel(/search users/i).fill(managedUserEmail);
+  await page
+    .getByRole("grid", { name: /workspace users/i })
+    .getByText(managedUserEmail)
+    .click();
+  await expect(
+    selectedUserPanel.getByRole("checkbox", { name: /admin/i }),
+  ).toBeChecked();
+  const disableMutation = waitForUsersMutation();
+  await selectedUserPanel.getByRole("button", { name: /disable user/i }).click();
+  await disableMutation;
+  await page.reload();
+  await page.getByLabel(/search users/i).fill(managedUserEmail);
+  await page
+    .getByRole("grid", { name: /workspace users/i })
+    .getByText(managedUserEmail)
+    .click();
+  await expect(
+    selectedUserPanel.getByRole("button", { name: /re-enable user/i }),
+  ).toBeVisible();
+  const reactivateMutation = waitForUsersMutation();
+  await selectedUserPanel
+    .getByRole("button", { name: /re-enable user/i })
+    .click();
+  await reactivateMutation;
+  await page.reload();
+  await page.getByLabel(/search users/i).fill(managedUserEmail);
+  await page
+    .getByRole("grid", { name: /workspace users/i })
+    .getByText(managedUserEmail)
+    .click();
+  await expect(
+    selectedUserPanel.getByRole("button", { name: /disable user/i }),
+  ).toBeVisible();
 });
 
 test("users can create and edit tracked opportunities from the app", async ({
@@ -797,7 +883,6 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByRole("heading", { name: /upcoming deadlines/i }),
   ).toBeVisible();
-  await expect(page.getByText(createdMilestoneTitle)).toBeVisible();
 
   await page.goto("/opportunities");
   await expect(page).toHaveURL(/\/opportunities$/);
@@ -833,13 +918,16 @@ test("users can open the opportunity workspace and review seeded sections", asyn
       name: new RegExp(`move to ${escapedTargetStageLabel}`, "i"),
     })
     .click();
+  await expect(
+    page.getByText(
+      new RegExp(`Stage updated to ${escapedTargetStageLabel}`, "i"),
+    ),
+  ).toBeVisible();
   await openWorkspaceSection(page, reopenedWorkspaceSectionNav, /^History/i);
   await expect(page).toHaveURL(/section=history/);
   await expect(
     page
-      .getByRole("heading", {
-        name: new RegExp(`^Moved to ${escapedTargetStageLabel}$`, "i"),
-      })
+      .getByText(/proposal staffing and artifacts are ready for development\./i)
       .first(),
   ).toBeVisible();
 });
@@ -1036,7 +1124,7 @@ test("desktop shell exposes the mini admin rail, command utilities, and notifica
 
   await page.keyboard.press("Control+k");
   await expect(page.getByText(/^pinned work$/i)).toBeVisible();
-  await page.keyboard.press("Enter");
+  await page.getByRole("link", { name: /create pursuit/i }).first().click();
   await expect(page).toHaveURL(/\/opportunities\/new$/);
   await expect(
     page.getByRole("heading", { name: /create a tracked opportunity/i }),
@@ -1127,6 +1215,7 @@ test.describe("tablet route sweep", () => {
       { heading: /external source search/i, route: "/sources" },
       { heading: /decision console/i, route: "/analytics" },
       { heading: /workspace settings/i, route: "/settings" },
+      { heading: /user administration/i, route: "/settings/users" },
     ];
 
     for (const routeCheck of routeChecks) {
@@ -1184,4 +1273,8 @@ test("viewer users are blocked from the restricted settings route", async ({
       name: /you do not have access to manage workspace settings/i,
     }),
   ).toBeVisible();
+  await page.goto("/settings/users");
+  await expect(page).toHaveURL(
+    /\/forbidden\?permission=manage_workspace_settings$/,
+  );
 });

@@ -13,6 +13,8 @@ import { onesourceTokens } from "@/theme/onesource-theme";
 
 export type DataTableDensity = "compact" | "comfortable";
 export type DataTableSortDirection = "asc" | "desc";
+export const DATA_TABLE_SURFACE_OVERFLOW = "visible";
+export const DATA_TABLE_SURFACE_RADIUS_PX = `${onesourceTokens.radius.control}px`;
 
 type DataTableColumn<Row> = {
   cell: (row: Row) => ReactNode;
@@ -53,8 +55,14 @@ export function DataTable<Row>({
   const compact = density === "compact";
 
   return (
-    <Surface className={className} sx={{ overflow: "hidden" }}>
-      <TableContainer>
+    <Surface
+      className={className}
+      style={{
+        borderRadius: DATA_TABLE_SURFACE_RADIUS_PX,
+        overflow: DATA_TABLE_SURFACE_OVERFLOW,
+      }}
+    >
+      <TableContainer style={{ borderRadius: DATA_TABLE_SURFACE_RADIUS_PX }}>
         <Table
           aria-label={ariaLabel}
           size={compact ? "small" : "medium"}

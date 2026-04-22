@@ -5,6 +5,11 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 
+import {
+  DATA_TABLE_SURFACE_OVERFLOW,
+  DATA_TABLE_SURFACE_RADIUS_PX,
+} from "@/components/ui/data-table";
+
 import { Skeleton } from "./skeleton";
 import { Surface } from "./surface";
 
@@ -16,8 +21,13 @@ export function TableSkeleton({
   rowCount?: number;
 }) {
   return (
-    <Surface sx={{ overflow: "hidden" }}>
-      <TableContainer>
+    <Surface
+      style={{
+        borderRadius: DATA_TABLE_SURFACE_RADIUS_PX,
+        overflow: DATA_TABLE_SURFACE_OVERFLOW,
+      }}
+    >
+      <TableContainer style={{ borderRadius: DATA_TABLE_SURFACE_RADIUS_PX }}>
         <Table aria-hidden="true" size="small" sx={{ minWidth: "100%" }}>
           <TableHead>
             <TableRow>

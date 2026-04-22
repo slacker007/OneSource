@@ -34,5 +34,9 @@ describe("onesourceTheme", () => {
     expect(
       onesourceTheme.components?.MuiButton?.defaultProps?.disableElevation,
     ).toBe(true);
+    expect(
+      (onesourceTheme.components?.MuiDataGrid?.styleOverrides?.root as { borderRadius: number })
+        .borderRadius,
+    ).toBe(12);
   });
 });
