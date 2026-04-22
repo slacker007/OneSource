@@ -128,6 +128,38 @@ Local seeded credentials for browser verification:
 
 These credentials are for local seeded development only.
 
+## Dev Containers And Codespaces
+
+The repo now includes a checked-in `.devcontainer/` baseline for local VS Code Dev Containers and GitHub Codespaces. It is a follow-up to the existing Phase 0 containerization work, not a replacement for the documented runtime:
+
+- the devcontainer uses Node 20 on Debian Bookworm
+- the workspace includes Docker CLI plus Compose access, GitHub CLI, PostgreSQL client tools, and the official Codex CLI installed from `@openai/codex`
+- the post-create bootstrap copies `.env.example` to `.env` when needed, runs `npm ci`, generates Prisma client code, and installs Playwright Chromium with its required OS packages
+- port `3000` is predeclared for the web app and opens as a preview in Codespaces; port `5432` is available for PostgreSQL when you need direct client access
+
+Recommended first-run commands inside the devcontainer or Codespace:
+
+```bash
+docker compose up -d db
+npx prisma migrate deploy
+npm run db:seed
+```
+
+From there, use the same repo workflows documented elsewhere in this README:
+
+```bash
+npm run dev
+```
+
+or:
+
+```bash
+make compose-up
+make compose-test-e2e
+```
+
+`codex` is available in the devcontainer terminal after creation. If you want the latest CLI release later, run `codex --upgrade`.
+
 ## Database Workflow
 
 Validate the Prisma schema:

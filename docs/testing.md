@@ -53,6 +53,16 @@ npm run job:document-parse
 npm run job:scorecards
 ```
 
+## Devcontainer And Codespaces Verification
+
+The checked-in `.devcontainer/` flow is only a workspace bootstrap layer. It installs the repo dependencies, Prisma client, Playwright Chromium, PostgreSQL client tools, Docker CLI plus Compose access, GitHub CLI, and the Codex CLI, but it does not change the canonical verification commands. Inside a Dev Container or GitHub Codespace, use the same `npm run ...` and `make compose-test-*` commands documented in this guide after the standard database bootstrap:
+
+```bash
+docker compose up -d db
+npx prisma migrate deploy
+npm run db:seed
+```
+
 For the current auth and authz slices, the Playwright smoke test is expected to:
 
 - redirect anonymous requests for `/` to `/sign-in`

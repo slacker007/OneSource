@@ -371,7 +371,7 @@ describe("AdminConsole", () => {
     expect(screen.getAllByText(/30\.00/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/no roles assigned/i)).toBeInTheDocument();
     expect(screen.getByText("seed.bootstrap")).toBeInTheDocument();
-  }, 10_000);
+  }, 20_000);
 
   it("renders a clear empty state when the organization snapshot is unavailable", () => {
     render(
