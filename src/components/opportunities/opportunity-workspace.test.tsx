@@ -454,10 +454,10 @@ describe("OpportunityWorkspace", () => {
       screen.getByRole("link", { name: /open asset/i }),
     ).toHaveAttribute("href", "/knowledge/knowledge_1/edit");
     expect(
-      screen.getByRole("link", { name: /open source notice/i }),
+      screen.getByRole("link", { name: /view source notice/i }),
     ).toHaveAttribute("href", "https://sam.gov/opp/FA4861-26-R-0001/view");
     expect(
-      screen.getByRole("link", { name: /edit details/i }),
+      screen.getByRole("link", { name: /edit record/i }),
     ).toHaveAttribute("href", "/opportunities/opp_123/edit");
   });
 

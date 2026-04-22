@@ -188,7 +188,7 @@ export function OpportunityWorkspace({
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
               <Link
-                className="font-medium text-[rgb(19,78,68)] transition hover:text-[rgb(16,66,57)]"
+                className="font-medium text-foreground transition hover:opacity-75"
                 href="/opportunities"
               >
                 Opportunities
@@ -200,7 +200,7 @@ export function OpportunityWorkspace({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Badge>Workspace</Badge>
+              <Badge>Pursuit record</Badge>
               <Badge tone="muted">{snapshot.opportunity.currentStageLabel}</Badge>
               <Badge tone="warning">
                 {humanizeSourceSystem(snapshot.opportunity.originSourceSystem)}
@@ -223,18 +223,18 @@ export function OpportunityWorkspace({
           <div className="flex flex-wrap items-center gap-3">
             <WorkspaceHeaderLink
               href={`/opportunities/${snapshot.opportunity.id}?section=capture`}
-              label="Record decision"
+              label="Update capture"
               tone="secondary"
             />
             <WorkspaceHeaderLink
               href={`/opportunities/${snapshot.opportunity.id}?section=tasks`}
-              label="Add task"
+              label="Plan work"
               tone="secondary"
             />
             {snapshot.opportunity.uiLink ? (
               <WorkspaceHeaderLink
                 href={snapshot.opportunity.uiLink}
-                label="Open source notice"
+                label="View source notice"
                 newTab
                 tone="secondary"
               />
@@ -242,7 +242,7 @@ export function OpportunityWorkspace({
             {allowManagePipeline ? (
               <WorkspaceHeaderLink
                 href={`/opportunities/${snapshot.opportunity.id}/edit`}
-                label="Edit details"
+                label="Edit record"
                 tone="primary"
               />
             ) : null}
@@ -271,7 +271,7 @@ export function OpportunityWorkspace({
             }
           />
           <SummaryCard
-            label="Workspace scope"
+            label="Organization"
             supportingText={`Updated ${formatDate(snapshot.opportunity.updatedAt)}`}
             value={snapshot.organization.name}
           />

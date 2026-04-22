@@ -188,7 +188,7 @@ export function OpportunityForm({
             <div className="flex flex-wrap gap-2">
               <Badge>{modeLabel}</Badge>
               <Badge tone="muted">{snapshot.currentStageLabel}</Badge>
-              <Badge tone="warning">Browser draft autosave</Badge>
+              <Badge tone="warning">Local draft protection</Badge>
             </div>
             <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
               {snapshot.mode === "create"
@@ -202,23 +202,25 @@ export function OpportunityForm({
 
           <div className="grid gap-3 sm:grid-cols-3">
             <SummaryCard
-              label="Workspace"
-              supportingText="Organization-scoped form options"
+              label="Organization"
+              supportingText="Current operating workspace"
               value={snapshot.organization.name}
             />
             <SummaryCard
               label="Draft status"
               supportingText={
-                restoredDraft ? "Unsaved browser-local edits were restored" : "Local autosave only"
+                restoredDraft
+                  ? "Unsaved local edits were restored"
+                  : "Draft stays in this browser until save"
               }
               value={isPending ? "Saving..." : "Ready"}
             />
             <SummaryCard
-              label="Source context"
+              label="Source origin"
               supportingText={
                 snapshot.updatedAt
                   ? `Last updated ${formatIsoDate(snapshot.updatedAt)}`
-                  : "No source-linked metadata yet"
+                  : "No source-linked context yet"
               }
               value={humanizeSourceSystem(snapshot.originSourceSystem)}
             />
@@ -261,10 +263,10 @@ export function OpportunityForm({
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Opportunity form
+              Pursuit record
             </p>
             <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-              Validation-backed tracked opportunity details
+              Opportunity details
             </h2>
           </div>
 
