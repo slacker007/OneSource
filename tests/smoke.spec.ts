@@ -45,6 +45,28 @@ async function openWorkspaceSection(
   await page.goto(href);
 }
 
+async function selectMuiOption(
+  page: Page,
+  target: Locator | string,
+  optionName: RegExp | string,
+) {
+  const combobox = typeof target === "string" ? page.locator(target) : target;
+  await combobox.click();
+  await page.getByRole("option", { name: optionName }).click();
+}
+
+async function selectFirstMuiOption(page: Page, target: Locator | string) {
+  const combobox = typeof target === "string" ? page.locator(target) : target;
+  await combobox.click();
+  const firstOption = page.getByRole("option").first();
+  const optionLabel = (await firstOption.textContent())?.trim() ?? "";
+  if (!optionLabel) {
+    throw new Error("No selectable option was available in the MUI listbox.");
+  }
+  await firstOption.click();
+  return optionLabel;
+}
+
 test("authenticated homepage smoke test", async ({ page }) => {
   test.setTimeout(90_000);
 
@@ -64,7 +86,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page).toHaveTitle(/OneSource/i);
   await expect(
     page.getByRole("heading", {
-      name: /capture command center/i,
+      name: /start with the work that needs action\./i,
     }),
   ).toBeVisible();
   await expect(
@@ -118,12 +140,12 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByRole("link", { name: /proposal sprint/i }),
   ).toBeVisible();
-  await page
-    .locator("#desktop-opportunity-source")
-    .selectOption("manual_entry");
-  await page
-    .locator("#desktop-opportunity-stage")
-    .selectOption("proposal_in_development");
+  await selectMuiOption(page, "#desktop-opportunity-source", /manual entry/i);
+  await selectMuiOption(
+    page,
+    "#desktop-opportunity-stage",
+    /proposal in development/i,
+  );
   await page.getByRole("button", { name: /apply filters/i }).click();
   await expect(page).toHaveURL(/\/opportunities\?/);
   await expect(page).toHaveURL(/source=manual_entry/);
@@ -171,10 +193,12 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByText(/air force operational planning past performance/i),
   ).toBeVisible();
-  await page.locator("#desktop-knowledge-type").selectOption("WIN_THEME");
-  await page
-    .locator("#desktop-knowledge-capability")
-    .selectOption("cloud-platform-engineering");
+  await selectMuiOption(page, "#desktop-knowledge-type", /win theme/i);
+  await selectMuiOption(
+    page,
+    "#desktop-knowledge-capability",
+    /cloud platform engineering/i,
+  );
   await page.getByRole("button", { name: /apply filters/i }).click();
   await expect(page).toHaveURL(/\/knowledge\?/);
   await expect(page).toHaveURL(/type=WIN_THEME/);
@@ -186,7 +210,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   ).toBeVisible();
   await page.getByRole("link", { name: /create knowledge asset/i }).click();
   await expect(page).toHaveURL(/\/knowledge\/new$/);
-  await page.locator("#knowledge-asset-type").selectOption("WIN_THEME");
+  await selectMuiOption(page, "#knowledge-asset-type", /win theme/i);
   await page.getByLabel(/asset title/i).fill(knowledgeAssetTitle);
   await page
     .getByLabel(/summary/i)
@@ -220,9 +244,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await page.getByRole("link", { name: /return to library/i }).click();
   await expect(page).toHaveURL(/\/knowledge$/);
   await page.locator("#desktop-knowledge-query").fill(knowledgeAssetTitle);
-  await page
-    .locator("#desktop-knowledge-vehicle")
-    .selectOption("OASIS-PLUS-UNR");
+  await selectMuiOption(page, "#desktop-knowledge-vehicle", /oasis/i);
   await page.getByRole("button", { name: /apply filters/i }).click();
   await expect(page).toHaveURL(/\/knowledge\?/);
   await expect(page).toHaveURL(/vehicle=OASIS-PLUS-UNR/);
@@ -361,7 +383,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     page.getByText(/recommendation alignment/i).first(),
   ).toBeVisible();
   await expect(page.getByText(/85%\+/i)).toBeVisible();
-  await page.locator("#decision-ranking").selectOption("risk");
+  await selectMuiOption(page, "#decision-ranking", /risk pressure/i);
   await page.getByRole("button", { name: /apply ranking/i }).click();
   await expect(page).toHaveURL(/\/analytics\?/);
   await expect(page).toHaveURL(/ranking=risk/);
@@ -419,7 +441,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     }),
   ).toBeVisible();
   await expect(page.getByText(/sam\.gov/i).first()).toBeVisible();
-  await expect(page.getByText(/rate limited/i).first()).toBeVisible();
+  await expect(page.getByText(/rate[- ]limited/i).first()).toBeVisible();
   await expect(page.getByText(/rejected/i).first()).toBeVisible();
   await page
     .getByRole("button", { name: /retry sync/i })
@@ -623,8 +645,8 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(
     page.getByRole("heading", { name: /^Stage transition$/i }),
   ).toBeVisible();
-  await page.locator("#decision-create-type").selectOption("executive_review");
-  await page.locator("#decision-create-outcome").selectOption("GO");
+  await selectMuiOption(page, "#decision-create-type", /executive review/i);
+  await selectMuiOption(page, "#decision-create-outcome", /^go$/i);
   await page.locator("#decision-create-rationale").fill(decisionRationale);
   await page.getByRole("button", { name: /^record decision$/i }).click();
   await openWorkspaceSection(page, workspaceSectionNav, /^Tasks/i);
@@ -637,20 +659,14 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   ).toBeVisible();
   await expect(page.getByText(/^overdue$/i).first()).toBeVisible();
   await page.locator("#task-create-title").fill(createdTaskTitle);
-  const assigneeOptionLabel = (
-    await page.locator("#task-create-assignee option").allTextContents()
-  ).find((label) => /alex morgan|admin@onesource\.local/i.test(label));
-  if (!assigneeOptionLabel) {
-    throw new Error(
-      "Could not find the signed-in user in the task assignee list.",
-    );
-  }
-  await page.locator("#task-create-assignee").selectOption({
-    label: assigneeOptionLabel,
-  });
+  await selectMuiOption(
+    page,
+    "#task-create-assignee",
+    /alex morgan|admin@onesource\.local/i,
+  );
   await page.locator("#task-create-due-at").fill("2026-05-10");
-  await page.locator("#task-create-status").selectOption("IN_PROGRESS");
-  await page.locator("#task-create-priority").selectOption("HIGH");
+  await selectMuiOption(page, "#task-create-status", /in progress/i);
+  await selectMuiOption(page, "#task-create-priority", /^high$/i);
   await page
     .locator("#task-create-description")
     .fill("Prepare the concise executive-ready capture brief.");
@@ -664,10 +680,12 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await page
     .locator("#milestone-create-target-date")
     .fill(formatDateInputValue(createdMilestoneDate));
-  await page
-    .locator("#milestone-create-type")
-    .selectOption("decision_checkpoint");
-  await page.locator("#milestone-create-status").selectOption("AT_RISK");
+  await selectMuiOption(
+    page,
+    "#milestone-create-type",
+    /decision checkpoint/i,
+  );
+  await selectMuiOption(page, "#milestone-create-status", /at risk/i);
   await page
     .locator("#milestone-create-description")
     .fill("Confirm the executive review packet and pursuit posture.");
@@ -681,7 +699,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(page).toHaveURL(/section=notes/);
   await expect(page.getByRole("heading", { name: /^Notes$/i })).toBeVisible();
   await page.locator("#note-create-title").fill(createdNoteTitle);
-  await page.locator("#note-create-pinned").selectOption("true");
+  await selectMuiOption(page, "#note-create-pinned", /pin to top/i);
   await page
     .locator("#note-create-body")
     .fill(
@@ -700,7 +718,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     page.getByRole("link", { name: /download stored file/i }).first(),
   ).toBeVisible();
   await page.locator("#document-create-title").fill(createdDocumentTitle);
-  await page.locator("#document-create-type").selectOption("capture_plan");
+  await selectMuiOption(page, "#document-create-type", /capture plan/i);
   await page.getByLabel(/^file$/i).setInputFiles({
     buffer: Buffer.from(
       "Capture plan summary\n- Confirm teaming path\n- Prepare executive review package",
@@ -781,25 +799,14 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await openWorkspaceSection(page, reopenedWorkspaceSectionNav, /^Capture/i);
   await expect(page).toHaveURL(/section=capture/);
 
-  const targetStageSelect = page.locator("#stage-transition-target");
-  const targetStageValue = await targetStageSelect
-    .locator("option")
-    .first()
-    .getAttribute("value");
-  const targetStageLabel = await targetStageSelect
-    .locator("option")
-    .first()
-    .textContent();
-  if (!targetStageValue || !targetStageLabel) {
-    throw new Error(
-      "No stage-transition target option was available in the workspace.",
-    );
-  }
+  const targetStageLabel = await selectFirstMuiOption(
+    page,
+    "#stage-transition-target",
+  );
   const escapedTargetStageLabel = targetStageLabel.replace(
     /[.*+?^${}()|[\]\\]/g,
     "\\$&",
   );
-  await targetStageSelect.selectOption(targetStageValue);
   await page
     .locator("#stage-transition-rationale")
     .fill("Proposal staffing and artifacts are ready for development.");
@@ -866,18 +873,11 @@ test("users can record closeout notes on a closed opportunity workspace", async 
     page.getByRole("heading", { name: /^Closeout$/i }),
   ).toBeVisible();
 
-  const competitorOptionLabel = (
-    await page.locator("#closeout-competitor option").allTextContents()
-  ).find((label) => /harbor mission technologies/i.test(label));
-  if (!competitorOptionLabel) {
-    throw new Error(
-      "Could not find the seeded Harbor Mission Technologies competitor option.",
-    );
-  }
-
-  await page.locator("#closeout-competitor").selectOption({
-    label: competitorOptionLabel,
-  });
+  await selectMuiOption(
+    page,
+    "#closeout-competitor",
+    /harbor mission technologies/i,
+  );
   await page.locator("#closeout-outcome-reason").fill(outcomeReason);
   await page.locator("#closeout-lessons-learned").fill(lessonsLearned);
   await page
@@ -937,20 +937,11 @@ test("users can update proposal tracking on an active proposal workspace", async
   ).toBeVisible();
 
   const proposalStatus = page.locator("#proposal-status");
-  await proposalStatus.focus();
-  await page.keyboard.press("End");
-  await page.keyboard.press("Tab");
-  await expect(proposalStatus).toHaveValue("SUBMITTED");
+  await selectMuiOption(page, proposalStatus, /submitted/i);
+  await expect(proposalStatus).toContainText(/submitted/i);
   const proposalOwner = page.locator("#proposal-owner");
-  await proposalOwner.focus();
-  await page.keyboard.press("Home");
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("Tab");
-  await expect(page.locator("#proposal-owner option:checked")).toHaveText(
-    /casey brooks/i,
-  );
+  await selectMuiOption(page, proposalOwner, /casey brooks/i);
+  await expect(proposalOwner).toContainText(/casey brooks/i);
   await page
     .getByRole("checkbox", { name: /final compliance review complete/i })
     .check();
@@ -959,10 +950,8 @@ test("users can update proposal tracking on an active proposal workspace", async
     .check();
   await page.getByRole("button", { name: /^save proposal$/i }).click();
 
-  await expect(page.locator("#proposal-status")).toHaveValue("SUBMITTED");
-  await expect(page.locator("#proposal-owner option:checked")).toHaveText(
-    /casey brooks/i,
-  );
+  await expect(page.locator("#proposal-status")).toContainText(/submitted/i);
+  await expect(page.locator("#proposal-owner")).toContainText(/casey brooks/i);
   await expect(
     page.getByRole("checkbox", { name: /final compliance review complete/i }),
   ).toBeChecked();
@@ -980,9 +969,13 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
 
   await expect(page).toHaveURL(/\/$/);
   const primaryNavigation = page.getByLabel("Primary navigation");
+  const workbench = page.getByRole("region", { name: /workbench/i });
   await expect(primaryNavigation.getByText(/^capture command$/i)).toBeVisible();
   await expect(primaryNavigation.getByText(/^intelligence$/i)).toBeVisible();
-  await expect(page.getByText(/^quick links$/i).first()).toBeVisible();
+  await expect(workbench).toBeVisible();
+  await expect(
+    workbench.getByRole("button", { name: /^pinned$/i }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /collapse navigation rail/i }),
   ).toBeVisible();
@@ -1010,9 +1003,8 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
   await expect(
     page.getByRole("heading", { name: /create a tracked opportunity/i }),
   ).toBeVisible();
-  await expect(page.getByText(/^pinned work$/i).first()).toBeVisible();
   await expect(
-    page.getByRole("link", { name: /create pursuit/i }).first(),
+    workbench.getByRole("link", { name: /create pursuit/i }).first(),
   ).toBeVisible();
 
   await page
@@ -1030,7 +1022,10 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
     page.getByRole("heading", { name: /execution triage/i }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: /^My Tasks/i })).toBeVisible();
-  await expect(page.getByText(/^recent work$/i)).toBeVisible();
+  await workbench.getByRole("button", { name: /^recent$/i }).click();
+  await expect(
+    workbench.getByRole("link", { name: /^Knowledge/i }).first(),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: /open notifications/i }).click();
   await expect(
@@ -1039,6 +1034,7 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
   await expect(page.getByText(/saved search issue/i).first()).toBeVisible();
   await page.getByRole("button", { name: /dismiss notifications/i }).click();
 
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.getByRole("button", { name: /collapse navigation rail/i }).click();
   await expect(
     page.getByRole("button", { name: /expand navigation rail/i }),
@@ -1093,7 +1089,7 @@ test.describe("tablet route sweep", () => {
     await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
 
     const routeChecks = [
-      { heading: /capture command center/i, route: "/" },
+      { heading: /start with the work that needs action\./i, route: "/" },
       { heading: /opportunity pipeline/i, route: "/opportunities" },
       { heading: /execution triage/i, route: "/tasks" },
       { heading: /knowledge library/i, route: "/knowledge" },

@@ -112,9 +112,8 @@ describe("opportunity action refresh behavior", () => {
     fireEvent.change(createFormQueries.getByLabelText(/target date/i), {
       target: { value: "2026-05-15" },
     });
-    fireEvent.change(createFormQueries.getByLabelText(/^status$/i), {
-      target: { value: "PLANNED" },
-    });
+    await user.click(createFormQueries.getByRole("combobox", { name: /^status$/i }));
+    await user.click(screen.getByRole("option", { name: /planned/i }));
     await user.click(
       createFormQueries.getByRole("button", { name: /create milestone/i }),
     );
@@ -163,9 +162,8 @@ describe("opportunity action refresh behavior", () => {
     fireEvent.change(createFormQueries.getByLabelText(/task title/i), {
       target: { value: "Capture kickoff" },
     });
-    fireEvent.change(createFormQueries.getByLabelText(/assignee/i), {
-      target: { value: "user_taylor" },
-    });
+    await user.click(createFormQueries.getByRole("combobox", { name: /assignee/i }));
+    await user.click(screen.getByRole("option", { name: /taylor/i }));
     await user.click(
       createFormQueries.getByRole("button", { name: /create task/i }),
     );

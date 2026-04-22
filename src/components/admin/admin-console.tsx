@@ -1,3 +1,7 @@
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+
 import type { AdminWorkspaceSnapshot } from "@/modules/admin/admin.types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +13,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
+import { onesourceTokens } from "@/theme/onesource-theme";
 
 type AdminConsoleProps = {
   recalibrateScoringProfileAction: (formData: FormData) => Promise<void>;
@@ -40,21 +45,29 @@ export function AdminConsole({
 
   if (!snapshot) {
     return (
-      <section className="space-y-4">
-        <p className="text-muted text-sm tracking-[0.26em] uppercase">
+      <Stack component="section" spacing={2}>
+        <Typography
+          sx={{
+            color: onesourceTokens.color.text.muted,
+            fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+            fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+            letterSpacing: "0.26em",
+            textTransform: "uppercase",
+          }}
+        >
           Settings
-        </p>
+        </Typography>
         <Surface sx={{ p: { xs: 3, sm: 4 } }}>
-          <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
+          <Typography variant="h1" sx={{ fontSize: { xs: "2rem", sm: "2.35rem" } }}>
             Workspace settings
-          </h1>
+          </Typography>
           <ErrorState
             className="mt-4"
             message="Organization-scoped admin data could not be loaded for this session. Re-seed the local database or verify the authenticated user still belongs to an active organization."
             title="Workspace settings are unavailable"
           />
         </Surface>
-      </section>
+      </Stack>
     );
   }
 
@@ -63,100 +76,114 @@ export function AdminConsole({
       <Surface
         component="header"
         sx={{
-          boxShadow: "0 24px 80px rgba(20, 37, 34, 0.12)",
+          boxShadow: onesourceTokens.elevation.hero,
           px: { xs: 3, sm: 4 },
           py: 4,
         }}
       >
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Badge>Settings</Badge>
-            <Badge tone="muted">{snapshot.organizationName}</Badge>
-            <Badge tone="accent">Operator workspace</Badge>
-          </div>
-          <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-            Workspace settings
-          </h1>
-          <p className="text-muted max-w-3xl text-sm leading-7">
-            Run the organization from one settings workspace: review connector
-            health, saved-search coverage, scoring inputs, role assignments, and
-            recent audit activity without leaving the protected admin route.
-          </p>
-          {sourceSyncRetryNotice ? (
-            <FeedbackBanner
-              className="mt-4"
-              message={sourceSyncRetryNotice.message}
-              title="Source sync retry"
-              tone={mapFeedbackBannerTone(sourceSyncRetryNotice.tone)}
-            />
-          ) : null}
-          {scoringRecalibrationNotice ? (
-            <FeedbackBanner
-              className="mt-4"
-              message={scoringRecalibrationNotice.message}
-              title="Scoring recalibration"
-              tone={mapFeedbackBannerTone(scoringRecalibrationNotice.tone)}
-            />
-          ) : null}
-        </div>
+        <Stack spacing={3}>
+          <Stack spacing={1.5}>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+              <Badge>Settings</Badge>
+              <Badge tone="muted">{snapshot.organizationName}</Badge>
+              <Badge tone="accent">Operator workspace</Badge>
+            </Stack>
+            <Typography variant="h1" sx={{ fontSize: { xs: "2rem", sm: "2.35rem" } }}>
+              Workspace settings
+            </Typography>
+            <Typography color="text.secondary" sx={{ maxWidth: "52rem" }}>
+              Run the organization from one settings workspace: review connector
+              health, saved-search coverage, scoring inputs, role assignments, and
+              recent audit activity without leaving the protected admin route.
+            </Typography>
+            {sourceSyncRetryNotice ? (
+              <FeedbackBanner
+                className="mt-4"
+                message={sourceSyncRetryNotice.message}
+                title="Source sync retry"
+                tone={mapFeedbackBannerTone(sourceSyncRetryNotice.tone)}
+              />
+            ) : null}
+            {scoringRecalibrationNotice ? (
+              <FeedbackBanner
+                className="mt-4"
+                message={scoringRecalibrationNotice.message}
+                title="Scoring recalibration"
+                tone={mapFeedbackBannerTone(scoringRecalibrationNotice.tone)}
+              />
+            ) : null}
+          </Stack>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-          <SummaryCard
-            label="Current operator"
-            value={viewerLabel}
-            supportingText={sessionUser.email ?? "Signed-in session"}
-          />
-          <SummaryCard
-            label="People"
-            value={String(snapshot.totalUserCount)}
-            supportingText="Users in this workspace"
-          />
-          <SummaryCard
-            label="Admin seats"
-            value={String(snapshot.adminUserCount)}
-            supportingText="Users carrying the admin role"
-          />
-          <SummaryCard
-            label="Saved searches"
-            value={String(snapshot.savedSearches.length)}
-            supportingText="Discovery definitions under management"
-          />
-          <SummaryCard
-            label="Connector alerts"
-            value={String(
-              snapshot.sourceOperations.rateLimitedConnectorCount +
-                snapshot.sourceOperations.failedImportReviewCount,
-            )}
-            supportingText="Rate limits plus import review backlog"
-          />
-          <SummaryCard
-            label="Audit rows"
-            value={String(snapshot.totalAuditLogCount)}
-            supportingText="Recent organization-scoped events"
-          />
-        </div>
+          <Box
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: {
+                md: "repeat(3, minmax(0, 1fr))",
+                xl: "repeat(6, minmax(0, 1fr))",
+              },
+            }}
+          >
+            <SummaryCard
+              label="Current operator"
+              value={viewerLabel}
+              supportingText={sessionUser.email ?? "Signed-in session"}
+            />
+            <SummaryCard
+              label="People"
+              value={String(snapshot.totalUserCount)}
+              supportingText="Users in this workspace"
+            />
+            <SummaryCard
+              label="Admin seats"
+              value={String(snapshot.adminUserCount)}
+              supportingText="Users carrying the admin role"
+            />
+            <SummaryCard
+              label="Saved searches"
+              value={String(snapshot.savedSearches.length)}
+              supportingText="Discovery definitions under management"
+            />
+            <SummaryCard
+              label="Connector alerts"
+              value={String(
+                snapshot.sourceOperations.rateLimitedConnectorCount +
+                  snapshot.sourceOperations.failedImportReviewCount,
+              )}
+              supportingText="Rate limits plus import review backlog"
+            />
+            <SummaryCard
+              label="Audit rows"
+              value={String(snapshot.totalAuditLogCount)}
+              supportingText="Recent organization-scoped events"
+            />
+          </Box>
 
-        <nav
-          aria-label="Workspace settings sections"
-          className="mt-6 flex flex-wrap gap-2"
-        >
-          <SectionJumpLink href="#workspace-overview">
-            Workspace
-          </SectionJumpLink>
-          <SectionJumpLink href="#source-operations-heading">
-            Connectors
-          </SectionJumpLink>
-          <SectionJumpLink href="#saved-searches-heading">
-            Saved searches
-          </SectionJumpLink>
-          <SectionJumpLink href="#scoring-profile-heading">
-            Scoring profile
-          </SectionJumpLink>
-          <SectionJumpLink href="#assigned-roles-heading">
-            Users &amp; roles
-          </SectionJumpLink>
-          <SectionJumpLink href="#recent-audit-heading">Audit</SectionJumpLink>
-        </nav>
+          <Stack
+            aria-label="Workspace settings sections"
+            component="nav"
+            direction="row"
+            spacing={1}
+            sx={{ flexWrap: "wrap" }}
+          >
+            <SectionJumpLink href="#workspace-overview">
+              Workspace
+            </SectionJumpLink>
+            <SectionJumpLink href="#source-operations-heading">
+              Connectors
+            </SectionJumpLink>
+            <SectionJumpLink href="#saved-searches-heading">
+              Saved searches
+            </SectionJumpLink>
+            <SectionJumpLink href="#scoring-profile-heading">
+              Scoring profile
+            </SectionJumpLink>
+            <SectionJumpLink href="#assigned-roles-heading">
+              Users &amp; roles
+            </SectionJumpLink>
+            <SectionJumpLink href="#recent-audit-heading">Audit</SectionJumpLink>
+          </Stack>
+        </Stack>
       </Surface>
 
       <div className="grid gap-6">
@@ -171,21 +198,26 @@ export function AdminConsole({
             py: 3,
           }}
         >
-          <div className="space-y-2">
-            <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Workspace overview
-            </p>
-            <h2
-              className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
-              id="workspace-overview-heading"
+          <Stack spacing={1}>
+            <Typography
+              sx={{
+                color: onesourceTokens.color.text.muted,
+                fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+                fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+                letterSpacing: "0.24em",
+                textTransform: "uppercase",
+              }}
             >
+              Workspace overview
+            </Typography>
+            <Typography id="workspace-overview-heading" variant="h3">
               Operator briefing
-            </h2>
-            <p className="text-muted text-sm leading-6">
+            </Typography>
+            <Typography color="text.secondary" variant="body2">
               Keep the current workspace posture visible before you move into
               connector, search, scoring, or access-control detail.
-            </p>
-          </div>
+            </Typography>
+          </Stack>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
             <Surface className="px-5 py-5" tone="muted">
@@ -1491,19 +1523,45 @@ function SummaryCard({
   supportingText: string;
 }) {
   return (
-    <Surface className="p-5">
-      <p className="text-muted text-xs tracking-[0.22em] uppercase">{label}</p>
-      <p className="text-foreground mt-3 text-lg font-semibold">{value}</p>
-      <p className="text-muted mt-2 text-sm leading-6">{supportingText}</p>
+    <Surface density="compact" sx={{ p: 2.5 }}>
+      <Typography
+        sx={{
+          color: onesourceTokens.color.text.muted,
+          fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+          fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </Typography>
+      <Typography sx={{ mt: 1.5 }} variant="h6">
+        {value}
+      </Typography>
+      <Typography color="text.secondary" sx={{ mt: 1 }} variant="body2">
+        {supportingText}
+      </Typography>
     </Surface>
   );
 }
 
 function MetricPair({ label, value }: { label: string; value: string }) {
   return (
-    <Surface className="px-3 py-3" tone="muted">
-      <p className="text-[11px] tracking-[0.16em] uppercase">{label}</p>
-      <p className="text-foreground mt-2 font-medium">{value}</p>
+    <Surface density="compact" sx={{ px: 1.5, py: 1.5 }} tone="muted">
+      <Typography
+        sx={{
+          color: onesourceTokens.color.text.muted,
+          fontSize: "11px",
+          fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </Typography>
+      <Typography sx={{ mt: 1 }} variant="body2">
+        {value}
+      </Typography>
     </Surface>
   );
 }
@@ -1518,9 +1576,19 @@ function ProfileBadgeGroup({
   title: string;
 }) {
   return (
-    <Surface className="p-5">
-      <p className="text-muted text-xs tracking-[0.22em] uppercase">{title}</p>
-      <div className="mt-3 flex flex-wrap gap-2">
+    <Surface density="compact" sx={{ p: 2.5 }}>
+      <Typography
+        sx={{
+          color: onesourceTokens.color.text.muted,
+          fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+          fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+        }}
+      >
+        {title}
+      </Typography>
+      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mt: 1.5 }}>
         {badges.length > 0 ? (
           badges.map((badge) => (
             <Badge key={`${title}-${badge}`} tone="muted">
@@ -1530,7 +1598,7 @@ function ProfileBadgeGroup({
         ) : (
           <Badge tone="warning">{emptyLabel}</Badge>
         )}
-      </div>
+      </Stack>
     </Surface>
   );
 }

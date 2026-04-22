@@ -2,6 +2,8 @@ import OutlinedInput from "@mui/material/OutlinedInput";
 import type { SxProps, Theme } from "@mui/material/styles";
 import type { TextareaHTMLAttributes } from "react";
 
+import { onesourceTokens } from "@/theme/onesource-theme";
+
 export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   density?: "comfortable" | "compact";
   sx?: SxProps<Theme>;
@@ -52,21 +54,18 @@ export function Textarea({
         [
           {
             alignItems: "flex-start",
-            fontSize: "0.92rem",
+            fontSize: onesourceTokens.typographyRole.data.fontSize,
+            "& .MuiOutlinedInput-input": {
+              px:
+                density === "compact"
+                  ? onesourceTokens.spacing.controlPaddingCompactX
+                  : onesourceTokens.spacing.controlPaddingComfortableX,
+              py:
+                density === "compact"
+                  ? onesourceTokens.spacing.controlPaddingCompactY
+                  : onesourceTokens.spacing.controlPaddingComfortableY,
+            },
           },
-          density === "compact"
-            ? {
-                "& .MuiOutlinedInput-input": {
-                  px: 1.5,
-                  py: 1.125,
-                },
-              }
-            : {
-                "& .MuiOutlinedInput-input": {
-                  px: 1.75,
-                  py: 1.25,
-                },
-              },
           ...(sx ? [sx] : []),
         ] as SxProps<Theme>
       }

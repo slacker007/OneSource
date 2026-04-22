@@ -1,31 +1,41 @@
 import Paper, { type PaperProps } from "@mui/material/Paper";
-import { alpha } from "@mui/material/styles";
 
-export type SurfaceTone = "default" | "muted";
+import { onesourceTokens } from "@/theme/onesource-theme";
+
+export type SurfaceTone = "default" | "muted" | "warm";
+export type SurfaceDensity = "comfortable" | "compact";
 
 type SurfaceProps = PaperProps & {
+  density?: SurfaceDensity;
   tone?: SurfaceTone;
 };
 
-export function Surface({ sx, tone = "default", ...props }: SurfaceProps) {
+export function Surface({
+  density = "comfortable",
+  sx,
+  tone = "default",
+  ...props
+}: SurfaceProps) {
   return (
     <Paper
       elevation={0}
       sx={
         [
           {
+            bgcolor:
+              tone === "muted"
+                ? onesourceTokens.color.surface.muted
+                : tone === "warm"
+                  ? onesourceTokens.color.surface.warm
+                  : onesourceTokens.color.surface.raised,
             border: "1px solid",
-            borderColor: "divider",
-            borderRadius: 3.5,
-            boxShadow: "0 16px 40px rgba(20, 37, 34, 0.08)",
+            borderColor: onesourceTokens.color.border.subtle,
+            borderRadius: `${onesourceTokens.radius.panel}px`,
+            boxShadow:
+              density === "compact"
+                ? onesourceTokens.elevation.surface
+                : onesourceTokens.elevation.raised,
           },
-          ...(tone === "muted"
-            ? [
-                {
-                  bgcolor: alpha("#122128", 0.035),
-                },
-              ]
-            : []),
           ...(sx ? [sx] : []),
         ] as SurfaceProps["sx"]
       }

@@ -29,6 +29,7 @@ export function FormField({
   const generatedId = useId();
   const childElement = isValidElement<{
     "aria-describedby"?: string;
+    "aria-label"?: string;
     id?: string;
   }>(children)
     ? children
@@ -45,6 +46,7 @@ export function FormField({
       ? cloneElement(childElement as ReactElement<Record<string, unknown>>, {
           "aria-describedby":
             describedBy || childElement.props["aria-describedby"],
+          "aria-label": childElement.props["aria-label"] ?? label,
           id: childElement.props.id ?? childId,
         })
       : children;

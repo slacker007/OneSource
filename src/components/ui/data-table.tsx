@@ -5,11 +5,11 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 
 import { Surface } from "@/components/ui/surface";
 import { cn } from "@/lib/cn";
+import { onesourceTokens } from "@/theme/onesource-theme";
 
 export type DataTableDensity = "compact" | "comfortable";
 export type DataTableSortDirection = "asc" | "desc";
@@ -96,17 +96,21 @@ export function DataTable<Row>({
                   component="th"
                   scope="col"
                   sx={{
-                    backgroundColor: alpha("#122128", 0.035),
-                    fontSize: "0.68rem",
-                    fontWeight: 700,
-                    letterSpacing: "0.18em",
+                    backgroundColor: onesourceTokens.color.surface.default,
+                    color: "text.secondary",
+                    fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+                    fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+                    letterSpacing: onesourceTokens.typographyRole.eyebrow.letterSpacing,
                     px: 2,
                     py: 1.75,
                     textTransform: "uppercase",
                     ...(stickyHeader
                       ? {
                           backdropFilter: "blur(14px)",
-                          backgroundColor: alpha("#f7f4ec", 0.92),
+                          backgroundColor: alphaFromHex(
+                            onesourceTokens.color.background.strong,
+                            0.92,
+                          ),
                         }
                       : {}),
                   }}
@@ -160,18 +164,24 @@ export function DataTable<Row>({
                   sx={{
                     transition: "background-color 160ms ease",
                     "&.Mui-selected": {
-                      backgroundColor: alpha("#1e5d66", 0.1),
+                      backgroundColor: onesourceTokens.interaction.selectedOverlay,
                     },
                     "&.Mui-selected:hover": {
-                      backgroundColor: alpha("#1e5d66", 0.14),
+                      backgroundColor: alphaFromHex(
+                        onesourceTokens.color.accent.main,
+                        0.16,
+                      ),
                     },
                     "&:focus-visible": {
-                      backgroundColor: alpha("#1e5d66", 0.12),
-                      outline: `2px solid ${alpha("#1e5d66", 0.32)}`,
+                      backgroundColor: onesourceTokens.interaction.selectedOverlay,
+                      outline: `2px solid ${alphaFromHex(
+                        onesourceTokens.color.accent.main,
+                        0.32,
+                      )}`,
                       outlineOffset: "-2px",
                     },
                     "&:hover": {
-                      backgroundColor: alpha("#122128", 0.035),
+                      backgroundColor: onesourceTokens.interaction.hoverOverlay,
                     },
                   }}
                 >
@@ -183,6 +193,7 @@ export function DataTable<Row>({
                         column.className,
                       )}
                       sx={{
+                        color: "text.primary",
                         fontSize: compact ? "0.92rem" : "0.95rem",
                         lineHeight: 1.65,
                         px: 2,
@@ -206,4 +217,18 @@ export function DataTable<Row>({
       </TableContainer>
     </Surface>
   );
+}
+
+function alphaFromHex(color: string, opacity: number) {
+  const normalized = color.replace("#", "");
+
+  if (normalized.length !== 6) {
+    return color;
+  }
+
+  const red = Number.parseInt(normalized.slice(0, 2), 16);
+  const green = Number.parseInt(normalized.slice(2, 4), 16);
+  const blue = Number.parseInt(normalized.slice(4, 6), 16);
+
+  return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
 }

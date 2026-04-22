@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -139,12 +139,10 @@ describe("OpportunityProposalManager", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText(/proposal status/i), {
-      target: { value: "SUBMITTED" },
-    });
-    fireEvent.change(screen.getByLabelText(/proposal owner/i), {
-      target: { value: "user_casey" },
-    });
+    await user.click(screen.getByRole("combobox", { name: /proposal status/i }));
+    await user.click(screen.getByRole("option", { name: /submitted/i }));
+    await user.click(screen.getByRole("combobox", { name: /proposal owner/i }));
+    await user.click(screen.getByRole("option", { name: /casey/i }));
     await user.click(
       screen.getByRole("checkbox", {
         name: /final compliance review complete/i,

@@ -1,5 +1,5 @@
 import { renderToString } from "react-dom/server";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,72 @@ describe("UI foundation primitives", () => {
     expect(screen.getByTestId("surface")).toHaveTextContent(/preview shell/i);
     expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
     expect(screen.getByTestId("skeleton")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("translates legacy option children into a themed Material UI menu", () => {
+    render(
+      <Select aria-label="Priority" defaultValue="open">
+        <option value="open">Open</option>
+        <option value="closed">Closed</option>
+      </Select>,
+    );
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: /priority/i }));
+
+    expect(screen.getByRole("option", { name: /open/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /closed/i })).toBeInTheDocument();
+  });
+
+  it("supports disabled legacy option children without crashing or selecting them by default", () => {
+    render(
+      <Select aria-label="Connector">
+        <option disabled value="">
+          Choose connector
+        </option>
+        <option value="sam_gov">SAM.gov</option>
+        <option value="usaspending_api">USAspending API</option>
+      </Select>,
+    );
+
+    expect(screen.getByRole("combobox", { name: /connector/i })).toHaveTextContent(
+      /sam\.gov/i,
+    );
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: /connector/i }));
+
+    expect(
+      screen.getByRole("option", { name: /choose connector/i }),
+    ).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("option", { name: /sam\.gov/i })).toBeInTheDocument();
+  });
+
+  it("drops nullish legacy children before they reach the Material UI select internals", () => {
+    const showDeprecatedOption = false;
+
+    render(
+      <Select aria-label="Execution mode" defaultValue="live">
+        {showDeprecatedOption ? <option value="deprecated">Deprecated</option> : null}
+        <option value="live">Live</option>
+        {undefined}
+        <option value="fixtures">Fixtures</option>
+      </Select>,
+    );
+
+    expect(
+      screen.getByRole("combobox", { name: /execution mode/i }),
+    ).toHaveTextContent(/live/i);
+
+    fireEvent.mouseDown(
+      screen.getByRole("combobox", { name: /execution mode/i }),
+    );
+
+    expect(
+      screen.queryByRole("option", { name: /deprecated/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /live/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: /fixtures/i }),
+    ).toBeInTheDocument();
   });
 
   it("server-renders field wrappers around shared inputs without crashing", () => {

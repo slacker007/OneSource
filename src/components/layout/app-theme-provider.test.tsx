@@ -11,6 +11,7 @@ function ThemeProbe() {
     <div
       data-testid="theme-probe"
       data-font={theme.typography.fontFamily}
+      data-panel-radius={theme.onesource.radius.panel}
       data-primary={theme.palette.primary.main}
       data-radius={theme.shape.borderRadius}
     />
@@ -38,6 +39,10 @@ describe("AppThemeProvider", () => {
     expect(screen.getByTestId("theme-probe")).toHaveAttribute(
       "data-font",
       expect.stringContaining("var(--font-body)"),
+    );
+    expect(screen.getByTestId("theme-probe")).toHaveAttribute(
+      "data-panel-radius",
+      "20",
     );
   });
 });

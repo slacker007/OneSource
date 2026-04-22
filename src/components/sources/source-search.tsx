@@ -31,7 +31,6 @@ import type {
   SourceSearchSnapshot,
 } from "@/modules/source-integrations/source-search.service";
 import Checkbox from "@mui/material/Checkbox";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 
@@ -522,38 +521,28 @@ export function SourceSearch({
                               tone="muted"
                               sx={{ px: 2, py: 1.5 }}
                             >
-                              <FormControlLabel
-                                control={
-                                  <Checkbox
-                                    defaultChecked={snapshot.formValues.ptype.includes(
-                                      option.value,
-                                    )}
-                                    id={`ptype-${option.value}`}
-                                    name="ptype"
-                                    size="small"
-                                    value={option.value}
-                                  />
-                                }
-                                label={
-                                  <span className="space-y-1">
-                                    <span className="block font-medium">
-                                      {option.label}
-                                    </span>
-                                    <span className="text-muted block text-xs leading-5">
-                                      {option.description}
-                                    </span>
+                              <label
+                                className="flex w-full cursor-pointer items-start gap-3"
+                                htmlFor={`ptype-${option.value}`}
+                              >
+                                <Checkbox
+                                  defaultChecked={snapshot.formValues.ptype.includes(
+                                    option.value,
+                                  )}
+                                  id={`ptype-${option.value}`}
+                                  name="ptype"
+                                  size="small"
+                                  value={option.value}
+                                />
+                                <span className="flex-1 space-y-1">
+                                  <span className="block font-medium">
+                                    {option.label}
                                   </span>
-                                }
-                                sx={{
-                                  alignItems: "flex-start",
-                                  gap: 1,
-                                  m: 0,
-                                  width: "100%",
-                                  "& .MuiFormControlLabel-label": {
-                                    flex: 1,
-                                  },
-                                }}
-                              />
+                                  <span className="text-muted block text-xs leading-5">
+                                    {option.description}
+                                  </span>
+                                </span>
+                              </label>
                             </Surface>
                           ),
                         )}
@@ -935,43 +924,33 @@ function SourceImportPreviewPanel({
                         key={candidate.opportunityId}
                         sx={{ bgcolor: "background.paper", px: 2, py: 1.5 }}
                       >
-                        <FormControlLabel
-                          control={
-                            <Radio
-                              id={`target-${candidate.opportunityId}`}
-                              size="small"
-                              value={candidate.opportunityId}
-                            />
-                          }
-                          label={
-                            <span className="space-y-2">
-                              <span className="text-foreground block font-medium">
-                                {candidate.title}
-                              </span>
-                              <span className="flex flex-wrap gap-2">
-                                <Badge tone="muted">
-                                  {formatMatchLabel(candidate.matchKind)}
-                                </Badge>
-                                <Badge>{candidate.matchScore} / 100</Badge>
-                                <Badge tone="warning">
-                                  {candidate.currentStageLabel ?? "Unstaged"}
-                                </Badge>
-                              </span>
-                              <span className="text-muted block text-xs leading-5">
-                                {candidate.matchReasons.join(" ")}
-                              </span>
+                        <label
+                          className="flex w-full cursor-pointer items-start gap-3"
+                          htmlFor={`target-${candidate.opportunityId}`}
+                        >
+                          <Radio
+                            id={`target-${candidate.opportunityId}`}
+                            size="small"
+                            value={candidate.opportunityId}
+                          />
+                          <span className="flex-1 space-y-2">
+                            <span className="text-foreground block font-medium">
+                              {candidate.title}
                             </span>
-                          }
-                          sx={{
-                            alignItems: "flex-start",
-                            gap: 1,
-                            m: 0,
-                            width: "100%",
-                            "& .MuiFormControlLabel-label": {
-                              flex: 1,
-                            },
-                          }}
-                        />
+                            <span className="flex flex-wrap gap-2">
+                              <Badge tone="muted">
+                                {formatMatchLabel(candidate.matchKind)}
+                              </Badge>
+                              <Badge>{candidate.matchScore} / 100</Badge>
+                              <Badge tone="warning">
+                                {candidate.currentStageLabel ?? "Unstaged"}
+                              </Badge>
+                            </span>
+                            <span className="text-muted block text-xs leading-5">
+                              {candidate.matchReasons.join(" ")}
+                            </span>
+                          </span>
+                        </label>
                       </Surface>
                     ))}
                   </RadioGroup>

@@ -97,7 +97,7 @@ describe("AppShellFrame", () => {
     window.localStorage.clear();
   });
 
-  it("renders grouped navigation, command launch, quick links, and shell orientation", () => {
+  it("renders grouped navigation, command launch, and the consolidated workbench", () => {
     render(
       <AppShellFrame
         allowDecisionSupport
@@ -144,20 +144,15 @@ describe("AppShellFrame", () => {
     expect(
       screen.getByRole("button", { name: /collapse navigation rail/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/default workspace/i)).toBeInTheDocument();
+    expect(screen.getByText(/org id org_123/i)).toBeInTheDocument();
     expect(screen.getAllByText(/^external discovery$/i)[0]).toBeInTheDocument();
-
-    const quickLinks = within(
-      screen.getByRole("region", { name: /quick links/i }),
-    );
+    expect(screen.getByRole("region", { name: /workbench/i })).toBeInTheDocument();
     expect(
-      quickLinks.getByRole("link", { name: /create pursuit/i }),
-    ).toHaveAttribute("href", "/opportunities/new");
-    expect(
-      quickLinks.getByRole("link", { name: /decision console/i }),
-    ).toHaveAttribute("href", "/analytics");
-    expect(
-      quickLinks.getByRole("link", { name: /workspace settings/i }),
-    ).toHaveAttribute("href", "/settings");
+      screen.getByRole("button", { name: /^pinned$/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("region", { name: /quick links/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^current focus$/i)).not.toBeInTheDocument();
   });
 
   it("opens the command center, filters results, and persists pinned work", async () => {
@@ -225,9 +220,9 @@ describe("AppShellFrame", () => {
       ).toContain("/opportunities/opp_1"),
     );
 
-    expect(
-      screen.getByRole("region", { name: /pinned work/i }),
-    ).toHaveTextContent(/va intake modernization bpa/i);
+    expect(screen.getByRole("region", { name: /workbench/i })).toHaveTextContent(
+      /va intake modernization bpa/i,
+    );
 
     commandSearch.focus();
     fireEvent.keyDown(commandSearch, { key: "Escape" });
@@ -324,7 +319,12 @@ describe("AppShellFrame", () => {
       </AppShellFrame>,
     );
 
-    await user.click(screen.getByRole("link", { name: /review my tasks/i }));
+    const primaryNavigation = screen.getByRole("navigation", {
+      name: /primary navigation/i,
+    });
+    await user.click(
+      within(primaryNavigation).getByRole("link", { name: /^tasks/i }),
+    );
 
     await waitFor(() =>
       expect(
@@ -332,11 +332,10 @@ describe("AppShellFrame", () => {
       ).toContain("/tasks"),
     );
 
-    const recentWork = within(
-      screen.getByRole("region", { name: /recent work/i }),
-    );
+    const workbench = within(screen.getByRole("region", { name: /workbench/i }));
+    await user.click(workbench.getByRole("button", { name: /^recent$/i }));
     expect(
-      recentWork.getByRole("link", { name: /knowledge library/i }),
+      workbench.getByRole("link", { name: /knowledge library/i }),
     ).toHaveAttribute("href", "/knowledge");
 
     await user.click(
@@ -350,7 +349,13 @@ describe("AppShellFrame", () => {
       screen.getByRole("button", { name: /expand navigation rail/i }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(/frequent jumps that stay attached to the shell/i),
+      within(primaryNavigation).getByRole("link", { name: /^dashboard$/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(primaryNavigation).queryByText(/^capture command$/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: /workbench/i }),
     ).not.toBeInTheDocument();
   });
 });

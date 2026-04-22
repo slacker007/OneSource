@@ -8,29 +8,37 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useId, type ReactNode } from "react";
 
+import { onesourceTokens } from "@/theme/onesource-theme";
+
 type DrawerProps = {
+  anchor?: "left" | "right";
   children: ReactNode;
   description?: string;
   eyebrow?: string;
+  hideAbove?: "lg" | "xl";
   onClose: () => void;
   open: boolean;
   title: string;
+  width?: number;
 };
 
 export function Drawer({
+  anchor = "right",
   children,
   description,
   eyebrow,
+  hideAbove = "lg",
   onClose,
   open,
   title,
+  width = 320,
 }: DrawerProps) {
   const titleId = useId();
   const descriptionId = useId();
 
   return (
     <MuiDrawer
-      anchor="right"
+      anchor={anchor}
       onClose={onClose}
       open={open}
       slotProps={{
@@ -41,16 +49,23 @@ export function Drawer({
       }}
       sx={{
         display: {
-          lg: "none",
+          [hideAbove]: "none",
         },
         "& .MuiDrawer-paper": {
-          bgcolor: "rgba(15,28,31,0.98)",
-          borderLeft: "1px solid rgba(255,255,255,0.08)",
-          color: "#f5f5f4",
+          bgcolor: onesourceTokens.shell.background,
+          borderLeft:
+            anchor === "right"
+              ? `1px solid ${onesourceTokens.shell.panelBorder}`
+              : undefined,
+          borderRight:
+            anchor === "left"
+              ? `1px solid ${onesourceTokens.shell.panelBorder}`
+              : undefined,
+          color: onesourceTokens.shell.textPrimary,
           maxWidth: "84vw",
           px: 2.5,
           py: 2.5,
-          width: 320,
+          width,
         },
       }}
     >
@@ -67,7 +82,7 @@ export function Drawer({
             {eyebrow ? (
               <Typography
                 sx={{
-                  color: "rgba(255,255,255,0.64)",
+                  color: onesourceTokens.shell.textFaint,
                   fontSize: "0.78rem",
                   letterSpacing: "0.24em",
                   textTransform: "uppercase",
@@ -102,7 +117,11 @@ export function Drawer({
         {description ? (
           <Typography
             id={descriptionId}
-            sx={{ color: "rgba(245,245,244,0.76)", fontSize: "0.94rem", lineHeight: 1.6 }}
+            sx={{
+              color: onesourceTokens.shell.textSecondary,
+              fontSize: "0.94rem",
+              lineHeight: 1.6,
+            }}
           >
             {description}
           </Typography>

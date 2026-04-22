@@ -2,6 +2,8 @@ import OutlinedInput from "@mui/material/OutlinedInput";
 import type { SxProps, Theme } from "@mui/material/styles";
 import type { InputHTMLAttributes, ReactNode } from "react";
 
+import { onesourceTokens } from "@/theme/onesource-theme";
+
 export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
   endAdornment?: ReactNode;
   density?: "comfortable" | "compact";
@@ -56,21 +58,22 @@ export function Input({
       sx={
         [
           {
-            fontSize: "0.92rem",
+            fontSize: onesourceTokens.typographyRole.data.fontSize,
+            minHeight:
+              density === "compact"
+                ? onesourceTokens.sizing.controlHeightCompact
+                : onesourceTokens.sizing.controlHeightComfortable,
+            "& .MuiOutlinedInput-input": {
+              px:
+                density === "compact"
+                  ? onesourceTokens.spacing.controlPaddingCompactX
+                  : onesourceTokens.spacing.controlPaddingComfortableX,
+              py:
+                density === "compact"
+                  ? onesourceTokens.spacing.controlPaddingCompactY
+                  : onesourceTokens.spacing.controlPaddingComfortableY,
+            },
           },
-          density === "compact"
-            ? {
-                "& .MuiOutlinedInput-input": {
-                  px: 1.5,
-                  py: 1.125,
-                },
-              }
-            : {
-                "& .MuiOutlinedInput-input": {
-                  px: 1.75,
-                  py: 1.25,
-                },
-              },
           ...(sx ? [sx] : []),
         ] as SxProps<Theme>
       }

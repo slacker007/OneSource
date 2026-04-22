@@ -1,3 +1,6 @@
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +18,7 @@ import type {
   PipelineConversionSummary,
   PipelineStageAgingSummary,
 } from "@/modules/opportunities/opportunity.types";
+import { onesourceTokens } from "@/theme/onesource-theme";
 
 type DashboardLandingProps = {
   snapshot: HomeDashboardSnapshot | null;
@@ -23,65 +27,74 @@ type DashboardLandingProps = {
 export function DashboardLanding({ snapshot }: DashboardLandingProps) {
   if (!snapshot) {
     return (
-        <ErrorState
-          message="The dashboard could not load organization data for this session. Verify the current user still belongs to an active workspace before relying on this view."
-          title="Dashboard data unavailable"
-        />
+      <ErrorState
+        message="The dashboard could not load organization data for this session. Verify the current user still belongs to an active workspace before relying on this view."
+        title="Dashboard data unavailable"
+      />
     );
   }
 
   return (
-    <section className="space-y-6">
-      <div className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
+    <Stack
+      component="section"
+      spacing={{ xs: 3, lg: 4 }}
+      sx={{ pb: { xs: 2, lg: 3 } }}
+    >
         <Surface
           component="article"
           sx={{
             background:
-              "linear-gradient(135deg, rgba(16,58,53,1), rgba(21,74,66,0.96), rgba(244,250,247,0.72))",
-            color: "#ffffff",
-            overflow: "hidden",
-            p: 3,
+              "linear-gradient(145deg, rgba(250,248,242,0.98), rgba(240,247,244,0.96), rgba(247,241,231,0.94))",
+            px: { xs: 3, sm: 3.5, lg: 4 },
+            py: { xs: 3, sm: 3.5, lg: 4 },
           }}
         >
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  <Badge
-                    className="border-white/15 bg-white/10 text-white"
-                    tone="muted"
-                  >
-                    Dashboard
+          <Stack spacing={{ xs: 3, lg: 3.5 }}>
+            <Stack
+              direction={{ xs: "column", lg: "row" }}
+              spacing={3}
+              sx={{
+                alignItems: { lg: "flex-end" },
+                justifyContent: "space-between",
+              }}
+            >
+              <Stack spacing={1.5} sx={{ maxWidth: "48rem" }}>
+                <Typography
+                  sx={{
+                    color: onesourceTokens.color.text.muted,
+                    fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+                    fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+                    letterSpacing: "0.24em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Capture command center
+                </Typography>
+                <Typography
+                  variant="h1"
+                  sx={{
+                    fontSize: {
+                      xs: "2.2rem",
+                      sm: "2.7rem",
+                    },
+                  }}
+                >
+                  Start with the work that needs action.
+                </Typography>
+                <Typography color="text.secondary" sx={{ maxWidth: "42rem" }}>
+                  The dashboard now opens with active workload, urgent pursuits,
+                  deadlines, and discovery momentum in one readable sequence
+                  instead of one oversized hero.
+                </Typography>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                  <Badge tone="accent">{snapshot.organization.name}</Badge>
+                  <Badge tone="muted">
+                    {snapshot.trackedOpportunityCount} tracked pursuits
                   </Badge>
-                  <Badge
-                    className="border-white/15 bg-white/10 text-white"
-                    tone="muted"
-                  >
-                    Attention-led
-                  </Badge>
-                  <Badge
-                    className="border-white/15 bg-white/10 text-white"
-                    tone="muted"
-                  >
-                    {snapshot.organization.name}
-                  </Badge>
-                </div>
+                </Box>
+              </Stack>
 
-                <div className="space-y-3">
-                  <p className="text-xs tracking-[0.24em] text-white/70 uppercase">
-                    Capture command center
-                  </p>
-                  <h2 className="font-heading text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-                    Attention queue
-                  </h2>
-                  <p className="max-w-2xl text-sm leading-7 text-white/78 sm:text-base">
-                    Start with the pursuits that can slip, block, or close soon,
-                    then branch into the pipeline, tasks, and sourced work
-                    directly from the same command center.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                   <ActionLink
                     href="/opportunities?due=next_30_days"
                     label="Review deadline queue"
@@ -92,39 +105,119 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
                     label="Open task triage"
                     tone="secondary"
                   />
-                </div>
-              </div>
+              </Stack>
+            </Stack>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+            <Box
+              sx={{
+                display: "grid",
+                gap: 2,
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "repeat(2, minmax(0, 1fr))",
+                  lg: "repeat(4, minmax(0, 1fr))",
+                },
+              }}
+            >
                 <DashboardKpiCard
-                  detail="Records visible in the current workspace."
+                  detail="Live opportunity records in this workspace."
                   label="Tracked pursuits"
                   value={String(snapshot.trackedOpportunityCount)}
                 />
                 <DashboardKpiCard
-                  detail="Open pursuits still moving through active execution."
+                  detail="Pursuits still advancing through execution."
                   label="Active pipeline"
                   value={String(snapshot.activeOpportunityCount)}
                 />
                 <DashboardKpiCard
-                  detail="Items currently surfacing a blocked, overdue, or near-term signal."
+                  detail="Blocked, overdue, or near-term items."
                   label="Needs attention"
                   value={String(snapshot.opportunitiesRequiringAttentionCount)}
                 />
                 <DashboardKpiCard
-                  detail="Source connectors currently enabled for discovery and sync."
+                  detail="Connectors enabled for search and sync."
                   label="Live connectors"
                   value={String(snapshot.enabledConnectorCount)}
                 />
-              </div>
-            </div>
+            </Box>
+          </Stack>
+        </Surface>
 
+      <Box
+        sx={{
+          alignItems: "start",
+          display: "grid",
+          gap: { xs: 3, lg: 4 },
+          gridTemplateColumns: {
+            xs: "1fr",
+            lg: "minmax(0, 1.08fr) minmax(21rem, 0.92fr)",
+          },
+        }}
+      >
+        <Surface
+          component="article"
+          sx={{
+            background:
+              "linear-gradient(145deg, rgba(17,64,58,0.98), rgba(25,79,72,0.96), rgba(77,129,118,0.86))",
+            color: onesourceTokens.color.text.inverse,
+            px: { xs: 3, sm: 3.5 },
+            py: { xs: 3, sm: 3.5 },
+          }}
+        >
+          <Stack spacing={3}>
+            <Stack
+              direction={{ xs: "column", lg: "row" }}
+              spacing={2}
+              sx={{ justifyContent: "space-between", alignItems: { lg: "start" } }}
+            >
+              <Stack spacing={1.5} sx={{ maxWidth: "38rem" }}>
+                <Typography
+                  sx={{
+                    color: "rgba(255,255,255,0.72)",
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.22em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Immediate focus
+                </Typography>
+                <Typography
+                  variant="h2"
+                  sx={{ color: "inherit", fontSize: { xs: "1.9rem", sm: "2.2rem" } }}
+                >
+                  Attention queue
+                </Typography>
+                <Typography sx={{ color: "rgba(255,255,255,0.78)", maxWidth: "34rem" }}>
+                  Start with the pursuits that can slip, block, or close soon,
+                  then branch into the pipeline, tasks, and sourced work from
+                  the same page.
+                </Typography>
+              </Stack>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                <Badge
+                  className="border-white/15 bg-white/10 text-white"
+                  tone="muted"
+                >
+                  {snapshot.opportunitiesRequiringAttentionCount} active signals
+                </Badge>
+              </Box>
+            </Stack>
             {snapshot.attentionQueue.length > 0 ? (
-              <div className="grid gap-3 lg:grid-cols-2">
+              <Box
+                sx={{
+                  display: "grid",
+                  gap: 2,
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    lg: "repeat(2, minmax(0, 1fr))",
+                  },
+                }}
+              >
                 {snapshot.attentionQueue.map((item) => (
                   <AttentionQueueCard key={item.opportunityId} item={item} />
                 ))}
-              </div>
+              </Box>
             ) : (
               <EmptyState
                 className="border-white/12 bg-white/6 text-white"
@@ -132,7 +225,7 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
                 title="No immediate attention signals"
               />
             )}
-          </div>
+          </Stack>
         </Surface>
 
         <Surface
@@ -140,7 +233,8 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
           sx={{
             background:
               "linear-gradient(180deg, rgba(255,250,241,0.98), rgba(245,238,224,0.94))",
-            p: 3,
+            px: { xs: 3, sm: 3.5 },
+            py: { xs: 3, sm: 3.5 },
           }}
         >
           <div className="flex items-start justify-between gap-4">
@@ -181,10 +275,23 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
             />
           )}
         </Surface>
-      </div>
+      </Box>
 
-      <div className="grid gap-4 xl:grid-cols-[1.02fr_0.98fr]">
-        <Surface component="article" sx={{ backgroundColor: "#f6efe4", p: 3 }}>
+      <Box
+        sx={{
+          display: "grid",
+          gap: { xs: 3, lg: 4 },
+          gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) minmax(0, 1fr)" },
+        }}
+      >
+        <Surface
+          component="article"
+          sx={{
+            backgroundColor: "#f6efe4",
+            px: { xs: 3, sm: 3.5 },
+            py: { xs: 3, sm: 3.5 },
+          }}
+        >
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <p className="text-xs tracking-[0.22em] text-[#8b6e56] uppercase">
@@ -220,7 +327,7 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
           )}
         </Surface>
 
-        <Surface component="article" sx={{ p: 3 }}>
+        <Surface component="article" sx={{ px: { xs: 3, sm: 3.5 }, py: { xs: 3, sm: 3.5 } }}>
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <p className="text-muted text-xs tracking-[0.22em] uppercase">
@@ -282,15 +389,25 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
             />
           )}
         </Surface>
-      </div>
+      </Box>
 
-      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <Box
+        sx={{
+          display: "grid",
+          gap: { xs: 3, lg: 4 },
+          gridTemplateColumns: {
+            xs: "1fr",
+            lg: "minmax(0, 1.06fr) minmax(0, 0.94fr)",
+          },
+        }}
+      >
         <Surface
           component="article"
           sx={{
             background:
               "linear-gradient(180deg, rgba(244,250,247,1), rgba(232,244,239,0.96))",
-            p: 3,
+            px: { xs: 3, sm: 3.5 },
+            py: { xs: 3, sm: 3.5 },
           }}
         >
           <div className="flex items-start justify-between gap-4">
@@ -390,7 +507,8 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
           sx={{
             background:
               "linear-gradient(180deg, rgba(251,252,255,1), rgba(239,244,255,0.92))",
-            p: 3,
+            px: { xs: 3, sm: 3.5 },
+            py: { xs: 3, sm: 3.5 },
           }}
         >
           <div className="flex items-start justify-between gap-4">
@@ -428,8 +546,8 @@ export function DashboardLanding({ snapshot }: DashboardLandingProps) {
             />
           )}
         </Surface>
-      </div>
-    </section>
+      </Box>
+    </Stack>
   );
 }
 
@@ -444,8 +562,9 @@ function ActionLink({
 }) {
   return (
     <Button
+      density="compact"
       href={href}
-      tone="neutral"
+      tone={tone === "primary" ? "primary" : "neutral"}
       variant={tone === "primary" ? "solid" : "outlined"}
     >
       {label}
@@ -466,20 +585,25 @@ function DashboardKpiCard({
     <Surface
       component="article"
       sx={{
-        backgroundColor: "rgba(255,255,255,0.08)",
-        borderColor: "rgba(255,255,255,0.12)",
-        boxShadow: "0 12px 32px rgba(7, 22, 20, 0.12)",
-        px: 2,
-        py: 2,
+        backgroundColor: "rgba(255,255,255,0.74)",
+        borderColor: "rgba(18, 33, 40, 0.08)",
+        boxShadow: "0 10px 28px rgba(18, 33, 40, 0.06)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 1,
+        height: "100%",
+        justifyContent: "space-between",
+        px: 2.25,
+        py: 2.25,
       }}
     >
-      <p className="text-xs tracking-[0.2em] text-white/68 uppercase">
+      <p className="text-muted text-xs tracking-[0.2em] uppercase">
         {label}
       </p>
-      <p className="font-heading mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
+      <p className="font-heading text-foreground text-[2rem] font-semibold tracking-[-0.04em]">
         {value}
       </p>
-      <p className="mt-2 text-sm leading-6 text-white/72">{detail}</p>
+      <p className="text-muted text-sm leading-6">{detail}</p>
     </Surface>
   );
 }

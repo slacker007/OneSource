@@ -1,39 +1,12 @@
 import Chip, { type ChipProps } from "@mui/material/Chip";
-import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 
-const toneSx = {
-  accent: {
-    bgcolor: alpha("#1e5d66", 0.12),
-    color: "#133b42",
-  },
-  danger: {
-    bgcolor: alpha("#9b4138", 0.12),
-    color: "#9b4138",
-  },
-  info: {
-    bgcolor: alpha("#295b78", 0.12),
-    color: "#295b78",
-  },
-  muted: {
-    bgcolor: alpha("#122128", 0.04),
-    borderColor: "divider",
-    color: "#122128",
-  },
-  success: {
-    bgcolor: alpha("#1f6a4e", 0.12),
-    color: "#1f6a4e",
-  },
-  warning: {
-    bgcolor: alpha("#9c5f23", 0.13),
-    color: "#9c5f23",
-  },
-} as const;
+import { onesourceTokens } from "@/theme/onesource-theme";
 
 type BadgeProps = {
   children: ReactNode;
   className?: string;
-  tone?: keyof typeof toneSx;
+  tone?: "accent" | "danger" | "info" | "muted" | "success" | "warning";
 } & Omit<ChipProps, "children" | "color" | "label" | "size" | "variant">;
 
 export function Badge({
@@ -49,21 +22,47 @@ export function Badge({
       label={children}
       size="small"
       sx={{
-        borderRadius: 999,
-        borderWidth: 1,
+        bgcolor:
+          tone === "accent"
+            ? onesourceTokens.color.accent.soft
+            : tone === "danger"
+              ? onesourceTokens.color.status.danger.soft
+              : tone === "info"
+                ? onesourceTokens.color.status.info.soft
+                : tone === "success"
+                  ? onesourceTokens.color.status.success.soft
+                  : tone === "warning"
+                    ? onesourceTokens.color.status.warning.soft
+                    : onesourceTokens.color.surface.muted,
+        borderColor:
+          tone === "muted"
+            ? onesourceTokens.color.border.subtle
+            : "transparent",
+        borderRadius: onesourceTokens.radius.pill,
         borderStyle: "solid",
-        borderColor: "transparent",
-        fontSize: "0.68rem",
-        fontWeight: 700,
-        letterSpacing: "0.16em",
+        borderWidth: 1,
+        color:
+          tone === "accent"
+            ? onesourceTokens.color.accent.dark
+            : tone === "danger"
+              ? onesourceTokens.color.status.danger.main
+              : tone === "info"
+                ? onesourceTokens.color.status.info.main
+                : tone === "success"
+                  ? onesourceTokens.color.status.success.main
+                  : tone === "warning"
+                    ? onesourceTokens.color.status.warning.main
+                    : onesourceTokens.color.text.primary,
+        fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+        fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
         height: "auto",
+        letterSpacing: "0.16em",
         py: 0.25,
         textTransform: "uppercase",
         "& .MuiChip-label": {
           px: 1.25,
           py: 0.5,
         },
-        ...toneSx[tone],
       }}
       variant="filled"
       {...props}

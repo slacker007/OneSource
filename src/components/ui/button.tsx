@@ -1,9 +1,11 @@
 "use client";
 
 import MuiButton, { type ButtonProps as MuiButtonProps } from "@mui/material/Button";
-import { alpha, type SxProps, type Theme } from "@mui/material/styles";
+import type { SxProps, Theme } from "@mui/material/styles";
 import Link from "next/link";
 import type { ReactNode } from "react";
+
+import { onesourceTokens } from "@/theme/onesource-theme";
 
 export type ButtonTone = "primary" | "neutral" | "danger";
 export type ButtonVariant = "solid" | "outlined" | "soft" | "text";
@@ -18,19 +20,6 @@ type ButtonProps = Omit<MuiButtonProps, "color" | "size" | "variant"> & {
   tone?: ButtonTone;
   variant?: ButtonVariant;
 };
-
-const densitySx = {
-  comfortable: {
-    minHeight: 48,
-    px: 2.25,
-    py: 1.25,
-  },
-  compact: {
-    minHeight: 40,
-    px: 1.75,
-    py: 0.875,
-  },
-} as const;
 
 export function Button({
   children,
@@ -49,64 +38,76 @@ export function Button({
         : "text";
   const resolvedSx: SxProps<Theme>[] = [
     {
-      borderRadius: 999,
+      borderRadius: onesourceTokens.radius.pill,
       boxShadow: "none",
-      fontSize: "0.94rem",
-      fontWeight: 600,
-      lineHeight: 1.2,
+      fontSize: onesourceTokens.typographyRole.button.fontSize,
+      fontWeight: onesourceTokens.typographyRole.button.fontWeight,
+      letterSpacing: onesourceTokens.typographyRole.button.letterSpacing,
+      lineHeight: onesourceTokens.typographyRole.button.lineHeight,
+      minHeight:
+        density === "compact"
+          ? onesourceTokens.sizing.buttonHeightCompact
+          : onesourceTokens.sizing.buttonHeightComfortable,
+      px:
+        density === "compact"
+          ? onesourceTokens.spacing.controlPaddingCompactX + 0.25
+          : onesourceTokens.spacing.controlPaddingComfortableX + 0.5,
+      py:
+        density === "compact"
+          ? onesourceTokens.spacing.controlPaddingCompactY - 0.25
+          : onesourceTokens.spacing.controlPaddingComfortableY,
       textTransform: "none",
     },
-    densitySx[density],
   ];
 
   if (tone === "neutral" && variant === "solid") {
     resolvedSx.push({
-      bgcolor: "background.paper",
-      border: (theme) => `1px solid ${theme.palette.divider}`,
-      color: "text.primary",
+      bgcolor: onesourceTokens.color.surface.raised,
+      border: `1px solid ${onesourceTokens.color.border.subtle}`,
+      color: onesourceTokens.color.text.primary,
       "&:hover": {
-        bgcolor: alpha("#ffffff", 0.92),
+        bgcolor: onesourceTokens.color.neutral[0],
       },
     });
   }
 
   if (tone === "neutral" && variant === "outlined") {
     resolvedSx.push({
-      borderColor: "divider",
-      color: "text.primary",
+      borderColor: onesourceTokens.color.border.subtle,
+      color: onesourceTokens.color.text.primary,
       "&:hover": {
-        borderColor: "text.secondary",
-        bgcolor: alpha("#122128", 0.035),
+        bgcolor: onesourceTokens.interaction.hoverOverlay,
+        borderColor: onesourceTokens.color.border.strong,
       },
     });
   }
 
   if (tone === "neutral" && variant === "soft") {
     resolvedSx.push({
-      bgcolor: alpha("#122128", 0.06),
-      color: "text.primary",
+      bgcolor: onesourceTokens.color.surface.muted,
+      color: onesourceTokens.color.text.primary,
       "&:hover": {
-        bgcolor: alpha("#122128", 0.1),
+        bgcolor: onesourceTokens.interaction.pressedOverlay,
       },
     });
   }
 
   if (tone === "primary" && variant === "soft") {
     resolvedSx.push({
-      bgcolor: alpha("#1e5d66", 0.12),
-      color: "primary.dark",
+      bgcolor: onesourceTokens.color.accent.soft,
+      color: onesourceTokens.color.accent.dark,
       "&:hover": {
-        bgcolor: alpha("#1e5d66", 0.18),
+        bgcolor: onesourceTokens.interaction.selectedOverlay,
       },
     });
   }
 
   if (tone === "danger" && variant === "soft") {
     resolvedSx.push({
-      bgcolor: alpha("#9b4138", 0.12),
-      color: "error.main",
+      bgcolor: onesourceTokens.color.status.danger.soft,
+      color: onesourceTokens.color.status.danger.main,
       "&:hover": {
-        bgcolor: alpha("#9b4138", 0.18),
+        bgcolor: "rgba(155, 65, 56, 0.18)",
       },
     });
   }
