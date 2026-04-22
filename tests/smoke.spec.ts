@@ -86,7 +86,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page).toHaveTitle(/OneSource/i);
   await expect(
     page.getByRole("heading", {
-      name: /start with the work that needs action\./i,
+      name: /execution overview/i,
     }),
   ).toBeVisible();
   await expect(
@@ -683,11 +683,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await page
     .locator("#milestone-create-target-date")
     .fill(formatDateInputValue(createdMilestoneDate));
-  await selectMuiOption(
-    page,
-    "#milestone-create-type",
-    /decision checkpoint/i,
-  );
+  await selectMuiOption(page, "#milestone-create-type", /decision checkpoint/i);
   await selectMuiOption(page, "#milestone-create-status", /at risk/i);
   await page
     .locator("#milestone-create-description")
@@ -979,9 +975,10 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
   await expect(
     workbench.getByRole("button", { name: /^pinned$/i }),
   ).toBeVisible();
-  await expect(
-    workbench.getByRole("button", { name: /^pinned$/i }),
-  ).toHaveCSS("color", "rgb(245, 245, 244)");
+  await expect(workbench.getByRole("button", { name: /^pinned$/i })).toHaveCSS(
+    "color",
+    "rgb(248, 250, 252)",
+  );
   await expect(
     page.getByRole("button", { name: /collapse navigation rail/i }),
   ).toBeVisible();
@@ -1095,7 +1092,7 @@ test.describe("tablet route sweep", () => {
     await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
 
     const routeChecks = [
-      { heading: /start with the work that needs action\./i, route: "/" },
+      { heading: /execution overview/i, route: "/" },
       { heading: /opportunity pipeline/i, route: "/opportunities" },
       { heading: /execution triage/i, route: "/tasks" },
       { heading: /knowledge library/i, route: "/knowledge" },

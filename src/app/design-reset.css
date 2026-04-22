@@ -1,0 +1,54 @@
+:root {
+  --background: #f3f6f9;
+  --background-strong: #fbfcfe;
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --surface: rgba(250, 251, 252, 0.92);
+  --surface-strong: rgba(255, 255, 255, 0.98);
+  --surface-muted: rgba(15, 23, 42, 0.035);
+  --border: rgba(15, 23, 42, 0.09);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.12);
+  --success: #047857;
+  --success-soft: rgba(4, 120, 87, 0.12);
+  --warning: #b45309;
+  --warning-soft: rgba(180, 83, 9, 0.12);
+  --danger: #b42318;
+  --danger-soft: rgba(180, 35, 24, 0.12);
+  --info: #0369a1;
+  --info-soft: rgba(3, 105, 161, 0.12);
+  --shadow-surface: 0 6px 16px rgba(15, 23, 42, 0.05);
+  --shadow-raised: 0 10px 24px rgba(15, 23, 42, 0.06);
+  --radius-panel: 18px;
+  --radius-control: 12px;
+  --radius-pill: 999px;
+}
+
+html {
+  background:
+    radial-gradient(circle at 0 0, rgba(37, 99, 235, 0.08), transparent 24%),
+    radial-gradient(
+      circle at 100% 0,
+      rgba(148, 163, 184, 0.12),
+      transparent 24%
+    ),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+body {
+  background: transparent;
+  color: var(--foreground);
+  line-height: 1.45;
+}
+
+::selection {
+  background: rgba(37, 99, 235, 0.18);
+}
+
+.shell-grid {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+}

@@ -21,6 +21,10 @@ describe("Tailwind runtime removal", () => {
       path.join(repoRoot, "postcss.config.mjs"),
       "utf8",
     );
+    const prettierConfig = readFileSync(
+      path.join(repoRoot, ".prettierrc.json"),
+      "utf8",
+    );
 
     expect(packageJson.dependencies?.tailwindcss).toBeUndefined();
     expect(packageJson.devDependencies?.tailwindcss).toBeUndefined();
@@ -31,6 +35,7 @@ describe("Tailwind runtime removal", () => {
       packageJson.devDependencies?.["prettier-plugin-tailwindcss"],
     ).toBeUndefined();
     expect(postcssConfig).not.toMatch(/tailwind/i);
+    expect(prettierConfig).not.toMatch(/prettier-plugin-tailwindcss/);
   });
 
   it("loads the frozen compatibility stylesheet instead of the live Tailwind import", () => {

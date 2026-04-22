@@ -30,11 +30,11 @@ describe("AppThemeProvider", () => {
     expect(screen.getByText("Theme child")).toBeInTheDocument();
     expect(screen.getByTestId("theme-probe")).toHaveAttribute(
       "data-primary",
-      "#1e5d66",
+      "#2563eb",
     );
     expect(screen.getByTestId("theme-probe")).toHaveAttribute(
       "data-radius",
-      "14",
+      "12",
     );
     expect(screen.getByTestId("theme-probe")).toHaveAttribute(
       "data-font",
@@ -42,7 +42,7 @@ describe("AppThemeProvider", () => {
     );
     expect(screen.getByTestId("theme-probe")).toHaveAttribute(
       "data-panel-radius",
-      "20",
+      "18",
     );
   });
 });

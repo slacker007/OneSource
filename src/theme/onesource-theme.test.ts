@@ -4,10 +4,10 @@ import onesourceTheme from "@/theme/onesource-theme";
 
 describe("onesourceTheme", () => {
   it("maps the OneSource brand colors into the Material UI palette", () => {
-    expect(onesourceTheme.palette.primary.main).toBe("#1e5d66");
-    expect(onesourceTheme.palette.primary.dark).toBe("#133b42");
-    expect(onesourceTheme.palette.background.default).toBe("#ece9de");
-    expect(onesourceTheme.palette.text.primary).toBe("#122128");
+    expect(onesourceTheme.palette.primary.main).toBe("#2563eb");
+    expect(onesourceTheme.palette.primary.dark).toBe("#1d4ed8");
+    expect(onesourceTheme.palette.background.default).toBe("#f3f6f9");
+    expect(onesourceTheme.palette.text.primary).toBe("#0f172a");
     expect(onesourceTheme.onesource.color.surface.raised).toBe(
       "rgba(255, 255, 255, 0.98)",
     );
@@ -18,21 +18,21 @@ describe("onesourceTheme", () => {
     expect(onesourceTheme.typography.h1?.fontFamily).toContain(
       "var(--font-heading)",
     );
-    expect(onesourceTheme.shape.borderRadius).toBe(14);
-    expect(onesourceTheme.onesource.radius.panel).toBe(20);
-    expect(onesourceTheme.onesource.sizing.controlHeightComfortable).toBe(48);
-    expect(onesourceTheme.onesource.sizing.railCollapsed).toBe(92);
+    expect(onesourceTheme.shape.borderRadius).toBe(12);
+    expect(onesourceTheme.onesource.radius.panel).toBe(18);
+    expect(onesourceTheme.onesource.sizing.controlHeightComfortable).toBe(44);
+    expect(onesourceTheme.onesource.sizing.railCollapsed).toBe(84);
     expect(onesourceTheme.onesource.shell.background).toBe(
-      "rgba(15,28,31,0.98)",
+      "rgba(15, 23, 42, 0.98)",
     );
     expect(onesourceTheme.onesource.shell.textSecondary).toBe(
-      "rgba(250,248,245,0.92)",
+      "rgba(248, 250, 252, 0.92)",
     );
     expect(onesourceTheme.onesource.typographyRole.eyebrow.letterSpacing).toBe(
-      "0.18em",
+      "0.14em",
     );
-    expect(onesourceTheme.components?.MuiButton?.defaultProps?.disableElevation).toBe(
-      true,
-    );
+    expect(
+      onesourceTheme.components?.MuiButton?.defaultProps?.disableElevation,
+    ).toBe(true);
   });
 });

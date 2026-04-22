@@ -56,12 +56,12 @@ export function Badge({
         fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
         fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
         height: "auto",
-        letterSpacing: "0.16em",
-        py: 0.25,
-        textTransform: "uppercase",
+        letterSpacing: "0.04em",
+        py: 0.125,
+        textTransform: "none",
         "& .MuiChip-label": {
-          px: 1.25,
-          py: 0.5,
+          px: 1.1,
+          py: 0.35,
         },
       }}
       variant="filled"

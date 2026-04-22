@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
+import { IBM_Plex_Sans } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 
 import { AppThemeProvider } from "@/components/layout/app-theme-provider";
 import "./globals.css";
+import "./design-reset.css";
 
 const bodyFont = IBM_Plex_Sans({
   subsets: ["latin"],
@@ -12,9 +13,9 @@ const bodyFont = IBM_Plex_Sans({
   variable: "--font-ibm-plex-sans",
 });
 
-const headingFont = Space_Grotesk({
+const headingFont = IBM_Plex_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["500", "600", "700"],
   display: "swap",
   variable: "--font-space-grotesk",
 });

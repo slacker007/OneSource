@@ -66,6 +66,10 @@ const SHELL_TEXT_PRIMARY = onesourceTokens.shell.textPrimary;
 const SHELL_TEXT_SECONDARY = onesourceTokens.shell.textSecondary;
 const SHELL_TEXT_MUTED = onesourceTokens.shell.textMuted;
 const SHELL_TEXT_FAINT = onesourceTokens.shell.textFaint;
+const APP_HEADER_BG = alpha(onesourceTokens.color.background.strong, 0.92);
+const APP_HEADER_BORDER = onesourceTokens.color.border.subtle;
+const APP_SHELL_CANVAS =
+  "radial-gradient(circle at top left, rgba(37,99,235,0.08), transparent 30%), radial-gradient(circle at bottom right, rgba(148,163,184,0.12), transparent 28%), linear-gradient(180deg, rgba(248,250,252,0.96) 0%, rgba(241,245,249,0.98) 100%)";
 
 type NavItem = {
   description: string;
@@ -150,7 +154,8 @@ const SHELL_ROUTE_DEFINITIONS: ShellRouteDefinition[] = [
   {
     matcher: "/settings",
     label: "Workspace settings",
-    description: "Operate users, connectors, saved searches, and audit controls.",
+    description:
+      "Operate users, connectors, saved searches, and audit controls.",
     navHref: "/settings",
     requires: "workspace_settings",
   },
@@ -164,7 +169,8 @@ const SHELL_ROUTE_DEFINITIONS: ShellRouteDefinition[] = [
   {
     matcher: "/opportunities/new",
     label: "Create pursuit",
-    description: "Start a new tracked opportunity with validated reference data.",
+    description:
+      "Start a new tracked opportunity with validated reference data.",
     navHref: "/opportunities",
   },
   {
@@ -194,13 +200,15 @@ const SHELL_ROUTE_DEFINITIONS: ShellRouteDefinition[] = [
   {
     matcher: "/knowledge",
     label: "Knowledge library",
-    description: "Browse reusable assets, taxonomy filters, and linked pursuits.",
+    description:
+      "Browse reusable assets, taxonomy filters, and linked pursuits.",
     navHref: "/knowledge",
   },
   {
     matcher: "/sources",
     label: "External discovery",
-    description: "Search source systems, review previews, and import opportunities.",
+    description:
+      "Search source systems, review previews, and import opportunities.",
     navHref: "/sources",
   },
   {
@@ -310,7 +318,8 @@ export function AppShellFrame({
       currentPath,
     }) ?? createWorkbenchItemFromNavItem(navItems[0]);
   const activeNavItem =
-    navItems.find((item) => item.href === activeDestination.navHref) ?? navItems[0];
+    navItems.find((item) => item.href === activeDestination.navHref) ??
+    navItems[0];
   const activeGroup =
     navGroups.find((group) =>
       group.items.some((item) => item.href === activeNavItem.href),
@@ -321,7 +330,9 @@ export function AppShellFrame({
     canManagePipeline,
     canManageSourceSearches,
   });
-  const visibleRecentItems = recentItems.filter((item) => item.href !== currentPath);
+  const visibleRecentItems = recentItems.filter(
+    (item) => item.href !== currentPath,
+  );
   const quickCreateItems = buildQuickCreateItems({
     allowDecisionSupport,
     allowWorkspaceSettings,
@@ -363,7 +374,7 @@ export function AppShellFrame({
     (item) => item.id === activeCommandItemId,
   )
     ? activeCommandItemId
-    : flatCommandItems[0]?.id ?? null;
+    : (flatCommandItems[0]?.id ?? null);
   const notificationCount = shellSnapshot.notifications.totalCount;
 
   const displayName =
@@ -390,10 +401,7 @@ export function AppShellFrame({
 
   const handleKeyboardShortcut = useEffectEvent(
     (event: globalThis.KeyboardEvent) => {
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        event.key.toLowerCase() === "k"
-      ) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         openCommandSurface();
       }
@@ -477,7 +485,9 @@ export function AppShellFrame({
   }
 
   function focusCommandItem(itemId: string) {
-    const link = document.getElementById(getCommandLinkId(commandOptionIdPrefix, itemId));
+    const link = document.getElementById(
+      getCommandLinkId(commandOptionIdPrefix, itemId),
+    );
     link?.focus();
   }
 
@@ -694,15 +704,15 @@ export function AppShellFrame({
                 onClick={() => updateCollapsedRailPreference(!isRailCollapsed)}
                 sx={{
                   alignSelf: isRailCollapsed ? "center" : "flex-start",
-                  bgcolor: alpha("#ffffff", 0.1),
-                  border: `1px solid ${alpha("#ffffff", 0.16)}`,
+                  bgcolor: alpha(onesourceTokens.color.neutral[0], 0.08),
+                  border: `1px solid ${alpha(onesourceTokens.color.neutral[0], 0.14)}`,
                   borderRadius: 2.75,
-                  boxShadow: "0 12px 24px rgba(4, 12, 14, 0.22)",
+                  boxShadow: "0 10px 24px rgba(2, 6, 23, 0.2)",
                   color: SHELL_TEXT_PRIMARY,
                   flexShrink: 0,
                   "&:hover": {
-                    bgcolor: alpha("#ffffff", 0.16),
-                    borderColor: alpha("#ffffff", 0.24),
+                    bgcolor: alpha(onesourceTokens.color.neutral[0], 0.14),
+                    borderColor: alpha(onesourceTokens.color.neutral[0], 0.2),
                   },
                 }}
               >
@@ -737,7 +747,7 @@ export function AppShellFrame({
                   border: "1px solid",
                   borderColor: alpha(onesourceTokens.shell.brandAccent, 0.34),
                   borderRadius: 999,
-                  color: "#f3c79b",
+                  color: SHELL_TEXT_PRIMARY,
                   display: "inline-flex",
                   flexShrink: 0,
                   fontSize: "0.68rem",
@@ -755,7 +765,11 @@ export function AppShellFrame({
               {!isRailCollapsed ? (
                 <Box sx={{ minWidth: 0 }}>
                   <Typography
-                    sx={{ color: "inherit", fontSize: "0.84rem", fontWeight: 600 }}
+                    sx={{
+                      color: "inherit",
+                      fontSize: "0.84rem",
+                      fontWeight: 600,
+                    }}
                   >
                     {displayName}
                   </Typography>
@@ -826,8 +840,7 @@ export function AppShellFrame({
   return (
     <Box
       sx={{
-        background:
-          "radial-gradient(circle at top left, rgba(32,95,85,0.12), transparent 28%), radial-gradient(circle at bottom right, rgba(168,93,42,0.1), transparent 24%)",
+        background: APP_SHELL_CANVAS,
         display: "flex",
         minHeight: "100vh",
         overflowX: "hidden",
@@ -854,7 +867,9 @@ export function AppShellFrame({
             p: 2.25,
           }}
         >
-          <Typography sx={{ color: "inherit", fontSize: "0.96rem", fontWeight: 600 }}>
+          <Typography
+            sx={{ color: "inherit", fontSize: "0.96rem", fontWeight: 600 }}
+          >
             {displayName}
           </Typography>
           <Typography
@@ -909,7 +924,8 @@ export function AppShellFrame({
               Use ↑ and ↓ to move, then press Enter to open the selected result.
             </Typography>
             <Typography sx={{ color: "text.secondary", fontSize: "0.92rem" }}>
-              {flatCommandItems.length} items available in the shell command center.
+              {flatCommandItems.length} items available in the shell command
+              center.
             </Typography>
           </Stack>
         }
@@ -952,9 +968,9 @@ export function AppShellFrame({
               onKeyDown={handleCommandInputKeyDown}
               placeholder="Search workspaces, tasks, knowledge, or saved searches"
               sx={{
-                bgcolor: alpha("#ffffff", 0.82),
+                bgcolor: alpha(onesourceTokens.color.neutral[0], 0.88),
                 borderRadius: 3,
-                boxShadow: "0 12px 28px rgba(20,37,34,0.06)",
+                boxShadow: onesourceTokens.elevation.raised,
                 "& .MuiOutlinedInput-input": {
                   fontSize: "0.94rem",
                   py: 1.75,
@@ -976,7 +992,12 @@ export function AppShellFrame({
               {commandSections.map((section, sectionIndex) => (
                 <Box component="section" key={section.key}>
                   {sectionIndex > 0 ? (
-                    <Divider sx={{ borderColor: alpha("#122128", 0.08), mb: 2 }} />
+                    <Divider
+                      sx={{
+                        borderColor: onesourceTokens.color.border.subtle,
+                        mb: 2,
+                      }}
+                    />
                   ) : null}
                   <Typography
                     sx={{
@@ -1004,7 +1025,9 @@ export function AppShellFrame({
 
                       return (
                         <Surface
-                          aria-selected={resolvedActiveCommandItemId === item.id}
+                          aria-selected={
+                            resolvedActiveCommandItemId === item.id
+                          }
                           id={optionId}
                           key={item.id}
                           onMouseEnter={() => setActiveCommandItemId(item.id)}
@@ -1012,16 +1035,16 @@ export function AppShellFrame({
                           sx={{
                             bgcolor:
                               resolvedActiveCommandItemId === item.id
-                                ? alpha("#1e5d66", 0.07)
-                                : alpha("#ffffff", 0.72),
+                                ? alpha(onesourceTokens.color.accent.main, 0.08)
+                                : alpha(onesourceTokens.color.neutral[0], 0.86),
                             borderColor:
                               resolvedActiveCommandItemId === item.id
-                                ? alpha("#1e5d66", 0.26)
-                                : alpha("#122128", 0.08),
+                                ? alpha(onesourceTokens.color.accent.main, 0.22)
+                                : onesourceTokens.color.border.subtle,
                             boxShadow:
                               resolvedActiveCommandItemId === item.id
-                                ? "0 16px 36px rgba(20,37,34,0.12)"
-                                : "0 10px 24px rgba(20,37,34,0.06)",
+                                ? onesourceTokens.elevation.raised
+                                : onesourceTokens.elevation.surface,
                             p: 1,
                           }}
                         >
@@ -1029,8 +1052,13 @@ export function AppShellFrame({
                             <Box
                               component={Link}
                               href={item.href}
-                              id={getCommandLinkId(commandOptionIdPrefix, item.id)}
-                              onClick={() => handleCommandItemSelection(workbenchItem)}
+                              id={getCommandLinkId(
+                                commandOptionIdPrefix,
+                                item.id,
+                              )}
+                              onClick={() =>
+                                handleCommandItemSelection(workbenchItem)
+                              }
                               sx={{
                                 borderRadius: 2.5,
                                 color: "inherit",
@@ -1040,12 +1068,18 @@ export function AppShellFrame({
                                 py: 1.5,
                                 textDecoration: "none",
                                 "&:focus-visible": {
-                                  bgcolor: alpha("#1e5d66", 0.08),
-                                  outline: "2px solid rgba(30,93,102,0.3)",
+                                  bgcolor: alpha(
+                                    onesourceTokens.color.accent.main,
+                                    0.08,
+                                  ),
+                                  outline: `2px solid ${alpha(onesourceTokens.color.accent.main, 0.28)}`,
                                   outlineOffset: 2,
                                 },
                                 "&:hover": {
-                                  bgcolor: alpha("#1e5d66", 0.05),
+                                  bgcolor: alpha(
+                                    onesourceTokens.color.accent.main,
+                                    0.04,
+                                  ),
                                 },
                               }}
                             >
@@ -1058,7 +1092,12 @@ export function AppShellFrame({
                                     justifyContent: "space-between",
                                   }}
                                 >
-                                  <Typography sx={{ fontSize: "0.94rem", fontWeight: 600 }}>
+                                  <Typography
+                                    sx={{
+                                      fontSize: "0.94rem",
+                                      fontWeight: 600,
+                                    }}
+                                  >
                                     {item.label}
                                   </Typography>
                                   <Typography
@@ -1126,14 +1165,18 @@ export function AppShellFrame({
           ) : (
             <Surface
               sx={{
-                bgcolor: alpha("#ffffff", 0.72),
-                borderColor: alpha("#122128", 0.12),
+                bgcolor: alpha(onesourceTokens.color.neutral[0], 0.84),
+                borderColor: onesourceTokens.color.border.strong,
                 borderStyle: "dashed",
                 p: 3,
               }}
             >
               <Typography
-                sx={{ color: "text.secondary", fontSize: "0.92rem", lineHeight: 1.7 }}
+                sx={{
+                  color: "text.secondary",
+                  fontSize: "0.92rem",
+                  lineHeight: 1.7,
+                }}
               >
                 No shell results match the current command query. Try a pursuit
                 title, task name, knowledge asset, or saved search.
@@ -1158,19 +1201,20 @@ export function AppShellFrame({
                 key={notification.id}
                 onClick={() => setIsNotificationsOpen(false)}
                 sx={{
-                  bgcolor: alpha("#ffffff", 0.84),
+                  bgcolor: alpha(onesourceTokens.color.neutral[0], 0.9),
                   border: "1px solid",
-                  borderColor: alpha("#122128", 0.08),
+                  borderColor: onesourceTokens.color.border.subtle,
                   borderRadius: 3,
                   color: "inherit",
                   display: "block",
                   px: 2.5,
                   py: 2,
                   textDecoration: "none",
-                  transition: "background-color 140ms ease, border-color 140ms ease",
+                  transition:
+                    "background-color 140ms ease, border-color 140ms ease",
                   "&:hover": {
-                    bgcolor: alpha("#1e5d66", 0.04),
-                    borderColor: alpha("#1e5d66", 0.22),
+                    bgcolor: alpha(onesourceTokens.color.accent.main, 0.05),
+                    borderColor: alpha(onesourceTokens.color.accent.main, 0.2),
                   },
                 }}
               >
@@ -1219,14 +1263,18 @@ export function AppShellFrame({
         ) : (
           <Surface
             sx={{
-              bgcolor: alpha("#ffffff", 0.72),
-              borderColor: alpha("#122128", 0.12),
+              bgcolor: alpha(onesourceTokens.color.neutral[0], 0.84),
+              borderColor: onesourceTokens.color.border.strong,
               borderStyle: "dashed",
               p: 3,
             }}
           >
             <Typography
-              sx={{ color: "text.secondary", fontSize: "0.92rem", lineHeight: 1.7 }}
+              sx={{
+                color: "text.secondary",
+                fontSize: "0.92rem",
+                lineHeight: 1.7,
+              }}
             >
               No active alerts are queued in the shell right now. Overdue tasks,
               upcoming reminders, and saved-search issues will appear here.
@@ -1237,13 +1285,15 @@ export function AppShellFrame({
 
       {desktopShell}
 
-      <Box sx={{ display: "flex", flex: 1, flexDirection: "column", minWidth: 0 }}>
+      <Box
+        sx={{ display: "flex", flex: 1, flexDirection: "column", minWidth: 0 }}
+      >
         <Box
           component="header"
           sx={{
             backdropFilter: "blur(18px)",
-            backgroundColor: "rgba(247,243,232,0.88)",
-            borderBottom: "1px solid rgba(18,33,40,0.12)",
+            backgroundColor: APP_HEADER_BG,
+            borderBottom: `1px solid ${APP_HEADER_BORDER}`,
             position: "sticky",
             px: { lg: 4, sm: 3, xs: 2 },
             py: 2,
@@ -1251,7 +1301,16 @@ export function AppShellFrame({
             zIndex: 20,
           }}
         >
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, marginX: "auto", maxWidth: 1280, minWidth: 0 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+              marginX: "auto",
+              maxWidth: 1280,
+              minWidth: 0,
+            }}
+          >
             <Stack
               direction="row"
               spacing={2}
@@ -1359,13 +1418,16 @@ export function AppShellFrame({
                       bgcolor: "background.paper",
                       borderColor: "divider",
                       borderRadius: 999,
-                      boxShadow: "0 12px 28px rgba(20,37,34,0.06)",
+                      boxShadow: onesourceTokens.elevation.surface,
                       justifyContent: "space-between",
                       px: 2,
                       py: 1.5,
                       width: "100%",
                       "&:hover": {
-                        borderColor: alpha("#1e5d66", 0.24),
+                        borderColor: alpha(
+                          onesourceTokens.color.accent.main,
+                          0.24,
+                        ),
                       },
                     }}
                     tone="neutral"
@@ -1381,7 +1443,9 @@ export function AppShellFrame({
                         width: "100%",
                       }}
                     >
-                      <Typography sx={{ color: "text.secondary", fontSize: "0.9rem" }}>
+                      <Typography
+                        sx={{ color: "text.secondary", fontSize: "0.9rem" }}
+                      >
                         Search work, tasks, knowledge, or saved searches
                       </Typography>
                       <Badge tone="muted">Cmd K</Badge>
@@ -1393,14 +1457,18 @@ export function AppShellFrame({
                     aria-label="Open notifications"
                     onClick={openNotificationsSurface}
                     sx={{
-                      boxShadow: "0 12px 28px rgba(20,37,34,0.06)",
+                      boxShadow: onesourceTokens.elevation.surface,
                       whiteSpace: "nowrap",
                     }}
                     tone="neutral"
                     type="button"
                     variant="outlined"
                   >
-                    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{ alignItems: "center" }}
+                    >
                       <Typography
                         component="span"
                         sx={{ fontSize: "0.92rem", fontWeight: 600 }}
@@ -1425,7 +1493,9 @@ export function AppShellFrame({
                     <Typography sx={{ fontSize: "0.92rem", fontWeight: 600 }}>
                       {displayName}
                     </Typography>
-                    <Typography sx={{ color: "text.secondary", fontSize: "0.76rem" }}>
+                    <Typography
+                      sx={{ color: "text.secondary", fontSize: "0.76rem" }}
+                    >
                       {sessionUser.email}
                     </Typography>
                   </Box>
@@ -1438,8 +1508,13 @@ export function AppShellFrame({
           </Box>
         </Box>
 
-        <Box component="main" sx={{ flex: 1, minWidth: 0, px: { lg: 4, sm: 3, xs: 2 }, py: 3 }}>
-          <Box sx={{ marginX: "auto", maxWidth: 1280, minWidth: 0 }}>{children}</Box>
+        <Box
+          component="main"
+          sx={{ flex: 1, minWidth: 0, px: { lg: 4, sm: 3, xs: 2 }, py: 3 }}
+        >
+          <Box sx={{ marginX: "auto", maxWidth: 1280, minWidth: 0 }}>
+            {children}
+          </Box>
         </Box>
       </Box>
     </Box>
@@ -1518,7 +1593,7 @@ function NavigationMenu({
                       : "transparent",
                     borderRadius: 2.5,
                     boxShadow: active
-                      ? "0 12px 30px rgba(15,28,31,0.18)"
+                      ? "0 12px 30px rgba(2, 6, 23, 0.24)"
                       : "none",
                     color: active ? SHELL_TEXT_PRIMARY : SHELL_TEXT_SECONDARY,
                     justifyContent: collapsed ? "center" : "flex-start",
@@ -1530,11 +1605,17 @@ function NavigationMenu({
                       backgroundColor: onesourceTokens.shell.activeItem,
                     },
                     "&.Mui-selected:hover": {
-                      backgroundColor: alpha(onesourceTokens.shell.activeItem, 0.96),
+                      backgroundColor: alpha(
+                        onesourceTokens.shell.activeItem,
+                        0.96,
+                      ),
                     },
                     "&:hover": {
                       backgroundColor: onesourceTokens.shell.hoverOverlay,
-                      borderColor: alpha("#ffffff", 0.1),
+                      borderColor: alpha(
+                        onesourceTokens.color.neutral[0],
+                        0.14,
+                      ),
                       color: SHELL_TEXT_PRIMARY,
                     },
                   }}
@@ -1657,7 +1738,8 @@ function WorkbenchPanel({
               mt: 0.35,
             }}
           >
-            Keep return points close without turning the rail into a second dashboard.
+            Keep return points close without turning the rail into a second
+            dashboard.
           </Typography>
         </Box>
         <Badge tone="muted">{visibleItems.length} visible</Badge>
@@ -1669,12 +1751,20 @@ function WorkbenchPanel({
           onClick={() => onViewChange("pinned")}
           sx={{
             flex: 1,
-            borderColor: alpha("#ffffff", isPinnedView ? 0.18 : 0.14),
-            bgcolor: isPinnedView ? alpha("#ffffff", 0.14) : "transparent",
+            borderColor: alpha(
+              onesourceTokens.color.neutral[0],
+              isPinnedView ? 0.18 : 0.12,
+            ),
+            bgcolor: isPinnedView
+              ? alpha(onesourceTokens.color.neutral[0], 0.12)
+              : "transparent",
             color: isPinnedView ? SHELL_TEXT_PRIMARY : SHELL_TEXT_SECONDARY,
             "&:hover": {
-              bgcolor: alpha("#ffffff", isPinnedView ? 0.18 : 0.08),
-              borderColor: alpha("#ffffff", 0.2),
+              bgcolor: alpha(
+                onesourceTokens.color.neutral[0],
+                isPinnedView ? 0.18 : 0.08,
+              ),
+              borderColor: alpha(onesourceTokens.color.neutral[0], 0.18),
               color: SHELL_TEXT_PRIMARY,
             },
           }}
@@ -1690,12 +1780,20 @@ function WorkbenchPanel({
           onClick={() => onViewChange("recent")}
           sx={{
             flex: 1,
-            borderColor: alpha("#ffffff", !isPinnedView ? 0.18 : 0.14),
-            bgcolor: !isPinnedView ? alpha("#ffffff", 0.14) : "transparent",
+            borderColor: alpha(
+              onesourceTokens.color.neutral[0],
+              !isPinnedView ? 0.18 : 0.12,
+            ),
+            bgcolor: !isPinnedView
+              ? alpha(onesourceTokens.color.neutral[0], 0.12)
+              : "transparent",
             color: !isPinnedView ? SHELL_TEXT_PRIMARY : SHELL_TEXT_SECONDARY,
             "&:hover": {
-              bgcolor: alpha("#ffffff", !isPinnedView ? 0.18 : 0.08),
-              borderColor: alpha("#ffffff", 0.2),
+              bgcolor: alpha(
+                onesourceTokens.color.neutral[0],
+                !isPinnedView ? 0.18 : 0.08,
+              ),
+              borderColor: alpha(onesourceTokens.color.neutral[0], 0.18),
               color: SHELL_TEXT_PRIMARY,
             },
           }}
@@ -1727,14 +1825,19 @@ function WorkbenchPanel({
                   borderRadius: 2.25,
                   color: SHELL_TEXT_SECONDARY,
                   mb: 0.75,
-                  transition: "background-color 140ms ease, border-color 140ms ease",
+                  transition:
+                    "background-color 140ms ease, border-color 140ms ease",
                   "&:hover": {
-                    bgcolor: alpha("#ffffff", 0.04),
-                    borderColor: alpha("#ffffff", 0.08),
+                    bgcolor: alpha(onesourceTokens.color.neutral[0], 0.05),
+                    borderColor: alpha(onesourceTokens.color.neutral[0], 0.1),
                   },
                 }}
               >
-                <Stack direction="row" spacing={0.75} sx={{ alignItems: "flex-start" }}>
+                <Stack
+                  direction="row"
+                  spacing={0.75}
+                  sx={{ alignItems: "flex-start" }}
+                >
                   <ListItemButton
                     aria-label={item.label}
                     component={Link}
@@ -1820,8 +1923,14 @@ function WorkbenchPanel({
                         minWidth: 0,
                         px: 1.25,
                         "&:hover": {
-                          bgcolor: alpha("#ffffff", 0.08),
-                          borderColor: alpha("#ffffff", 0.18),
+                          bgcolor: alpha(
+                            onesourceTokens.color.neutral[0],
+                            0.08,
+                          ),
+                          borderColor: alpha(
+                            onesourceTokens.color.neutral[0],
+                            0.18,
+                          ),
                           color: SHELL_TEXT_PRIMARY,
                         },
                       }}
@@ -1839,7 +1948,12 @@ function WorkbenchPanel({
         </Box>
       ) : (
         <Typography
-          sx={{ color: SHELL_TEXT_MUTED, fontSize: "0.88rem", lineHeight: 1.7, mt: 1.5 }}
+          sx={{
+            color: SHELL_TEXT_MUTED,
+            fontSize: "0.88rem",
+            lineHeight: 1.7,
+            mt: 1.5,
+          }}
         >
           {isPinnedView
             ? "Pin a pursuit or shell view from the command center to keep it visible here."
@@ -2020,7 +2134,8 @@ function buildQuickCreateItems({
     items.push({
       id: "quick-create-knowledge",
       category: "quick_create",
-      description: "Capture reusable narrative, win themes, or past performance.",
+      description:
+        "Capture reusable narrative, win themes, or past performance.",
       href: "/knowledge/new",
       label: "Create knowledge asset",
       navHref: "/knowledge",
@@ -2033,7 +2148,8 @@ function buildQuickCreateItems({
     items.push({
       id: "quick-create-source-search",
       category: "quick_create",
-      description: "Open external discovery with the current shell context intact.",
+      description:
+        "Open external discovery with the current shell context intact.",
       href: "/sources",
       label: "Run source search",
       navHref: "/sources",
@@ -2046,7 +2162,8 @@ function buildQuickCreateItems({
     items.push({
       id: "quick-open-decision-console",
       category: "quick_create",
-      description: "Jump to ranked pursuit review and portfolio decision support.",
+      description:
+        "Jump to ranked pursuit review and portfolio decision support.",
       href: "/analytics",
       label: "Open decision console",
       navHref: "/analytics",
@@ -2078,7 +2195,10 @@ function buildShellViewCommandItems({
   navGroups: NavGroup[];
   quickLinks: NavItem[];
 }) {
-  const workbenchItems = [...navGroups.flatMap((group) => group.items), ...quickLinks]
+  const workbenchItems = [
+    ...navGroups.flatMap((group) => group.items),
+    ...quickLinks,
+  ]
     .map(createWorkbenchItemFromNavItem)
     .filter(
       (candidate, index, items) =>
@@ -2087,7 +2207,9 @@ function buildShellViewCommandItems({
 
   return workbenchItems.map((item) => ({
     ...createCommandItemFromWorkbenchItem(item),
-    keywords: [item.label, item.description, item.supportingText ?? ""].filter(Boolean),
+    keywords: [item.label, item.description, item.supportingText ?? ""].filter(
+      Boolean,
+    ),
   }));
 }
 
@@ -2161,10 +2283,7 @@ function getCurrentDestination({
   currentPath: string;
 }) {
   const definition = SHELL_ROUTE_DEFINITIONS.find((candidate) => {
-    if (
-      candidate.requires === "decision_support" &&
-      !allowDecisionSupport
-    ) {
+    if (candidate.requires === "decision_support" && !allowDecisionSupport) {
       return false;
     }
 
@@ -2295,9 +2414,7 @@ function readRecentWorkbenchItemsSnapshot() {
 
   try {
     return (
-      window.localStorage.getItem(
-        SHELL_RECENT_DESTINATIONS_STORAGE_KEY,
-      ) ?? "[]"
+      window.localStorage.getItem(SHELL_RECENT_DESTINATIONS_STORAGE_KEY) ?? "[]"
     );
   } catch {
     return "[]";
@@ -2350,7 +2467,9 @@ function normalizeWorkbenchItem(value: unknown): AppShellWorkbenchItem | null {
   }
 
   return {
-    category: isCommandCategory(candidate.category) ? candidate.category : "view",
+    category: isCommandCategory(candidate.category)
+      ? candidate.category
+      : "view",
     description: candidate.description,
     href: candidate.href,
     label: candidate.label,
@@ -2382,8 +2501,9 @@ function writeWorkbenchItemsPreference({
         items
           .filter(
             (item, index, allItems) =>
-              allItems.findIndex((candidate) => candidate.href === item.href) ===
-              index,
+              allItems.findIndex(
+                (candidate) => candidate.href === item.href,
+              ) === index,
           )
           .slice(0, limit),
       ),
@@ -2408,10 +2528,7 @@ function updateCollapsedRailPreference(value: boolean) {
   }
 
   try {
-    window.localStorage.setItem(
-      SHELL_COLLAPSE_STORAGE_KEY,
-      value ? "1" : "0",
-    );
+    window.localStorage.setItem(SHELL_COLLAPSE_STORAGE_KEY, value ? "1" : "0");
     emitShellPreferenceChange();
   } catch {
     // Ignore storage failures; the shell should remain usable without persistence.
@@ -2426,9 +2543,7 @@ function getCommandLinkId(prefix: string, itemId: string) {
   return `${prefix}-link-${itemId}`;
 }
 
-function isCommandCategory(
-  value: unknown,
-): value is AppShellCommandCategory {
+function isCommandCategory(value: unknown): value is AppShellCommandCategory {
   return (
     value === "knowledge" ||
     value === "opportunity" ||

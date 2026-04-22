@@ -222,7 +222,7 @@ describe("DashboardLanding", () => {
     ).toBeGreaterThanOrEqual(4);
     expect(
       screen.getByRole("heading", {
-        name: /start with the work that needs action\./i,
+        name: /execution overview/i,
       }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/tracked pursuits/i).length).toBeGreaterThan(0);

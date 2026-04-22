@@ -147,11 +147,17 @@ describe("AppShellFrame", () => {
     expect(screen.getByText(/default workspace/i)).toBeInTheDocument();
     expect(screen.getByText(/org id org_123/i)).toBeInTheDocument();
     expect(screen.getAllByText(/^external discovery$/i)[0]).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /workbench/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: /workbench/i }),
+    ).toBeInTheDocument();
     const pinnedButton = screen.getByRole("button", { name: /^pinned$/i });
     expect(pinnedButton).toHaveAttribute("aria-pressed", "true");
-    expect(window.getComputedStyle(pinnedButton).color).toBe("rgb(245, 245, 244)");
-    expect(screen.queryByRole("region", { name: /quick links/i })).not.toBeInTheDocument();
+    expect(window.getComputedStyle(pinnedButton).color).toBe(
+      "rgb(248, 250, 252)",
+    );
+    expect(
+      screen.queryByRole("region", { name: /quick links/i }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/^current focus$/i)).not.toBeInTheDocument();
   });
 
@@ -220,9 +226,9 @@ describe("AppShellFrame", () => {
       ).toContain("/opportunities/opp_1"),
     );
 
-    expect(screen.getByRole("region", { name: /workbench/i })).toHaveTextContent(
-      /va intake modernization bpa/i,
-    );
+    expect(
+      screen.getByRole("region", { name: /workbench/i }),
+    ).toHaveTextContent(/va intake modernization bpa/i);
 
     commandSearch.focus();
     fireEvent.keyDown(commandSearch, { key: "Escape" });
@@ -332,7 +338,9 @@ describe("AppShellFrame", () => {
       ).toContain("/tasks"),
     );
 
-    const workbench = within(screen.getByRole("region", { name: /workbench/i }));
+    const workbench = within(
+      screen.getByRole("region", { name: /workbench/i }),
+    );
     await user.click(workbench.getByRole("button", { name: /^recent$/i }));
     expect(
       workbench.getByRole("link", { name: /knowledge library/i }),
