@@ -2,6 +2,7 @@ import OutlinedInput from "@mui/material/OutlinedInput";
 import type { SxProps, Theme } from "@mui/material/styles";
 import type { TextareaHTMLAttributes } from "react";
 
+import { mergeSx } from "@/components/ui/merge-sx";
 import { onesourceTokens } from "@/theme/onesource-theme";
 
 export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
@@ -50,7 +51,7 @@ export function Textarea({
       placeholder={placeholder}
       readOnly={readOnly}
       required={required}
-      sx={
+      sx={mergeSx(
         [
           {
             alignItems: "flex-start",
@@ -66,9 +67,9 @@ export function Textarea({
                   : onesourceTokens.spacing.controlPaddingComfortableY,
             },
           },
-          ...(sx ? [sx] : []),
-        ] as SxProps<Theme>
-      }
+        ],
+        sx,
+      )}
       value={value}
     />
   );

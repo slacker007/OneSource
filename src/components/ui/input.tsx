@@ -2,6 +2,7 @@ import OutlinedInput from "@mui/material/OutlinedInput";
 import type { SxProps, Theme } from "@mui/material/styles";
 import type { InputHTMLAttributes, ReactNode } from "react";
 
+import { mergeSx } from "@/components/ui/merge-sx";
 import { onesourceTokens } from "@/theme/onesource-theme";
 
 export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
@@ -55,7 +56,7 @@ export function Input({
       required={required}
       size="small"
       startAdornment={startAdornment}
-      sx={
+      sx={mergeSx(
         [
           {
             fontSize: onesourceTokens.typographyRole.data.fontSize,
@@ -74,9 +75,9 @@ export function Input({
                   : onesourceTokens.spacing.controlPaddingComfortableY,
             },
           },
-          ...(sx ? [sx] : []),
-        ] as SxProps<Theme>
-      }
+        ],
+        sx,
+      )}
       type={type}
       value={value}
     />

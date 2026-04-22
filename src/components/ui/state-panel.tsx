@@ -5,6 +5,7 @@ import Typography from "@mui/material/Typography";
 import type { SxProps, Theme } from "@mui/material/styles";
 import type { ElementType, ReactNode } from "react";
 
+import { mergeSx } from "@/components/ui/merge-sx";
 import { Surface } from "@/components/ui/surface";
 
 export type StatePanelTone =
@@ -91,13 +92,15 @@ export function StatePanel({
       className={className}
       component={component}
       role={role}
-      sx={[
-        {
-          p: 2.5,
-        },
-        getToneStyles(tone),
-        ...(sx ? [sx] : []),
-      ] as SxProps<Theme>}
+      sx={mergeSx(
+        [
+          {
+            p: 2.5,
+          },
+          getToneStyles(tone),
+        ],
+        sx,
+      )}
     >
       <Stack spacing={2}>
         <Box

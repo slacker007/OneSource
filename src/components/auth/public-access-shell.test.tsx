@@ -27,6 +27,21 @@ describe("PublicAccessShell", () => {
     expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
   });
 
+  it("keeps the shell width constrained when the caller passes maxWidth styles", () => {
+    render(
+      <PublicAccessShell maxWidth={480} title="Sign in to OneSource.">
+        <button type="button">Continue</button>
+      </PublicAccessShell>,
+    );
+
+    const shellSection = screen
+      .getByRole("heading", { name: /sign in to onesource/i })
+      .closest("section");
+
+    expect(shellSection).not.toBeNull();
+    expect(window.getComputedStyle(shellSection as HTMLElement).maxWidth).toBe("480px");
+  });
+
   it("supports content-only public surfaces without duplicating intro copy", () => {
     render(
       <PublicAccessShell>

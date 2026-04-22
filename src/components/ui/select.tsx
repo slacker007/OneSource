@@ -1,7 +1,6 @@
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MenuItem from "@mui/material/MenuItem";
 import MuiSelect, { type SelectProps as MuiSelectProps } from "@mui/material/Select";
-import type { SxProps, Theme } from "@mui/material/styles";
 import {
   Children,
   isValidElement,
@@ -9,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { mergeSx } from "@/components/ui/merge-sx";
 import { onesourceTokens } from "@/theme/onesource-theme";
 
 type SelectChangeEvent =
@@ -64,7 +64,7 @@ export function Select({
         "aria-label": props["aria-label"],
       }}
       variant="outlined"
-      sx={
+      sx={mergeSx(
         [
           {
             width: "100%",
@@ -80,9 +80,9 @@ export function Select({
                   : onesourceTokens.spacing.controlPaddingComfortableY,
             },
           },
-          ...(sx ? [sx] : []),
-        ] as SxProps<Theme>
-      }
+        ],
+        sx,
+      )}
       value={value}
       {...onChangeProps}
       {...props}

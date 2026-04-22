@@ -74,7 +74,7 @@ export function SignInForm({ defaultEmail = "" }: SignInFormProps) {
   }
 
   return (
-    <form noValidate onSubmit={handleSubmit}>
+    <Stack component="form" noValidate onSubmit={handleSubmit} spacing={3}>
       <Stack spacing={2.5}>
         <FormField error={fieldErrors.email} label="Email" htmlFor="email">
           <Input
@@ -102,29 +102,29 @@ export function SignInForm({ defaultEmail = "" }: SignInFormProps) {
             type="password"
           />
         </FormField>
-
-        {errorMessage ? (
-          <FeedbackBanner
-            message={errorMessage}
-            title={
-              fieldErrors.email || fieldErrors.password
-                ? "Credentials required"
-                : "Sign-in failed"
-            }
-            tone="warning"
-          >
-          </FeedbackBanner>
-        ) : null}
-
-        <Button
-          disabled={isSubmitting}
-          fullWidth
-          type="submit"
-          variant="solid"
-        >
-          {isSubmitting ? "Signing in..." : "Sign in"}
-        </Button>
       </Stack>
-    </form>
+
+      {errorMessage ? (
+        <FeedbackBanner
+          message={errorMessage}
+          title={
+            fieldErrors.email || fieldErrors.password
+              ? "Credentials required"
+              : "Sign-in failed"
+          }
+          tone="warning"
+        >
+        </FeedbackBanner>
+      ) : null}
+
+      <Button
+        disabled={isSubmitting}
+        fullWidth
+        type="submit"
+        variant="solid"
+      >
+        {isSubmitting ? "Signing in..." : "Sign in"}
+      </Button>
+    </Stack>
   );
 }

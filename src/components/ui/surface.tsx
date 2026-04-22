@@ -1,6 +1,7 @@
 import Paper, { type PaperProps } from "@mui/material/Paper";
 
 import { onesourceTokens } from "@/theme/onesource-theme";
+import { mergeSx } from "@/components/ui/merge-sx";
 
 export type SurfaceTone = "default" | "muted" | "warm";
 export type SurfaceDensity = "comfortable" | "compact";
@@ -19,7 +20,7 @@ export function Surface({
   return (
     <Paper
       elevation={0}
-      sx={
+      sx={mergeSx(
         [
           {
             bgcolor:
@@ -36,9 +37,9 @@ export function Surface({
                 ? onesourceTokens.elevation.surface
                 : onesourceTokens.elevation.raised,
           },
-          ...(sx ? [sx] : []),
-        ] as SurfaceProps["sx"]
-      }
+        ],
+        sx,
+      )}
       {...props}
     />
   );

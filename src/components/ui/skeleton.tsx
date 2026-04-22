@@ -1,5 +1,7 @@
 import MuiSkeleton, { type SkeletonProps as MuiSkeletonProps } from "@mui/material/Skeleton";
 
+import { mergeSx } from "@/components/ui/merge-sx";
+
 type SkeletonProps = MuiSkeletonProps;
 
 export function Skeleton({ sx, ...props }: SkeletonProps) {
@@ -7,15 +9,15 @@ export function Skeleton({ sx, ...props }: SkeletonProps) {
     <MuiSkeleton
       aria-hidden="true"
       animation="wave"
-      sx={
+      sx={mergeSx(
         [
           {
             borderRadius: 1.5,
             transform: "none",
           },
-          ...(sx ? [sx] : []),
-        ] as MuiSkeletonProps["sx"]
-      }
+        ],
+        sx,
+      )}
       variant="rounded"
       {...props}
     />

@@ -45,14 +45,15 @@ export function PublicAccessShell({
             bgcolor: "rgba(252,249,244,0.96)",
             borderRadius: 4,
             boxShadow: "0 28px 80px rgba(14,32,35,0.28)",
-            p: { sm: 4, xs: 3 },
+            mx: "auto",
+            p: { sm: 4.5, xs: 3 },
             width: "100%",
             maxWidth,
           },
           ...(surfaceSx ? [surfaceSx] : []),
         ] as SxProps<Theme>}
       >
-        <Stack spacing={3}>
+        <Stack spacing={{ sm: 3.5, xs: 3 }}>
           {eyebrow || title || description ? (
             <Stack spacing={1.5}>
               {eyebrow ? (
@@ -73,12 +74,13 @@ export function PublicAccessShell({
                   sx={{
                     fontFamily: "var(--font-heading), sans-serif",
                     fontSize: {
-                      sm: "2.4rem",
-                      xs: "2.1rem",
+                      sm: "2.6rem",
+                      xs: "2.2rem",
                     },
                     fontWeight: 600,
                     letterSpacing: "-0.04em",
-                    lineHeight: 1.05,
+                    lineHeight: 1.02,
+                    maxWidth: "14ch",
                   }}
                 >
                   {title}
@@ -90,6 +92,7 @@ export function PublicAccessShell({
                     color: "text.secondary",
                     fontSize: "0.94rem",
                     lineHeight: 1.7,
+                    maxWidth: "58ch",
                   }}
                 >
                   {description}
