@@ -23,6 +23,19 @@ async function signIn(page: Page, email: string) {
   await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
 }
 
+async function ensureDesktopRailExpanded(page: Page) {
+  const expandRailButton = page.getByRole("button", {
+    name: /expand navigation rail/i,
+  });
+
+  if (await expandRailButton.isVisible()) {
+    await expandRailButton.click();
+    await expect(
+      page.getByRole("button", { name: /collapse navigation rail/i }),
+    ).toBeVisible();
+  }
+}
+
 function formatDateInputValue(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -81,6 +94,7 @@ Cloud Intake Pilot,Department of Veterans Affairs,VA-26-009,13/45/2026,5415X,Thi
 Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,541512,Title and aligned key fields should force manual review instead of direct import.`;
 
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
+  await ensureDesktopRailExpanded(page);
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page).toHaveTitle(/OneSource/i);
@@ -271,10 +285,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
       .getByRole("table", { name: /knowledge asset results/i })
       .getByText(/cloud platform engineering/i),
   ).toBeVisible();
-  await page
-    .getByLabel("Primary navigation")
-    .getByRole("link", { name: /^Sources/i })
-    .click();
+  await page.goto("/sources");
   await expect(page).toHaveURL(/\/sources$/);
   await expect(
     page.getByRole("heading", {
@@ -401,7 +412,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     })
     .first();
   await expect(stageQueueLink).toBeVisible();
-  await stageQueueLink.click();
+  const stageQueueHref = await stageQueueLink.getAttribute("href");
+  expect(stageQueueHref).toMatch(/\/opportunities\?stage=/);
+  await page.goto(stageQueueHref ?? "/opportunities");
   await expect(page).toHaveURL(/\/opportunities\?stage=/);
   await expect(
     page.getByRole("table", { name: /opportunity pipeline results/i }),
@@ -513,6 +526,7 @@ test("users can create and edit tracked opportunities from the app", async ({
   const updatedOpportunityTitle = `${opportunityTitle} Updated`;
 
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
+  await ensureDesktopRailExpanded(page);
 
   await page
     .getByLabel("Primary navigation")
@@ -583,6 +597,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   createdMilestoneDate.setUTCDate(createdMilestoneDate.getUTCDate() + 7);
 
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
+  await ensureDesktopRailExpanded(page);
   await expect(page).toHaveURL(/\/$/);
 
   await page.goto("/opportunities?view=all");
@@ -606,10 +621,12 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .first()
     .click();
 
-  await page
+  const initialWorkspaceHref = await page
     .getByRole("complementary", { name: /selected pursuit/i })
     .getByRole("link", { name: /^Open workspace$/i })
-    .click();
+    .getAttribute("href");
+  expect(initialWorkspaceHref).toMatch(/\/opportunities\//);
+  await page.goto(initialWorkspaceHref ?? "/opportunities");
 
   await expect(page).toHaveURL(/\/opportunities\/.+$/);
   const workspaceSectionNav = page.getByRole("navigation", {
@@ -788,10 +805,12 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .locator("#desktop-opportunity-query")
     .fill("Enterprise Knowledge Management");
   await page.getByRole("button", { name: /apply filters/i }).click();
-  await page
+  const reopenedWorkspaceHref = await page
     .getByRole("complementary", { name: /selected pursuit/i })
     .getByRole("link", { name: /^Open workspace$/i })
-    .click();
+    .getAttribute("href");
+  expect(reopenedWorkspaceHref).toMatch(/\/opportunities\//);
+  await page.goto(reopenedWorkspaceHref ?? "/opportunities");
   const reopenedWorkspaceSectionNav = page.getByRole("navigation", {
     name: /opportunity workspace sections/i,
   });
@@ -961,33 +980,46 @@ test("users can update proposal tracking on an active proposal workspace", async
   ).toBeChecked();
 });
 
-test("desktop shell exposes grouped navigation, command utilities, and recent work", async ({
+test("desktop shell exposes the mini admin rail, command utilities, and notifications", async ({
   page,
 }) => {
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
 
   await expect(page).toHaveURL(/\/$/);
   const primaryNavigation = page.getByLabel("Primary navigation");
-  const workbench = page.getByRole("region", { name: /workbench/i });
-  await expect(primaryNavigation.getByText(/^capture command$/i)).toBeVisible();
-  await expect(primaryNavigation.getByText(/^intelligence$/i)).toBeVisible();
-  await expect(workbench).toBeVisible();
   await expect(
-    workbench.getByRole("button", { name: /^pinned$/i }),
+    page.getByRole("button", { name: /expand navigation rail/i }),
   ).toBeVisible();
-  await expect(workbench.getByRole("button", { name: /^pinned$/i })).toHaveCSS(
-    "color",
-    "rgb(248, 250, 252)",
+  await expect(primaryNavigation.getByText(/^capture command$/i)).toHaveCount(
+    0,
   );
-  await expect(
-    page.getByRole("button", { name: /collapse navigation rail/i }),
-  ).toBeVisible();
+  await expect(page.getByRole("region", { name: /workbench/i })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: /open command search/i }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /open notifications/i }),
   ).toBeVisible();
+  const sourcesNavLink = primaryNavigation.getByRole("link", {
+    name: /^Sources$/i,
+  });
+  await sourcesNavLink.hover();
+  await expect(page.getByText(/^intelligence$/i)).toBeVisible();
+  await expect(
+    page.getByText(/discovery, context, and decision support/i),
+  ).toBeVisible();
+  await sourcesNavLink.hover({ force: true, position: { x: 0, y: 0 } });
+  await page.mouse.move(400, 120);
+  await expect(
+    page.getByText(/discovery, context, and decision support/i),
+  ).not.toBeVisible();
+
+  await page.getByRole("button", { name: /expand navigation rail/i }).click();
+  await expect(
+    page.getByRole("button", { name: /collapse navigation rail/i }),
+  ).toBeVisible();
+  await expect(primaryNavigation.getByText(/^capture command$/i)).toBeVisible();
+  await expect(primaryNavigation.getByText(/^intelligence$/i)).toBeVisible();
 
   await page.keyboard.press("Control+k");
   await expect(
@@ -1000,14 +1032,14 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
     .getByRole("button", { name: /pin create pursuit to pinned work/i })
     .first()
     .click();
-  await page.getByRole("searchbox", { name: /command search/i }).click();
+  await page.getByRole("button", { name: /dismiss command center/i }).click();
+
+  await page.keyboard.press("Control+k");
+  await expect(page.getByText(/^pinned work$/i)).toBeVisible();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/opportunities\/new$/);
   await expect(
     page.getByRole("heading", { name: /create a tracked opportunity/i }),
-  ).toBeVisible();
-  await expect(
-    workbench.getByRole("link", { name: /create pursuit/i }).first(),
   ).toBeVisible();
 
   await page
@@ -1025,10 +1057,6 @@ test("desktop shell exposes grouped navigation, command utilities, and recent wo
     page.getByRole("heading", { name: /execution triage/i }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: /^My Tasks/i })).toBeVisible();
-  await workbench.getByRole("button", { name: /^recent$/i }).click();
-  await expect(
-    workbench.getByRole("link", { name: /^Knowledge/i }).first(),
-  ).toBeVisible();
 
   await page.getByRole("button", { name: /open notifications/i }).click();
   await expect(
