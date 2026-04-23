@@ -22,6 +22,7 @@ describe("onesourceTheme", () => {
     expect(onesourceTheme.onesource.radius.panel).toBe(18);
     expect(onesourceTheme.onesource.sizing.controlHeightComfortable).toBe(44);
     expect(onesourceTheme.onesource.sizing.railCollapsed).toBe(84);
+    expect(onesourceTheme.onesource.sizing.railExpanded).toBe(256);
     expect(onesourceTheme.onesource.shell.background).toBe(
       "rgba(15, 23, 42, 0.98)",
     );

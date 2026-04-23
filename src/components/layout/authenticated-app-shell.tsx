@@ -567,24 +567,24 @@ export function AppShellFrame({
           color: onesourceTokens.color.text.primary,
           overflowX: "hidden",
           overflowY: "hidden",
-          px: 2.25,
-          py: 2.5,
+          px: 1.5,
+          py: 1.75,
           top: 0,
           width: railWidth,
         },
       }}
     >
-      <Stack spacing={2} sx={{ height: "100%", minHeight: 0 }}>
+      <Stack spacing={1.25} sx={{ height: "100%", minHeight: 0 }}>
         <Box
           sx={{
             borderBottom: `1px solid ${onesourceTokens.color.border.subtle}`,
-            pb: 2,
+            pb: 1.5,
           }}
         >
           <Typography
             sx={{
               color: "text.secondary",
-              fontSize: "0.72rem",
+              fontSize: "0.68rem",
               fontWeight: 700,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
@@ -595,10 +595,10 @@ export function AppShellFrame({
           <Typography
             sx={{
               fontFamily: "var(--font-heading), sans-serif",
-              fontSize: "1.15rem",
+              fontSize: "1rem",
               fontWeight: 600,
               lineHeight: 1.35,
-              mt: 1,
+              mt: 0.75,
             }}
           >
             {workspaceIdentity.label}
@@ -607,9 +607,9 @@ export function AppShellFrame({
             <Typography
               sx={{
                 color: "text.secondary",
-                fontSize: "0.82rem",
-                lineHeight: 1.5,
-                mt: 0.75,
+                fontSize: "0.76rem",
+                lineHeight: 1.4,
+                mt: 0.5,
               }}
             >
               {workspaceIdentity.supportingText}
@@ -617,7 +617,7 @@ export function AppShellFrame({
           ) : null}
         </Box>
 
-        <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", pr: 0.5 }}>
+        <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", pr: 0.25 }}>
           <NavigationMenu
             currentPath={currentPath}
             groups={navGroups}
@@ -1336,15 +1336,15 @@ function NavigationMenu({
       component="nav"
       aria-label={title}
       id={title === "Mobile navigation" ? "mobile-navigation" : undefined}
-      spacing={2}
+      spacing={desktopVariant ? 1.25 : 2}
     >
       {groups.map((group) => (
         <Box component="section" key={group.key}>
-          <Box sx={{ px: 1, pb: 0.75 }}>
+          <Box sx={{ px: desktopVariant ? 0.75 : 1, pb: desktopVariant ? 0.5 : 0.75 }}>
             <Typography
               sx={{
                 color: desktopVariant ? "text.secondary" : SHELL_TEXT_FAINT,
-                fontSize: "0.68rem",
+                fontSize: desktopVariant ? "0.64rem" : "0.68rem",
                 fontWeight: 700,
                 letterSpacing: "0.18em",
                 textTransform: "uppercase",
@@ -1353,7 +1353,7 @@ function NavigationMenu({
               {group.title}
             </Typography>
           </Box>
-          <List disablePadding sx={{ mt: 0.5 }}>
+          <List disablePadding sx={{ mt: desktopVariant ? 0.25 : 0.5 }}>
             {group.items.map((item) => {
               const active = isRouteActive(item.href, currentPath);
 
@@ -1379,10 +1379,10 @@ function NavigationMenu({
                       : active
                         ? SHELL_TEXT_PRIMARY
                         : SHELL_TEXT_SECONDARY,
-                    mb: 0.6,
-                    minHeight: 46,
-                    px: 1.4,
-                    py: 0.85,
+                    mb: desktopVariant ? 0.25 : 0.6,
+                    minHeight: desktopVariant ? 40 : 46,
+                    px: desktopVariant ? 1 : 1.4,
+                    py: desktopVariant ? 0.5 : 0.85,
                     "&.Mui-selected": desktopVariant
                       ? {
                           backgroundColor: alpha(
@@ -1427,7 +1427,7 @@ function NavigationMenu({
                     sx={{
                       color: "inherit",
                       justifyContent: "center",
-                      minWidth: 38,
+                      minWidth: desktopVariant ? 32 : 38,
                     }}
                   >
                     {getNavItemIcon(item.href)}
@@ -1435,7 +1435,7 @@ function NavigationMenu({
                   <Typography
                     sx={{
                       color: "inherit",
-                      fontSize: "0.92rem",
+                      fontSize: desktopVariant ? "0.88rem" : "0.92rem",
                       fontWeight: 600,
                       lineHeight: 1.35,
                     }}

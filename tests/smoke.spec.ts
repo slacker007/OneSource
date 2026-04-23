@@ -157,6 +157,11 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
       .getByLabel("Primary navigation")
       .getByRole("link", { name: /^dashboard$/i }),
   ).toHaveCSS("border-radius", "0px");
+  await expect(
+    page
+      .getByLabel("Primary navigation")
+      .getByRole("link", { name: /^dashboard$/i }),
+  ).toHaveCSS("min-height", "40px");
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page).toHaveTitle(/OneSource/i);
