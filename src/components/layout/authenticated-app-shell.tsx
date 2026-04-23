@@ -1371,7 +1371,7 @@ function NavigationMenu({
                   selected={active}
                   sx={{
                     alignItems: "center",
-                    borderRadius: 2.5,
+                    borderRadius: desktopVariant ? 0 : 2.5,
                     color: desktopVariant
                       ? active
                         ? "text.primary"

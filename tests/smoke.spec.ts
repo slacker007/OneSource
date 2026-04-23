@@ -152,6 +152,11 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
 
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
   await ensureDesktopNavigationReady(page);
+  await expect(
+    page
+      .getByLabel("Primary navigation")
+      .getByRole("link", { name: /^dashboard$/i }),
+  ).toHaveCSS("border-radius", "0px");
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page).toHaveTitle(/OneSource/i);
