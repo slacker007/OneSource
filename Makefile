@@ -3,9 +3,10 @@
 DOCKER_IMAGE ?= onesource:local
 DOCKER_TARGET ?= runner
 COMPOSE ?= docker compose
+DEV_COMPOSE = $(COMPOSE) -f docker-compose.yml -f docker-compose.dev.yml
 TEST_COMPOSE = $(COMPOSE) -p onesource-test -f docker-compose.test.yml
 
-.PHONY: help docker-artifacts docker-build compose-up compose-up-detached compose-test-image compose-test-env-up compose-test-browser-image compose-test-browser-image-fresh compose-test-lint compose-test compose-test-build compose-test-bootstrap compose-test-e2e compose-down clean-dev-artifacts
+.PHONY: help docker-artifacts docker-build compose-up compose-up-detached compose-dev compose-test-image compose-test-env-up compose-test-browser-image compose-test-browser-image-fresh compose-test-lint compose-test compose-test-build compose-test-bootstrap compose-test-e2e compose-down clean-dev-artifacts
 
 help:
 	@printf '%s\n' \
@@ -13,6 +14,7 @@ help:
 		'make docker-build          Build the Docker image.' \
 		'make compose-up            Run docker compose up --build.' \
 		'make compose-up-detached   Run docker compose up --build -d.' \
+		'make compose-dev           Run the web container in Next.js dev mode for live reload.' \
 		'make compose-test-image    Rebuild the compose test runner image.' \
 		'make compose-test-browser-image Rebuild the compose browser images with cache.' \
 		'make compose-test-browser-image-fresh Rebuild the compose browser images without cache.' \
@@ -35,6 +37,9 @@ compose-up:
 
 compose-up-detached:
 	$(COMPOSE) up --build -d
+
+compose-dev:
+	$(DEV_COMPOSE) up --build
 
 compose-test-image:
 	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) build test
@@ -73,10 +78,10 @@ compose-test-e2e:
 	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) up --abort-on-container-exit --exit-code-from playwright playwright
 
 compose-down:
-	$(COMPOSE) down
+	-$(DEV_COMPOSE) down --remove-orphans
 	-$(TEST_COMPOSE) down --remove-orphans
 
 clean-dev-artifacts:
-	-$(COMPOSE) down --rmi local -v --remove-orphans
+	-$(DEV_COMPOSE) down --rmi local -v --remove-orphans
 	-$(TEST_COMPOSE) down --rmi local -v --remove-orphans
 	node scripts/clean-dev-artifacts.mjs

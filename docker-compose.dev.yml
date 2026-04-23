@@ -1,0 +1,26 @@
+services:
+  web:
+    build:
+      target: deps
+    environment:
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+    command: npm run dev:compose
+    volumes:
+      - .:/app
+      - web_node_modules:/app/node_modules
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then((response)=>{if(!response.ok)process.exit(1);}).catch(()=>process.exit(1));",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+
+volumes:
+  web_node_modules:

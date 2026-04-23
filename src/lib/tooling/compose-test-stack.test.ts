@@ -6,6 +6,30 @@ import { describe, expect, it } from "vitest";
 const repoRoot = path.resolve(import.meta.dirname, "../../..");
 
 describe("compose test stack configuration", () => {
+  it("defines a compose dev override that runs the web service in Next.js dev mode", () => {
+    const composeDevFile = fs.readFileSync(
+      path.join(repoRoot, "docker-compose.dev.yml"),
+      "utf8",
+    );
+    const webServiceBlock =
+      composeDevFile.match(/\n  web:\s*([\s\S]*?)\nvolumes:/)?.[1] ?? "";
+    const makefile = fs.readFileSync(path.join(repoRoot, "Makefile"), "utf8");
+
+    expect(webServiceBlock).toContain("target: deps");
+    expect(webServiceBlock).toContain("NODE_ENV: development");
+    expect(webServiceBlock).toContain('WATCHPACK_POLLING: "true"');
+    expect(webServiceBlock).toContain("command: npm run dev:compose");
+    expect(webServiceBlock).toContain("- .:/app");
+    expect(webServiceBlock).toContain("- web_node_modules:/app/node_modules");
+    expect(webServiceBlock).toContain("start_period: 45s");
+    expect(composeDevFile).toContain("web_node_modules:");
+    expect(makefile).toContain(
+      "DEV_COMPOSE = $(COMPOSE) -f docker-compose.yml -f docker-compose.dev.yml",
+    );
+    expect(makefile).toContain("compose-dev:");
+    expect(makefile).toContain("$(DEV_COMPOSE) up --build");
+  });
+
   it("uses the dedicated non-production Docker target for the test service", () => {
     const composeFile = fs.readFileSync(
       path.join(repoRoot, "docker-compose.test.yml"),
@@ -91,6 +115,12 @@ describe("compose test stack configuration", () => {
     );
     expect(makefile).toContain("$(TEST_COMPOSE) run --rm test node prisma/seed.mjs");
     expect(makefile).toContain("$(MAKE) compose-test-browser-image");
+    expect(makefile).toContain("compose-down:");
+    expect(makefile).toContain("$(DEV_COMPOSE) down --remove-orphans");
+    expect(makefile).toContain("clean-dev-artifacts:");
+    expect(makefile).toContain(
+      "$(DEV_COMPOSE) down --rmi local -v --remove-orphans",
+    );
     expect(makefile).not.toContain(
       "$(TEST_COMPOSE) run --rm --build test npm run lint",
     );
