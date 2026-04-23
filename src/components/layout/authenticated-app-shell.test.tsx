@@ -97,9 +97,7 @@ describe("AppShellFrame", () => {
     window.localStorage.clear();
   });
 
-  it("renders a collapsed admin rail with grouped flyouts and shell controls", async () => {
-    const user = userEvent.setup();
-
+  it("renders a desktop persistent drawer with grouped navigation and shell controls", () => {
     render(
       <AppShellFrame
         allowDecisionSupport
@@ -135,38 +133,11 @@ describe("AppShellFrame", () => {
       screen.getByRole("button", { name: /open notifications/i }),
     ).toHaveTextContent("2");
     expect(
-      screen.getByRole("button", { name: /expand navigation rail/i }),
-    ).toBeInTheDocument();
-    expect(
-      within(primaryNavigation).queryByText(/^capture command$/i),
+      screen.queryByRole("button", { name: /expand navigation rail/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("region", { name: /workbench/i }),
+      screen.queryByRole("button", { name: /collapse navigation rail/i }),
     ).not.toBeInTheDocument();
-
-    const sourcesLink = within(primaryNavigation).getByRole("link", {
-      name: /^sources$/i,
-    });
-    await user.hover(sourcesLink);
-    expect(
-      (await screen.findAllByText(/^intelligence$/i)).length,
-    ).toBeGreaterThan(0);
-    expect(
-      screen.getByText(/discovery, context, and decision support/i),
-    ).toBeInTheDocument();
-
-    await user.unhover(sourcesLink);
-    await waitFor(() =>
-      expect(
-        screen.queryByText(/discovery, context, and decision support/i),
-      ).not.toBeInTheDocument(),
-    );
-    await user.click(
-      screen.getByRole("button", { name: /expand navigation rail/i }),
-    );
-    expect(
-      screen.getByRole("button", { name: /collapse navigation rail/i }),
-    ).toBeInTheDocument();
     expect(
       within(primaryNavigation).getByText(/^capture command$/i),
     ).toBeInTheDocument();
@@ -175,6 +146,9 @@ describe("AppShellFrame", () => {
     ).toBeInTheDocument();
     expect(
       within(primaryNavigation).getByText(/^workspace admin$/i),
+    ).toBeInTheDocument();
+    expect(
+      within(primaryNavigation).getByRole("link", { name: /^sources$/i }),
     ).toBeInTheDocument();
     expect(
       within(primaryNavigation).getByRole("link", { name: /^users & roles$/i }),
@@ -315,7 +289,7 @@ describe("AppShellFrame", () => {
     ).toBeInTheDocument();
   }, 20_000);
 
-  it("persists mini-rail preferences and remembers visited destinations", async () => {
+  it("remembers visited destinations without a desktop collapse state", async () => {
     const user = userEvent.setup();
 
     window.localStorage.setItem(
@@ -355,7 +329,10 @@ describe("AppShellFrame", () => {
       name: /primary navigation/i,
     });
     expect(
-      screen.getByRole("button", { name: /expand navigation rail/i }),
+      screen.queryByRole("button", { name: /expand navigation rail/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(primaryNavigation).getByText(/^capture command$/i),
     ).toBeInTheDocument();
     await user.click(
       within(primaryNavigation).getByRole("link", { name: /^tasks/i }),
@@ -366,35 +343,11 @@ describe("AppShellFrame", () => {
         window.localStorage.getItem("onesource.shell.recent-destinations"),
       ).toContain("/tasks"),
     );
-
-    await user.click(
-      screen.getByRole("button", { name: /expand navigation rail/i }),
-    );
-
-    expect(
-      screen.getByRole("button", { name: /collapse navigation rail/i }),
-    ).toBeInTheDocument();
-    expect(window.localStorage.getItem("onesource.shell.is-collapsed")).toBe(
-      "0",
-    );
     expect(
       within(primaryNavigation).getByRole("link", { name: /^dashboard$/i }),
     ).toBeInTheDocument();
     expect(
-      within(primaryNavigation).getByText(/^capture command$/i),
-    ).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", { name: /collapse navigation rail/i }),
-    );
-    expect(window.localStorage.getItem("onesource.shell.is-collapsed")).toBe(
-      "1",
-    );
-    expect(
-      screen.getByRole("button", { name: /expand navigation rail/i }),
-    ).toBeInTheDocument();
-    expect(
-      within(primaryNavigation).queryByText(/^capture command$/i),
-    ).not.toBeInTheDocument();
+      window.localStorage.getItem("onesource.shell.is-collapsed"),
+    ).toBeNull();
   });
 });

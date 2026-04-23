@@ -62,8 +62,8 @@ compose-test-build:
 
 compose-test-bootstrap:
 	$(MAKE) compose-test-env-up
-	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) exec -T test npx prisma migrate deploy
-	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) exec -T test npm run db:seed
+	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) run --rm test ./node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma
+	SAM_GOV_USE_FIXTURES=true $(TEST_COMPOSE) run --rm test node prisma/seed.mjs
 
 compose-test-e2e:
 	-$(COMPOSE) down --remove-orphans

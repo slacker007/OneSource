@@ -23,17 +23,8 @@ async function signIn(page: Page, email: string) {
   await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
 }
 
-async function ensureDesktopRailExpanded(page: Page) {
-  const expandRailButton = page.getByRole("button", {
-    name: /expand navigation rail/i,
-  });
-
-  if (await expandRailButton.isVisible()) {
-    await expandRailButton.click();
-    await expect(
-      page.getByRole("button", { name: /collapse navigation rail/i }),
-    ).toBeVisible();
-  }
+async function ensureDesktopNavigationReady(page: Page) {
+  await expect(page.getByLabel("Primary navigation")).toBeVisible();
 }
 
 function formatDateInputValue(date: Date) {
@@ -160,7 +151,7 @@ Cloud Intake Pilot,Department of Veterans Affairs,VA-26-009,13/45/2026,5415X,Thi
 Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,541512,Title and aligned key fields should force manual review instead of direct import.`;
 
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
-  await ensureDesktopRailExpanded(page);
+  await ensureDesktopNavigationReady(page);
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page).toHaveTitle(/OneSource/i);
@@ -668,7 +659,7 @@ test("users can create and edit tracked opportunities from the app", async ({
   const updatedOpportunityTitle = `${opportunityTitle} Updated`;
 
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
-  await ensureDesktopRailExpanded(page);
+  await ensureDesktopNavigationReady(page);
 
   await page
     .getByLabel("Primary navigation")
@@ -739,7 +730,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   createdMilestoneDate.setUTCDate(createdMilestoneDate.getUTCDate() + 7);
 
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
-  await ensureDesktopRailExpanded(page);
+  await ensureDesktopNavigationReady(page);
   await expect(page).toHaveURL(/\/$/);
 
   await page.goto("/opportunities?view=all&q=Enterprise+Knowledge+Management");
@@ -1133,46 +1124,27 @@ test("users can update proposal tracking on an active proposal workspace", async
   ).toBeChecked();
 });
 
-test("desktop shell exposes the mini admin rail, command utilities, and notifications", async ({
+test("desktop shell exposes the persistent drawer, command utilities, and notifications", async ({
   page,
 }) => {
   await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
 
   await expect(page).toHaveURL(/\/$/);
   const primaryNavigation = page.getByLabel("Primary navigation");
+  await expect(primaryNavigation.getByText(/^capture command$/i)).toBeVisible();
+  await expect(primaryNavigation.getByText(/^intelligence$/i)).toBeVisible();
   await expect(
     page.getByRole("button", { name: /expand navigation rail/i }),
-  ).toBeVisible();
-  await expect(primaryNavigation.getByText(/^capture command$/i)).toHaveCount(
-    0,
-  );
-  await expect(page.getByRole("region", { name: /workbench/i })).toHaveCount(0);
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /collapse navigation rail/i }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: /open command search/i }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /open notifications/i }),
   ).toBeVisible();
-  const sourcesNavLink = primaryNavigation.getByRole("link", {
-    name: /^Sources$/i,
-  });
-  await sourcesNavLink.hover();
-  await expect(page.getByText(/^intelligence$/i)).toBeVisible();
-  await expect(
-    page.getByText(/discovery, context, and decision support/i),
-  ).toBeVisible();
-  await sourcesNavLink.hover({ force: true, position: { x: 0, y: 0 } });
-  await page.mouse.move(400, 120);
-  await expect(
-    page.getByText(/discovery, context, and decision support/i),
-  ).not.toBeVisible();
-
-  await page.getByRole("button", { name: /expand navigation rail/i }).click();
-  await expect(
-    page.getByRole("button", { name: /collapse navigation rail/i }),
-  ).toBeVisible();
-  await expect(primaryNavigation.getByText(/^capture command$/i)).toBeVisible();
-  await expect(primaryNavigation.getByText(/^intelligence$/i)).toBeVisible();
 
   await page.keyboard.press("Control+k");
   await expect(
@@ -1217,12 +1189,6 @@ test("desktop shell exposes the mini admin rail, command utilities, and notifica
   ).toBeVisible();
   await expect(page.getByText(/saved search issue/i).first()).toBeVisible();
   await page.getByRole("button", { name: /dismiss notifications/i }).click();
-
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-  await page.getByRole("button", { name: /collapse navigation rail/i }).click();
-  await expect(
-    page.getByRole("button", { name: /expand navigation rail/i }),
-  ).toBeVisible();
 });
 
 test.describe("mobile navigation", () => {

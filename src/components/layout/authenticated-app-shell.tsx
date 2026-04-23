@@ -1,8 +1,6 @@
 "use client";
 
 import ChecklistRoundedIcon from "@mui/icons-material/ChecklistRounded";
-import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
-import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import LibraryBooksRoundedIcon from "@mui/icons-material/LibraryBooksRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
@@ -11,15 +9,12 @@ import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
-import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import MuiDrawer from "@mui/material/Drawer";
 import OutlinedInput from "@mui/material/OutlinedInput";
-import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { alpha } from "@mui/material/styles";
 import Link from "next/link";
@@ -32,7 +27,6 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
@@ -52,7 +46,6 @@ import type {
 } from "@/modules/shell/app-shell.types";
 import { onesourceTokens } from "@/theme/onesource-theme";
 
-const SHELL_COLLAPSE_STORAGE_KEY = "onesource.shell.is-collapsed";
 const SHELL_PINNED_ITEMS_STORAGE_KEY = "onesource.shell.pinned-items";
 const SHELL_PREFERENCES_EVENT = "onesource.shell.preferences-changed";
 const SHELL_RECENT_DESTINATIONS_STORAGE_KEY =
@@ -276,11 +269,6 @@ export function AppShellFrame({
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
-  const collapsedRailSnapshot = useSyncExternalStore(
-    subscribeToShellPreferenceChanges,
-    readCollapsedRailPreferenceSnapshot,
-    () => "1",
-  );
   const recentItemsSnapshot = useSyncExternalStore(
     subscribeToShellPreferenceChanges,
     readRecentWorkbenchItemsSnapshot,
@@ -298,7 +286,6 @@ export function AppShellFrame({
   const [activeCommandItemId, setActiveCommandItemId] = useState<string | null>(
     null,
   );
-  const isRailCollapsed = collapsedRailSnapshot === "1";
   const pinnedItems = parseWorkbenchItemsSnapshot(
     pinnedItemsSnapshot,
     SHELL_PINNED_ITEM_LIMIT,
@@ -560,15 +547,12 @@ export function AppShellFrame({
     }
   }
 
-  const railWidth = isRailCollapsed
-    ? onesourceTokens.sizing.railCollapsed
-    : onesourceTokens.sizing.railExpanded;
+  const railWidth = onesourceTokens.sizing.railExpanded;
   const desktopShell = (
     <MuiDrawer
       open
-      variant="permanent"
+      variant="persistent"
       sx={{
-        color: SHELL_TEXT_PRIMARY,
         display: {
           xs: "none",
           lg: "block",
@@ -577,184 +561,71 @@ export function AppShellFrame({
         width: railWidth,
         zIndex: 25,
         "& .MuiDrawer-paper": {
-          backgroundColor: SHELL_DARK_SURFACE_BG,
-          borderRight: `1px solid ${SHELL_PANEL_BORDER}`,
+          backgroundColor: onesourceTokens.color.surface.raised,
+          borderRight: `1px solid ${onesourceTokens.color.border.subtle}`,
           boxSizing: "border-box",
-          color: SHELL_TEXT_PRIMARY,
+          color: onesourceTokens.color.text.primary,
           overflowX: "hidden",
           overflowY: "hidden",
-          px: isRailCollapsed ? 1.5 : 2.5,
+          px: 2.25,
           py: 2.5,
-          scrollbarWidth: "none",
           top: 0,
-          transition:
-            "width 180ms ease, padding-inline 180ms ease, background-color 180ms ease",
           width: railWidth,
-          "&::-webkit-scrollbar": {
-            display: "none",
-          },
         },
       }}
     >
-      <Stack sx={{ height: "100%", minHeight: 0 }}>
-        <Stack spacing={2} sx={{ flex: 1, minHeight: 0 }}>
-          <Stack
-            direction={isRailCollapsed ? "column" : "row"}
-            spacing={isRailCollapsed ? 1.25 : 1.5}
+      <Stack spacing={2} sx={{ height: "100%", minHeight: 0 }}>
+        <Box
+          sx={{
+            borderBottom: `1px solid ${onesourceTokens.color.border.subtle}`,
+            pb: 2,
+          }}
+        >
+          <Typography
             sx={{
-              alignItems: isRailCollapsed ? "center" : "flex-start",
-              justifyContent: "space-between",
+              color: "text.secondary",
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
             }}
           >
-            <Box
+            Workspace
+          </Typography>
+          <Typography
+            sx={{
+              fontFamily: "var(--font-heading), sans-serif",
+              fontSize: "1.15rem",
+              fontWeight: 600,
+              lineHeight: 1.35,
+              mt: 1,
+            }}
+          >
+            {workspaceIdentity.label}
+          </Typography>
+          {workspaceIdentity.supportingText ? (
+            <Typography
               sx={{
-                alignItems: isRailCollapsed ? "center" : "flex-start",
-                flex: isRailCollapsed ? "0 0 auto" : "1 1 auto",
-                minWidth: 0,
+                color: "text.secondary",
+                fontSize: "0.82rem",
+                lineHeight: 1.5,
+                mt: 0.75,
               }}
             >
-              <Tooltip
-                disableHoverListener={!isRailCollapsed}
-                placement="right"
-                title={workspaceIdentity.label}
-              >
-                <Box
-                  sx={{
-                    alignItems: "center",
-                    bgcolor: alpha(onesourceTokens.color.neutral[0], 0.04),
-                    border: `1px solid ${alpha(onesourceTokens.color.neutral[0], 0.12)}`,
-                    borderRadius: 3,
-                    color: SHELL_TEXT_PRIMARY,
-                    display: "inline-flex",
-                    gap: 1,
-                    minHeight: 48,
-                    minWidth: isRailCollapsed ? 48 : "auto",
-                    px: isRailCollapsed ? 1.25 : 1.5,
-                    py: 0.9,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      alignItems: "center",
-                      bgcolor: alpha(onesourceTokens.shell.brandAccent, 0.18),
-                      borderRadius: 2.5,
-                      color: SHELL_TEXT_PRIMARY,
-                      display: "inline-flex",
-                      fontFamily: "var(--font-heading), sans-serif",
-                      fontSize: "0.8rem",
-                      fontWeight: 700,
-                      height: 28,
-                      justifyContent: "center",
-                      width: 28,
-                    }}
-                  >
-                    OS
-                  </Box>
-                  {!isRailCollapsed ? (
-                    <Typography sx={{ fontSize: "0.92rem", fontWeight: 700 }}>
-                      OneSource
-                    </Typography>
-                  ) : null}
-                </Box>
-              </Tooltip>
-              {!isRailCollapsed ? (
-                <Stack spacing={0.35} sx={{ mt: 1.25 }}>
-                  <Typography
-                    sx={{
-                      color: SHELL_TEXT_FAINT,
-                      fontSize: "0.64rem",
-                      fontWeight: 700,
-                      letterSpacing: "0.18em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Admin rail
-                  </Typography>
-                  <Typography
-                    sx={{
-                      color: SHELL_TEXT_PRIMARY,
-                      fontSize: "0.94rem",
-                      fontWeight: 600,
-                      lineHeight: 1.35,
-                      maxWidth: "100%",
-                      minWidth: 0,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {workspaceIdentity.label}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      color: SHELL_TEXT_SECONDARY,
-                      fontSize: "0.72rem",
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    Traditional admin navigation with compact grouped routes.
-                  </Typography>
-                </Stack>
-              ) : null}
-            </Box>
-            <Tooltip
-              placement={isRailCollapsed ? "right" : "bottom"}
-              title={
-                isRailCollapsed
-                  ? "Expand navigation rail"
-                  : "Collapse navigation rail"
-              }
-            >
-              <IconButton
-                aria-label={
-                  isRailCollapsed
-                    ? "Expand navigation rail"
-                    : "Collapse navigation rail"
-                }
-                onClick={() => updateCollapsedRailPreference(!isRailCollapsed)}
-                sx={{
-                  alignSelf: isRailCollapsed ? "center" : "flex-start",
-                  bgcolor: alpha(onesourceTokens.color.neutral[0], 0.08),
-                  border: `1px solid ${alpha(onesourceTokens.color.neutral[0], 0.14)}`,
-                  borderRadius: 2.75,
-                  color: SHELL_TEXT_PRIMARY,
-                  flexShrink: 0,
-                  "&:hover": {
-                    bgcolor: alpha(onesourceTokens.color.neutral[0], 0.14),
-                    borderColor: alpha(onesourceTokens.color.neutral[0], 0.2),
-                  },
-                }}
-              >
-                {isRailCollapsed ? (
-                  <ChevronRightRoundedIcon fontSize="small" />
-                ) : (
-                  <ChevronLeftRoundedIcon fontSize="small" />
-                )}
-              </IconButton>
-            </Tooltip>
-          </Stack>
+              {workspaceIdentity.supportingText}
+            </Typography>
+          ) : null}
+        </Box>
 
-          <Box
-            sx={{
-              flex: 1,
-              minHeight: 0,
-              overflowY: "auto",
-              pr: isRailCollapsed ? 0 : 0.25,
-              scrollbarWidth: "none",
-              "&::-webkit-scrollbar": {
-                display: "none",
-              },
-            }}
-          >
-            <NavigationMenu
-              collapsed={isRailCollapsed}
-              currentPath={currentPath}
-              groups={navGroups}
-              onRememberItem={rememberRecentItem}
-              title="Primary navigation"
-            />
-          </Box>
-        </Stack>
+        <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", pr: 0.5 }}>
+          <NavigationMenu
+            currentPath={currentPath}
+            groups={navGroups}
+            onRememberItem={rememberRecentItem}
+            title="Primary navigation"
+            variant="desktop"
+          />
+        </Box>
       </Stack>
     </MuiDrawer>
   );
@@ -830,6 +701,7 @@ export function AppShellFrame({
           onNavigate={() => setIsMobileNavOpen(false)}
           onRememberItem={rememberRecentItem}
           title="Mobile navigation"
+          variant="mobile"
         />
       </Drawer>
 
@@ -1443,361 +1315,140 @@ export function AppShellFrame({
 }
 
 function NavigationMenu({
-  collapsed = false,
   currentPath,
   groups,
   onNavigate,
   onRememberItem,
   title,
+  variant,
 }: {
-  collapsed?: boolean;
   currentPath: string;
   groups: NavGroup[];
   onNavigate?: () => void;
   onRememberItem?: (item: AppShellWorkbenchItem) => void;
   title: string;
+  variant: "desktop" | "mobile";
 }) {
-  const [flyoutState, setFlyoutState] = useState<{
-    anchorEl: HTMLElement;
-    group: NavGroup;
-  } | null>(null);
-  const closeTimeoutRef = useRef<number | null>(null);
-  const popoverPaperRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (closeTimeoutRef.current !== null) {
-        window.clearTimeout(closeTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  function clearCloseTimeout() {
-    if (closeTimeoutRef.current !== null) {
-      window.clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-  }
-
-  function closeFlyout() {
-    clearCloseTimeout();
-    setFlyoutState(null);
-  }
-
-  function scheduleFlyoutClose() {
-    clearCloseTimeout();
-
-    closeTimeoutRef.current = window.setTimeout(() => {
-      setFlyoutState(null);
-      closeTimeoutRef.current = null;
-    }, 120);
-  }
-
-  function openFlyout(group: NavGroup, anchorEl: HTMLElement) {
-    if (!collapsed) {
-      return;
-    }
-
-    clearCloseTimeout();
-    setFlyoutState({ anchorEl, group });
-  }
+  const desktopVariant = variant === "desktop";
 
   return (
-    <>
-      <Stack
-        component="nav"
-        aria-label={title}
-        id={title === "Mobile navigation" ? "mobile-navigation" : undefined}
-        spacing={collapsed ? 1.5 : 2}
-      >
-        {groups.map((group) => (
-          <Box
-            component="section"
-            key={group.key}
-            onBlurCapture={(event) => {
-              if (
-                event.relatedTarget instanceof Node &&
-                (event.currentTarget.contains(event.relatedTarget) ||
-                  popoverPaperRef.current?.contains(event.relatedTarget))
-              ) {
-                return;
-              }
-
-              scheduleFlyoutClose();
-            }}
-            onFocusCapture={(event) => {
-              if (!(event.currentTarget instanceof HTMLElement)) {
-                return;
-              }
-
-              openFlyout(group, event.currentTarget);
-            }}
-            onMouseEnter={(event) => {
-              if (!(event.currentTarget instanceof HTMLElement)) {
-                return;
-              }
-
-              openFlyout(group, event.currentTarget);
-            }}
-            onMouseLeave={scheduleFlyoutClose}
-          >
-            {!collapsed ? (
-              <Box sx={{ px: 1, pb: 0.6 }}>
-                <Typography
-                  sx={{
-                    color: SHELL_TEXT_FAINT,
-                    fontSize: "0.68rem",
-                    fontWeight: 700,
-                    letterSpacing: "0.18em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {group.title}
-                </Typography>
-              </Box>
-            ) : null}
-            <List disablePadding sx={{ mt: collapsed ? 0 : 0.8 }}>
-              {group.items.map((item) => {
-                const active = isRouteActive(item.href, currentPath);
-                const navButton = (
-                  <ListItemButton
-                    aria-current={active ? "page" : undefined}
-                    aria-label={item.label}
-                    component={Link}
-                    href={item.href}
-                    key={item.href}
-                    onClick={() => {
-                      onNavigate?.();
-                      onRememberItem?.(createWorkbenchItemFromNavItem(item));
-                      closeFlyout();
-                    }}
-                    selected={active}
-                    sx={{
-                      alignItems: "center",
-                      border: "1px solid",
-                      borderColor: active
-                        ? alpha(onesourceTokens.shell.brandAccent, 0.35)
-                        : "transparent",
-                      borderRadius: 2.75,
-                      color: active ? SHELL_TEXT_PRIMARY : SHELL_TEXT_SECONDARY,
-                      justifyContent: collapsed ? "center" : "flex-start",
-                      mb: 0.6,
-                      minHeight: collapsed ? 50 : 46,
-                      px: collapsed ? 1 : 1.4,
-                      py: 0.85,
-                      position: "relative",
-                      "&::before": {
-                        backgroundColor: onesourceTokens.shell.brandAccent,
-                        borderRadius: 999,
-                        bottom: collapsed ? 10 : 8,
-                        content: '""',
-                        left: collapsed ? 8 : 10,
-                        opacity: active ? 1 : 0,
-                        position: "absolute",
-                        top: collapsed ? 10 : 8,
-                        transition: "opacity 140ms ease",
-                        width: 3,
-                      },
-                      "&.Mui-selected": {
-                        backgroundColor: alpha(
-                          onesourceTokens.shell.brandAccent,
-                          0.14,
-                        ),
-                      },
-                      "&.Mui-selected:hover": {
-                        backgroundColor: alpha(
-                          onesourceTokens.shell.brandAccent,
-                          0.2,
-                        ),
-                      },
-                      "&:hover": {
-                        backgroundColor: alpha(
-                          onesourceTokens.color.neutral[0],
-                          0.08,
-                        ),
-                        borderColor: alpha(
-                          onesourceTokens.color.neutral[0],
-                          0.14,
-                        ),
-                        color: SHELL_TEXT_PRIMARY,
-                      },
-                    }}
-                  >
-                    <ListItemIcon
-                      sx={{
-                        color: "inherit",
-                        justifyContent: "center",
-                        minWidth: collapsed ? 0 : 38,
-                      }}
-                    >
-                      {getNavItemIcon(item.href)}
-                    </ListItemIcon>
-                    {!collapsed ? (
-                      <Typography
-                        sx={{
-                          color: "inherit",
-                          fontSize: "0.92rem",
-                          fontWeight: 600,
-                          lineHeight: 1.35,
-                        }}
-                      >
-                        {item.label}
-                      </Typography>
-                    ) : null}
-                  </ListItemButton>
-                );
-
-                return collapsed ? (
-                  <Tooltip key={item.href} placement="right" title={item.label}>
-                    {navButton}
-                  </Tooltip>
-                ) : (
-                  navButton
-                );
-              })}
-            </List>
-          </Box>
-        ))}
-      </Stack>
-
-      {collapsed && flyoutState ? (
-        <Popover
-          anchorEl={flyoutState.anchorEl}
-          anchorOrigin={{ horizontal: "right", vertical: "top" }}
-          disableAutoFocus
-          disableEnforceFocus
-          disableRestoreFocus
-          onClose={closeFlyout}
-          open
-          slotProps={{
-            paper: {
-              onBlurCapture: (event: ReactFocusEvent<HTMLDivElement>) => {
-                if (
-                  event.relatedTarget instanceof Node &&
-                  (popoverPaperRef.current?.contains(event.relatedTarget) ??
-                    false)
-                ) {
-                  return;
-                }
-
-                scheduleFlyoutClose();
-              },
-              onFocusCapture: clearCloseTimeout,
-              onMouseEnter: clearCloseTimeout,
-              onMouseLeave: scheduleFlyoutClose,
-              ref: popoverPaperRef,
-              sx: {
-                bgcolor: SHELL_DARK_SURFACE_BG,
-                border: `1px solid ${SHELL_PANEL_BORDER}`,
-                borderRadius: 3,
-                boxShadow: "0 18px 44px rgba(2, 6, 23, 0.34)",
-                color: SHELL_TEXT_PRIMARY,
-                ml: 1,
-                overflow: "hidden",
-                p: 0,
-                width: 268,
-              },
-            },
-          }}
-          transformOrigin={{ horizontal: "left", vertical: "top" }}
-        >
-          <Box sx={{ p: 1.25 }}>
+    <Stack
+      component="nav"
+      aria-label={title}
+      id={title === "Mobile navigation" ? "mobile-navigation" : undefined}
+      spacing={2}
+    >
+      {groups.map((group) => (
+        <Box component="section" key={group.key}>
+          <Box sx={{ px: 1, pb: 0.75 }}>
             <Typography
               sx={{
-                color: SHELL_TEXT_FAINT,
-                fontSize: "0.64rem",
+                color: desktopVariant ? "text.secondary" : SHELL_TEXT_FAINT,
+                fontSize: "0.68rem",
                 fontWeight: 700,
                 letterSpacing: "0.18em",
-                px: 1,
-                pb: 0.4,
                 textTransform: "uppercase",
               }}
             >
-              {flyoutState.group.title}
+              {group.title}
             </Typography>
-            <Typography
-              sx={{
-                color: SHELL_TEXT_MUTED,
-                fontSize: "0.78rem",
-                lineHeight: 1.5,
-                px: 1,
-                pb: 1.1,
-              }}
-            >
-              {flyoutState.group.description}
-            </Typography>
-            <List disablePadding>
-              {flyoutState.group.items.map((item) => {
-                const active = isRouteActive(item.href, currentPath);
+          </Box>
+          <List disablePadding sx={{ mt: 0.5 }}>
+            {group.items.map((item) => {
+              const active = isRouteActive(item.href, currentPath);
 
-                return (
-                  <ListItemButton
-                    aria-current={active ? "page" : undefined}
-                    aria-label={item.label}
-                    component={Link}
-                    href={item.href}
-                    key={item.href}
-                    onClick={() => {
-                      onNavigate?.();
-                      onRememberItem?.(createWorkbenchItemFromNavItem(item));
-                      closeFlyout();
-                    }}
-                    selected={active}
+              return (
+                <ListItemButton
+                  aria-current={active ? "page" : undefined}
+                  aria-label={item.label}
+                  component={Link}
+                  href={item.href}
+                  key={item.href}
+                  onClick={() => {
+                    onNavigate?.();
+                    onRememberItem?.(createWorkbenchItemFromNavItem(item));
+                  }}
+                  selected={active}
+                  sx={{
+                    alignItems: "center",
+                    borderRadius: 2.5,
+                    color: desktopVariant
+                      ? active
+                        ? "text.primary"
+                        : "text.secondary"
+                      : active
+                        ? SHELL_TEXT_PRIMARY
+                        : SHELL_TEXT_SECONDARY,
+                    mb: 0.6,
+                    minHeight: 46,
+                    px: 1.4,
+                    py: 0.85,
+                    "&.Mui-selected": desktopVariant
+                      ? {
+                          backgroundColor: alpha(
+                            onesourceTokens.color.accent.main,
+                            0.1,
+                          ),
+                          color: "text.primary",
+                        }
+                      : {
+                          backgroundColor: alpha(
+                            onesourceTokens.shell.brandAccent,
+                            0.14,
+                          ),
+                        },
+                    "&.Mui-selected:hover": desktopVariant
+                      ? {
+                          backgroundColor: alpha(
+                            onesourceTokens.color.accent.main,
+                            0.14,
+                          ),
+                        }
+                      : {
+                          backgroundColor: alpha(
+                            onesourceTokens.shell.brandAccent,
+                            0.2,
+                          ),
+                        },
+                    "&:hover": desktopVariant
+                      ? {
+                          backgroundColor: "action.hover",
+                        }
+                      : {
+                          backgroundColor: alpha(
+                            onesourceTokens.color.neutral[0],
+                            0.08,
+                          ),
+                          color: SHELL_TEXT_PRIMARY,
+                        },
+                  }}
+                >
+                  <ListItemIcon
                     sx={{
-                      borderRadius: 2.5,
-                      color: active ? SHELL_TEXT_PRIMARY : SHELL_TEXT_SECONDARY,
-                      mb: 0.6,
-                      minHeight: 44,
-                      px: 1.4,
-                      py: 0.8,
-                      "&.Mui-selected": {
-                        backgroundColor: alpha(
-                          onesourceTokens.shell.brandAccent,
-                          0.14,
-                        ),
-                      },
-                      "&.Mui-selected:hover": {
-                        backgroundColor: alpha(
-                          onesourceTokens.shell.brandAccent,
-                          0.2,
-                        ),
-                      },
-                      "&:hover": {
-                        backgroundColor: alpha(
-                          onesourceTokens.color.neutral[0],
-                          0.08,
-                        ),
-                        color: SHELL_TEXT_PRIMARY,
-                      },
+                      color: "inherit",
+                      justifyContent: "center",
+                      minWidth: 38,
                     }}
                   >
-                    <ListItemIcon
-                      sx={{
-                        color: "inherit",
-                        justifyContent: "center",
-                        minWidth: 36,
-                      }}
-                    >
-                      {getNavItemIcon(item.href)}
-                    </ListItemIcon>
-                    <Typography
-                      sx={{
-                        color: "inherit",
-                        fontSize: "0.9rem",
-                        fontWeight: 600,
-                        lineHeight: 1.3,
-                      }}
-                    >
-                      {item.label}
-                    </Typography>
-                  </ListItemButton>
-                );
-              })}
-            </List>
-          </Box>
-        </Popover>
-      ) : null}
-    </>
+                    {getNavItemIcon(item.href)}
+                  </ListItemIcon>
+                  <Typography
+                    sx={{
+                      color: "inherit",
+                      fontSize: "0.92rem",
+                      fontWeight: 600,
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {item.label}
+                  </Typography>
+                </ListItemButton>
+              );
+            })}
+          </List>
+        </Box>
+      ))}
+    </Stack>
   );
 }
 
@@ -2205,18 +1856,6 @@ function subscribeToShellPreferenceChanges(onStoreChange: () => void) {
   };
 }
 
-function readCollapsedRailPreferenceSnapshot() {
-  if (typeof window === "undefined") {
-    return "1";
-  }
-
-  try {
-    return window.localStorage.getItem(SHELL_COLLAPSE_STORAGE_KEY) ?? "1";
-  } catch {
-    return "1";
-  }
-}
-
 function readRecentWorkbenchItemsSnapshot() {
   if (typeof window === "undefined") {
     return "[]";
@@ -2330,19 +1969,6 @@ function emitShellPreferenceChange() {
   }
 
   window.dispatchEvent(new Event(SHELL_PREFERENCES_EVENT));
-}
-
-function updateCollapsedRailPreference(value: boolean) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(SHELL_COLLAPSE_STORAGE_KEY, value ? "1" : "0");
-    emitShellPreferenceChange();
-  } catch {
-    // Ignore storage failures; the shell should remain usable without persistence.
-  }
 }
 
 function getCommandOptionId(prefix: string, itemId: string) {
