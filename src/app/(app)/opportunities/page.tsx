@@ -36,7 +36,7 @@ function parseOpportunityListViewState(
   const previewOpportunityId = getFirstSearchParamValue(searchParams?.preview);
 
   return {
-    density: density === "compact" ? "compact" : "comfortable",
+    density: density === "comfortable" ? "comfortable" : "compact",
     previewOpportunityId,
   };
 }

@@ -110,7 +110,7 @@ describe("OpportunityList", () => {
         snapshot={snapshot}
         viewState={{
           density: "compact",
-          previewOpportunityId: "opp_123",
+          previewOpportunityId: null,
         }}
       />,
     );
@@ -135,15 +135,18 @@ describe("OpportunityList", () => {
       screen.getByRole("link", { name: /due soon\s*3 · 30-day window/i }),
     ).toHaveAttribute(
       "href",
-      "/opportunities?view=due_soon&due=next_30_days&sort=deadline_asc&density=compact",
+      "/opportunities?view=due_soon&due=next_30_days&sort=deadline_asc",
     );
     expect(screen.getByRole("link", { name: /^compact$/i })).toHaveAttribute(
       "aria-current",
       "page",
     );
+    expect(
+      screen.queryByRole("complementary", { name: /selected pursuit/i }),
+    ).not.toBeInTheDocument();
   }, 20_000);
 
-  it("renders the current pursuit preview and workspace actions", () => {
+  it("renders the right-side pursuit preview and workspace actions when a preview is selected", () => {
     render(
       <OpportunityList
         snapshot={snapshot}
@@ -154,14 +157,17 @@ describe("OpportunityList", () => {
       />,
     );
 
+    expect(
+      screen.getByLabelText(/opportunity preview drawer/i),
+    ).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /open brief/i })[0]).toHaveAttribute(
       "href",
-      "/opportunities?view=due_soon&q=cloud&naics=541512&stage=qualified&source=manual_entry&due=next_30_days&sort=deadline_asc&density=compact&preview=opp_123",
+      "/opportunities?view=due_soon&q=cloud&naics=541512&stage=qualified&source=manual_entry&due=next_30_days&sort=deadline_asc&preview=opp_123",
     );
     expect(
-      screen.getAllByRole("link", { name: /open workspace/i }).length,
-    ).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByRole("link", { name: /edit record/i })[0]).toHaveAttribute(
+      screen.getByRole("link", { name: /open workspace/i }),
+    ).toHaveAttribute("href", "/opportunities/opp_123");
+    expect(screen.getByRole("link", { name: /edit record/i })).toHaveAttribute(
       "href",
       "/opportunities/opp_123/edit",
     );
@@ -170,7 +176,7 @@ describe("OpportunityList", () => {
       screen.getAllByRole("heading", {
         name: /army cloud operations recompete/i,
       }).length,
-    ).toBeGreaterThanOrEqual(2);
+    ).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/capture brief/i).length).toBeGreaterThan(0);
   }, 20_000);
 
@@ -184,7 +190,7 @@ describe("OpportunityList", () => {
           totalCount: 0,
         }}
         viewState={{
-          density: "comfortable",
+          density: "compact",
           previewOpportunityId: null,
         }}
       />,

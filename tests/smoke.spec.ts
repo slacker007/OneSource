@@ -250,6 +250,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByRole("complementary", { name: /selected pursuit/i }),
   ).toBeVisible();
+  await page.getByRole("button", { name: /close opportunity preview/i }).click();
   await page
     .getByLabel("Primary navigation")
     .getByRole("link", { name: /^Knowledge/i })
@@ -939,6 +940,11 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await expect(page).toHaveURL(/\/opportunities$/);
   await fillOpportunityQuery(page, "Enterprise Knowledge Management");
   await applyOpportunityFilters(page);
+  await page
+    .getByRole("grid", { name: /opportunity pipeline results/i })
+    .getByRole("link", { name: /preview/i })
+    .first()
+    .click();
   const reopenedWorkspaceHref = await page
     .getByRole("complementary", { name: /selected pursuit/i })
     .getByRole("link", { name: /^Open workspace$/i })
@@ -1244,9 +1250,11 @@ test.describe("mobile navigation", () => {
         name: /opportunity pipeline/i,
       }),
     ).toBeVisible();
+    await page.getByRole("link", { name: /preview/i }).first().click();
     await expect(
       page.getByRole("complementary", { name: /selected pursuit/i }),
     ).toBeVisible();
+    await page.getByRole("button", { name: /close opportunity preview/i }).click();
     await expect(
       page.getByRole("button", { name: /open command search/i }),
     ).toBeVisible();

@@ -1,7 +1,11 @@
 "use client";
 
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
+import MuiDrawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import {
@@ -89,12 +93,10 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
     snapshot.totalCount === 0
       ? 0
       : showingFrom + snapshot.pageResultCount - 1;
-  const selectedOpportunity =
+  const previewOpportunity =
     snapshot.results.find(
       (opportunity) => opportunity.id === viewState.previewOpportunityId,
-    ) ??
-    snapshot.results[0] ??
-    null;
+    ) ?? null;
   const activeSavedView = resolveActiveSavedView(snapshot);
   const activeFilterChips = buildActiveFilterChips(snapshot.query, viewState);
   const savedViewItems = buildSavedViewItems(snapshot, viewState);
@@ -123,12 +125,16 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
 
     return outcome === "GO";
   }).length;
-  const previewHref = selectedOpportunity
+  const previewHref = previewOpportunity
     ? buildOpportunityListHref(snapshot.query, viewState, {
         page: snapshot.query.page,
-        previewOpportunityId: selectedOpportunity.id,
+        previewOpportunityId: previewOpportunity.id,
       })
     : null;
+  const closePreviewHref = buildOpportunityListHref(snapshot.query, viewState, {
+    page: snapshot.query.page,
+    previewOpportunityId: null,
+  });
   const gridColumns: GridColDef<OpportunityListItemSummary>[] = [
     {
       field: "pursuit",
@@ -412,15 +418,6 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
       ) : null}
 
       <Stack spacing={2}>
-        {selectedOpportunity ? (
-          <Box sx={{ display: { xs: "block", md: "none" } }}>
-            <OpportunityPreviewSurface
-              opportunity={selectedOpportunity}
-              previewHref={previewHref}
-            />
-          </Box>
-        ) : null}
-
         <Stack spacing={1.5}>
           <Stack
             direction={{ xs: "column", lg: "row" }}
@@ -443,8 +440,8 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
                 Showing {showingFrom}-{showingTo} of {snapshot.totalCount} pursuits
               </Typography>
               <Typography color="text.secondary" variant="body2">
-                Select a row to update the preview, then open the workspace when you
-                need to act.
+                Select a row to open the side preview, then move into the workspace
+                when you need to act.
               </Typography>
             </Stack>
 
@@ -504,7 +501,7 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
                   disableRowSelectionOnClick={false}
                   getRowHeight={() => "auto"}
                   getRowClassName={(params) =>
-                    params.id === selectedOpportunity?.id ? "onesource-selected-row" : ""
+                    params.id === previewOpportunity?.id ? "onesource-selected-row" : ""
                   }
                   hideFooter
                   rows={snapshot.results}
@@ -557,21 +554,12 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
                     page: snapshot.query.page,
                     previewOpportunityId: opportunity.id,
                   })}
-                  isSelected={opportunity.id === selectedOpportunity?.id}
+                  isSelected={opportunity.id === previewOpportunity?.id}
                   key={opportunity.id}
                   opportunity={opportunity}
                 />
               ))}
             </Stack>
-
-            {selectedOpportunity ? (
-              <Box sx={{ display: { xs: "none", md: "block" } }}>
-                <OpportunityPreviewSurface
-                  opportunity={selectedOpportunity}
-                  previewHref={previewHref}
-                />
-              </Box>
-            ) : null}
           </>
         ) : (
           <EmptyState
@@ -632,6 +620,13 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
           </Stack>
         </Stack>
       </Stack>
+
+      <OpportunityPreviewDrawer
+        onClose={() => router.push(closePreviewHref)}
+        open={Boolean(previewOpportunity)}
+        opportunity={previewOpportunity}
+        previewHref={previewHref}
+      />
     </Stack>
   );
 }
@@ -812,70 +807,232 @@ function OpportunityFilterPanel({
 function OpportunityPreviewSurface({
   opportunity,
   previewHref,
+  variant = "panel",
 }: {
   opportunity: OpportunityListItemSummary;
   previewHref: string | null;
+  variant?: "drawer" | "panel";
 }) {
+  const actions = (
+    <>
+      {previewHref ? (
+        <Button density="compact" href={previewHref} tone="neutral" variant="soft">
+          Open brief
+        </Button>
+      ) : null}
+      <Button density="compact" href={`/opportunities/${opportunity.id}`}>
+        Open workspace
+      </Button>
+      <Button
+        density="compact"
+        href={`/opportunities/${opportunity.id}/edit`}
+        tone="neutral"
+        variant="outlined"
+      >
+        Edit record
+      </Button>
+    </>
+  );
+  const description =
+    opportunity.sourceSummaryText ??
+    "Open the workspace for scoring, stage movement, tasks, and documents.";
+  const metadata = buildPreviewMetadata(opportunity);
+  const body = (
+    <Stack spacing={1.25}>
+      <Typography variant="h6">Capture brief</Typography>
+      <DetailLine
+        label="Recommendation"
+        value={
+          opportunity.bidDecision?.finalOutcome ??
+          opportunity.score?.recommendationOutcome ??
+          "Pending review"
+        }
+      />
+      <DetailLine
+        label="Vehicles"
+        value={
+          opportunity.vehicles.length > 0
+            ? opportunity.vehicles.map((vehicle) => vehicle.code).join(", ")
+            : "No vehicle recorded"
+        }
+      />
+      <DetailLine
+        label="Open work"
+        value={`${opportunity.tasks.length} tasks and ${opportunity.milestones.length} milestones`}
+      />
+      {opportunity.sourceSummaryText ? (
+        <Typography color="text.secondary" variant="body2">
+          {truncateText(opportunity.sourceSummaryText, 180)}
+        </Typography>
+      ) : null}
+    </Stack>
+  );
+
+  if (variant === "drawer") {
+    return (
+      <Box
+        aria-label="Selected pursuit"
+        component="aside"
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 2.5,
+          height: "100%",
+          overflowY: "auto",
+          px: { sm: 3, xs: 2.5 },
+          py: 2.5,
+        }}
+      >
+        <Stack spacing={1.5}>
+          <Typography
+            color="text.secondary"
+            sx={{ letterSpacing: "0.2em" }}
+            variant="overline"
+          >
+            Selected pursuit
+          </Typography>
+          <Stack spacing={1}>
+            <Typography component="h2" variant="h2">
+              {opportunity.title}
+            </Typography>
+            <Box color="text.secondary" sx={{ fontSize: "0.95rem", lineHeight: 1.75 }}>
+              {description}
+            </Box>
+          </Stack>
+        </Stack>
+
+        {metadata.length > 0 ? (
+          <Box>
+            <Divider />
+            <Box
+              component="dl"
+              sx={{
+                display: "grid",
+                gap: 2,
+                gridTemplateColumns: { sm: "repeat(2, minmax(0, 1fr))", xs: "1fr" },
+                py: 2.25,
+              }}
+            >
+              {metadata.map((item) => (
+                <Box key={item.label}>
+                  <Typography
+                    color="text.secondary"
+                    component="dt"
+                    sx={{ letterSpacing: "0.18em" }}
+                    variant="overline"
+                  >
+                    {item.label}
+                  </Typography>
+                  <Box
+                    color="text.primary"
+                    component="dd"
+                    sx={{ mt: 0.75, fontSize: "0.95rem", lineHeight: 1.7, ml: 0 }}
+                  >
+                    {item.value}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+            <Divider />
+          </Box>
+        ) : null}
+
+        <Stack direction="row" sx={{ columnGap: 1.5, flexWrap: "wrap", rowGap: 1.5 }}>
+          {actions}
+        </Stack>
+
+        {body}
+      </Box>
+    );
+  }
+
   return (
     <PreviewPanel
-      actions={
-        <>
-          {previewHref ? (
-            <Button density="compact" href={previewHref} tone="neutral" variant="soft">
-              Open brief
-            </Button>
-          ) : null}
-          <Button density="compact" href={`/opportunities/${opportunity.id}`}>
-            Open workspace
-          </Button>
-          <Button
-            density="compact"
-            href={`/opportunities/${opportunity.id}/edit`}
-            tone="neutral"
-            variant="outlined"
-          >
-            Edit record
-          </Button>
-        </>
-      }
-      description={
-        opportunity.sourceSummaryText ??
-        "Open the workspace for scoring, stage movement, tasks, and documents."
-      }
+      actions={actions}
+      description={description}
       eyebrow="Selected pursuit"
       label="Selected pursuit"
-      metadata={buildPreviewMetadata(opportunity)}
+      metadata={metadata}
       title={opportunity.title}
     >
-      <Stack spacing={1.25}>
-        <Typography variant="h6">Capture brief</Typography>
-        <DetailLine
-          label="Recommendation"
-          value={
-            opportunity.bidDecision?.finalOutcome ??
-            opportunity.score?.recommendationOutcome ??
-            "Pending review"
-          }
-        />
-        <DetailLine
-          label="Vehicles"
-          value={
-            opportunity.vehicles.length > 0
-              ? opportunity.vehicles.map((vehicle) => vehicle.code).join(", ")
-              : "No vehicle recorded"
-          }
-        />
-        <DetailLine
-          label="Open work"
-          value={`${opportunity.tasks.length} tasks and ${opportunity.milestones.length} milestones`}
-        />
-        {opportunity.sourceSummaryText ? (
-          <Typography color="text.secondary" variant="body2">
-            {truncateText(opportunity.sourceSummaryText, 180)}
-          </Typography>
-        ) : null}
-      </Stack>
+      {body}
     </PreviewPanel>
+  );
+}
+
+function OpportunityPreviewDrawer({
+  onClose,
+  open,
+  opportunity,
+  previewHref,
+}: {
+  onClose: () => void;
+  open: boolean;
+  opportunity: OpportunityListItemSummary | null;
+  previewHref: string | null;
+}) {
+  return (
+    <MuiDrawer
+      anchor="right"
+      onClose={onClose}
+      open={open}
+      slotProps={{
+        paper: {
+          "aria-label": "Opportunity preview drawer",
+        },
+      }}
+      sx={{
+        "& .MuiDrawer-paper": {
+          bgcolor: onesourceTokens.color.surface.default,
+          borderLeft: `1px solid ${onesourceTokens.color.border.subtle}`,
+          maxWidth: "100vw",
+          width: { xs: "100vw", sm: 440, lg: 480 },
+        },
+      }}
+    >
+      <Box
+        sx={{
+          alignItems: "center",
+          borderBottom: `1px solid ${onesourceTokens.color.border.subtle}`,
+          display: "flex",
+          justifyContent: "space-between",
+          px: { sm: 3, xs: 2.5 },
+          py: 1.5,
+        }}
+      >
+        <Box>
+          <Typography
+            sx={{
+              color: onesourceTokens.color.text.muted,
+              fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+              fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+            }}
+          >
+            Pursuit preview
+          </Typography>
+          <Typography sx={{ mt: 0.5 }} variant="h6">
+            Review without leaving the queue
+          </Typography>
+        </Box>
+        <IconButton
+          aria-label="Close opportunity preview"
+          onClick={onClose}
+          sx={{ color: "text.primary" }}
+        >
+          <CloseRoundedIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      {opportunity ? (
+        <OpportunityPreviewSurface
+          opportunity={opportunity}
+          previewHref={previewHref}
+          variant="drawer"
+        />
+      ) : null}
+    </MuiDrawer>
   );
 }
 
@@ -939,7 +1096,7 @@ function MobileOpportunityCard({
 
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
           <Button density="compact" href={href} tone="neutral" variant="soft">
-            Open brief
+            Preview
           </Button>
           <Button density="compact" href={`/opportunities/${opportunity.id}`} variant="text">
             Open workspace
@@ -1260,7 +1417,7 @@ function buildOpportunityListHref(
     params.set("page", String(nextQuery.page));
   }
 
-  if (nextDensity !== "comfortable") {
+  if (nextDensity !== "compact") {
     params.set("density", nextDensity);
   }
 
