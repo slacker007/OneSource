@@ -349,5 +349,38 @@ describe("AppShellFrame", () => {
     expect(
       window.localStorage.getItem("onesource.shell.is-collapsed"),
     ).toBeNull();
+  }, 20_000);
+
+  it("highlights only the most specific workspace admin route", () => {
+    render(
+      <AppShellFrame
+        allowDecisionSupport
+        allowWorkspaceSettings
+        currentPath="/settings/users"
+        sessionUser={{
+          email: "admin@onesource.local",
+          name: "Admin User",
+          organizationId: "org_123",
+          roleKeys: ["admin"],
+          userId: "user_123",
+        }}
+        shellSnapshot={buildShellSnapshot()}
+      >
+        <div>Users page</div>
+      </AppShellFrame>,
+    );
+
+    const primaryNavigation = screen.getByRole("navigation", {
+      name: /primary navigation/i,
+    });
+    const settingsLink = within(primaryNavigation).getByRole("link", {
+      name: /^settings$/i,
+    });
+    const usersLink = within(primaryNavigation).getByRole("link", {
+      name: /^users & roles$/i,
+    });
+
+    expect(usersLink).toHaveAttribute("aria-current", "page");
+    expect(settingsLink).not.toHaveAttribute("aria-current");
   });
 });

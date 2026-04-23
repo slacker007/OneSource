@@ -52,12 +52,10 @@ const SHELL_RECENT_DESTINATIONS_STORAGE_KEY =
   "onesource.shell.recent-destinations";
 const SHELL_PINNED_ITEM_LIMIT = 6;
 const SHELL_RECENT_DESTINATION_LIMIT = 4;
-const SHELL_DARK_SURFACE_BG = onesourceTokens.shell.background;
 const SHELL_PANEL_BG = onesourceTokens.shell.panel;
 const SHELL_PANEL_BORDER = onesourceTokens.shell.panelBorder;
 const SHELL_TEXT_PRIMARY = onesourceTokens.shell.textPrimary;
 const SHELL_TEXT_SECONDARY = onesourceTokens.shell.textSecondary;
-const SHELL_TEXT_MUTED = onesourceTokens.shell.textMuted;
 const SHELL_TEXT_FAINT = onesourceTokens.shell.textFaint;
 const APP_HEADER_BG = alpha(onesourceTokens.color.background.strong, 0.92);
 const APP_HEADER_BORDER = onesourceTokens.color.border.subtle;
@@ -1338,116 +1336,138 @@ function NavigationMenu({
       id={title === "Mobile navigation" ? "mobile-navigation" : undefined}
       spacing={desktopVariant ? 1.25 : 2}
     >
-      {groups.map((group) => (
-        <Box component="section" key={group.key}>
-          <Box sx={{ px: desktopVariant ? 0.75 : 1, pb: desktopVariant ? 0.5 : 0.75 }}>
-            <Typography
+      {groups.map((group) => {
+        const activeItem = group.items.reduce<typeof group.items[number] | null>(
+          (bestMatch, candidate) => {
+            if (!isRouteActive(candidate.href, currentPath)) {
+              return bestMatch;
+            }
+
+            if (!bestMatch || candidate.href.length > bestMatch.href.length) {
+              return candidate;
+            }
+
+            return bestMatch;
+          },
+          null,
+        );
+
+        return (
+          <Box component="section" key={group.key}>
+            <Box
               sx={{
-                color: desktopVariant ? "text.secondary" : SHELL_TEXT_FAINT,
-                fontSize: desktopVariant ? "0.64rem" : "0.68rem",
-                fontWeight: 700,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
+                px: desktopVariant ? 0.75 : 1,
+                pb: desktopVariant ? 0.5 : 0.75,
               }}
             >
-              {group.title}
-            </Typography>
-          </Box>
-          <List disablePadding sx={{ mt: desktopVariant ? 0.25 : 0.5 }}>
-            {group.items.map((item) => {
-              const active = isRouteActive(item.href, currentPath);
+              <Typography
+                sx={{
+                  color: desktopVariant ? "text.secondary" : SHELL_TEXT_FAINT,
+                  fontSize: desktopVariant ? "0.64rem" : "0.68rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {group.title}
+              </Typography>
+            </Box>
+            <List disablePadding sx={{ mt: desktopVariant ? 0.25 : 0.5 }}>
+              {group.items.map((item) => {
+                const active = item.href === activeItem?.href;
 
-              return (
-                <ListItemButton
-                  aria-current={active ? "page" : undefined}
-                  aria-label={item.label}
-                  component={Link}
-                  href={item.href}
-                  key={item.href}
-                  onClick={() => {
-                    onNavigate?.();
-                    onRememberItem?.(createWorkbenchItemFromNavItem(item));
-                  }}
-                  selected={active}
-                  sx={{
-                    alignItems: "center",
-                    borderRadius: desktopVariant ? 0 : 2.5,
-                    color: desktopVariant
-                      ? active
-                        ? "text.primary"
-                        : "text.secondary"
-                      : active
-                        ? SHELL_TEXT_PRIMARY
-                        : SHELL_TEXT_SECONDARY,
-                    mb: desktopVariant ? 0.25 : 0.6,
-                    minHeight: desktopVariant ? 40 : 46,
-                    px: desktopVariant ? 1 : 1.4,
-                    py: desktopVariant ? 0.5 : 0.85,
-                    "&.Mui-selected": desktopVariant
-                      ? {
-                          backgroundColor: alpha(
-                            onesourceTokens.color.accent.main,
-                            0.1,
-                          ),
-                          color: "text.primary",
-                        }
-                      : {
-                          backgroundColor: alpha(
-                            onesourceTokens.shell.brandAccent,
-                            0.14,
-                          ),
-                        },
-                    "&.Mui-selected:hover": desktopVariant
-                      ? {
-                          backgroundColor: alpha(
-                            onesourceTokens.color.accent.main,
-                            0.14,
-                          ),
-                        }
-                      : {
-                          backgroundColor: alpha(
-                            onesourceTokens.shell.brandAccent,
-                            0.2,
-                          ),
-                        },
-                    "&:hover": desktopVariant
-                      ? {
-                          backgroundColor: "action.hover",
-                        }
-                      : {
-                          backgroundColor: alpha(
-                            onesourceTokens.color.neutral[0],
-                            0.08,
-                          ),
-                          color: SHELL_TEXT_PRIMARY,
-                        },
-                  }}
-                >
-                  <ListItemIcon
+                return (
+                  <ListItemButton
+                    aria-current={active ? "page" : undefined}
+                    aria-label={item.label}
+                    component={Link}
+                    href={item.href}
+                    key={item.href}
+                    onClick={() => {
+                      onNavigate?.();
+                      onRememberItem?.(createWorkbenchItemFromNavItem(item));
+                    }}
+                    selected={active}
                     sx={{
-                      color: "inherit",
-                      justifyContent: "center",
-                      minWidth: desktopVariant ? 32 : 38,
+                      alignItems: "center",
+                      borderRadius: desktopVariant ? 0 : 2.5,
+                      color: desktopVariant
+                        ? active
+                          ? "text.primary"
+                          : "text.secondary"
+                        : active
+                          ? SHELL_TEXT_PRIMARY
+                          : SHELL_TEXT_SECONDARY,
+                      mb: desktopVariant ? 0.25 : 0.6,
+                      minHeight: desktopVariant ? 40 : 46,
+                      px: desktopVariant ? 1 : 1.4,
+                      py: desktopVariant ? 0.5 : 0.85,
+                      "&.Mui-selected": desktopVariant
+                        ? {
+                            backgroundColor: alpha(
+                              onesourceTokens.color.accent.main,
+                              0.1,
+                            ),
+                            color: "text.primary",
+                          }
+                        : {
+                            backgroundColor: alpha(
+                              onesourceTokens.shell.brandAccent,
+                              0.14,
+                            ),
+                          },
+                      "&.Mui-selected:hover": desktopVariant
+                        ? {
+                            backgroundColor: alpha(
+                              onesourceTokens.color.accent.main,
+                              0.14,
+                            ),
+                          }
+                        : {
+                            backgroundColor: alpha(
+                              onesourceTokens.shell.brandAccent,
+                              0.2,
+                            ),
+                          },
+                      "&:hover": desktopVariant
+                        ? {
+                            backgroundColor: "action.hover",
+                          }
+                        : {
+                            backgroundColor: alpha(
+                              onesourceTokens.color.neutral[0],
+                              0.08,
+                            ),
+                            color: SHELL_TEXT_PRIMARY,
+                          },
                     }}
                   >
-                    {getNavItemIcon(item.href)}
-                  </ListItemIcon>
-                  <Typography
-                    sx={{
-                      color: "inherit",
-                      fontSize: desktopVariant ? "0.88rem" : "0.92rem",
-                      fontWeight: 600,
-                      lineHeight: 1.35,
-                    }}
-                  >
-                    {item.label}
-                  </Typography>
-                </ListItemButton>
-              );
-            })}
-          </List>
-        </Box>
-      ))}
+                    <ListItemIcon
+                      sx={{
+                        color: "inherit",
+                        justifyContent: "center",
+                        minWidth: desktopVariant ? 32 : 38,
+                      }}
+                    >
+                      {getNavItemIcon(item.href)}
+                    </ListItemIcon>
+                    <Typography
+                      sx={{
+                        color: "inherit",
+                        fontSize: desktopVariant ? "0.88rem" : "0.92rem",
+                        fontWeight: 600,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {item.label}
+                    </Typography>
+                  </ListItemButton>
+                );
+              })}
+            </List>
+          </Box>
+        );
+      })}
     </Stack>
   );
 }

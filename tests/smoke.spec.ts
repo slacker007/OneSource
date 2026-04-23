@@ -576,6 +576,16 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     .click();
   await expect(page).toHaveURL(/\/settings\/users$/);
   await expect(
+    page
+      .getByLabel("Primary navigation")
+      .getByRole("link", { name: /^Users & Roles$/i }),
+  ).toHaveAttribute("aria-current", "page");
+  await expect(
+    page
+      .getByLabel("Primary navigation")
+      .getByRole("link", { name: /^Settings$/i }),
+  ).not.toHaveAttribute("aria-current", "page");
+  await expect(
     page.getByRole("heading", {
       name: /user administration/i,
     }),

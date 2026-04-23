@@ -87,9 +87,9 @@ describe("compose test stack configuration", () => {
     expect(makefile).toContain("$(TEST_COMPOSE) exec -T test npm test");
     expect(makefile).toContain("$(TEST_COMPOSE) exec -T test npm run build");
     expect(makefile).toContain(
-      "$(TEST_COMPOSE) exec -T test npx prisma migrate deploy",
+      "$(TEST_COMPOSE) run --rm test ./node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma",
     );
-    expect(makefile).toContain("$(TEST_COMPOSE) exec -T test npm run db:seed");
+    expect(makefile).toContain("$(TEST_COMPOSE) run --rm test node prisma/seed.mjs");
     expect(makefile).toContain("$(MAKE) compose-test-browser-image");
     expect(makefile).not.toContain(
       "$(TEST_COMPOSE) run --rm --build test npm run lint",
