@@ -51,7 +51,10 @@ describe("compose test stack configuration", () => {
   });
 
   it("defines a dedicated test Docker stage that skips the app build", () => {
-    const dockerfile = fs.readFileSync(path.join(repoRoot, "Dockerfile"), "utf8");
+    const dockerfile = fs.readFileSync(
+      path.join(repoRoot, "Dockerfile"),
+      "utf8",
+    );
     const testStageMatch = dockerfile.match(
       /FROM base AS test([\s\S]*?)FROM base AS builder/,
     );
@@ -66,7 +69,13 @@ describe("compose test stack configuration", () => {
   });
 
   it("uses a slim standalone browser-app target for compose e2e runs", () => {
-    const dockerfile = fs.readFileSync(path.join(repoRoot, "Dockerfile"), "utf8");
+    const dockerfile = fs.readFileSync(
+      path.join(repoRoot, "Dockerfile"),
+      "utf8",
+    );
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"),
+    ) as { scripts: Record<string, string> };
     const e2eWebStageMatch = dockerfile.match(
       /FROM base AS e2e-web([\s\S]*?)FROM mcr\.microsoft\.com\/playwright:v1\.59\.1-noble AS playwright/,
     );
@@ -76,9 +85,26 @@ describe("compose test stack configuration", () => {
     );
     const webServiceBlock =
       composeFile.match(/\n  web:\s*([\s\S]*?)\n  playwright:/)?.[1] ?? "";
-    const nextConfig = fs.readFileSync(path.join(repoRoot, "next.config.ts"), "utf8");
+    const nextConfig = fs.readFileSync(
+      path.join(repoRoot, "next.config.ts"),
+      "utf8",
+    );
 
     expect(nextConfig).toContain('output: "standalone"');
+    expect(packageJson.scripts.start).toBe(
+      "HOSTNAME=127.0.0.1 PORT=3000 node scripts/start-standalone.mjs",
+    );
+    expect(packageJson.scripts.start).not.toContain("next start");
+    expect(packageJson.scripts["start:compose"]).toBe(
+      "HOSTNAME=0.0.0.0 PORT=3000 node scripts/start-standalone.mjs",
+    );
+    expect(packageJson.scripts["start:compose"]).not.toContain("next start");
+    expect(
+      fs.readFileSync(
+        path.join(repoRoot, "scripts/start-standalone.mjs"),
+        "utf8",
+      ),
+    ).toContain("fs.cpSync(staticSource, staticTarget, { recursive: true })");
     expect(e2eWebStageMatch?.[1]).toBeDefined();
     expect(e2eWebStageMatch?.[1]).toContain(
       "COPY --from=builder /app/.next/standalone ./",
@@ -106,14 +132,18 @@ describe("compose test stack configuration", () => {
     expect(makefile).toContain("compose-test-browser-image:");
     expect(makefile).toContain("$(TEST_COMPOSE) build web playwright");
     expect(makefile).toContain("compose-test-browser-image-fresh:");
-    expect(makefile).toContain("$(TEST_COMPOSE) build --no-cache web playwright");
+    expect(makefile).toContain(
+      "$(TEST_COMPOSE) build --no-cache web playwright",
+    );
     expect(makefile).toContain("$(TEST_COMPOSE) exec -T test npm run lint");
     expect(makefile).toContain("$(TEST_COMPOSE) exec -T test npm test");
     expect(makefile).toContain("$(TEST_COMPOSE) exec -T test npm run build");
     expect(makefile).toContain(
       "$(TEST_COMPOSE) run --rm test ./node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma",
     );
-    expect(makefile).toContain("$(TEST_COMPOSE) run --rm test node prisma/seed.mjs");
+    expect(makefile).toContain(
+      "$(TEST_COMPOSE) run --rm test node prisma/seed.mjs",
+    );
     expect(makefile).toContain("$(MAKE) compose-test-browser-image");
     expect(makefile).toContain("compose-down:");
     expect(makefile).toContain("$(DEV_COMPOSE) down --remove-orphans");
@@ -124,9 +154,53 @@ describe("compose test stack configuration", () => {
     expect(makefile).not.toContain(
       "$(TEST_COMPOSE) run --rm --build test npm run lint",
     );
-    expect(makefile).not.toContain("$(TEST_COMPOSE) run --rm --build test npm test");
+    expect(makefile).not.toContain(
+      "$(TEST_COMPOSE) run --rm --build test npm test",
+    );
     expect(makefile).not.toContain(
       "$(TEST_COMPOSE) run --rm --build test npm run build",
     );
+  });
+
+  it("defines the hosted CI gate without using Docker Compose for tests", () => {
+    const workflow = fs.readFileSync(
+      path.join(repoRoot, ".github/workflows/ci.yml"),
+      "utf8",
+    );
+    const testJobBlock =
+      workflow.match(/\n  test:\s*([\s\S]*?)\n  image:/)?.[1] ?? "";
+    const imageJobBlock = workflow.match(/\n  image:\s*([\s\S]*)/)?.[1] ?? "";
+
+    expect(workflow).toContain("pull_request:");
+    expect(workflow).toContain("branches:");
+    expect(workflow).toContain("- main");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(testJobBlock).toContain("uses: actions/setup-node@v6");
+    expect(testJobBlock).toContain("node-version: 20");
+    expect(testJobBlock).toContain("image: postgres:16-bookworm");
+    expect(testJobBlock).toContain("run: npm ci");
+    expect(testJobBlock).toContain("run: npm run prisma:generate");
+    expect(testJobBlock).toContain(
+      "run: npx playwright install --with-deps chromium",
+    );
+    expect(testJobBlock).toContain("run: npm run prisma:validate");
+    expect(testJobBlock).toContain("run: npx prisma migrate deploy");
+    expect(testJobBlock).toContain("run: npm run db:seed");
+    expect(testJobBlock).toContain("run: npm run lint");
+    expect(testJobBlock).toContain("run: npm test");
+    expect(testJobBlock).toContain("run: npm run build");
+    expect(testJobBlock).toContain(
+      "PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e",
+    );
+    expect(testJobBlock).toContain("uses: actions/upload-artifact@v4");
+    expect(testJobBlock).not.toContain("docker compose");
+    expect(testJobBlock).not.toContain("make compose-test");
+    expect(imageJobBlock).toContain("needs: test");
+    expect(imageJobBlock).toContain("uses: docker/setup-buildx-action@v4");
+    expect(imageJobBlock).toContain("docker login ghcr.io");
+    expect(imageJobBlock).toContain("uses: docker/build-push-action@v7");
+    expect(imageJobBlock).toContain("target: runner");
+    expect(imageJobBlock).toContain("push: true");
+    expect(imageJobBlock).toContain("ghcr.io/${GITHUB_REPOSITORY,,}");
   });
 });

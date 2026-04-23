@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This guide captures the truthful deployment posture for the current repo. The only verified target today is a single-host internal pilot that runs the compose-managed `web`, `worker`, and `db` services with environment variables injected from `.env` or the host runtime.
+This guide captures the truthful deployment posture for the current repo. The only verified runtime target today is a single-host internal pilot that runs the compose-managed `web`, `worker`, and `db` services with environment variables injected from `.env` or the host runtime. GitHub Actions now provides the hosted CI gate and publishes a deployable GHCR image after green `main` or manual runs, but it does not deploy to a host yet.
 
 ## Current Supported Topology
 
@@ -11,7 +11,7 @@ This guide captures the truthful deployment posture for the current repo. The on
 - `db`: PostgreSQL 16
 - persistent local volumes for PostgreSQL data and document uploads
 
-This repo does not yet ship Kubernetes manifests, Terraform, managed-secret integrations, or a hosted deployment pipeline. A controlled internal pilot should therefore use the compose-managed topology that is already verified in this repo.
+This repo does not yet ship Kubernetes manifests, Terraform, managed-secret integrations, or a hosted deployment pipeline. A controlled internal pilot should therefore use the compose-managed topology that is already verified in this repo, optionally pulling the GHCR image produced by the `CI` workflow once registry access is configured.
 
 ## Pre-Deploy Checklist
 
@@ -24,6 +24,8 @@ npm test
 npm run build
 make compose-test-e2e
 ```
+
+For hosted validation, require a green GitHub Actions `CI` run for the same revision. The Actions test job uses Node 20 plus a PostgreSQL service container for speed, then publishes `ghcr.io/<owner>/<repo>:main` and `ghcr.io/<owner>/<repo>:sha-<shortsha>` only after the full gate passes on `main` or manual dispatch.
 
 2. Prepare the runtime environment:
 

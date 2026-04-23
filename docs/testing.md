@@ -17,6 +17,27 @@ The repo-level Vitest configuration now sets `testTimeout: 10_000`. Keep that as
 
 Integration tests do not exist yet. When database-backed integration tests are added, the compose `test` service is the canonical place to run them because it joins the same network as PostgreSQL and receives the compose-managed `DATABASE_URL`.
 
+## GitHub Actions CI Gate
+
+The committed workflow at `.github/workflows/ci.yml` is the required hosted CI gate for pull requests, pushes to `main`, and manual dispatch. It intentionally does not use Docker Compose for tests, so the hosted path stays fast and close to the way GitHub runners are provisioned.
+
+The CI test job uses Node 20 on `ubuntu-latest`, npm caching from `package-lock.json`, a PostgreSQL 16 service container, and fixture-backed external-source behavior. Its required command sequence is:
+
+```bash
+npm ci
+npm run prisma:generate
+npx playwright install --with-deps chromium
+npm run prisma:validate
+npx prisma migrate deploy
+npm run db:seed
+npm run lint
+npm test
+npm run build
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e
+```
+
+The workflow starts the built Next.js app with `npm run start` before the Playwright step and waits for `/api/health`. On failure it uploads `coverage`, `playwright-report`, and `test-results` for short-retention debugging. Successful `main` and manual runs then build and push the Dockerfile `runner` target to GHCR. Compose remains the canonical local parity workflow and should still be used when validating container orchestration changes.
+
 ## Optional Offline Container Dependency Strategy
 
 Compose builds now default to normal `npm ci`. If the container environment cannot reach the npm registry, you can generate local fallback cache directories under `vendor/`; those artifacts are intentionally ignored by git and are not part of the committed repo state.

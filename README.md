@@ -163,6 +163,13 @@ npm run db:seed
 
 ### Verification
 
+GitHub Actions runs the release gate through `.github/workflows/ci.yml` on
+pull requests, pushes to `main`, and manual dispatch. The CI test job uses a
+fast Node 20 runner with a PostgreSQL service container rather than Docker
+Compose, then runs Prisma validation, migrations, seed, lint, Vitest coverage,
+production build, and Playwright Chromium against the built app. Successful
+`main` or manual runs also publish the `runner` Docker image to GHCR.
+
 Host-side commands:
 
 ```bash

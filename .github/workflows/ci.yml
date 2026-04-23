@@ -1,0 +1,164 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  AUTH_SECRET: ci-auth-secret-for-actions-change-before-use
+  DATABASE_URL: postgresql://onesource:onesource@127.0.0.1:5432/onesource
+  DEADLINE_REMINDER_LOOKAHEAD_DAYS: "7"
+  DOCUMENT_PARSER_BATCH_SIZE: "10"
+  DOCUMENT_PARSER_MAX_ATTEMPTS: "3"
+  DOCUMENT_UPLOAD_DIR: .data/opportunity-documents
+  NEXT_TELEMETRY_DISABLED: "1"
+  NEXTAUTH_URL: http://127.0.0.1:3000
+  OPPORTUNITY_SCORECARD_BATCH_SIZE: "10"
+  POSTGRES_DB: onesource
+  POSTGRES_PASSWORD: onesource
+  POSTGRES_USER: onesource
+  SAM_GOV_SEARCH_ENDPOINT: https://api.sam.gov/prod/opportunities/v2/search
+  SAM_GOV_TIMEOUT_MS: "15000"
+  SAM_GOV_USE_FIXTURES: "true"
+  SOURCE_SYNC_BATCH_SIZE: "3"
+  SOURCE_SYNC_INTERVAL_MINUTES: "1440"
+  WORKER_POLL_INTERVAL_MS: "30000"
+
+jobs:
+  test:
+    name: Full test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_DB: onesource
+          POSTGRES_PASSWORD: onesource
+          POSTGRES_USER: onesource
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U onesource -d onesource -h 127.0.0.1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 10s
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare runtime storage
+        run: mkdir -p .data/opportunity-documents
+
+      - name: Validate Prisma schema
+        run: npm run prisma:validate
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed database
+        run: npm run db:seed
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit and component tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Playwright Chromium smoke tests
+        run: |
+          npm run start > /tmp/onesource-next.log 2>&1 &
+          app_pid="$!"
+          trap 'kill "$app_pid" || true' EXIT
+
+          for attempt in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/api/health; then
+              PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run e2e
+              exit $?
+            fi
+            sleep 2
+          done
+
+          cat /tmp/onesource-next.log
+          exit 1
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-failure-artifacts
+          path: |
+            coverage
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  image:
+    name: Build and publish image
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: test
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Prepare image tags
+        id: image
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          short_sha="${GITHUB_SHA::12}"
+          {
+            echo "image=${image}"
+            echo "short_sha=${short_sha}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and publish Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: runner
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image }}:main
+            ${{ steps.image.outputs.image }}:sha-${{ steps.image.outputs.short_sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
