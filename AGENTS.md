@@ -238,7 +238,10 @@ Testing is required work, not cleanup work.
 - Do not commit partial work as complete work.
 - Do not amend prior commits unless explicitly requested.
 - Commit only after the required verification passes or the inability to verify is documented in `PRD.md` and the item remains incomplete.
-- Commit messages should be imperative and scoped to the completed checklist item, for example: `Add source search result import preview`.
+- Use Conventional Commits for all future commit messages.
+- Prefer the format `type(scope): summary` when a clear scope exists, or `type: summary` when it does not.
+- Choose the narrowest truthful conventional type for the completed work, such as `feat`, `fix`, `docs`, `refactor`, `test`, `build`, or `chore`.
+- Keep the summary imperative and scoped to the completed checklist item or durable-doc change, for example: `feat(sources): add source search result import preview` or `docs(readme): clean up local workflow guide`.
 - If a loop produces documentation-only changes, commit them only when they leave the repo in a better durable state for the next loop.
 - Review the staged diff before committing and ensure it matches the intended checklist item.
 
