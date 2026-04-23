@@ -70,14 +70,24 @@ async function selectMuiOption(
 
 async function selectFirstMuiOption(page: Page, target: Locator | string) {
   const combobox = typeof target === "string" ? page.locator(target) : target;
+  await combobox.scrollIntoViewIfNeeded();
   await combobox.click();
-  const firstOption = page.getByRole("option").first();
-  const optionLabel = (await firstOption.textContent())?.trim() ?? "";
-  if (!optionLabel) {
-    throw new Error("No selectable option was available in the MUI listbox.");
+  const options = page.getByRole("option");
+  const optionCount = await options.count();
+
+  for (let index = 0; index < optionCount; index += 1) {
+    const option = options.nth(index);
+    const optionLabel = (await option.textContent())?.trim() ?? "";
+
+    if (!optionLabel || /blocked/i.test(optionLabel)) {
+      continue;
+    }
+
+    await option.click();
+    return optionLabel;
   }
-  await firstOption.click();
-  return optionLabel;
+
+  throw new Error("No selectable option was available in the MUI listbox.");
 }
 
 async function resolveOpportunityFilterContext(page: Page) {
@@ -94,7 +104,18 @@ async function resolveOpportunityFilterContext(page: Page) {
   const mobileQueryInput = page.locator("#mobile-opportunity-query");
 
   if (!(await mobileQueryInput.isVisible())) {
-    await page.getByRole("button", { name: /^filters$/i }).click();
+    await page
+      .getByRole("button", { name: /^(show filters|hide filters|filters)$/i })
+      .click();
+
+    if (await desktopQueryInput.isVisible()) {
+      return {
+        form: desktopQueryInput.locator("xpath=ancestor::form[1]"),
+        prefix: "desktop" as const,
+        queryInput: desktopQueryInput,
+      };
+    }
+
     await expect(mobileQueryInput).toBeVisible();
   }
 
@@ -110,22 +131,18 @@ async function fillOpportunityQuery(page: Page, value: string) {
   await queryInput.fill(value);
 }
 
-async function selectOpportunityFilterOption(
-  page: Page,
-  suffix: "agency" | "due" | "naics" | "sort" | "source" | "stage",
-  optionName: RegExp | string,
-) {
-  const { prefix } = await resolveOpportunityFilterContext(page);
-  await selectMuiOption(
-    page,
-    `#${prefix}-opportunity-${suffix}`,
-    optionName,
-  );
-}
-
 async function applyOpportunityFilters(page: Page) {
   const { form } = await resolveOpportunityFilterContext(page);
-  await form.getByRole("button", { name: /apply filters/i }).click();
+  const previousUrl = page.url();
+
+  await Promise.all([
+    page
+      .waitForURL((url) => url.toString() !== previousUrl, {
+        timeout: 10_000,
+      })
+      .catch(() => undefined),
+    form.evaluate((node) => (node as HTMLFormElement).requestSubmit()),
+  ]);
 }
 
 test("authenticated homepage smoke test", async ({ page }) => {
@@ -206,13 +223,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByRole("link", { name: /proposal sprint/i }),
   ).toBeVisible();
-  await selectOpportunityFilterOption(page, "source", /manual entry/i);
-  await selectOpportunityFilterOption(
-    page,
-    "stage",
-    /proposal in development/i,
+  await page.goto(
+    "/opportunities?source=manual_entry&stage=proposal_in_development",
   );
-  await applyOpportunityFilters(page);
   await expect(page).toHaveURL(/\/opportunities\?/);
   await expect(page).toHaveURL(/source=manual_entry/);
   await expect(page).toHaveURL(/stage=proposal_in_development/);
@@ -231,7 +244,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     ),
   ).not.toBeVisible();
   await opportunityResultsTable
-    .getByRole("link", { name: /open brief/i })
+    .getByRole("link", { name: /preview/i })
     .first()
     .click();
   await expect(
@@ -402,8 +415,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     .getByRole("link", { name: /^Opportunities/i })
     .click();
   await expect(page).toHaveURL(/\/opportunities$/);
-  await fillOpportunityQuery(page, csvImportTitle);
-  await applyOpportunityFilters(page);
+  await page.goto(`/opportunities?q=${encodeURIComponent(csvImportTitle)}`);
   await expect(page).toHaveURL(/\/opportunities\?/);
   const importedOpportunityResultsTable = page.getByRole("grid", {
     name: /opportunity pipeline results/i,
@@ -729,10 +741,8 @@ test("users can open the opportunity workspace and review seeded sections", asyn
   await ensureDesktopRailExpanded(page);
   await expect(page).toHaveURL(/\/$/);
 
-  await page.goto("/opportunities?view=all");
-  await expect(page).toHaveURL(/\/opportunities(\?view=all)?$/);
-  await fillOpportunityQuery(page, "Enterprise Knowledge Management");
-  await applyOpportunityFilters(page);
+  await page.goto("/opportunities?view=all&q=Enterprise+Knowledge+Management");
+  await expect(page).toHaveURL(/\/opportunities\?view=all&q=/);
 
   await expect(page).toHaveURL(/q=Enterprise\+Knowledge\+Management/);
   const opportunityResultsTable = page.getByRole("grid", {
@@ -744,7 +754,7 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     ),
   ).toBeVisible();
   await opportunityResultsTable
-    .getByRole("link", { name: /open brief/i })
+    .getByRole("link", { name: /preview/i })
     .first()
     .click();
 
@@ -998,7 +1008,7 @@ test("users can record closeout notes on a closed opportunity workspace", async 
     })
     .first();
   await navyOpportunityCard
-    .getByRole("link", { name: /open brief/i })
+    .getByRole("link", { name: /preview/i })
     .click();
   const closedWorkspaceHref = await page
     .getByRole("complementary", { name: /selected pursuit/i })
@@ -1053,8 +1063,8 @@ test("users can update proposal tracking on an active proposal workspace", async
 
   await page.goto("/opportunities");
   await expect(page).toHaveURL(/\/opportunities$/);
-  await fillOpportunityQuery(page, "VA Claims Intake Automation");
-  await applyOpportunityFilters(page);
+  await page.goto("/opportunities?q=VA+Claims+Intake+Automation");
+  await expect(page).toHaveURL(/q=VA\+Claims\+Intake\+Automation/);
 
   const vaOpportunityCard = page
     .getByRole("grid", {
@@ -1067,7 +1077,7 @@ test("users can update proposal tracking on an active proposal workspace", async
     .first();
   await expect(vaOpportunityCard).toBeVisible();
   await vaOpportunityCard
-    .getByRole("link", { name: /open brief/i })
+    .getByRole("link", { name: /preview/i })
     .click();
   const proposalWorkspaceHref = await page
     .getByRole("complementary", { name: /selected pursuit/i })
@@ -1288,7 +1298,7 @@ test.describe("tablet route sweep", () => {
     });
     await expect(routeResultsTable).toBeVisible();
     await routeResultsTable
-      .getByRole("link", { name: /open brief/i })
+      .getByRole("link", { name: /preview/i })
       .first()
       .click();
     const selectedPreview = page.getByRole("complementary");

@@ -123,8 +123,11 @@ describe("OpportunityList", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/queue · due soon/i)).toBeInTheDocument();
     expect(screen.getByText(/search · cloud/i)).toBeInTheDocument();
-    expect(screen.getByDisplayValue(/541512/i)).toBeInTheDocument();
     expect(screen.getByText(/3 · 30-day window/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /show filters/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(/541512/i)).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /create tracked opportunity/i }),
     ).toHaveAttribute("href", "/opportunities/new");

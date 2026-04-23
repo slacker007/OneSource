@@ -53,6 +53,7 @@ type OpportunityListProps = {
 export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
   const router = useRouter();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [showDesktopFilters, setShowDesktopFilters] = useState(false);
 
   if (!snapshot) {
     return (
@@ -236,10 +237,10 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
     {
       field: "actions",
       headerName: "Actions",
-      minWidth: 220,
+      minWidth: 170,
       sortable: false,
       renderCell: ({ row }) => (
-        <Stack spacing={1} sx={{ py: 1.25 }}>
+        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", py: 1.5 }}>
           <Button
             density="compact"
             href={buildOpportunityListHref(snapshot.query, viewState, {
@@ -249,29 +250,33 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
             tone="neutral"
             variant="soft"
           >
-            Open brief
+            Preview
           </Button>
-          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-            <Button density="compact" href={`/opportunities/${row.id}`} variant="text">
-              Open workspace
-            </Button>
-            <Button
-              density="compact"
-              href={`/opportunities/${row.id}/edit`}
-              tone="neutral"
-              variant="text"
-            >
-              Edit
-            </Button>
-          </Stack>
+          <Button density="compact" href={`/opportunities/${row.id}`} variant="text">
+            Workspace
+          </Button>
+          <Button
+            density="compact"
+            href={`/opportunities/${row.id}/edit`}
+            tone="neutral"
+            variant="text"
+          >
+            Edit
+          </Button>
         </Stack>
       ),
     },
   ];
 
   return (
-    <Stack component="section" spacing={3}>
-      <Surface component="header" sx={{ p: { xs: 3, sm: 4 } }}>
+    <Stack component="section" spacing={2.5}>
+      <Box
+        component="header"
+        sx={{
+          borderBottom: `1px solid ${onesourceTokens.color.border.subtle}`,
+          pb: 2.5,
+        }}
+      >
         <Stack spacing={3}>
           <Stack
             direction={{ xs: "column", lg: "row" }}
@@ -291,10 +296,9 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
                 Pipeline
               </Typography>
               <Typography variant="h1">Opportunity pipeline</Typography>
-              <Typography color="text.secondary" sx={{ maxWidth: 860 }} variant="body1">
-                Triage active pursuits, deadline pressure, and decision posture from one
-                queue. Saved views keep the team aligned while preview stays anchored to
-                the selected record.
+              <Typography color="text.secondary" sx={{ maxWidth: 760 }} variant="body1">
+                Scan the pipeline, narrow the queue quickly, and move into capture work
+                without losing context.
               </Typography>
             </Stack>
 
@@ -302,13 +306,19 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
               <Stack direction="row" spacing={1.25} sx={{ flexWrap: "wrap" }}>
                 <Button
                   density="compact"
-                  onClick={() => setFiltersOpen(true)}
-                  sx={{ display: { xl: "none" } }}
+                  onClick={() => {
+                    if (window.matchMedia("(min-width:1200px)").matches) {
+                      setShowDesktopFilters((current) => !current);
+                      return;
+                    }
+
+                    setFiltersOpen(true);
+                  }}
                   tone="neutral"
                   variant="outlined"
                 >
                   <FilterListRoundedIcon fontSize="small" />
-                  Filters
+                  {showDesktopFilters ? "Hide filters" : "Show filters"}
                 </Button>
                 <Button href="/opportunities/new">Create tracked opportunity</Button>
               </Stack>
@@ -321,43 +331,6 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
             </Stack>
           </Stack>
 
-          <Box
-            sx={{
-              display: "grid",
-              gap: 1.5,
-              gridTemplateColumns: {
-                xs: "1fr",
-                sm: "repeat(2, minmax(0, 1fr))",
-                lg: "repeat(4, minmax(0, 1fr))",
-              },
-            }}
-          >
-            <MetricSurface
-              label="Queue"
-              supportingText={
-                activeSavedView
-                  ? `${activeSavedView.count} pursuits in ${activeSavedView.label.toLowerCase()}`
-                  : `${snapshot.totalCount} pursuits in the current scan`
-              }
-              value={activeSavedView?.label ?? "Custom view"}
-            />
-            <MetricSurface
-              label="Results"
-              supportingText={`Showing ${snapshot.totalCount} total matches`}
-              value={`${showingFrom}-${showingTo}`}
-            />
-            <MetricSurface
-              label="Visible deadlines"
-              supportingText="Rows on this page with a response deadline"
-              value={String(visibleDeadlineCount)}
-            />
-            <MetricSurface
-              label="Visible go calls"
-              supportingText="Rows on this page currently carrying GO posture"
-              value={String(visibleGoCount)}
-            />
-          </Box>
-
           <Stack
             direction={{ xs: "column", lg: "row" }}
             spacing={2}
@@ -366,13 +339,49 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
             <SavedViewControls items={savedViewItems} label="Saved views" />
             <DensityToggleInline options={densityOptions} />
           </Stack>
+
+          <Box
+            sx={{
+              borderBottom: `1px solid ${onesourceTokens.color.border.subtle}`,
+              borderTop: `1px solid ${onesourceTokens.color.border.subtle}`,
+              display: "grid",
+              gap: 1.5,
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(2, minmax(0, 1fr))",
+                lg: "repeat(4, minmax(0, 1fr))",
+              },
+              py: 1.5,
+            }}
+          >
+            <InlineStat
+              label="Queue"
+              supportingText="Current saved view"
+              value={activeSavedView?.label ?? "Custom view"}
+            />
+            <InlineStat
+              label="Results"
+              supportingText={`Showing ${snapshot.totalCount} total matches`}
+              value={`${showingFrom}-${showingTo}`}
+            />
+            <InlineStat
+              label="Visible deadlines"
+              supportingText="Response dates on this page"
+              value={String(visibleDeadlineCount)}
+            />
+            <InlineStat
+              label="Visible go calls"
+              supportingText="Current GO posture on this page"
+              value={String(visibleGoCount)}
+            />
+          </Box>
         </Stack>
-      </Surface>
+      </Box>
 
       <Drawer
         description="Adjust search, stage, source, due-window, and sort controls without leaving the queue."
         eyebrow="Pipeline filters"
-        hideAbove="xl"
+        hideAbove="lg"
         onClose={() => setFiltersOpen(false)}
         open={filtersOpen}
         title="Refine the queue"
@@ -380,6 +389,7 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
       >
         <OpportunityFilterPanel
           idPrefix="mobile"
+          layout="drawer"
           onSubmitComplete={() => setFiltersOpen(false)}
           query={snapshot.query}
           resetHref={resetHref}
@@ -388,263 +398,247 @@ export function OpportunityList({ snapshot, viewState }: OpportunityListProps) {
         />
       </Drawer>
 
-      <Box
-        sx={{
-          display: "grid",
-          gap: 2,
-          gridTemplateColumns: {
-            xs: "1fr",
-            xl: "18rem minmax(0, 1fr) 24rem",
-          },
-        }}
-      >
-        <Box sx={{ display: { xs: "none", xl: "block" } }}>
-          <Box sx={{ position: "sticky", top: 96 }}>
-            <OpportunityFilterPanel
-              idPrefix="desktop"
-              query={snapshot.query}
-              resetHref={resetHref}
-              snapshot={snapshot}
-              viewState={viewState}
+      {showDesktopFilters ? (
+        <Box sx={{ display: { xs: "none", lg: "block" } }}>
+          <OpportunityFilterPanel
+            idPrefix="desktop"
+            layout="inline"
+            query={snapshot.query}
+            resetHref={resetHref}
+            snapshot={snapshot}
+            viewState={viewState}
+          />
+        </Box>
+      ) : null}
+
+      <Stack spacing={2}>
+        {selectedOpportunity ? (
+          <Box sx={{ display: { xs: "block", md: "none" } }}>
+            <OpportunityPreviewSurface
+              opportunity={selectedOpportunity}
+              previewHref={previewHref}
             />
           </Box>
-        </Box>
+        ) : null}
 
-        <Stack spacing={2}>
-          {selectedOpportunity ? (
-            <Box sx={{ display: { xs: "block", md: "none" } }}>
-              <OpportunityPreviewSurface
-                opportunity={selectedOpportunity}
-                previewHref={previewHref}
-              />
-            </Box>
-          ) : null}
-
-          <Surface component="section" sx={{ p: { xs: 2.5, sm: 3 } }}>
-            <Stack spacing={2}>
-              <Stack
-                direction={{ xs: "column", lg: "row" }}
-                spacing={2}
-                sx={{ alignItems: { lg: "flex-end" }, justifyContent: "space-between" }}
+        <Stack spacing={1.5}>
+          <Stack
+            direction={{ xs: "column", lg: "row" }}
+            spacing={2}
+            sx={{ alignItems: { lg: "flex-start" }, justifyContent: "space-between" }}
+          >
+            <Stack spacing={0.75}>
+              <Typography
+                sx={{
+                  color: onesourceTokens.color.text.muted,
+                  fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+                  fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                }}
               >
-                <Stack spacing={1}>
-                  <Typography
-                    sx={{
-                      color: onesourceTokens.color.text.muted,
-                      fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
-                      fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
-                      letterSpacing: "0.2em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Active queue
-                  </Typography>
-                  <Typography variant="h4">
-                    Showing {showingFrom}-{showingTo} of {snapshot.totalCount} pursuits
-                  </Typography>
-                  <Typography color="text.secondary" variant="body2">
-                    Select a row to lock the preview, then move directly into the workspace
-                    or edit flow without losing queue context.
-                  </Typography>
-                </Stack>
-
-                <Stack spacing={1}>
-                  <Typography
-                    sx={{
-                      color: onesourceTokens.color.text.muted,
-                      fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
-                      fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
-                      letterSpacing: "0.2em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Sort by
-                  </Typography>
-                  <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                    {sortOptions.map((option) => (
-                      <Button
-                        aria-current={option.active ? "page" : undefined}
-                        density="compact"
-                        href={option.href}
-                        key={option.label}
-                        tone={option.active ? "primary" : "neutral"}
-                        variant={option.active ? "soft" : "outlined"}
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
-                  </Stack>
-                </Stack>
-              </Stack>
-
-              <ActiveFilterChipBar
-                chips={activeFilterChips}
-                clearHref={resetHref}
-                emptyLabel="No extra filters applied."
-              />
+                Active queue
+              </Typography>
+              <Typography variant="h4">
+                Showing {showingFrom}-{showingTo} of {snapshot.totalCount} pursuits
+              </Typography>
+              <Typography color="text.secondary" variant="body2">
+                Select a row to update the preview, then open the workspace when you
+                need to act.
+              </Typography>
             </Stack>
-          </Surface>
 
-          {snapshot.results.length > 0 ? (
-            <>
-              <Box sx={{ display: { xs: "none", md: "block" } }}>
-                <Surface sx={{ p: 1.5 }}>
-                  <DataGrid
-                    aria-label="Opportunity pipeline results"
-                    autoHeight
-                    columns={gridColumns}
-                    density={viewState.density === "compact" ? "compact" : "comfortable"}
-                    disableColumnFilter
-                    disableColumnMenu
-                    disableDensitySelector
-                    disableRowSelectionOnClick={false}
-                    getRowHeight={() => "auto"}
-                    getRowClassName={(params) =>
-                      params.id === selectedOpportunity?.id ? "onesource-selected-row" : ""
-                    }
-                    hideFooter
-                    rows={snapshot.results}
-                    sx={{
-                      border: 0,
-                      "& .MuiDataGrid-cell": {
-                        alignItems: "flex-start",
-                        borderBottomColor: onesourceTokens.color.border.subtle,
-                        py: 0.5,
-                      },
-                      "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
-                        outline: "none",
-                      },
-                      "& .MuiDataGrid-columnHeader": {
-                        borderBottomColor: onesourceTokens.color.border.subtle,
-                      },
-                      "& .MuiDataGrid-columnHeaderTitle": {
-                        fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
-                        fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
-                        letterSpacing: onesourceTokens.typographyRole.eyebrow.letterSpacing,
-                        textTransform: "uppercase",
-                      },
-                      "& .MuiDataGrid-row": {
-                        cursor: "pointer",
-                      },
-                      "& .onesource-selected-row": {
-                        backgroundColor: onesourceTokens.interaction.selectedOverlay,
-                      },
-                      "& .onesource-selected-row:hover": {
-                        backgroundColor: onesourceTokens.interaction.selectedOverlay,
-                      },
-                    }}
-                    onRowClick={(params) => {
-                      router.push(
-                        buildOpportunityListHref(snapshot.query, viewState, {
-                          page: snapshot.query.page,
-                          previewOpportunityId: String(params.id),
-                        }),
-                      );
-                    }}
-                  />
-                </Surface>
-              </Box>
-
-              <Stack spacing={1.5} sx={{ display: { xs: "flex", md: "none" } }}>
-                {snapshot.results.map((opportunity) => (
-                  <MobileOpportunityCard
-                    href={buildOpportunityListHref(snapshot.query, viewState, {
-                      page: snapshot.query.page,
-                      previewOpportunityId: opportunity.id,
-                    })}
-                    isSelected={opportunity.id === selectedOpportunity?.id}
-                    key={opportunity.id}
-                    opportunity={opportunity}
-                  />
+            <Stack spacing={1}>
+              <Typography
+                sx={{
+                  color: onesourceTokens.color.text.muted,
+                  fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+                  fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Sort by
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+                {sortOptions.map((option) => (
+                  <Button
+                    aria-current={option.active ? "page" : undefined}
+                    density="compact"
+                    href={option.href}
+                    key={option.label}
+                    tone={option.active ? "primary" : "neutral"}
+                    variant={option.active ? "soft" : "outlined"}
+                  >
+                    {option.label}
+                  </Button>
                 ))}
               </Stack>
-            </>
-          ) : (
-            <EmptyState
-              action={
-                <Button density="compact" href={resetHref}>
-                  Reset to all opportunities
-                </Button>
-              }
-              message="Adjust the current filters or return to the default queue to restore tracked pursuits."
-              title="No opportunities match this filter set"
-            />
-          )}
-
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1.5}
-            sx={{ alignItems: { sm: "center" }, justifyContent: "space-between" }}
-          >
-            <Typography color="text.secondary" variant="body2">
-              Page {snapshot.query.page} of {snapshot.pageCount}
-            </Typography>
-
-            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-              <PaginationLink
-                disabled={snapshot.query.page <= 1}
-                href={buildOpportunityListHref(snapshot.query, viewState, {
-                  page: snapshot.query.page - 1,
-                  previewOpportunityId: null,
-                })}
-              >
-                Previous
-              </PaginationLink>
-
-              {Array.from({ length: snapshot.pageCount }, (_, index) => index + 1).map(
-                (pageNumber) => (
-                  <PaginationLink
-                    active={pageNumber === snapshot.query.page}
-                    href={buildOpportunityListHref(snapshot.query, viewState, {
-                      page: pageNumber,
-                      previewOpportunityId: null,
-                    })}
-                    key={pageNumber}
-                  >
-                    {String(pageNumber)}
-                  </PaginationLink>
-                ),
-              )}
-
-              <PaginationLink
-                disabled={snapshot.query.page >= snapshot.pageCount}
-                href={buildOpportunityListHref(snapshot.query, viewState, {
-                  page: snapshot.query.page + 1,
-                  previewOpportunityId: null,
-                })}
-              >
-                Next
-              </PaginationLink>
             </Stack>
           </Stack>
 
-          {selectedOpportunity ? (
-            <Box sx={{ display: { xs: "none", md: "block", xl: "none" } }}>
-              <OpportunityPreviewSurface
-                opportunity={selectedOpportunity}
-                previewHref={previewHref}
-              />
-            </Box>
-          ) : null}
+          <ActiveFilterChipBar
+            chips={activeFilterChips}
+            clearHref={resetHref}
+            emptyLabel="No extra filters applied."
+          />
         </Stack>
 
-        {selectedOpportunity ? (
-          <Box sx={{ display: { xs: "none", xl: "block" } }}>
-            <Box sx={{ position: "sticky", top: 96 }}>
-              <OpportunityPreviewSurface
-                opportunity={selectedOpportunity}
-                previewHref={previewHref}
-              />
+        {snapshot.results.length > 0 ? (
+          <>
+            <Box sx={{ display: { xs: "none", md: "block" } }}>
+              <Surface
+                sx={{
+                  overflow: "hidden",
+                  p: 0,
+                }}
+              >
+                <DataGrid
+                  aria-label="Opportunity pipeline results"
+                  autoHeight
+                  columns={gridColumns}
+                  density={viewState.density === "compact" ? "compact" : "comfortable"}
+                  disableColumnFilter
+                  disableColumnMenu
+                  disableDensitySelector
+                  disableRowSelectionOnClick={false}
+                  getRowHeight={() => "auto"}
+                  getRowClassName={(params) =>
+                    params.id === selectedOpportunity?.id ? "onesource-selected-row" : ""
+                  }
+                  hideFooter
+                  rows={snapshot.results}
+                  sx={{
+                    border: 0,
+                    "& .MuiDataGrid-cell": {
+                      alignItems: "flex-start",
+                      borderBottomColor: onesourceTokens.color.border.subtle,
+                      py: 0.5,
+                    },
+                    "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
+                      outline: "none",
+                    },
+                    "& .MuiDataGrid-columnHeader": {
+                      backgroundColor: onesourceTokens.color.surface.warm,
+                      borderBottomColor: onesourceTokens.color.border.subtle,
+                    },
+                    "& .MuiDataGrid-columnHeaderTitle": {
+                      fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+                      fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+                      letterSpacing: onesourceTokens.typographyRole.eyebrow.letterSpacing,
+                      textTransform: "uppercase",
+                    },
+                    "& .MuiDataGrid-row": {
+                      cursor: "pointer",
+                    },
+                    "& .onesource-selected-row": {
+                      backgroundColor: onesourceTokens.interaction.selectedOverlay,
+                    },
+                    "& .onesource-selected-row:hover": {
+                      backgroundColor: onesourceTokens.interaction.selectedOverlay,
+                    },
+                  }}
+                  onRowClick={(params) => {
+                    router.push(
+                      buildOpportunityListHref(snapshot.query, viewState, {
+                        page: snapshot.query.page,
+                        previewOpportunityId: String(params.id),
+                      }),
+                    );
+                  }}
+                />
+              </Surface>
             </Box>
-          </Box>
-        ) : null}
-      </Box>
+
+            <Stack spacing={1.5} sx={{ display: { xs: "flex", md: "none" } }}>
+              {snapshot.results.map((opportunity) => (
+                <MobileOpportunityCard
+                  href={buildOpportunityListHref(snapshot.query, viewState, {
+                    page: snapshot.query.page,
+                    previewOpportunityId: opportunity.id,
+                  })}
+                  isSelected={opportunity.id === selectedOpportunity?.id}
+                  key={opportunity.id}
+                  opportunity={opportunity}
+                />
+              ))}
+            </Stack>
+
+            {selectedOpportunity ? (
+              <Box sx={{ display: { xs: "none", md: "block" } }}>
+                <OpportunityPreviewSurface
+                  opportunity={selectedOpportunity}
+                  previewHref={previewHref}
+                />
+              </Box>
+            ) : null}
+          </>
+        ) : (
+          <EmptyState
+            action={
+              <Button density="compact" href={resetHref}>
+                Reset to all opportunities
+              </Button>
+            }
+            message="Adjust the current filters or return to the default queue to restore tracked pursuits."
+            title="No opportunities match this filter set"
+          />
+        )}
+
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.5}
+          sx={{ alignItems: { sm: "center" }, justifyContent: "space-between" }}
+        >
+          <Typography color="text.secondary" variant="body2">
+            Page {snapshot.query.page} of {snapshot.pageCount}
+          </Typography>
+
+          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+            <PaginationLink
+              disabled={snapshot.query.page <= 1}
+              href={buildOpportunityListHref(snapshot.query, viewState, {
+                page: snapshot.query.page - 1,
+                previewOpportunityId: null,
+              })}
+            >
+              Previous
+            </PaginationLink>
+
+            {Array.from({ length: snapshot.pageCount }, (_, index) => index + 1).map(
+              (pageNumber) => (
+                <PaginationLink
+                  active={pageNumber === snapshot.query.page}
+                  href={buildOpportunityListHref(snapshot.query, viewState, {
+                    page: pageNumber,
+                    previewOpportunityId: null,
+                  })}
+                  key={pageNumber}
+                >
+                  {String(pageNumber)}
+                </PaginationLink>
+              ),
+            )}
+
+            <PaginationLink
+              disabled={snapshot.query.page >= snapshot.pageCount}
+              href={buildOpportunityListHref(snapshot.query, viewState, {
+                page: snapshot.query.page + 1,
+                previewOpportunityId: null,
+              })}
+            >
+              Next
+            </PaginationLink>
+          </Stack>
+        </Stack>
+      </Stack>
     </Stack>
   );
 }
 
 function OpportunityFilterPanel({
   idPrefix,
+  layout = "drawer",
   onSubmitComplete,
   query,
   resetHref,
@@ -652,6 +646,7 @@ function OpportunityFilterPanel({
   viewState,
 }: {
   idPrefix: string;
+  layout?: "drawer" | "inline";
   onSubmitComplete?: () => void;
   query: OpportunityListQuery;
   resetHref: string;
@@ -659,7 +654,19 @@ function OpportunityFilterPanel({
   viewState: OpportunityListViewState;
 }) {
   return (
-    <Surface component="section" sx={{ p: 2.5 }}>
+    <Box
+      component="section"
+      sx={{
+        bgcolor:
+          layout === "inline"
+            ? onesourceTokens.color.surface.warm
+            : onesourceTokens.color.surface.raised,
+        border: `1px solid ${onesourceTokens.color.border.subtle}`,
+        borderRadius: `${onesourceTokens.radius.panel}px`,
+        px: { sm: 3, xs: 2.5 },
+        py: 2.5,
+      }}
+    >
       <Stack spacing={2}>
         <Stack spacing={1}>
           <Typography
@@ -675,7 +682,7 @@ function OpportunityFilterPanel({
           </Typography>
           <Typography variant="h6">Refine the pipeline</Typography>
           <Typography color="text.secondary" variant="body2">
-            Narrow by search terms, agency, stage, source, due window, and sort order.
+            Search, stage, source, deadline window, and NAICS stay URL-backed.
           </Typography>
         </Stack>
 
@@ -798,7 +805,7 @@ function OpportunityFilterPanel({
           </Stack>
         </Box>
       </Stack>
-    </Surface>
+    </Box>
   );
 }
 
@@ -951,7 +958,7 @@ function MobileOpportunityCard({
   );
 }
 
-function MetricSurface({
+function InlineStat({
   label,
   supportingText,
   value,
@@ -961,7 +968,13 @@ function MetricSurface({
   value: string;
 }) {
   return (
-    <Surface density="compact" sx={{ p: 2.25 }}>
+    <Box
+      sx={{
+        minWidth: 0,
+        px: { sm: 1.25, xs: 0 },
+        py: 0.5,
+      }}
+    >
       <Typography
         sx={{
           color: onesourceTokens.color.text.muted,
@@ -973,13 +986,13 @@ function MetricSurface({
       >
         {label}
       </Typography>
-      <Typography sx={{ mt: 1.25 }} variant="h6">
+      <Typography sx={{ mt: 0.75 }} variant="h6">
         {value}
       </Typography>
-      <Typography color="text.secondary" sx={{ mt: 0.75 }} variant="body2">
+      <Typography color="text.secondary" sx={{ mt: 0.25 }} variant="body2">
         {supportingText}
       </Typography>
-    </Surface>
+    </Box>
   );
 }
 

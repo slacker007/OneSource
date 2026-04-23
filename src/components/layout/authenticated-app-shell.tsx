@@ -344,6 +344,11 @@ export function AppShellFrame({
   const visibleRecentItems = recentItems.filter(
     (item) => item.href !== currentPath,
   );
+  const isWideCanvasRoute = currentPath === "/opportunities";
+  const shellContentMaxWidth = isWideCanvasRoute ? 1560 : 1280;
+  const shellContentPaddingX = isWideCanvasRoute
+    ? { lg: 3, sm: 3, xs: 2 }
+    : { lg: 4, sm: 3, xs: 2 };
   const quickCreateItems = buildQuickCreateItems({
     allowDecisionSupport,
     allowWorkspaceSettings,
@@ -1211,7 +1216,7 @@ export function AppShellFrame({
             backgroundColor: APP_HEADER_BG,
             borderBottom: `1px solid ${APP_HEADER_BORDER}`,
             position: "sticky",
-            px: { lg: 4, sm: 3, xs: 2 },
+            px: shellContentPaddingX,
             py: 2,
             top: 0,
             zIndex: 20,
@@ -1223,7 +1228,7 @@ export function AppShellFrame({
               flexDirection: "column",
               gap: 2,
               marginX: "auto",
-              maxWidth: 1280,
+              maxWidth: shellContentMaxWidth,
               minWidth: 0,
             }}
           >
@@ -1426,9 +1431,9 @@ export function AppShellFrame({
 
         <Box
           component="main"
-          sx={{ flex: 1, minWidth: 0, px: { lg: 4, sm: 3, xs: 2 }, py: 3 }}
+          sx={{ flex: 1, minWidth: 0, px: shellContentPaddingX, py: 3 }}
         >
-          <Box sx={{ marginX: "auto", maxWidth: 1280, minWidth: 0 }}>
+          <Box sx={{ marginX: "auto", maxWidth: shellContentMaxWidth, minWidth: 0 }}>
             {children}
           </Box>
         </Box>
