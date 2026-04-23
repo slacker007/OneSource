@@ -9,8 +9,10 @@ import { OpportunityProposalManager } from "@/components/opportunities/opportuni
 import { OpportunityStageTransitionPanel } from "@/components/opportunities/opportunity-stage-transition-panel";
 import { OpportunityTaskManager } from "@/components/opportunities/opportunity-task-manager";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { Surface } from "@/components/ui/surface";
 import { KNOWLEDGE_ASSET_TYPE_LABELS } from "@/modules/knowledge/knowledge.types";
 import type { OpportunityBidDecisionActionState } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
 import type { OpportunityCloseoutActionState } from "@/modules/opportunities/opportunity-closeout-form.schema";
@@ -178,12 +180,15 @@ export function OpportunityWorkspace({
 
   return (
     <section className="space-y-5">
-      <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
+      <Surface
+        component="header"
+        sx={{ bgcolor: "background.paper", px: { xs: 3, sm: 4 }, py: 3 }}
+      >
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
               <Link
-                className="font-medium text-[rgb(19,78,68)] transition hover:text-[rgb(16,66,57)]"
+                className="font-medium text-foreground transition hover:opacity-75"
                 href="/opportunities"
               >
                 Opportunities
@@ -195,7 +200,7 @@ export function OpportunityWorkspace({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Badge>Workspace</Badge>
+              <Badge>Pursuit record</Badge>
               <Badge tone="muted">{snapshot.opportunity.currentStageLabel}</Badge>
               <Badge tone="warning">
                 {humanizeSourceSystem(snapshot.opportunity.originSourceSystem)}
@@ -218,18 +223,18 @@ export function OpportunityWorkspace({
           <div className="flex flex-wrap items-center gap-3">
             <WorkspaceHeaderLink
               href={`/opportunities/${snapshot.opportunity.id}?section=capture`}
-              label="Record decision"
+              label="Update capture"
               tone="secondary"
             />
             <WorkspaceHeaderLink
               href={`/opportunities/${snapshot.opportunity.id}?section=tasks`}
-              label="Add task"
+              label="Plan work"
               tone="secondary"
             />
             {snapshot.opportunity.uiLink ? (
               <WorkspaceHeaderLink
                 href={snapshot.opportunity.uiLink}
-                label="Open source notice"
+                label="View source notice"
                 newTab
                 tone="secondary"
               />
@@ -237,7 +242,7 @@ export function OpportunityWorkspace({
             {allowManagePipeline ? (
               <WorkspaceHeaderLink
                 href={`/opportunities/${snapshot.opportunity.id}/edit`}
-                label="Edit details"
+                label="Edit record"
                 tone="primary"
               />
             ) : null}
@@ -266,7 +271,7 @@ export function OpportunityWorkspace({
             }
           />
           <SummaryCard
-            label="Workspace scope"
+            label="Organization"
             supportingText={`Updated ${formatDate(snapshot.opportunity.updatedAt)}`}
             value={snapshot.organization.name}
           />
@@ -289,11 +294,13 @@ export function OpportunityWorkspace({
             value={readPrimaryOwnerLabel(snapshot)}
           />
         </div>
-      </header>
+      </Surface>
 
-      <nav
+      <Surface
+        component="nav"
         aria-label="Opportunity workspace sections"
-        className="border-border sticky top-4 z-10 rounded-[24px] border bg-[rgba(250,247,242,0.94)] p-3 shadow-[0_18px_40px_rgba(20,37,34,0.08)] backdrop-blur"
+        className="sticky top-4 z-10"
+        sx={{ bgcolor: "rgba(250,247,242,0.94)", p: 1.5 }}
       >
         <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
           {sectionNavItems.map((item) => {
@@ -327,7 +334,7 @@ export function OpportunityWorkspace({
             );
           })}
         </div>
-      </nav>
+      </Surface>
 
       {activeSection === "summary" ? (
         <SummaryWorkspaceSection snapshot={snapshot} />
@@ -772,20 +779,16 @@ function WorkspaceHeaderLink({
   newTab?: boolean;
   tone: "primary" | "secondary";
 }) {
-  const className =
-    tone === "primary"
-      ? "inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-      : "inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-white px-5 py-3 text-sm font-medium text-foreground transition hover:bg-[rgba(15,28,31,0.03)]";
-
   return (
-    <Link
-      className={className}
+    <Button
       href={href}
+      tone={tone === "primary" ? "primary" : "neutral"}
+      variant={tone === "primary" ? "solid" : "outlined"}
       rel={newTab ? "noreferrer" : undefined}
       target={newTab ? "_blank" : undefined}
     >
       {label}
-    </Link>
+    </Button>
   );
 }
 
@@ -797,7 +800,7 @@ function SectionPlaceholderCard({
   title: string;
 }) {
   return (
-    <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+    <Surface component="article" sx={{ bgcolor: "background.paper", p: 3 }}>
       <p className="text-muted text-xs tracking-[0.24em] uppercase">Proposal</p>
       <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
         {title}
@@ -805,7 +808,7 @@ function SectionPlaceholderCard({
       <p className="text-muted mt-3 max-w-3xl text-sm leading-7">
         {description}
       </p>
-    </article>
+    </Surface>
   );
 }
 
@@ -919,7 +922,7 @@ function KnowledgeSuggestionsSection({
   suggestions: OpportunityWorkspaceKnowledgeSuggestion[];
 }) {
   return (
-    <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+    <Surface component="article" sx={{ bgcolor: "background.paper", p: 3 }}>
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-muted text-xs tracking-[0.24em] uppercase">
@@ -935,12 +938,14 @@ function KnowledgeSuggestionsSection({
           </p>
         </div>
 
-        <Link
-          className="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-[rgba(15,28,31,0.03)]"
+        <Button
+          density="compact"
           href={`/knowledge?opportunity=${opportunityId}`}
+          tone="neutral"
+          variant="outlined"
         >
           Open filtered library
-        </Link>
+        </Button>
       </div>
 
       {suggestions.length === 0 ? (
@@ -953,9 +958,10 @@ function KnowledgeSuggestionsSection({
       ) : (
         <div className="mt-6 grid gap-4 xl:grid-cols-2">
           {suggestions.map((suggestion) => (
-            <article
+            <Surface
+              component="article"
               key={suggestion.id}
-              className="border-border rounded-[24px] border bg-[rgba(248,248,245,0.9)] p-5"
+              sx={{ bgcolor: "rgba(248,248,245,0.9)", p: 2.5 }}
             >
               <div className="flex flex-wrap gap-2">
                 <Badge>
@@ -993,12 +999,13 @@ function KnowledgeSuggestionsSection({
                   <h3 className="text-foreground text-lg font-semibold">
                     {suggestion.title}
                   </h3>
-                  <Link
-                    className="text-sm font-medium text-[rgb(19,78,68)] hover:text-[rgb(16,66,57)]"
+                  <Button
+                    density="compact"
                     href={`/knowledge/${suggestion.id}/edit`}
+                    variant="text"
                   >
                     Open asset
-                  </Link>
+                  </Button>
                 </div>
                 {suggestion.summary ? (
                   <p className="text-muted text-sm leading-6">
@@ -1047,11 +1054,11 @@ function KnowledgeSuggestionsSection({
                     : ""}
                 </p>
               </div>
-            </article>
+            </Surface>
           ))}
         </div>
       )}
-    </article>
+    </Surface>
   );
 }
 
@@ -2036,11 +2043,11 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <article className="border-border rounded-[24px] border bg-white px-4 py-4 text-sm shadow-[0_12px_30px_rgba(20,37,34,0.06)]">
+    <Surface component="article" sx={{ bgcolor: "background.paper", px: 2, py: 2 }} className="text-sm">
       <p className="text-muted text-xs tracking-[0.2em] uppercase">{label}</p>
       <p className="mt-2 font-semibold text-foreground">{value}</p>
       <p className="mt-1 text-muted">{supportingText}</p>
-    </article>
+    </Surface>
   );
 }
 

@@ -245,9 +245,9 @@ describe("DecisionConsole", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("combobox", { name: /rank by/i }),
-    ).toHaveValue("risk");
-    expect(screen.getByRole("combobox", { name: /scope/i })).toHaveValue(
-      "active",
+    ).toHaveTextContent(/risk/i);
+    expect(screen.getByRole("combobox", { name: /scope/i })).toHaveTextContent(
+      /active/i,
     );
     expect(
       screen.getAllByText(/enterprise knowledge management support services/i)

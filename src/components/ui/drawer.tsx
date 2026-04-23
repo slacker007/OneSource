@@ -1,83 +1,134 @@
 "use client";
 
-import { useId } from "react";
-import type { ReactNode } from "react";
+import CloseIcon from "@mui/icons-material/Close";
+import Box from "@mui/material/Box";
+import MuiDrawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { useId, type ReactNode } from "react";
 
-import { cn } from "@/lib/cn";
+import { onesourceTokens } from "@/theme/onesource-theme";
 
 type DrawerProps = {
+  anchor?: "left" | "right";
   children: ReactNode;
   description?: string;
   eyebrow?: string;
+  hideAbove?: "lg" | "xl";
   onClose: () => void;
   open: boolean;
   title: string;
+  width?: number;
 };
 
 export function Drawer({
+  anchor = "right",
   children,
   description,
   eyebrow,
+  hideAbove = "lg",
   onClose,
   open,
   title,
+  width = 320,
 }: DrawerProps) {
   const titleId = useId();
   const descriptionId = useId();
 
-  if (!open) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-40 flex lg:hidden">
-      <button
-        aria-label={`Close ${title}`}
-        className="flex-1 bg-[rgba(15,28,31,0.45)]"
-        onClick={onClose}
-        type="button"
-      />
-      <aside
-        aria-describedby={description ? descriptionId : undefined}
-        aria-labelledby={titleId}
-        aria-modal="true"
-        className={cn(
-          "border-border flex w-80 max-w-[84vw] flex-col border-l bg-[rgba(15,28,31,0.98)] px-5 py-5 text-stone-100 shadow-[-20px_0_80px_rgba(15,28,31,0.28)]",
-        )}
-        role="dialog"
-      >
-        <div className="flex items-center justify-between gap-4">
+    <MuiDrawer
+      anchor={anchor}
+      onClose={onClose}
+      open={open}
+      slotProps={{
+        paper: {
+          "aria-describedby": description ? descriptionId : undefined,
+          "aria-labelledby": titleId,
+        },
+      }}
+      sx={{
+        display: {
+          [hideAbove]: "none",
+        },
+        "& .MuiDrawer-paper": {
+          bgcolor: onesourceTokens.shell.background,
+          borderLeft:
+            anchor === "right"
+              ? `1px solid ${onesourceTokens.shell.panelBorder}`
+              : undefined,
+          borderRight:
+            anchor === "left"
+              ? `1px solid ${onesourceTokens.shell.panelBorder}`
+              : undefined,
+          color: onesourceTokens.shell.textPrimary,
+          maxWidth: "84vw",
+          px: 2.5,
+          py: 2.5,
+          width,
+        },
+      }}
+    >
+      <Stack spacing={2}>
+        <Box
+          sx={{
+            alignItems: "flex-start",
+            display: "flex",
+            gap: 2,
+            justifyContent: "space-between",
+          }}
+        >
           <div>
             {eyebrow ? (
-              <p className="text-sm tracking-[0.24em] text-stone-400 uppercase">
+              <Typography
+                sx={{
+                  color: onesourceTokens.shell.textFaint,
+                  fontSize: "0.78rem",
+                  letterSpacing: "0.24em",
+                  textTransform: "uppercase",
+                }}
+              >
                 {eyebrow}
-              </p>
+              </Typography>
             ) : null}
-            <p
-              className="font-heading mt-2 text-2xl font-semibold"
+            <Typography
               id={titleId}
+              sx={{
+                fontFamily: "var(--font-heading), sans-serif",
+                fontSize: "1.65rem",
+                fontWeight: 600,
+                mt: eyebrow ? 1 : 0,
+              }}
             >
               {title}
-            </p>
+            </Typography>
           </div>
-          <button
+          <IconButton
             aria-label={`Dismiss ${title}`}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm"
             onClick={onClose}
-            type="button"
+            sx={{
+              color: "inherit",
+            }}
           >
-            Close
-          </button>
-        </div>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
 
         {description ? (
-          <p className="mt-3 text-sm leading-6 text-stone-300" id={descriptionId}>
+          <Typography
+            id={descriptionId}
+            sx={{
+              color: onesourceTokens.shell.textSecondary,
+              fontSize: "0.94rem",
+              lineHeight: 1.6,
+            }}
+          >
             {description}
-          </p>
+          </Typography>
         ) : null}
 
         {children}
-      </aside>
-    </div>
+      </Stack>
+    </MuiDrawer>
   );
 }

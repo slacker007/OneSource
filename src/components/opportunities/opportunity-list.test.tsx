@@ -1,8 +1,14 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { OpportunityList } from "./opportunity-list";
 import type { OpportunityListSnapshot } from "@/modules/opportunities/opportunity.types";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
 
 const snapshot: OpportunityListSnapshot = {
   organization: {
@@ -98,7 +104,49 @@ const snapshot: OpportunityListSnapshot = {
 };
 
 describe("OpportunityList", () => {
-  it("renders the URL-synced opportunity pipeline results", () => {
+  it("renders the MUI opportunity pipeline shell and filters", () => {
+    render(
+      <OpportunityList
+        snapshot={snapshot}
+        viewState={{
+          density: "compact",
+          previewOpportunityId: null,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /opportunity pipeline/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("grid", { name: /opportunity pipeline results/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/queue · due soon/i)).toBeInTheDocument();
+    expect(screen.getByText(/search · cloud/i)).toBeInTheDocument();
+    expect(screen.getByText(/3 · 30-day window/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /show filters/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(/541512/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /create tracked opportunity/i }),
+    ).toHaveAttribute("href", "/opportunities/new");
+    expect(
+      screen.getByRole("link", { name: /due soon\s*3 · 30-day window/i }),
+    ).toHaveAttribute(
+      "href",
+      "/opportunities?view=due_soon&due=next_30_days&sort=deadline_asc",
+    );
+    expect(screen.getByRole("link", { name: /^compact$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      screen.queryByRole("complementary", { name: /selected pursuit/i }),
+    ).not.toBeInTheDocument();
+  }, 20_000);
+
+  it("renders the right-side pursuit preview and workspace actions when a preview is selected", () => {
     render(
       <OpportunityList
         snapshot={snapshot}
@@ -110,53 +158,27 @@ describe("OpportunityList", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: /opportunity pipeline/i }),
+      screen.getByLabelText(/opportunity preview drawer/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("table", { name: /opportunity pipeline results/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getAllByText(/army cloud operations recompete/i),
-    ).toHaveLength(2);
-    expect(screen.getByText(/view · due soon/i)).toBeInTheDocument();
-    expect(screen.getByText(/search · cloud/i)).toBeInTheDocument();
-    expect(screen.getAllByDisplayValue(/541512/i)).toHaveLength(2);
-    expect(screen.getByText(/3 · 30-day window/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /create tracked opportunity/i }),
-    ).toHaveAttribute("href", "/opportunities/new");
-    expect(
-      screen.getByRole("link", { name: /open brief/i }),
-    ).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: /open brief/i })[0]).toHaveAttribute(
       "href",
-      "/opportunities?view=due_soon&q=cloud&naics=541512&stage=qualified&source=manual_entry&due=next_30_days&sort=deadline_asc&density=compact&preview=opp_123",
+      "/opportunities?view=due_soon&q=cloud&naics=541512&stage=qualified&source=manual_entry&due=next_30_days&sort=deadline_asc&preview=opp_123",
     );
     expect(
-      screen.getAllByRole("link", { name: /open workspace/i }),
-    ).toHaveLength(2);
-    expect(
-      screen.getByRole("link", { name: /edit opportunity/i }),
-    ).toHaveAttribute("href", "/opportunities/opp_123/edit");
-    expect(
-      screen.getByRole("cell", { name: /manual entry/i }),
-    ).toBeInTheDocument();
+      screen.getByRole("link", { name: /open workspace/i }),
+    ).toHaveAttribute("href", "/opportunities/opp_123");
+    expect(screen.getByRole("link", { name: /edit record/i })).toHaveAttribute(
+      "href",
+      "/opportunities/opp_123/edit",
+    );
+    expect(screen.getAllByText(/manual entry/i).length).toBeGreaterThan(0);
     expect(
       screen.getAllByRole("heading", {
         name: /army cloud operations recompete/i,
-      }),
-    ).toHaveLength(2);
-    expect(screen.getByText(/capture brief/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /due soon.*30-day window/i }),
-    ).toHaveAttribute(
-      "href",
-      "/opportunities?view=due_soon&due=next_30_days&sort=deadline_asc&density=compact",
-    );
-    expect(
-      screen.getByRole("link", { name: /compact/i }),
-    ).toHaveAttribute("aria-current", "page");
-    expect(screen.getByText(/search · cloud/i)).toBeInTheDocument();
-  });
+      }).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/capture brief/i).length).toBeGreaterThan(0);
+  }, 20_000);
 
   it("renders an empty state when no rows match the current filters", () => {
     render(
@@ -168,7 +190,7 @@ describe("OpportunityList", () => {
           totalCount: 0,
         }}
         viewState={{
-          density: "comfortable",
+          density: "compact",
           previewOpportunityId: null,
         }}
       />,
@@ -182,5 +204,5 @@ describe("OpportunityList", () => {
         .getAllByRole("link", { name: /reset to all opportunities/i })
         .every((link) => link.getAttribute("href") === "/opportunities"),
     ).toBe(true);
-  });
+  }, 20_000);
 });

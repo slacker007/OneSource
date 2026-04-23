@@ -1,4 +1,17 @@
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+
+import {
+  DATA_TABLE_SURFACE_OVERFLOW,
+  DATA_TABLE_SURFACE_RADIUS_PX,
+} from "@/components/ui/data-table";
+
 import { Skeleton } from "./skeleton";
+import { Surface } from "./surface";
 
 export function TableSkeleton({
   columnCount = 5,
@@ -8,35 +21,40 @@ export function TableSkeleton({
   rowCount?: number;
 }) {
   return (
-    <div className="ui-surface overflow-hidden">
-      <div className="overflow-x-auto">
-        <table aria-hidden="true" className="min-w-full border-collapse">
-          <thead className="bg-surface-muted">
-            <tr>
+    <Surface
+      style={{
+        borderRadius: DATA_TABLE_SURFACE_RADIUS_PX,
+        overflow: DATA_TABLE_SURFACE_OVERFLOW,
+      }}
+    >
+      <TableContainer style={{ borderRadius: DATA_TABLE_SURFACE_RADIUS_PX }}>
+        <Table aria-hidden="true" size="small" sx={{ minWidth: "100%" }}>
+          <TableHead>
+            <TableRow>
               {Array.from({ length: columnCount }, (_, index) => (
-                <th className="px-4 py-3" key={index} scope="col">
+                <TableCell key={index} scope="col" sx={{ px: 2, py: 1.75 }}>
                   <Skeleton className="h-3 w-20" />
-                </th>
+                </TableCell>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {Array.from({ length: rowCount }, (_, rowIndex) => (
-              <tr className="border-border border-t" key={rowIndex}>
+              <TableRow key={rowIndex}>
                 {Array.from({ length: columnCount }, (_, columnIndex) => (
-                  <td className="px-4 py-3.5" key={columnIndex}>
+                  <TableCell key={columnIndex} sx={{ px: 2, py: 2 }}>
                     <Skeleton
                       className={
                         columnIndex === 0 ? "h-4 w-44" : "h-4 w-24"
                       }
                     />
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Surface>
   );
 }

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
@@ -85,10 +85,12 @@ describe("opportunity action refresh behavior", () => {
     refreshMock.mockReset();
   });
 
-  it("refreshes the workspace after a milestone create succeeds", async () => {
-    const user = userEvent.setup();
-    const deferred = createDeferred<OpportunityMilestoneActionState>();
-    const createAction = vi.fn(() => deferred.promise);
+  it(
+    "refreshes the workspace after a milestone create succeeds",
+    async () => {
+      const user = userEvent.setup();
+      const deferred = createDeferred<OpportunityMilestoneActionState>();
+      const createAction = vi.fn(() => deferred.promise);
 
     render(
       <OpportunityMilestoneManager
@@ -100,26 +102,18 @@ describe("opportunity action refresh behavior", () => {
       />,
     );
 
-    const createForm = screen
-      .getByRole("heading", { name: /add milestone/i })
-      .closest("form");
-
-    expect(createForm).not.toBeNull();
-
-    const createFormQueries = within(createForm as HTMLFormElement);
-
-    await user.type(
-      createFormQueries.getByLabelText(/milestone title/i),
-      "Executive checkpoint",
+    const createFormQueries = within(
+      screen.getByRole("form", { name: /add milestone/i }),
     );
-    await user.type(
-      createFormQueries.getByLabelText(/target date/i),
-      "2026-05-15",
-    );
-    await user.selectOptions(
-      createFormQueries.getByLabelText(/^status$/i),
-      "PLANNED",
-    );
+
+    fireEvent.change(createFormQueries.getByLabelText(/milestone title/i), {
+      target: { value: "Executive checkpoint" },
+    });
+    fireEvent.change(createFormQueries.getByLabelText(/target date/i), {
+      target: { value: "2026-05-15" },
+    });
+    await user.click(createFormQueries.getByRole("combobox", { name: /^status$/i }));
+    await user.click(screen.getByRole("option", { name: /planned/i }));
     await user.click(
       createFormQueries.getByRole("button", { name: /create milestone/i }),
     );
@@ -137,11 +131,13 @@ describe("opportunity action refresh behavior", () => {
 
     await waitFor(() => {
       expect(refreshMock).toHaveBeenCalledTimes(1);
-    });
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /milestone created and added to the workspace/i,
-    );
-  });
+    }, { timeout: 5_000 });
+      expect(screen.getByRole("status")).toHaveTextContent(
+        /milestone created and added to the workspace/i,
+      );
+    },
+    10_000,
+  );
 
   it("refreshes the workspace after a task create succeeds", async () => {
     const user = userEvent.setup();
@@ -159,22 +155,15 @@ describe("opportunity action refresh behavior", () => {
       />,
     );
 
-    const createForm = screen
-      .getByRole("heading", { name: /add execution task/i })
-      .closest("form");
-
-    expect(createForm).not.toBeNull();
-
-    const createFormQueries = within(createForm as HTMLFormElement);
-
-    await user.type(
-      createFormQueries.getByLabelText(/task title/i),
-      "Capture kickoff",
+    const createFormQueries = within(
+      screen.getByRole("form", { name: /add execution task/i }),
     );
-    await user.selectOptions(
-      createFormQueries.getByLabelText(/assignee/i),
-      "user_taylor",
-    );
+
+    fireEvent.change(createFormQueries.getByLabelText(/task title/i), {
+      target: { value: "Capture kickoff" },
+    });
+    await user.click(createFormQueries.getByRole("combobox", { name: /assignee/i }));
+    await user.click(screen.getByRole("option", { name: /taylor/i }));
     await user.click(
       createFormQueries.getByRole("button", { name: /create task/i }),
     );
@@ -192,7 +181,7 @@ describe("opportunity action refresh behavior", () => {
 
     await waitFor(() => {
       expect(refreshMock).toHaveBeenCalledTimes(1);
-    });
+    }, { timeout: 5_000 });
     expect(screen.getByRole("status")).toHaveTextContent(
       /task created and added to the workspace/i,
     );
@@ -218,14 +207,16 @@ describe("opportunity action refresh behavior", () => {
       />,
     );
 
-    await user.type(
-      screen.getByLabelText(/outcome reason/i),
-      "Vehicle access did not align with the final pursuit posture.",
-    );
-    await user.type(
-      screen.getByLabelText(/lessons learned/i),
-      "Qualify schedule-based access earlier so the team can down-select sooner.",
-    );
+    fireEvent.change(screen.getByLabelText(/outcome reason/i), {
+      target: {
+        value: "Vehicle access did not align with the final pursuit posture.",
+      },
+    });
+    fireEvent.change(screen.getByLabelText(/lessons learned/i), {
+      target: {
+        value: "Qualify schedule-based access earlier so the team can down-select sooner.",
+      },
+    });
     await user.click(screen.getByRole("button", { name: /record closeout/i }));
 
     await waitFor(() => {

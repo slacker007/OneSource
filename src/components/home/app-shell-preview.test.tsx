@@ -220,7 +220,12 @@ describe("DashboardLanding", () => {
       screen.getAllByText(/enterprise knowledge management support services/i)
         .length,
     ).toBeGreaterThanOrEqual(4);
-    expect(screen.getByText(/tracked pursuits/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /execution overview/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/tracked pursuits/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/blocked overdue task/i)).toBeInTheDocument();
     expect(screen.getByText(/score 79\.50\/100/i)).toBeInTheDocument();
     expect(screen.getByText(/go\/no-go board/i)).toBeInTheDocument();

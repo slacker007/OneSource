@@ -375,10 +375,10 @@ const snapshot: OpportunityWorkspaceSnapshot = {
 };
 
 describe("OpportunityWorkspace", () => {
-  it("renders the sectioned workspace shell and focused zone content", () => {
-    const renderWorkspace = (activeSection?: Parameters<
-      typeof OpportunityWorkspace
-    >[0]["activeSection"]) => (
+  function renderWorkspace(
+    activeSection?: Parameters<typeof OpportunityWorkspace>[0]["activeSection"],
+  ) {
+    return render(
       <OpportunityWorkspace
         activeSection={activeSection}
         allowManagePipeline
@@ -414,10 +414,12 @@ describe("OpportunityWorkspace", () => {
           INITIAL_OPPORTUNITY_MILESTONE_ACTION_STATE
         }
         updateTaskAction={async () => INITIAL_OPPORTUNITY_TASK_ACTION_STATE}
-      />
+      />,
     );
+  }
 
-    const { rerender } = render(renderWorkspace("summary"));
+  it("renders the summary section shell and knowledge suggestions", () => {
+    renderWorkspace("summary");
 
     expect(
       screen.getByRole("heading", {
@@ -452,13 +454,15 @@ describe("OpportunityWorkspace", () => {
       screen.getByRole("link", { name: /open asset/i }),
     ).toHaveAttribute("href", "/knowledge/knowledge_1/edit");
     expect(
-      screen.getByRole("link", { name: /open source notice/i }),
+      screen.getByRole("link", { name: /view source notice/i }),
     ).toHaveAttribute("href", "https://sam.gov/opp/FA4861-26-R-0001/view");
     expect(
-      screen.getByRole("link", { name: /edit details/i }),
+      screen.getByRole("link", { name: /edit record/i }),
     ).toHaveAttribute("href", "/opportunities/opp_123/edit");
+  });
 
-    rerender(renderWorkspace("capture"));
+  it("renders the capture section controls and stage transition form", () => {
+    renderWorkspace("capture");
 
     expect(screen.getByRole("heading", { name: /^Capture$/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Scoring$/i })).toBeInTheDocument();
@@ -500,8 +504,10 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("button", { name: /move to pursuit approved/i }),
     ).toBeInTheDocument();
+  });
 
-    rerender(renderWorkspace("tasks"));
+  it("renders the tasks section task and milestone controls", () => {
+    renderWorkspace("tasks");
 
     expect(screen.getByRole("heading", { name: /^Tasks$/i })).toBeInTheDocument();
     expect(screen.getByText(/^overdue$/i)).toBeInTheDocument();
@@ -527,8 +533,10 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByDisplayValue(/customer questions due/i),
     ).toBeInTheDocument();
+  });
 
-    rerender(renderWorkspace("documents"));
+  it("renders the documents section upload and download controls", () => {
+    renderWorkspace("documents");
 
     expect(
       screen.getByRole("heading", { name: /^Documents$/i }),
@@ -542,8 +550,10 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("link", { name: /download stored file/i }),
     ).toHaveAttribute("href", "/api/opportunities/documents/doc_1/download");
+  });
 
-    rerender(renderWorkspace("notes"));
+  it("renders the notes section note management controls", () => {
+    renderWorkspace("notes");
 
     expect(screen.getByRole("heading", { name: /^Notes$/i })).toBeInTheDocument();
     expect(screen.getByText(/capture summary/i)).toBeInTheDocument();
@@ -551,8 +561,10 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("combobox", { name: /^pin note$/i }),
     ).toBeInTheDocument();
+  });
 
-    rerender(renderWorkspace("proposal"));
+  it("renders the proposal section checklist and actions", () => {
+    renderWorkspace("proposal");
 
     expect(
       screen.getByRole("heading", { name: /^Proposal tracking$/i }),
@@ -566,8 +578,10 @@ describe("OpportunityWorkspace", () => {
     expect(
       screen.getByRole("button", { name: /^delete proposal record$/i }),
     ).toBeInTheDocument();
+  });
 
-    rerender(renderWorkspace("history"));
+  it("renders the history section activity feed", () => {
+    renderWorkspace("history");
 
     expect(screen.getByRole("heading", { name: /^History$/i })).toBeInTheDocument();
     expect(

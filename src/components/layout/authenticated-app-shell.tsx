@@ -1,14 +1,38 @@
 "use client";
 
+import ChecklistRoundedIcon from "@mui/icons-material/ChecklistRounded";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
+import LibraryBooksRoundedIcon from "@mui/icons-material/LibraryBooksRounded";
+import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+import SpaceDashboardRoundedIcon from "@mui/icons-material/SpaceDashboardRounded";
+import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
+import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
+import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import MuiDrawer from "@mui/material/Drawer";
+import OutlinedInput from "@mui/material/OutlinedInput";
+import Popover from "@mui/material/Popover";
+import Stack from "@mui/material/Stack";
+import Tooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
+import { alpha } from "@mui/material/styles";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   useDeferredValue,
   useEffect,
+  useEffectEvent,
   useId,
   useRef,
   useState,
   useSyncExternalStore,
+  type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
@@ -16,14 +40,17 @@ import {
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Drawer } from "@/components/ui/drawer";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Surface } from "@/components/ui/surface";
 import { hasAppPermission } from "@/lib/auth/permissions";
-import { cn } from "@/lib/cn";
 import type {
   AppShellCommandCategory,
   AppShellCommandItem,
   AppShellSnapshot,
   AppShellWorkbenchItem,
 } from "@/modules/shell/app-shell.types";
+import { onesourceTokens } from "@/theme/onesource-theme";
 
 const SHELL_COLLAPSE_STORAGE_KEY = "onesource.shell.is-collapsed";
 const SHELL_PINNED_ITEMS_STORAGE_KEY = "onesource.shell.pinned-items";
@@ -32,6 +59,17 @@ const SHELL_RECENT_DESTINATIONS_STORAGE_KEY =
   "onesource.shell.recent-destinations";
 const SHELL_PINNED_ITEM_LIMIT = 6;
 const SHELL_RECENT_DESTINATION_LIMIT = 4;
+const SHELL_DARK_SURFACE_BG = onesourceTokens.shell.background;
+const SHELL_PANEL_BG = onesourceTokens.shell.panel;
+const SHELL_PANEL_BORDER = onesourceTokens.shell.panelBorder;
+const SHELL_TEXT_PRIMARY = onesourceTokens.shell.textPrimary;
+const SHELL_TEXT_SECONDARY = onesourceTokens.shell.textSecondary;
+const SHELL_TEXT_MUTED = onesourceTokens.shell.textMuted;
+const SHELL_TEXT_FAINT = onesourceTokens.shell.textFaint;
+const APP_HEADER_BG = alpha(onesourceTokens.color.background.strong, 0.92);
+const APP_HEADER_BORDER = onesourceTokens.color.border.subtle;
+const APP_SHELL_CANVAS =
+  "radial-gradient(circle at top left, rgba(37,99,235,0.08), transparent 30%), radial-gradient(circle at bottom right, rgba(148,163,184,0.12), transparent 28%), linear-gradient(180deg, rgba(248,250,252,0.96) 0%, rgba(241,245,249,0.98) 100%)";
 
 type NavItem = {
   description: string;
@@ -42,6 +80,7 @@ type NavItem = {
 type NavGroup = {
   description: string;
   items: NavItem[];
+  key: string;
   title: string;
 };
 
@@ -55,6 +94,7 @@ type ShellRouteDefinition = {
 
 const BASE_NAV_GROUPS: NavGroup[] = [
   {
+    key: "capture_command",
     title: "Capture command",
     description: "Daily oversight and execution",
     items: [
@@ -76,6 +116,7 @@ const BASE_NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    key: "intelligence",
     title: "Intelligence",
     description: "Discovery, context, and decision support",
     items: [
@@ -99,22 +140,37 @@ const BASE_NAV_GROUPS: NavGroup[] = [
 ];
 
 const SETTINGS_NAV_GROUP: NavGroup = {
+  key: "workspace_admin",
   title: "Workspace admin",
   description: "Operator controls and oversight",
   items: [
     {
       href: "/settings",
       label: "Settings",
-      description: "Manage workspace controls, roles, and audit views.",
+      description: "Manage workspace operations, scoring, and audit views.",
+    },
+    {
+      href: "/settings/users",
+      label: "Users & Roles",
+      description: "Administer invited, active, and disabled users.",
     },
   ],
 };
 
 const SHELL_ROUTE_DEFINITIONS: ShellRouteDefinition[] = [
   {
+    matcher: "/settings/users",
+    label: "Users & roles",
+    description:
+      "Manage workspace users, assigned system roles, and access state.",
+    navHref: "/settings/users",
+    requires: "workspace_settings",
+  },
+  {
     matcher: "/settings",
     label: "Workspace settings",
-    description: "Operate users, connectors, saved searches, and audit controls.",
+    description:
+      "Operate connectors, saved searches, scoring, and audit controls.",
     navHref: "/settings",
     requires: "workspace_settings",
   },
@@ -128,7 +184,8 @@ const SHELL_ROUTE_DEFINITIONS: ShellRouteDefinition[] = [
   {
     matcher: "/opportunities/new",
     label: "Create pursuit",
-    description: "Start a new tracked opportunity with validated reference data.",
+    description:
+      "Start a new tracked opportunity with validated reference data.",
     navHref: "/opportunities",
   },
   {
@@ -158,13 +215,15 @@ const SHELL_ROUTE_DEFINITIONS: ShellRouteDefinition[] = [
   {
     matcher: "/knowledge",
     label: "Knowledge library",
-    description: "Browse reusable assets, taxonomy filters, and linked pursuits.",
+    description:
+      "Browse reusable assets, taxonomy filters, and linked pursuits.",
     navHref: "/knowledge",
   },
   {
     matcher: "/sources",
     label: "External discovery",
-    description: "Search source systems, review previews, and import opportunities.",
+    description:
+      "Search source systems, review previews, and import opportunities.",
     navHref: "/sources",
   },
   {
@@ -220,7 +279,7 @@ export function AppShellFrame({
   const collapsedRailSnapshot = useSyncExternalStore(
     subscribeToShellPreferenceChanges,
     readCollapsedRailPreferenceSnapshot,
-    () => "0",
+    () => "1",
   );
   const recentItemsSnapshot = useSyncExternalStore(
     subscribeToShellPreferenceChanges,
@@ -270,7 +329,8 @@ export function AppShellFrame({
       currentPath,
     }) ?? createWorkbenchItemFromNavItem(navItems[0]);
   const activeNavItem =
-    navItems.find((item) => item.href === activeDestination.navHref) ?? navItems[0];
+    navItems.find((item) => item.href === activeDestination.navHref) ??
+    navItems[0];
   const activeGroup =
     navGroups.find((group) =>
       group.items.some((item) => item.href === activeNavItem.href),
@@ -281,7 +341,14 @@ export function AppShellFrame({
     canManagePipeline,
     canManageSourceSearches,
   });
-  const visibleRecentItems = recentItems.filter((item) => item.href !== currentPath);
+  const visibleRecentItems = recentItems.filter(
+    (item) => item.href !== currentPath,
+  );
+  const isWideCanvasRoute = currentPath === "/opportunities";
+  const shellContentMaxWidth = isWideCanvasRoute ? 1560 : 1280;
+  const shellContentPaddingX = isWideCanvasRoute
+    ? { lg: 3, sm: 3, xs: 2 }
+    : { lg: 4, sm: 3, xs: 2 };
   const quickCreateItems = buildQuickCreateItems({
     allowDecisionSupport,
     allowWorkspaceSettings,
@@ -323,15 +390,12 @@ export function AppShellFrame({
     (item) => item.id === activeCommandItemId,
   )
     ? activeCommandItemId
-    : flatCommandItems[0]?.id ?? null;
+    : (flatCommandItems[0]?.id ?? null);
   const notificationCount = shellSnapshot.notifications.totalCount;
 
   const displayName =
     sessionUser.name ?? sessionUser.email ?? "Authenticated user";
-  const roleSummary =
-    sessionUser.roleKeys.length > 0
-      ? sessionUser.roleKeys.join(", ")
-      : "No roles assigned";
+  const workspaceIdentity = formatWorkspaceIdentity(sessionUser.organizationId);
 
   useEffect(() => {
     if (!isCommandOpen) {
@@ -347,17 +411,16 @@ export function AppShellFrame({
     };
   }, [isCommandOpen]);
 
-  useEffect(() => {
-    function handleKeyboardShortcut(event: globalThis.KeyboardEvent) {
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        event.key.toLowerCase() === "k"
-      ) {
+  const handleKeyboardShortcut = useEffectEvent(
+    (event: globalThis.KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setIsCommandOpen(true);
+        openCommandSurface();
       }
-    }
+    },
+  );
 
+  useEffect(() => {
     window.addEventListener("keydown", handleKeyboardShortcut);
 
     return () => {
@@ -405,13 +468,38 @@ export function AppShellFrame({
     setActiveCommandItemId(null);
   }
 
+  function blurActiveShellElement() {
+    const activeElement = document.activeElement;
+
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+  }
+
+  function openCommandSurface() {
+    blurActiveShellElement();
+    setIsCommandOpen(true);
+  }
+
+  function openMobileNavigation() {
+    blurActiveShellElement();
+    setIsMobileNavOpen(true);
+  }
+
+  function openNotificationsSurface() {
+    blurActiveShellElement();
+    setIsNotificationsOpen(true);
+  }
+
   function handleCommandItemSelection(item: AppShellWorkbenchItem) {
     rememberRecentItem(item);
     closeCommandSurface();
   }
 
   function focusCommandItem(itemId: string) {
-    const link = document.getElementById(getCommandLinkId(commandOptionIdPrefix, itemId));
+    const link = document.getElementById(
+      getCommandLinkId(commandOptionIdPrefix, itemId),
+    );
     link?.focus();
   }
 
@@ -472,116 +560,269 @@ export function AppShellFrame({
     }
   }
 
+  const railWidth = isRailCollapsed
+    ? onesourceTokens.sizing.railCollapsed
+    : onesourceTokens.sizing.railExpanded;
   const desktopShell = (
-    <aside
-      className={cn(
-        "border-border hidden shrink-0 border-r bg-[rgba(15,28,31,0.98)] py-6 text-stone-100 lg:flex lg:flex-col lg:justify-between",
-        isRailCollapsed ? "w-64 px-4" : "w-[21rem] px-6",
-      )}
+    <MuiDrawer
+      open
+      variant="permanent"
+      sx={{
+        color: SHELL_TEXT_PRIMARY,
+        display: {
+          xs: "none",
+          lg: "block",
+        },
+        flexShrink: 0,
+        width: railWidth,
+        zIndex: 25,
+        "& .MuiDrawer-paper": {
+          backgroundColor: SHELL_DARK_SURFACE_BG,
+          borderRight: `1px solid ${SHELL_PANEL_BORDER}`,
+          boxSizing: "border-box",
+          color: SHELL_TEXT_PRIMARY,
+          overflowX: "hidden",
+          overflowY: "hidden",
+          px: isRailCollapsed ? 1.5 : 2.5,
+          py: 2.5,
+          scrollbarWidth: "none",
+          top: 0,
+          transition:
+            "width 180ms ease, padding-inline 180ms ease, background-color 180ms ease",
+          width: railWidth,
+          "&::-webkit-scrollbar": {
+            display: "none",
+          },
+        },
+      }}
     >
-      <div className="space-y-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-stone-200">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#dca167]" />
-              OneSource
-            </div>
-            {!isRailCollapsed ? (
-              <div className="space-y-2">
-                <p className="font-heading text-3xl leading-tight font-semibold">
-                  Capture command, discovery, and execution in one rail.
-                </p>
-                <p className="text-sm leading-6 text-stone-300">
-                  Grouped navigation now feeds a command center with pinned work,
-                  recent context, and alert review instead of leaving the shell as
-                  a passive frame.
-                </p>
-              </div>
-            ) : null}
-          </div>
-          <button
-            aria-label={
-              isRailCollapsed
-                ? "Expand navigation rail"
-                : "Collapse navigation rail"
-            }
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium tracking-[0.18em] uppercase text-stone-200 transition hover:bg-white/10"
-            onClick={() => updateCollapsedRailPreference(!isRailCollapsed)}
-            type="button"
+      <Stack sx={{ height: "100%", minHeight: 0 }}>
+        <Stack spacing={2} sx={{ flex: 1, minHeight: 0 }}>
+          <Stack
+            direction={isRailCollapsed ? "column" : "row"}
+            spacing={isRailCollapsed ? 1.25 : 1.5}
+            sx={{
+              alignItems: isRailCollapsed ? "center" : "flex-start",
+              justifyContent: "space-between",
+            }}
           >
-            {isRailCollapsed ? "Expand" : "Collapse"}
-          </button>
-        </div>
+            <Box
+              sx={{
+                alignItems: isRailCollapsed ? "center" : "flex-start",
+                flex: isRailCollapsed ? "0 0 auto" : "1 1 auto",
+                minWidth: 0,
+              }}
+            >
+              <Tooltip
+                disableHoverListener={!isRailCollapsed}
+                placement="right"
+                title={workspaceIdentity.label}
+              >
+                <Box
+                  sx={{
+                    alignItems: "center",
+                    bgcolor: alpha(onesourceTokens.color.neutral[0], 0.04),
+                    border: `1px solid ${alpha(onesourceTokens.color.neutral[0], 0.12)}`,
+                    borderRadius: 3,
+                    color: SHELL_TEXT_PRIMARY,
+                    display: "inline-flex",
+                    gap: 1,
+                    minHeight: 48,
+                    minWidth: isRailCollapsed ? 48 : "auto",
+                    px: isRailCollapsed ? 1.25 : 1.5,
+                    py: 0.9,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      alignItems: "center",
+                      bgcolor: alpha(onesourceTokens.shell.brandAccent, 0.18),
+                      borderRadius: 2.5,
+                      color: SHELL_TEXT_PRIMARY,
+                      display: "inline-flex",
+                      fontFamily: "var(--font-heading), sans-serif",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      height: 28,
+                      justifyContent: "center",
+                      width: 28,
+                    }}
+                  >
+                    OS
+                  </Box>
+                  {!isRailCollapsed ? (
+                    <Typography sx={{ fontSize: "0.92rem", fontWeight: 700 }}>
+                      OneSource
+                    </Typography>
+                  ) : null}
+                </Box>
+              </Tooltip>
+              {!isRailCollapsed ? (
+                <Stack spacing={0.35} sx={{ mt: 1.25 }}>
+                  <Typography
+                    sx={{
+                      color: SHELL_TEXT_FAINT,
+                      fontSize: "0.64rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.18em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Admin rail
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: SHELL_TEXT_PRIMARY,
+                      fontSize: "0.94rem",
+                      fontWeight: 600,
+                      lineHeight: 1.35,
+                      maxWidth: "100%",
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {workspaceIdentity.label}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: SHELL_TEXT_SECONDARY,
+                      fontSize: "0.72rem",
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    Traditional admin navigation with compact grouped routes.
+                  </Typography>
+                </Stack>
+              ) : null}
+            </Box>
+            <Tooltip
+              placement={isRailCollapsed ? "right" : "bottom"}
+              title={
+                isRailCollapsed
+                  ? "Expand navigation rail"
+                  : "Collapse navigation rail"
+              }
+            >
+              <IconButton
+                aria-label={
+                  isRailCollapsed
+                    ? "Expand navigation rail"
+                    : "Collapse navigation rail"
+                }
+                onClick={() => updateCollapsedRailPreference(!isRailCollapsed)}
+                sx={{
+                  alignSelf: isRailCollapsed ? "center" : "flex-start",
+                  bgcolor: alpha(onesourceTokens.color.neutral[0], 0.08),
+                  border: `1px solid ${alpha(onesourceTokens.color.neutral[0], 0.14)}`,
+                  borderRadius: 2.75,
+                  color: SHELL_TEXT_PRIMARY,
+                  flexShrink: 0,
+                  "&:hover": {
+                    bgcolor: alpha(onesourceTokens.color.neutral[0], 0.14),
+                    borderColor: alpha(onesourceTokens.color.neutral[0], 0.2),
+                  },
+                }}
+              >
+                {isRailCollapsed ? (
+                  <ChevronRightRoundedIcon fontSize="small" />
+                ) : (
+                  <ChevronLeftRoundedIcon fontSize="small" />
+                )}
+              </IconButton>
+            </Tooltip>
+          </Stack>
 
-        <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-          <p className="text-sm font-medium text-white">{displayName}</p>
-          <p className="mt-1 text-sm text-stone-300">{sessionUser.email}</p>
-          <p className="mt-3 text-xs tracking-[0.18em] text-stone-400 uppercase">
-            {roleSummary}
-          </p>
-        </div>
-
-        <NavigationMenu
-          collapsed={isRailCollapsed}
-          currentPath={currentPath}
-          groups={navGroups}
-          onRememberItem={rememberRecentItem}
-          title="Primary navigation"
-        />
-
-        <QuickLinksPanel
-          collapsed={isRailCollapsed}
-          currentPath={currentPath}
-          links={quickLinks}
-          onRememberItem={rememberRecentItem}
-        />
-
-        <PinnedWorkPanel
-          collapsed={isRailCollapsed}
-          items={pinnedItems}
-          onRememberItem={rememberRecentItem}
-          onTogglePinnedItem={togglePinnedItem}
-        />
-
-        <RecentWorkPanel
-          collapsed={isRailCollapsed}
-          items={visibleRecentItems}
-          onRememberItem={rememberRecentItem}
-        />
-      </div>
-
-      <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-        <p className="text-xs tracking-[0.24em] text-stone-400 uppercase">
-          Current focus
-        </p>
-        <p className="font-heading mt-3 text-2xl font-semibold text-white">
-          {activeDestination.label}
-        </p>
-        {!isRailCollapsed ? (
-          <p className="mt-3 text-sm leading-6 text-stone-300">
-            {activeDestination.description}
-          </p>
-        ) : null}
-      </div>
-    </aside>
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: "auto",
+              pr: isRailCollapsed ? 0 : 0.25,
+              scrollbarWidth: "none",
+              "&::-webkit-scrollbar": {
+                display: "none",
+              },
+            }}
+          >
+            <NavigationMenu
+              collapsed={isRailCollapsed}
+              currentPath={currentPath}
+              groups={navGroups}
+              onRememberItem={rememberRecentItem}
+              title="Primary navigation"
+            />
+          </Box>
+        </Stack>
+      </Stack>
+    </MuiDrawer>
   );
 
   return (
-    <div className="relative flex min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(32,95,85,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(168,93,42,0.1),transparent_24%)]">
+    <Box
+      sx={{
+        background: APP_SHELL_CANVAS,
+        display: "flex",
+        minHeight: "100vh",
+        overflowX: "hidden",
+        position: "relative",
+      }}
+    >
       <Drawer
-        description="Responsive grouped navigation now keeps quick links, pinned work, and recent work in the mobile shell instead of scattering them across individual routes."
+        anchor="left"
+        description="Open the compact admin navigation for the authenticated workspace."
         eyebrow="OneSource"
+        hideAbove="lg"
         onClose={() => setIsMobileNavOpen(false)}
         open={isMobileNavOpen}
-        title="OneSource workspace"
+        title="Navigation"
+        width={336}
       >
-        <div className="mt-6 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-          <p className="text-sm font-medium text-white">{displayName}</p>
-          <p className="mt-1 text-sm text-stone-300">{sessionUser.email}</p>
-          <p className="mt-3 text-xs tracking-[0.18em] text-stone-400 uppercase">
-            {roleSummary}
-          </p>
-        </div>
+        <Surface
+          sx={{
+            bgcolor: SHELL_PANEL_BG,
+            borderColor: SHELL_PANEL_BORDER,
+            boxShadow: "none",
+            color: SHELL_TEXT_PRIMARY,
+            mt: 1,
+            p: 2,
+          }}
+        >
+          <Typography
+            sx={{
+              color: SHELL_TEXT_FAINT,
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+            }}
+          >
+            Workspace
+          </Typography>
+          <Typography
+            sx={{
+              color: "inherit",
+              fontSize: "0.98rem",
+              fontWeight: 600,
+              mt: 0.8,
+            }}
+          >
+            {workspaceIdentity.label}
+          </Typography>
+          {workspaceIdentity.supportingText ? (
+            <Typography
+              sx={{
+                color: SHELL_TEXT_SECONDARY,
+                fontSize: "0.82rem",
+                lineHeight: 1.5,
+                mt: 0.65,
+              }}
+            >
+              {workspaceIdentity.supportingText}
+            </Typography>
+          ) : null}
+        </Surface>
 
         <NavigationMenu
           currentPath={currentPath}
@@ -590,46 +831,48 @@ export function AppShellFrame({
           onRememberItem={rememberRecentItem}
           title="Mobile navigation"
         />
-
-        <QuickLinksPanel
-          currentPath={currentPath}
-          links={quickLinks}
-          mobile
-          onRememberItem={rememberRecentItem}
-        />
-
-        <PinnedWorkPanel
-          items={pinnedItems}
-          mobile
-          onNavigate={() => setIsMobileNavOpen(false)}
-          onRememberItem={rememberRecentItem}
-          onTogglePinnedItem={togglePinnedItem}
-        />
-
-        <RecentWorkPanel
-          items={visibleRecentItems}
-          mobile
-          onNavigate={() => setIsMobileNavOpen(false)}
-          onRememberItem={rememberRecentItem}
-        />
       </Drawer>
 
       <Dialog
         description="Use the keyboard or the result list to jump to core views, quick-create flows, active pursuits, assigned tasks, saved searches, or recent knowledge."
         footer={
-          <div className="flex flex-col gap-2 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-            <p>Use ↑ and ↓ to move, then press Enter to open the selected result.</p>
-            <p>{flatCommandItems.length} items available in the shell command center.</p>
-          </div>
+          <Stack
+            direction={{ sm: "row", xs: "column" }}
+            spacing={1}
+            sx={{ justifyContent: "space-between" }}
+          >
+            <Typography sx={{ color: "text.secondary", fontSize: "0.92rem" }}>
+              Use ↑ and ↓ to move, then press Enter to open the selected result.
+            </Typography>
+            <Typography sx={{ color: "text.secondary", fontSize: "0.92rem" }}>
+              {flatCommandItems.length} items available in the shell command
+              center.
+            </Typography>
+          </Stack>
         }
         onClose={closeCommandSurface}
         open={isCommandOpen}
         title="Command center"
       >
-        <div className="space-y-4">
-          <label className="block">
-            <span className="sr-only">Command search</span>
-            <input
+        <Stack spacing={2}>
+          <Box component="label" sx={{ display: "block" }}>
+            <Box
+              component="span"
+              sx={{
+                border: 0,
+                clip: "rect(0 0 0 0)",
+                height: 1,
+                m: -1,
+                overflow: "hidden",
+                p: 0,
+                position: "absolute",
+                whiteSpace: "nowrap",
+                width: 1,
+              }}
+            >
+              Command search
+            </Box>
+            <OutlinedInput
               aria-activedescendant={
                 resolvedActiveCommandItemId
                   ? getCommandOptionId(
@@ -640,29 +883,56 @@ export function AppShellFrame({
               }
               aria-controls={commandListboxId}
               aria-label="Command search"
-              className="border-border text-foreground w-full rounded-[24px] border bg-white px-4 py-3 text-sm shadow-[0_12px_28px_rgba(20,37,34,0.06)] transition outline-none focus:border-[rgba(32,95,85,0.4)]"
+              fullWidth
+              inputRef={commandInputRef}
               onChange={(event) => setCommandQuery(event.target.value)}
               onKeyDown={handleCommandInputKeyDown}
               placeholder="Search workspaces, tasks, knowledge, or saved searches"
-              ref={commandInputRef}
+              sx={{
+                bgcolor: alpha(onesourceTokens.color.neutral[0], 0.88),
+                borderRadius: 3,
+                boxShadow: onesourceTokens.elevation.raised,
+                "& .MuiOutlinedInput-input": {
+                  fontSize: "0.94rem",
+                  py: 1.75,
+                },
+              }}
               type="search"
               value={commandQuery}
             />
-          </label>
+          </Box>
 
           {flatCommandItems.length > 0 ? (
-            <div
+            <Stack
               aria-label="Command results"
-              className="max-h-[28rem] space-y-4 overflow-y-auto pr-1"
               id={commandListboxId}
               role="listbox"
+              spacing={2}
+              sx={{ maxHeight: "28rem", overflowY: "auto", pr: 0.5 }}
             >
-              {commandSections.map((section) => (
-                <section key={section.key} className="space-y-2">
-                  <p className="text-muted text-xs tracking-[0.22em] uppercase">
+              {commandSections.map((section, sectionIndex) => (
+                <Box component="section" key={section.key}>
+                  {sectionIndex > 0 ? (
+                    <Divider
+                      sx={{
+                        borderColor: onesourceTokens.color.border.subtle,
+                        mb: 2,
+                      }}
+                    />
+                  ) : null}
+                  <Typography
+                    sx={{
+                      color: "text.secondary",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.22em",
+                      mb: 1.5,
+                      textTransform: "uppercase",
+                    }}
+                  >
                     {section.label}
-                  </p>
-                  <div className="space-y-2">
+                  </Typography>
+                  <Stack spacing={1.25}>
                     {section.items.map((item) => {
                       const optionId = getCommandOptionId(
                         commandOptionIdPrefix,
@@ -675,75 +945,166 @@ export function AppShellFrame({
                         createWorkbenchItemFromCommandItem(item);
 
                       return (
-                        <div
-                          aria-selected={resolvedActiveCommandItemId === item.id}
-                          className={cn(
-                            "rounded-[24px] border bg-white/72 p-2 transition",
+                        <Surface
+                          aria-selected={
                             resolvedActiveCommandItemId === item.id
-                              ? "border-[rgba(32,95,85,0.28)] shadow-[0_16px_36px_rgba(20,37,34,0.12)]"
-                              : "border-[rgba(15,28,31,0.08)]",
-                          )}
+                          }
                           id={optionId}
                           key={item.id}
                           onMouseEnter={() => setActiveCommandItemId(item.id)}
                           role="option"
+                          sx={{
+                            bgcolor:
+                              resolvedActiveCommandItemId === item.id
+                                ? alpha(onesourceTokens.color.accent.main, 0.08)
+                                : alpha(onesourceTokens.color.neutral[0], 0.86),
+                            borderColor:
+                              resolvedActiveCommandItemId === item.id
+                                ? alpha(onesourceTokens.color.accent.main, 0.22)
+                                : onesourceTokens.color.border.subtle,
+                            boxShadow:
+                              resolvedActiveCommandItemId === item.id
+                                ? onesourceTokens.elevation.raised
+                                : onesourceTokens.elevation.surface,
+                            p: 1,
+                          }}
                         >
-                          <div className="flex items-start gap-2">
-                            <Link
-                              className="flex-1 rounded-[20px] px-3 py-3 transition hover:bg-[rgba(32,95,85,0.06)] focus:bg-[rgba(32,95,85,0.08)] focus:outline-none"
+                          <Stack direction="row" spacing={1}>
+                            <Box
+                              component={Link}
                               href={item.href}
-                              id={getCommandLinkId(commandOptionIdPrefix, item.id)}
-                              onClick={() => handleCommandItemSelection(workbenchItem)}
+                              id={getCommandLinkId(
+                                commandOptionIdPrefix,
+                                item.id,
+                              )}
+                              onClick={() =>
+                                handleCommandItemSelection(workbenchItem)
+                              }
+                              sx={{
+                                borderRadius: 2.5,
+                                color: "inherit",
+                                display: "block",
+                                flex: 1,
+                                px: 1.5,
+                                py: 1.5,
+                                textDecoration: "none",
+                                "&:focus-visible": {
+                                  bgcolor: alpha(
+                                    onesourceTokens.color.accent.main,
+                                    0.08,
+                                  ),
+                                  outline: `2px solid ${alpha(onesourceTokens.color.accent.main, 0.28)}`,
+                                  outlineOffset: 2,
+                                },
+                                "&:hover": {
+                                  bgcolor: alpha(
+                                    onesourceTokens.color.accent.main,
+                                    0.04,
+                                  ),
+                                },
+                              }}
                             >
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-sm font-medium text-foreground">
-                                  {item.label}
-                                </span>
-                                <span className="text-muted text-[0.68rem] tracking-[0.18em] uppercase">
-                                  {formatCommandCategoryLabel(item.category)}
-                                </span>
-                              </div>
-                              <p className="mt-1 text-sm leading-6 text-muted">
-                                {item.description}
-                              </p>
-                              {item.supportingText ? (
-                                <p className="mt-2 text-xs tracking-[0.16em] text-muted uppercase">
-                                  {item.supportingText}
-                                </p>
-                              ) : null}
-                            </Link>
-                            <button
+                              <Stack spacing={0.75}>
+                                <Stack
+                                  direction="row"
+                                  spacing={2}
+                                  sx={{
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
+                                  <Typography
+                                    sx={{
+                                      fontSize: "0.94rem",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {item.label}
+                                  </Typography>
+                                  <Typography
+                                    sx={{
+                                      color: "text.secondary",
+                                      fontSize: "0.68rem",
+                                      fontWeight: 700,
+                                      letterSpacing: "0.18em",
+                                      textTransform: "uppercase",
+                                    }}
+                                  >
+                                    {formatCommandCategoryLabel(item.category)}
+                                  </Typography>
+                                </Stack>
+                                <Typography
+                                  sx={{
+                                    color: "text.secondary",
+                                    fontSize: "0.88rem",
+                                    lineHeight: 1.65,
+                                  }}
+                                >
+                                  {item.description}
+                                </Typography>
+                                {item.supportingText ? (
+                                  <Typography
+                                    sx={{
+                                      color: "text.secondary",
+                                      fontSize: "0.68rem",
+                                      fontWeight: 700,
+                                      letterSpacing: "0.16em",
+                                      textTransform: "uppercase",
+                                    }}
+                                  >
+                                    {item.supportingText}
+                                  </Typography>
+                                ) : null}
+                              </Stack>
+                            </Box>
+                            <Button
                               aria-label={
                                 isPinned
                                   ? `Remove ${item.label} from pinned work`
                                   : `Pin ${item.label} to pinned work`
                               }
-                              className={cn(
-                                "rounded-full border px-3 py-2 text-xs font-medium tracking-[0.16em] uppercase transition",
-                                isPinned
-                                  ? "border-[rgba(32,95,85,0.22)] bg-[rgba(32,95,85,0.12)] text-foreground"
-                                  : "border-border bg-white text-muted hover:border-[rgba(32,95,85,0.2)] hover:text-foreground",
-                              )}
+                              density="compact"
                               onClick={() => togglePinnedItem(workbenchItem)}
+                              sx={{
+                                alignSelf: "flex-start",
+                                minWidth: 92,
+                              }}
+                              tone="neutral"
                               type="button"
+                              variant={isPinned ? "soft" : "outlined"}
                             >
                               {isPinned ? "Pinned" : "Pin"}
-                            </button>
-                          </div>
-                        </div>
+                            </Button>
+                          </Stack>
+                        </Surface>
                       );
                     })}
-                  </div>
-                </section>
+                  </Stack>
+                </Box>
               ))}
-            </div>
+            </Stack>
           ) : (
-            <div className="rounded-[24px] border border-dashed border-border bg-white/70 px-5 py-8 text-sm leading-6 text-muted">
-              No shell results match the current command query. Try a pursuit
-              title, task name, knowledge asset, or saved search.
-            </div>
+            <Surface
+              sx={{
+                bgcolor: alpha(onesourceTokens.color.neutral[0], 0.84),
+                borderColor: onesourceTokens.color.border.strong,
+                borderStyle: "dashed",
+                p: 3,
+              }}
+            >
+              <Typography
+                sx={{
+                  color: "text.secondary",
+                  fontSize: "0.92rem",
+                  lineHeight: 1.7,
+                }}
+              >
+                No shell results match the current command query. Try a pursuit
+                title, task name, knowledge asset, or saved search.
+              </Typography>
+            </Surface>
           )}
-        </div>
+        </Stack>
       </Dialog>
 
       <Dialog
@@ -753,146 +1114,331 @@ export function AppShellFrame({
         title="Notifications"
       >
         {shellSnapshot.notifications.items.length > 0 ? (
-          <div className="space-y-3">
+          <Stack spacing={1.5}>
             {shellSnapshot.notifications.items.map((notification) => (
-              <Link
-                className="block rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-white px-5 py-4 transition hover:border-[rgba(32,95,85,0.2)] hover:bg-[rgba(32,95,85,0.04)]"
+              <Box
+                component={Link}
                 href={notification.href}
                 key={notification.id}
                 onClick={() => setIsNotificationsOpen(false)}
+                sx={{
+                  bgcolor: alpha(onesourceTokens.color.neutral[0], 0.9),
+                  border: "1px solid",
+                  borderColor: onesourceTokens.color.border.subtle,
+                  borderRadius: 3,
+                  color: "inherit",
+                  display: "block",
+                  px: 2.5,
+                  py: 2,
+                  textDecoration: "none",
+                  transition:
+                    "background-color 140ms ease, border-color 140ms ease",
+                  "&:hover": {
+                    bgcolor: alpha(onesourceTokens.color.accent.main, 0.05),
+                    borderColor: alpha(onesourceTokens.color.accent.main, 0.2),
+                  },
+                }}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-foreground">
+                <Stack
+                  direction="row"
+                  spacing={2}
+                  sx={{
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Typography sx={{ fontSize: "0.94rem", fontWeight: 600 }}>
                     {notification.title}
-                  </p>
-                  <span
-                    className={cn(
-                      "rounded-full px-2.5 py-1 text-[0.68rem] tracking-[0.16em] uppercase",
-                      notification.tone === "danger"
-                        ? "bg-[rgba(173,70,49,0.12)] text-[#8f3422]"
-                        : notification.tone === "warning"
-                          ? "bg-[rgba(220,161,103,0.16)] text-[#8b5e2d]"
-                          : "bg-[rgba(32,95,85,0.12)] text-[#1b5f53]",
-                    )}
-                  >
+                  </Typography>
+                  <Badge tone={getNotificationBadgeTone(notification.tone)}>
                     {notification.tone}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-muted">
+                  </Badge>
+                </Stack>
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    fontSize: "0.88rem",
+                    lineHeight: 1.65,
+                    mt: 1,
+                  }}
+                >
                   {notification.summary}
-                </p>
+                </Typography>
                 {notification.timestamp ? (
-                  <p className="mt-2 text-xs tracking-[0.16em] text-muted uppercase">
+                  <Typography
+                    sx={{
+                      color: "text.secondary",
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.16em",
+                      mt: 1.5,
+                      textTransform: "uppercase",
+                    }}
+                  >
                     {formatDateTime(notification.timestamp)}
-                  </p>
+                  </Typography>
                 ) : null}
-              </Link>
+              </Box>
             ))}
-          </div>
+          </Stack>
         ) : (
-          <div className="rounded-[24px] border border-dashed border-border bg-white/70 px-5 py-8 text-sm leading-6 text-muted">
-            No active alerts are queued in the shell right now. Overdue tasks,
-            upcoming reminders, and saved-search issues will appear here.
-          </div>
+          <Surface
+            sx={{
+              bgcolor: alpha(onesourceTokens.color.neutral[0], 0.84),
+              borderColor: onesourceTokens.color.border.strong,
+              borderStyle: "dashed",
+              p: 3,
+            }}
+          >
+            <Typography
+              sx={{
+                color: "text.secondary",
+                fontSize: "0.92rem",
+                lineHeight: 1.7,
+              }}
+            >
+              No active alerts are queued in the shell right now. Overdue tasks,
+              upcoming reminders, and saved-search issues will appear here.
+            </Typography>
+          </Surface>
         )}
       </Dialog>
 
       {desktopShell}
 
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="border-border/80 sticky top-0 z-20 border-b bg-[rgba(247,243,232,0.88)] px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
-          <div className="mx-auto flex max-w-7xl min-w-0 flex-col gap-4">
-            <div className="flex items-center justify-between gap-4 lg:hidden">
-              <div className="flex items-center gap-3">
-                <button
+      <Box
+        sx={{ display: "flex", flex: 1, flexDirection: "column", minWidth: 0 }}
+      >
+        <Box
+          component="header"
+          sx={{
+            backdropFilter: "blur(18px)",
+            backgroundColor: APP_HEADER_BG,
+            borderBottom: `1px solid ${APP_HEADER_BORDER}`,
+            position: "sticky",
+            px: shellContentPaddingX,
+            py: 2,
+            top: 0,
+            zIndex: 20,
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+              marginX: "auto",
+              maxWidth: shellContentMaxWidth,
+              minWidth: 0,
+            }}
+          >
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                alignItems: "center",
+                display: { lg: "none" },
+                justifyContent: "space-between",
+              }}
+            >
+              <Stack direction="row" spacing={1.5}>
+                <Button
                   aria-controls="mobile-navigation"
                   aria-expanded={isMobileNavOpen}
                   aria-label="Open navigation menu"
-                  className="border-border text-foreground inline-flex h-11 w-11 items-center justify-center rounded-full border bg-white text-sm font-medium shadow-[0_10px_24px_rgba(20,37,34,0.08)]"
-                  onClick={() => setIsMobileNavOpen(true)}
+                  density="compact"
+                  onClick={openMobileNavigation}
+                  sx={{ minWidth: 0, px: 1.75 }}
+                  tone="neutral"
                   type="button"
+                  variant="outlined"
                 >
                   Menu
-                </button>
-                <div>
-                  <p className="text-muted text-xs tracking-[0.24em] uppercase">
+                </Button>
+                <Box>
+                  <Typography
+                    sx={{
+                      color: "text.secondary",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.24em",
+                      textTransform: "uppercase",
+                    }}
+                  >
                     {activeGroup.title}
-                  </p>
-                  <p className="font-heading text-xl font-semibold">
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: "var(--font-heading), sans-serif",
+                      fontSize: "1.25rem",
+                      fontWeight: 600,
+                    }}
+                  >
                     {activeDestination.label}
-                  </p>
-                </div>
-              </div>
-              <div className="sm:hidden">
+                  </Typography>
+                </Box>
+              </Stack>
+              <Box sx={{ display: { sm: "none" } }}>
                 <SignOutButton />
-              </div>
-            </div>
+              </Box>
+            </Stack>
 
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="space-y-2">
-                <p className="text-muted hidden text-xs tracking-[0.24em] uppercase lg:block">
+            <Stack
+              direction={{ xl: "row", xs: "column" }}
+              spacing={3}
+              sx={{ justifyContent: "space-between" }}
+            >
+              <Stack spacing={1}>
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    display: { lg: "block", xs: "none" },
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.24em",
+                    textTransform: "uppercase",
+                  }}
+                >
                   {activeGroup.title}
-                </p>
-                <p className="font-heading hidden text-3xl font-semibold tracking-[-0.04em] lg:block">
+                </Typography>
+                <Typography
+                  sx={{
+                    display: { lg: "block", xs: "none" },
+                    fontFamily: "var(--font-heading), sans-serif",
+                    fontSize: "2rem",
+                    fontWeight: 600,
+                    letterSpacing: "-0.04em",
+                  }}
+                >
                   {activeDestination.label}
-                </p>
-                <p className="text-muted max-w-2xl text-sm leading-6">
+                </Typography>
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    fontSize: "0.92rem",
+                    lineHeight: 1.7,
+                    maxWidth: 720,
+                  }}
+                >
                   {activeDestination.description}
-                </p>
-              </div>
+                </Typography>
+              </Stack>
 
-              <div className="flex flex-col gap-3 xl:min-w-[42rem] xl:items-end">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center xl:w-full xl:justify-end">
-                  <button
+              <Stack spacing={1.5} sx={{ minWidth: { xl: 672 } }}>
+                <Stack
+                  direction={{ sm: "row", xs: "column" }}
+                  spacing={1.5}
+                  sx={{ justifyContent: { xl: "flex-end" } }}
+                >
+                  <Button
                     aria-expanded={isCommandOpen}
                     aria-haspopup="dialog"
                     aria-label="Open command search"
-                    className="border-border flex flex-1 items-center justify-between rounded-full border bg-white px-4 py-3 text-left shadow-[0_12px_28px_rgba(20,37,34,0.06)] transition hover:border-[rgba(32,95,85,0.22)] xl:max-w-xl"
-                    onClick={() => setIsCommandOpen(true)}
+                    onClick={openCommandSurface}
+                    sx={{
+                      bgcolor: "background.paper",
+                      borderColor: "divider",
+                      borderRadius: 999,
+                      boxShadow: onesourceTokens.elevation.surface,
+                      justifyContent: "space-between",
+                      px: 2,
+                      py: 1.5,
+                      width: "100%",
+                      "&:hover": {
+                        borderColor: alpha(
+                          onesourceTokens.color.accent.main,
+                          0.24,
+                        ),
+                      },
+                    }}
+                    tone="neutral"
                     type="button"
+                    variant="outlined"
                   >
-                    <span className="text-sm text-muted">
-                      Search work, tasks, knowledge, or saved searches
-                    </span>
-                    <span className="rounded-full border border-[rgba(18,33,40,0.12)] bg-[rgba(18,33,40,0.04)] px-2 py-1 text-[0.68rem] tracking-[0.18em] uppercase text-muted">
-                      Cmd K
-                    </span>
-                  </button>
-                  <button
+                    <Stack
+                      direction="row"
+                      spacing={1.5}
+                      sx={{
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        width: "100%",
+                      }}
+                    >
+                      <Typography
+                        sx={{ color: "text.secondary", fontSize: "0.9rem" }}
+                      >
+                        Search work, tasks, knowledge, or saved searches
+                      </Typography>
+                      <Badge tone="muted">Cmd K</Badge>
+                    </Stack>
+                  </Button>
+                  <Button
                     aria-expanded={isNotificationsOpen}
                     aria-haspopup="dialog"
                     aria-label="Open notifications"
-                    className="border-border inline-flex items-center justify-center gap-2 rounded-full border bg-white px-4 py-3 text-sm font-medium shadow-[0_12px_28px_rgba(20,37,34,0.06)] transition hover:border-[rgba(32,95,85,0.22)]"
-                    onClick={() => setIsNotificationsOpen(true)}
+                    onClick={openNotificationsSurface}
+                    sx={{
+                      boxShadow: onesourceTokens.elevation.surface,
+                      whiteSpace: "nowrap",
+                    }}
+                    tone="neutral"
                     type="button"
+                    variant="outlined"
                   >
-                    Alerts
-                    <span className="rounded-full bg-[rgba(32,95,85,0.12)] px-2 py-1 text-xs text-foreground">
-                      {notificationCount}
-                    </span>
-                  </button>
-                </div>
-                <div className="flex items-center justify-between gap-3 sm:justify-end">
-                  <div className="text-right">
-                    <p className="text-foreground text-sm font-medium">
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{ alignItems: "center" }}
+                    >
+                      <Typography
+                        component="span"
+                        sx={{ fontSize: "0.92rem", fontWeight: 600 }}
+                      >
+                        Alerts
+                      </Typography>
+                      <Badge tone={notificationCount > 0 ? "accent" : "muted"}>
+                        {notificationCount}
+                      </Badge>
+                    </Stack>
+                  </Button>
+                </Stack>
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  sx={{
+                    alignItems: "center",
+                    justifyContent: { sm: "flex-end", xs: "space-between" },
+                  }}
+                >
+                  <Box sx={{ textAlign: "right" }}>
+                    <Typography sx={{ fontSize: "0.92rem", fontWeight: 600 }}>
                       {displayName}
-                    </p>
-                    <p className="text-muted text-xs">{sessionUser.email}</p>
-                  </div>
-                  <div className="hidden sm:block">
+                    </Typography>
+                    <Typography
+                      sx={{ color: "text.secondary", fontSize: "0.76rem" }}
+                    >
+                      {sessionUser.email}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: { sm: "block", xs: "none" } }}>
                     <SignOutButton />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
+                  </Box>
+                </Stack>
+              </Stack>
+            </Stack>
+          </Box>
+        </Box>
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto min-w-0 max-w-7xl">{children}</div>
-        </main>
-      </div>
-    </div>
+        <Box
+          component="main"
+          sx={{ flex: 1, minWidth: 0, px: shellContentPaddingX, py: 3 }}
+        >
+          <Box sx={{ marginX: "auto", maxWidth: shellContentMaxWidth, minWidth: 0 }}>
+            {children}
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 }
 
@@ -911,264 +1457,384 @@ function NavigationMenu({
   onRememberItem?: (item: AppShellWorkbenchItem) => void;
   title: string;
 }) {
+  const [flyoutState, setFlyoutState] = useState<{
+    anchorEl: HTMLElement;
+    group: NavGroup;
+  } | null>(null);
+  const closeTimeoutRef = useRef<number | null>(null);
+  const popoverPaperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current !== null) {
+        window.clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  function clearCloseTimeout() {
+    if (closeTimeoutRef.current !== null) {
+      window.clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }
+
+  function closeFlyout() {
+    clearCloseTimeout();
+    setFlyoutState(null);
+  }
+
+  function scheduleFlyoutClose() {
+    clearCloseTimeout();
+
+    closeTimeoutRef.current = window.setTimeout(() => {
+      setFlyoutState(null);
+      closeTimeoutRef.current = null;
+    }, 120);
+  }
+
+  function openFlyout(group: NavGroup, anchorEl: HTMLElement) {
+    if (!collapsed) {
+      return;
+    }
+
+    clearCloseTimeout();
+    setFlyoutState({ anchorEl, group });
+  }
+
   return (
-    <nav aria-label={title} className="space-y-5">
-      {groups.map((group) => (
-        <section key={group.title} className="space-y-2">
-          <div>
-            <p className="text-xs tracking-[0.24em] text-stone-400 uppercase">
-              {group.title}
-            </p>
+    <>
+      <Stack
+        component="nav"
+        aria-label={title}
+        id={title === "Mobile navigation" ? "mobile-navigation" : undefined}
+        spacing={collapsed ? 1.5 : 2}
+      >
+        {groups.map((group) => (
+          <Box
+            component="section"
+            key={group.key}
+            onBlurCapture={(event) => {
+              if (
+                event.relatedTarget instanceof Node &&
+                (event.currentTarget.contains(event.relatedTarget) ||
+                  popoverPaperRef.current?.contains(event.relatedTarget))
+              ) {
+                return;
+              }
+
+              scheduleFlyoutClose();
+            }}
+            onFocusCapture={(event) => {
+              if (!(event.currentTarget instanceof HTMLElement)) {
+                return;
+              }
+
+              openFlyout(group, event.currentTarget);
+            }}
+            onMouseEnter={(event) => {
+              if (!(event.currentTarget instanceof HTMLElement)) {
+                return;
+              }
+
+              openFlyout(group, event.currentTarget);
+            }}
+            onMouseLeave={scheduleFlyoutClose}
+          >
             {!collapsed ? (
-              <p className="mt-1 text-xs leading-5 text-stone-500">
-                {group.description}
-              </p>
+              <Box sx={{ px: 1, pb: 0.6 }}>
+                <Typography
+                  sx={{
+                    color: SHELL_TEXT_FAINT,
+                    fontSize: "0.68rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {group.title}
+                </Typography>
+              </Box>
             ) : null}
-          </div>
-          <div className="space-y-2">
-            {group.items.map((item) => {
-              const active = isRouteActive(item.href, currentPath);
+            <List disablePadding sx={{ mt: collapsed ? 0 : 0.8 }}>
+              {group.items.map((item) => {
+                const active = isRouteActive(item.href, currentPath);
+                const navButton = (
+                  <ListItemButton
+                    aria-current={active ? "page" : undefined}
+                    aria-label={item.label}
+                    component={Link}
+                    href={item.href}
+                    key={item.href}
+                    onClick={() => {
+                      onNavigate?.();
+                      onRememberItem?.(createWorkbenchItemFromNavItem(item));
+                      closeFlyout();
+                    }}
+                    selected={active}
+                    sx={{
+                      alignItems: "center",
+                      border: "1px solid",
+                      borderColor: active
+                        ? alpha(onesourceTokens.shell.brandAccent, 0.35)
+                        : "transparent",
+                      borderRadius: 2.75,
+                      color: active ? SHELL_TEXT_PRIMARY : SHELL_TEXT_SECONDARY,
+                      justifyContent: collapsed ? "center" : "flex-start",
+                      mb: 0.6,
+                      minHeight: collapsed ? 50 : 46,
+                      px: collapsed ? 1 : 1.4,
+                      py: 0.85,
+                      position: "relative",
+                      "&::before": {
+                        backgroundColor: onesourceTokens.shell.brandAccent,
+                        borderRadius: 999,
+                        bottom: collapsed ? 10 : 8,
+                        content: '""',
+                        left: collapsed ? 8 : 10,
+                        opacity: active ? 1 : 0,
+                        position: "absolute",
+                        top: collapsed ? 10 : 8,
+                        transition: "opacity 140ms ease",
+                        width: 3,
+                      },
+                      "&.Mui-selected": {
+                        backgroundColor: alpha(
+                          onesourceTokens.shell.brandAccent,
+                          0.14,
+                        ),
+                      },
+                      "&.Mui-selected:hover": {
+                        backgroundColor: alpha(
+                          onesourceTokens.shell.brandAccent,
+                          0.2,
+                        ),
+                      },
+                      "&:hover": {
+                        backgroundColor: alpha(
+                          onesourceTokens.color.neutral[0],
+                          0.08,
+                        ),
+                        borderColor: alpha(
+                          onesourceTokens.color.neutral[0],
+                          0.14,
+                        ),
+                        color: SHELL_TEXT_PRIMARY,
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        color: "inherit",
+                        justifyContent: "center",
+                        minWidth: collapsed ? 0 : 38,
+                      }}
+                    >
+                      {getNavItemIcon(item.href)}
+                    </ListItemIcon>
+                    {!collapsed ? (
+                      <Typography
+                        sx={{
+                          color: "inherit",
+                          fontSize: "0.92rem",
+                          fontWeight: 600,
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {item.label}
+                      </Typography>
+                    ) : null}
+                  </ListItemButton>
+                );
 
-              return (
-                <Link
-                  key={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "block rounded-[20px] border px-4 py-3 transition",
-                    active
-                      ? "border-white/18 bg-white/12 text-white shadow-[0_12px_30px_rgba(15,28,31,0.18)]"
-                      : "border-transparent text-stone-300 hover:border-white/10 hover:bg-white/6 hover:text-white",
-                  )}
-                  href={item.href}
-                  onClick={() => {
-                    onNavigate?.();
-                    onRememberItem?.(createWorkbenchItemFromNavItem(item));
-                  }}
-                >
-                  <span className="block text-sm font-medium">{item.label}</span>
-                  {!collapsed ? (
-                    <span className="mt-1 block text-xs leading-5 text-current/72">
-                      {item.description}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      ))}
-    </nav>
-  );
-}
+                return collapsed ? (
+                  <Tooltip key={item.href} placement="right" title={item.label}>
+                    {navButton}
+                  </Tooltip>
+                ) : (
+                  navButton
+                );
+              })}
+            </List>
+          </Box>
+        ))}
+      </Stack>
 
-function QuickLinksPanel({
-  collapsed = false,
-  currentPath,
-  links,
-  mobile = false,
-  onRememberItem,
-}: {
-  collapsed?: boolean;
-  currentPath: string;
-  links: NavItem[];
-  mobile?: boolean;
-  onRememberItem?: (item: AppShellWorkbenchItem) => void;
-}) {
-  return (
-    <section
-      className={cn(
-        "rounded-[24px] border border-white/10 bg-white/5 px-4 py-4",
-        mobile ? "mt-5" : "",
-      )}
-    >
-      <p className="text-xs tracking-[0.24em] text-stone-400 uppercase">
-        Quick links
-      </p>
-      {!collapsed ? (
-        <p className="mt-1 text-xs leading-5 text-stone-500">
-          Frequent jumps that stay attached to the shell.
-        </p>
-      ) : null}
-      <div className="mt-3 space-y-2">
-        {links.map((link) => {
-          const active = isRouteActive(link.href, currentPath);
+      {collapsed && flyoutState ? (
+        <Popover
+          anchorEl={flyoutState.anchorEl}
+          anchorOrigin={{ horizontal: "right", vertical: "top" }}
+          disableAutoFocus
+          disableEnforceFocus
+          disableRestoreFocus
+          onClose={closeFlyout}
+          open
+          slotProps={{
+            paper: {
+              onBlurCapture: (event: ReactFocusEvent<HTMLDivElement>) => {
+                if (
+                  event.relatedTarget instanceof Node &&
+                  (popoverPaperRef.current?.contains(event.relatedTarget) ??
+                    false)
+                ) {
+                  return;
+                }
 
-          return (
-            <Link
-              key={link.href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "block rounded-[18px] border px-3 py-3 transition",
-                active
-                  ? "border-white/16 bg-white/12 text-white"
-                  : "border-transparent text-stone-300 hover:border-white/10 hover:bg-white/6 hover:text-white",
-              )}
-              href={link.href}
-              onClick={() => onRememberItem?.(createWorkbenchItemFromNavItem(link))}
-            >
-              <span className="block text-sm font-medium">{link.label}</span>
-              {!collapsed ? (
-                <span className="mt-1 block text-xs leading-5 text-current/72">
-                  {link.description}
-                </span>
-              ) : null}
-            </Link>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function PinnedWorkPanel({
-  collapsed = false,
-  items,
-  mobile = false,
-  onNavigate,
-  onRememberItem,
-  onTogglePinnedItem,
-}: {
-  collapsed?: boolean;
-  items: AppShellWorkbenchItem[];
-  mobile?: boolean;
-  onNavigate?: () => void;
-  onRememberItem?: (item: AppShellWorkbenchItem) => void;
-  onTogglePinnedItem: (item: AppShellWorkbenchItem) => void;
-}) {
-  return (
-    <section
-      className={cn(
-        "rounded-[24px] border border-white/10 bg-white/5 px-4 py-4",
-        mobile ? "mt-5" : "",
-      )}
-    >
-      <p className="text-xs tracking-[0.24em] text-stone-400 uppercase">
-        Pinned work
-      </p>
-      {!collapsed ? (
-        <p className="mt-1 text-xs leading-5 text-stone-500">
-          Keep recurring pursuits, saved views, and quick return points visible in
-          the shell.
-        </p>
-      ) : null}
-
-      {items.length > 0 ? (
-        <div className="mt-3 space-y-2">
-          {items.map((item) => (
-            <div
-              className="rounded-[18px] border border-transparent px-3 py-3 transition hover:border-white/10 hover:bg-white/6"
-              key={item.href}
-            >
-              <div className="flex items-start gap-2">
-                <Link
-                  className="flex-1 text-stone-300 transition hover:text-white"
-                  href={item.href}
-                  onClick={() => {
-                    onNavigate?.();
-                    onRememberItem?.(item);
-                  }}
-                >
-                  <span className="block text-sm font-medium">{item.label}</span>
-                  {!collapsed ? (
-                    <>
-                      <span className="mt-1 block text-xs leading-5 text-current/72">
-                        {item.description}
-                      </span>
-                      {item.supportingText ? (
-                        <span className="mt-2 block text-[0.68rem] tracking-[0.16em] text-current/56 uppercase">
-                          {item.supportingText}
-                        </span>
-                      ) : null}
-                    </>
-                  ) : null}
-                </Link>
-                <button
-                  aria-label={`Remove ${item.label} from pinned work`}
-                  className="rounded-full border border-white/10 bg-white/5 px-2.5 py-2 text-[0.68rem] tracking-[0.16em] uppercase text-stone-300 transition hover:bg-white/10 hover:text-white"
-                  onClick={() => onTogglePinnedItem(item)}
-                  type="button"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-3 text-sm leading-6 text-stone-400">
-          Pin a pursuit or view from the command center and it will stay visible
-          here.
-        </p>
-      )}
-    </section>
-  );
-}
-
-function RecentWorkPanel({
-  collapsed = false,
-  items,
-  mobile = false,
-  onNavigate,
-  onRememberItem,
-}: {
-  collapsed?: boolean;
-  items: AppShellWorkbenchItem[];
-  mobile?: boolean;
-  onNavigate?: () => void;
-  onRememberItem?: (item: AppShellWorkbenchItem) => void;
-}) {
-  return (
-    <section
-      className={cn(
-        "rounded-[24px] border border-white/10 bg-white/5 px-4 py-4",
-        mobile ? "mt-5" : "",
-      )}
-    >
-      <p className="text-xs tracking-[0.24em] text-stone-400 uppercase">
-        Recent work
-      </p>
-      {!collapsed ? (
-        <p className="mt-1 text-xs leading-5 text-stone-500">
-          Resume the most recent shell views, pursuits, and quick-return items.
-        </p>
-      ) : null}
-
-      {items.length > 0 ? (
-        <div className="mt-3 space-y-2">
-          {items.map((item) => (
-            <Link
-              key={item.href}
-              className="block rounded-[18px] border border-transparent px-3 py-3 text-stone-300 transition hover:border-white/10 hover:bg-white/6 hover:text-white"
-              href={item.href}
-              onClick={() => {
-                onNavigate?.();
-                onRememberItem?.(item);
+                scheduleFlyoutClose();
+              },
+              onFocusCapture: clearCloseTimeout,
+              onMouseEnter: clearCloseTimeout,
+              onMouseLeave: scheduleFlyoutClose,
+              ref: popoverPaperRef,
+              sx: {
+                bgcolor: SHELL_DARK_SURFACE_BG,
+                border: `1px solid ${SHELL_PANEL_BORDER}`,
+                borderRadius: 3,
+                boxShadow: "0 18px 44px rgba(2, 6, 23, 0.34)",
+                color: SHELL_TEXT_PRIMARY,
+                ml: 1,
+                overflow: "hidden",
+                p: 0,
+                width: 268,
+              },
+            },
+          }}
+          transformOrigin={{ horizontal: "left", vertical: "top" }}
+        >
+          <Box sx={{ p: 1.25 }}>
+            <Typography
+              sx={{
+                color: SHELL_TEXT_FAINT,
+                fontSize: "0.64rem",
+                fontWeight: 700,
+                letterSpacing: "0.18em",
+                px: 1,
+                pb: 0.4,
+                textTransform: "uppercase",
               }}
             >
-              <span className="block text-sm font-medium">{item.label}</span>
-              {!collapsed ? (
-                <>
-                  <span className="mt-1 block text-xs leading-5 text-current/72">
-                    {item.description}
-                  </span>
-                  {item.supportingText ? (
-                    <span className="mt-2 block text-[0.68rem] tracking-[0.16em] text-current/56 uppercase">
-                      {item.supportingText}
-                    </span>
-                  ) : null}
-                </>
-              ) : null}
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-3 text-sm leading-6 text-stone-400">
-          Open a route or jump to work from the command center and it will appear
-          here for quick return.
-        </p>
-      )}
-    </section>
+              {flyoutState.group.title}
+            </Typography>
+            <Typography
+              sx={{
+                color: SHELL_TEXT_MUTED,
+                fontSize: "0.78rem",
+                lineHeight: 1.5,
+                px: 1,
+                pb: 1.1,
+              }}
+            >
+              {flyoutState.group.description}
+            </Typography>
+            <List disablePadding>
+              {flyoutState.group.items.map((item) => {
+                const active = isRouteActive(item.href, currentPath);
+
+                return (
+                  <ListItemButton
+                    aria-current={active ? "page" : undefined}
+                    aria-label={item.label}
+                    component={Link}
+                    href={item.href}
+                    key={item.href}
+                    onClick={() => {
+                      onNavigate?.();
+                      onRememberItem?.(createWorkbenchItemFromNavItem(item));
+                      closeFlyout();
+                    }}
+                    selected={active}
+                    sx={{
+                      borderRadius: 2.5,
+                      color: active ? SHELL_TEXT_PRIMARY : SHELL_TEXT_SECONDARY,
+                      mb: 0.6,
+                      minHeight: 44,
+                      px: 1.4,
+                      py: 0.8,
+                      "&.Mui-selected": {
+                        backgroundColor: alpha(
+                          onesourceTokens.shell.brandAccent,
+                          0.14,
+                        ),
+                      },
+                      "&.Mui-selected:hover": {
+                        backgroundColor: alpha(
+                          onesourceTokens.shell.brandAccent,
+                          0.2,
+                        ),
+                      },
+                      "&:hover": {
+                        backgroundColor: alpha(
+                          onesourceTokens.color.neutral[0],
+                          0.08,
+                        ),
+                        color: SHELL_TEXT_PRIMARY,
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        color: "inherit",
+                        justifyContent: "center",
+                        minWidth: 36,
+                      }}
+                    >
+                      {getNavItemIcon(item.href)}
+                    </ListItemIcon>
+                    <Typography
+                      sx={{
+                        color: "inherit",
+                        fontSize: "0.9rem",
+                        fontWeight: 600,
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {item.label}
+                    </Typography>
+                  </ListItemButton>
+                );
+              })}
+            </List>
+          </Box>
+        </Popover>
+      ) : null}
+    </>
   );
+}
+
+function getNavItemIcon(href: string) {
+  const sharedProps = { fontSize: "small" as const };
+
+  if (href.startsWith("/opportunities")) {
+    return <WorkOutlineRoundedIcon {...sharedProps} />;
+  }
+
+  if (href.startsWith("/tasks")) {
+    return <ChecklistRoundedIcon {...sharedProps} />;
+  }
+
+  if (href.startsWith("/sources")) {
+    return <TravelExploreRoundedIcon {...sharedProps} />;
+  }
+
+  if (href.startsWith("/knowledge")) {
+    return <LibraryBooksRoundedIcon {...sharedProps} />;
+  }
+
+  if (href.startsWith("/analytics")) {
+    return <InsightsRoundedIcon {...sharedProps} />;
+  }
+
+  if (href.startsWith("/settings")) {
+    return <SettingsRoundedIcon {...sharedProps} />;
+  }
+
+  return <SpaceDashboardRoundedIcon {...sharedProps} />;
+}
+
+function getNotificationBadgeTone(
+  tone: "accent" | "danger" | "warning",
+): "accent" | "danger" | "warning" {
+  return tone;
 }
 
 function buildNavGroups({
@@ -1278,7 +1944,8 @@ function buildQuickCreateItems({
     items.push({
       id: "quick-create-knowledge",
       category: "quick_create",
-      description: "Capture reusable narrative, win themes, or past performance.",
+      description:
+        "Capture reusable narrative, win themes, or past performance.",
       href: "/knowledge/new",
       label: "Create knowledge asset",
       navHref: "/knowledge",
@@ -1291,7 +1958,8 @@ function buildQuickCreateItems({
     items.push({
       id: "quick-create-source-search",
       category: "quick_create",
-      description: "Open external discovery with the current shell context intact.",
+      description:
+        "Open external discovery with the current shell context intact.",
       href: "/sources",
       label: "Run source search",
       navHref: "/sources",
@@ -1304,7 +1972,8 @@ function buildQuickCreateItems({
     items.push({
       id: "quick-open-decision-console",
       category: "quick_create",
-      description: "Jump to ranked pursuit review and portfolio decision support.",
+      description:
+        "Jump to ranked pursuit review and portfolio decision support.",
       href: "/analytics",
       label: "Open decision console",
       navHref: "/analytics",
@@ -1336,7 +2005,10 @@ function buildShellViewCommandItems({
   navGroups: NavGroup[];
   quickLinks: NavItem[];
 }) {
-  const workbenchItems = [...navGroups.flatMap((group) => group.items), ...quickLinks]
+  const workbenchItems = [
+    ...navGroups.flatMap((group) => group.items),
+    ...quickLinks,
+  ]
     .map(createWorkbenchItemFromNavItem)
     .filter(
       (candidate, index, items) =>
@@ -1345,7 +2017,9 @@ function buildShellViewCommandItems({
 
   return workbenchItems.map((item) => ({
     ...createCommandItemFromWorkbenchItem(item),
-    keywords: [item.label, item.description, item.supportingText ?? ""].filter(Boolean),
+    keywords: [item.label, item.description, item.supportingText ?? ""].filter(
+      Boolean,
+    ),
   }));
 }
 
@@ -1419,10 +2093,7 @@ function getCurrentDestination({
   currentPath: string;
 }) {
   const definition = SHELL_ROUTE_DEFINITIONS.find((candidate) => {
-    if (
-      candidate.requires === "decision_support" &&
-      !allowDecisionSupport
-    ) {
+    if (candidate.requires === "decision_support" && !allowDecisionSupport) {
       return false;
     }
 
@@ -1461,6 +2132,49 @@ function createWorkbenchItemFromNavItem(item: NavItem): AppShellWorkbenchItem {
   };
 }
 
+function formatWorkspaceIdentity(organizationId: string) {
+  const normalized = organizationId.trim();
+
+  if (!normalized) {
+    return {
+      label: "OneSource workspace",
+      supportingText: null,
+    };
+  }
+
+  const looksOpaque =
+    /^org[_-]/i.test(normalized) ||
+    /^[a-z0-9]{20,}$/i.test(normalized) ||
+    (/^[a-z0-9_-]+$/i.test(normalized) &&
+      /\d/.test(normalized) &&
+      !normalized.includes("-") &&
+      !normalized.includes("_"));
+
+  if (looksOpaque) {
+    return {
+      label: "Default workspace",
+      supportingText: `Org ID ${normalized.slice(0, 10)}`,
+    };
+  }
+
+  const label = normalized
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((segment) => {
+      if (/^\d+$/.test(segment)) {
+        return segment;
+      }
+
+      return `${segment[0]?.toUpperCase() ?? ""}${segment.slice(1)}`;
+    })
+    .join(" ");
+
+  return {
+    label: label || "OneSource workspace",
+    supportingText: null,
+  };
+}
+
 function isRouteActive(href: string, currentPath: string) {
   if (href === "/") {
     return currentPath === "/";
@@ -1493,13 +2207,13 @@ function subscribeToShellPreferenceChanges(onStoreChange: () => void) {
 
 function readCollapsedRailPreferenceSnapshot() {
   if (typeof window === "undefined") {
-    return "0";
+    return "1";
   }
 
   try {
-    return window.localStorage.getItem(SHELL_COLLAPSE_STORAGE_KEY) ?? "0";
+    return window.localStorage.getItem(SHELL_COLLAPSE_STORAGE_KEY) ?? "1";
   } catch {
-    return "0";
+    return "1";
   }
 }
 
@@ -1510,9 +2224,7 @@ function readRecentWorkbenchItemsSnapshot() {
 
   try {
     return (
-      window.localStorage.getItem(
-        SHELL_RECENT_DESTINATIONS_STORAGE_KEY,
-      ) ?? "[]"
+      window.localStorage.getItem(SHELL_RECENT_DESTINATIONS_STORAGE_KEY) ?? "[]"
     );
   } catch {
     return "[]";
@@ -1565,7 +2277,9 @@ function normalizeWorkbenchItem(value: unknown): AppShellWorkbenchItem | null {
   }
 
   return {
-    category: isCommandCategory(candidate.category) ? candidate.category : "view",
+    category: isCommandCategory(candidate.category)
+      ? candidate.category
+      : "view",
     description: candidate.description,
     href: candidate.href,
     label: candidate.label,
@@ -1597,8 +2311,9 @@ function writeWorkbenchItemsPreference({
         items
           .filter(
             (item, index, allItems) =>
-              allItems.findIndex((candidate) => candidate.href === item.href) ===
-              index,
+              allItems.findIndex(
+                (candidate) => candidate.href === item.href,
+              ) === index,
           )
           .slice(0, limit),
       ),
@@ -1623,10 +2338,7 @@ function updateCollapsedRailPreference(value: boolean) {
   }
 
   try {
-    window.localStorage.setItem(
-      SHELL_COLLAPSE_STORAGE_KEY,
-      value ? "1" : "0",
-    );
+    window.localStorage.setItem(SHELL_COLLAPSE_STORAGE_KEY, value ? "1" : "0");
     emitShellPreferenceChange();
   } catch {
     // Ignore storage failures; the shell should remain usable without persistence.
@@ -1641,9 +2353,7 @@ function getCommandLinkId(prefix: string, itemId: string) {
   return `${prefix}-link-${itemId}`;
 }
 
-function isCommandCategory(
-  value: unknown,
-): value is AppShellCommandCategory {
+function isCommandCategory(value: unknown): value is AppShellCommandCategory {
   return (
     value === "knowledge" ||
     value === "opportunity" ||

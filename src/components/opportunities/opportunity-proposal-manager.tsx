@@ -7,13 +7,17 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type FormEvent,
 } from "react";
 import { useRouter } from "next/navigation";
 
+import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import {
   INITIAL_OPPORTUNITY_PROPOSAL_ACTION_STATE,
   type OpportunityProposalActionState,
@@ -126,21 +130,19 @@ export function OpportunityProposalManager({
         <form action={deleteFormAction}>
           <input name="opportunityId" type="hidden" value={opportunityId} />
           <input name="proposalId" type="hidden" value={currentProposal.id} />
-          {deleteState.formError ? (
-            <p
-              className="mb-3 rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-              role="alert"
-            >
-              {deleteState.formError}
-            </p>
-          ) : null}
-          <button
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-[rgba(148,53,53,0.22)] bg-[rgba(148,53,53,0.08)] px-5 py-3 text-sm font-medium text-[rgb(125,39,39)] transition hover:bg-[rgba(148,53,53,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
+          <ActionFeedback
+            className="mb-3"
+            errorMessage={deleteState.formError}
+            errorTitle="Proposal deletion needs attention"
+          />
+          <Button
             disabled={deleteIsPending}
+            tone="danger"
             type="submit"
+            variant="soft"
           >
             {deleteIsPending ? "Removing proposal..." : "Delete proposal record"}
-          </button>
+          </Button>
         </form>
       ) : null}
     </div>
@@ -183,6 +185,24 @@ function ProposalTrackingForm({
   const completedChecklistKeys = new Set(selectedChecklistKeys);
   const linkedDocumentIds = new Set(selectedLinkedDocumentIds);
 
+  function readSelectValue(
+    event: ChangeEvent<HTMLSelectElement> | FormEvent<HTMLElement>,
+  ) {
+    return (event.target as HTMLSelectElement).value;
+  }
+
+  function handleStatusInput(
+    event: ChangeEvent<HTMLSelectElement> | FormEvent<HTMLElement>,
+  ) {
+    setSelectedStatus(readSelectValue(event) as OpportunityProposalStatus);
+  }
+
+  function handleOwnerInput(
+    event: ChangeEvent<HTMLSelectElement> | FormEvent<HTMLElement>,
+  ) {
+    setSelectedOwnerUserId(readSelectValue(event));
+  }
+
   function handleChecklistChange(event: ChangeEvent<HTMLInputElement>) {
     setSelectedChecklistKeys((currentKeys) =>
       toggleStringSelection(
@@ -204,30 +224,28 @@ function ProposalTrackingForm({
   }
 
   return (
-    <form
-      action={saveFormAction}
-      className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(244,248,246,0.9)] px-5 py-5"
-    >
+    <form action={saveFormAction}>
       <input name="opportunityId" type="hidden" value={opportunityId} />
       <input name="currentStageKey" type="hidden" value={currentStageKey ?? ""} />
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold text-foreground">
-            {currentProposal ? "Update proposal tracking" : "Start proposal tracking"}
-          </h3>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            Track the proposal owner, current execution status, readiness
-            checklist, and the artifacts tied to the active response package.
-          </p>
+      <Surface sx={{ bgcolor: "background.paper", p: 2.5 }}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">
+              {currentProposal ? "Update proposal tracking" : "Start proposal tracking"}
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              Track the proposal owner, current execution status, readiness
+              checklist, and the artifacts tied to the active response package.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="muted">{currentStageLabel}</Badge>
+            {currentProposal ? <Badge tone="accent">{currentProposal.statusLabel}</Badge> : null}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge tone="muted">{currentStageLabel}</Badge>
-          {currentProposal ? <Badge tone="accent">{currentProposal.statusLabel}</Badge> : null}
-        </div>
-      </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[220px_1fr]">
+        <div className="mt-5 grid gap-4 lg:grid-cols-[220px_1fr]">
         <FormField
           error={saveState.fieldErrors.status}
           htmlFor="proposal-status"
@@ -236,9 +254,8 @@ function ProposalTrackingForm({
           <Select
             id="proposal-status"
             name="status"
-            onChange={(event) =>
-              setSelectedStatus(event.currentTarget.value as OpportunityProposalStatus)
-            }
+            onChange={handleStatusInput}
+            onInput={handleStatusInput}
             value={selectedStatus}
           >
             {OPPORTUNITY_PROPOSAL_STATUSES.map((status) => (
@@ -257,7 +274,8 @@ function ProposalTrackingForm({
           <Select
             id="proposal-owner"
             name="ownerUserId"
-            onChange={(event) => setSelectedOwnerUserId(event.currentTarget.value)}
+            onChange={handleOwnerInput}
+            onInput={handleOwnerInput}
             value={selectedOwnerUserId}
           >
             <option value="">Unassigned</option>
@@ -268,9 +286,9 @@ function ProposalTrackingForm({
             ))}
           </Select>
         </FormField>
-      </div>
+        </div>
 
-      <section className="mt-6 space-y-3">
+        <section className="mt-6 space-y-3">
         <div>
           <p className="text-muted text-xs tracking-[0.24em] uppercase">
             Compliance Checklist
@@ -311,9 +329,9 @@ function ProposalTrackingForm({
             </label>
           ))}
         </div>
-      </section>
+        </section>
 
-      <section className="mt-6 space-y-3">
+        <section className="mt-6 space-y-3">
         <div>
           <p className="text-muted text-xs tracking-[0.24em] uppercase">
             Linked Documents
@@ -361,39 +379,26 @@ function ProposalTrackingForm({
             title="No documents available to link"
           />
         )}
-      </section>
+        </section>
 
-      {saveState.formError ? (
-        <p
-          className="mt-4 rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-          role="alert"
-        >
-          {saveState.formError}
-        </p>
-      ) : null}
+        <ActionFeedback
+          className="mt-4"
+          errorMessage={saveState.formError}
+          errorTitle="Proposal tracking needs attention"
+          successMessage={saveState.successMessage}
+          successTitle="Proposal tracking saved"
+        />
 
-      {saveState.successMessage ? (
-        <p
-          className="mt-4 rounded-[18px] border border-[rgba(32,95,85,0.25)] bg-[rgba(229,243,239,0.85)] px-4 py-3 text-sm text-[rgb(16,66,57)]"
-          role="status"
-        >
-          {saveState.successMessage}
-        </p>
-      ) : null}
-
-      <div className="mt-5 flex flex-wrap justify-end gap-3">
-        <button
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)] disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={saveIsPending}
-          type="submit"
-        >
-          {saveIsPending
-            ? "Saving proposal..."
-            : currentProposal
-              ? "Save proposal"
-              : "Start proposal tracking"}
-        </button>
-      </div>
+        <div className="mt-5 flex flex-wrap justify-end gap-3">
+          <Button disabled={saveIsPending} type="submit">
+            {saveIsPending
+              ? "Saving proposal..."
+              : currentProposal
+                ? "Save proposal"
+                : "Start proposal tracking"}
+          </Button>
+        </div>
+      </Surface>
     </form>
   );
 }

@@ -1,6 +1,7 @@
+import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 import type { ReactNode } from "react";
 
-import { cn } from "@/lib/cn";
+import { StatePanel } from "@/components/ui/state-panel";
 
 type ErrorStateProps = {
   action?: ReactNode;
@@ -18,11 +19,14 @@ export function ErrorState({
   title,
 }: ErrorStateProps) {
   return (
-    <div className={cn("ui-state ui-state-danger", className)}>
-      <p className="ui-state-eyebrow">{eyebrow}</p>
-      <p className="ui-state-title">{title}</p>
-      <p className="ui-state-body">{message}</p>
-      {action ? <div className="ui-state-actions">{action}</div> : null}
-    </div>
+    <StatePanel
+      action={action}
+      className={className}
+      eyebrow={eyebrow}
+      icon={<ReportProblemOutlinedIcon fontSize="small" />}
+      message={message}
+      title={title}
+      tone="error"
+    />
   );
 }

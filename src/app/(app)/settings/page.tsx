@@ -6,7 +6,7 @@ import {
 import { AdminConsole } from "@/components/admin/admin-console";
 import { requireAppPermission } from "@/lib/auth/authorization";
 import { prisma } from "@/lib/prisma";
-import { getAdminWorkspaceSnapshot } from "@/modules/admin/admin.repository";
+import { getAdminSettingsSnapshot } from "@/modules/admin/admin.repository";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ type SettingsPageProps = {
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const { session } = await requireAppPermission("manage_workspace_settings");
   const resolvedSearchParams = await searchParams;
-  const snapshot = await getAdminWorkspaceSnapshot({
+  const snapshot = await getAdminSettingsSnapshot({
     db: prisma,
     organizationId: session.user.organizationId,
   });

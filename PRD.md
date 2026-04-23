@@ -41,7 +41,7 @@ Build the system in thin vertical slices, not horizontal layers in isolation. Ea
 Recommended stack:
 
 - Frontend and server application: Next.js with TypeScript
-- Styling and component primitives: Tailwind CSS plus accessible headless components
+- Styling and component primitives: Material UI with a shared app-owned wrapper layer; the checked-in `src/app/tailwind-freeze.css` file remains only as a frozen compatibility stylesheet for legacy utility selectors, not as an active styling toolchain
 - Database: PostgreSQL
 - ORM and migrations: Prisma
 - Validation: Zod
@@ -790,7 +790,7 @@ These tasks are intentionally deferred until after the project checklist and rel
 
 ## Post-Completion UI Refactor Program
 
-The user requested a full UI refactor plan aligned to `OneSource-UI-Secification-Guide.md`. Treat this as a post-completion product-hardening program that preserves the current V1 functional scope while replacing the operating model of the authenticated UI across the existing shell, dashboard, discovery, pipeline, workspace, analytics, and admin surfaces.
+The user requested a full UI refactor plan for the authenticated product surfaces. Treat this as a post-completion product-hardening program that preserves the current V1 functional scope while replacing the operating model of the authenticated UI across the existing shell, dashboard, discovery, pipeline, workspace, analytics, and admin surfaces.
 
 This program is a follow-up to the already completed UI baseline delivered through `P3-01`, `P3-02`, `P3-03`, `P4-01`, `P4-01a`, `P4-03`, `P6-05`, `P8-01`, `P9-01`, `P9-02`, and `P10-04`, because the required work reorganizes and hardens existing product flows rather than introducing new product domains.
 
@@ -864,6 +864,100 @@ Execution rules for every item in this program:
       Done when: every major authenticated route follows the new shell and design system, implementation-facing copy is removed, keyboard and responsive behavior are documented and verified, all route-level flows remain functional, and docs capture the final operating model plus exact verification evidence.
       Verify with: focused accessibility and responsiveness checks for each changed route, full `npm run lint`, full `npm test`, full `npm run build`, `npm run db:seed`, Playwright Chromium verification for each major route against the live application, the compose-managed browser path when available, and `git diff --check`.
 
+## Post-Completion MUI Refactor Program
+
+The user has now requested a second post-completion UI program: move OneSource from the current Tailwind-heavy custom UI system onto Material UI with a OneSource-specific theme and app-owned wrapper layer, while preserving the current product scope, route map, permission model, audit behavior, and server-driven workflows.
+
+Treat this as a follow-up to completed `UI-13`, because the work replaces the rendering and interaction framework for already-implemented product areas rather than introducing a new product domain. The GitHub execution queue for this program is tracked in epic issue `#15` plus child issues `#1` through `#14`.
+
+Execution rules for every item in this program:
+
+- Preserve functional parity for the affected route or surface before moving to the next item.
+- Keep changes vertical and loop-safe: one checklist item per Ralph Loop unless a trivial dependent follow-up is required to make the selected item usable.
+- Do not remove current server-side validation, permission enforcement, auditability, or source-lineage behavior while changing UI structure.
+- Every code-writing item must add or update automated tests and pass the full repo test suite plus Playwright verification against a live app instance before it can be marked complete.
+- The active runtime and test contract now treat Material UI plus the app-owned wrapper layer as the canonical UI foundation. The checked-in `src/app/tailwind-freeze.css` file remains only as a frozen compatibility stylesheet for legacy utility selectors, not as an active styling toolchain.
+
+- [x] MUI-01 Establish the MUI app foundation with official Next.js App Router cache integration, OneSource theme tokens, font wiring, and a root theme provider while preserving current route behavior.
+      Done when: the app boots with the supported `AppRouterCacheProvider` path, a shared MUI `ThemeProvider` and `CssBaseline` exist at the root, the initial OneSource palette and typography are encoded in one theme file, Tailwind and plain CSS can temporarily coexist through the documented CSS-layer ordering, and existing routes still build and render without route-level migration work.
+      Verify with: focused theme/provider tests, full `npm run lint`, full `npm test`, full `npm run build`, compose-backed Playwright Chromium verification against the live app, and `git diff --check`.
+
+- [x] MUI-02 Define the OneSource MUI design system wrapper layer for buttons, fields, surfaces, chips, dialogs, drawers, feedback states, and skeletons so product code can stop depending on raw Tailwind-heavy primitives.
+      Done when: shared app-owned wrappers exist over Material UI for the common interactive and feedback patterns used across the app, variant naming and density rules are stable, and downstream route migrations can reuse them without inventing new styling contracts.
+      Verify with: focused wrapper tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright verification of at least one wrapper-backed route interaction.
+
+- [x] MUI-03 Rebuild the authenticated shell, grouped navigation, command surface, and mobile drawer on Material UI while preserving permissions, keyboard behavior, and responsive access.
+      Done when: the authenticated shell no longer depends on the old Tailwind-first implementation and all current shell interactions still function through the MUI foundation.
+      Verify with: shell component tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright shell navigation coverage.
+
+- [x] MUI-04 Rebuild the public auth surfaces on Material UI form and feedback patterns.
+      Done when: sign-in and related public auth screens are fully MUI-based while Auth.js behavior, validation, and seeded-user smoke coverage remain intact.
+      Verify with: auth surface tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright sign-in coverage.
+
+- [x] MUI-05 Standardize empty, loading, error, permission, and transient feedback patterns on the MUI system.
+      Done when: routes stop reimplementing bespoke state containers and shared feedback behavior is delivered through one MUI-backed system.
+      Verify with: focused state-pattern tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright verification of representative route states.
+
+- [x] MUI-06 Replace shared data-display primitives with MUI-native patterns, including Data Grid where appropriate.
+      Done when: dense list surfaces, preview/detail panels, and row-state behavior use one shared MUI-backed data-display foundation instead of the current Tailwind-first primitives.
+      Verify with: focused data-display tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright verification of at least one list-detail route.
+
+- [x] MUI-07 Redesign and migrate the dashboard and analytics surfaces onto the MUI system.
+      Done when: dashboard and analytics operate through the MUI foundation with preserved data truth, drill-through behavior, and redesigned operator-facing presentation.
+      Verify with: dashboard and analytics tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright dashboard plus analytics coverage.
+
+- [x] MUI-08 Migrate the opportunities route family, including list, forms, and workspace sections, onto the MUI system.
+      Done when: opportunities list, create/edit, and workspace flows are MUI-based while existing audited server actions, permissions, and route behaviors remain intact.
+      Verify with: opportunities tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright create/edit/workspace coverage.
+
+- [x] MUI-09 Migrate the `/sources` discovery and import workspace onto the MUI system.
+      Done when: external discovery, duplicate review, import preview, and CSV intake operate through MUI-based UI patterns without regressing connector or import behavior.
+      Verify with: sources tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright search/import coverage.
+
+- [x] MUI-10 Migrate the knowledge and tasks route families onto the MUI system.
+      Done when: `/knowledge` and `/tasks` are fully MUI-based while filtering, preview, copy, and CRUD flows remain functional.
+      Verify with: knowledge and tasks tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright route coverage for both areas.
+
+- [x] MUI-11 Migrate the admin and settings/operator surfaces onto the MUI system.
+      Done when: `/settings` is fully MUI-based and current admin-only access plus viewer denial remain intact.
+      Verify with: admin and permission tests, full `npm run lint`, full `npm test`, full `npm run build`, and Playwright admin access/denial coverage.
+
+- [x] MUI-12 Remove Tailwind and the obsolete Tailwind-first UI layer after the MUI replacement is complete.
+      Done when: the app no longer depends on Tailwind as an active UI runtime layer and the superseded Tailwind-first primitives have been removed safely.
+      Verify with: full `npm run lint`, full `npm test`, full `npm run build`, full Playwright coverage, and `git diff --check`.
+
+- [x] MUI-13 Rewrite automated tests to target the new MUI-backed UI contracts instead of brittle Tailwind-era DOM or class assumptions.
+      Done when: UI tests assert semantics, accessibility, state transitions, and wrapper contracts rather than old utility-class output.
+      Verify with: full `npm test`, full `npm run build`, and relevant Playwright reruns for impacted route families.
+
+- [x] MUI-14 Run the final full regression, accessibility and responsiveness polish, and durable doc refresh for the MUI cutover.
+      Done when: the MUI cutover is fully verified, durable docs reflect the new architecture truthfully, and the route set is stable on the supported local workflow.
+      Verify with: full `npm run lint`, full `npm test`, full `npm run build`, compose-backed Playwright Chromium verification, and `git diff --check`.
+
+- [x] MUI-15 Fix the shared public access shell and wrapper `sx` composition for the public auth and denial pages.
+      Done when: the shared wrapper layer preserves caller-provided `sx` arrays without dropping layout styles, `/sign-in` and `/forbidden` render through a width-constrained MUI shell with consistent spacing, and the public auth form remains functionally unchanged.
+      Verify with: focused wrapper and public-shell tests, full `npm run lint`, full `npm test`, full `npm run build`, `npm run db:seed`, full Playwright Chromium verification against a temporary fixture-backed built server, and `git diff --check`.
+
+- [x] MUI-16 Fix contrast regressions in shell workbench toggles and dashboard action buttons.
+      Done when: dark-on-accent contrast regressions are removed from the authenticated shell and dashboard action surfaces, link-rendered shared buttons preserve their intended foreground color, and the affected shell/dashboard states are covered by automated regressions plus live Chromium verification.
+      Verify with: focused wrapper and shell tests, full `npm run lint`, full `npm test`, full `npm run build`, `npm run db:seed`, full Playwright Chromium verification against a temporary fixture-backed built server, and `git diff --check`.
+
+- [x] MUI-17 Reset the semantic design foundation onto a compact neutral MUI baseline and apply it to the shared shell plus dashboard.
+      Done when: the OneSource theme, compatibility design tokens, authenticated shell, and homepage all render through one cleaner compact visual language, the dashboard no longer depends on decorative hybrid layout patterns, and the shell plus dashboard share the same neutral-first MUI semantics without regressing current behavior.
+      Verify with: focused theme, dashboard, and shell tests, full `npm run lint`, full `npm test`, full `npm run build`, `npm run db:seed`, full Playwright Chromium verification against a temporary fixture-backed built server, and `git diff --check`.
+
+- [x] MUI-18 Rebuild the authenticated left navigation as a traditional MUI admin rail.
+      Done when: the desktop shell defaults to a mini persistent rail, grouped flyouts expose sibling routes in collapsed mode, the expanded sidebar uses a cleaner admin-style navigation hierarchy, the old rail workbench is removed, and pinned or recent destinations remain available only through the command center without regressing permission-aware route visibility or mobile navigation.
+      Verify with: focused shell lint plus test coverage, full `npm run lint`, full `npm test`, full `npm run build`, `npm run db:seed`, full Playwright Chromium verification against a temporary fixture-backed built server, and `git diff --check`.
+
+- [x] MUI-19 Split user management out of `/settings` into a dedicated `/settings/users` workspace and harden shared tabular surfaces.
+      Done when: the main `/settings` route focuses on admin operations instead of carrying user-role management, the admin rail exposes a dedicated `Users & Roles` destination backed by a MUI `DataGrid` workspace for invite or role or access-state management, audit-backed user mutations persist through dedicated admin services, and shared dense table or grid surfaces use a lighter radius without clipping text or focus treatment at the shell edge.
+      Verify with: focused admin and shared-table lint plus Vitest coverage, full `npm run lint`, full `npm test`, full `npm run build`, `npm run db:seed`, full Playwright Chromium verification against a temporary fixture-backed built server, and `git diff --check`.
+
+- [x] MUI-20 Reset the opportunities route family onto the compact MUI operator baseline and remove the obsolete root UI guide from repo root.
+      Done when: `/opportunities`, `/opportunities/[opportunityId]`, `/opportunities/new`, and `/opportunities/[opportunityId]/edit` share one cleaner MUI route-family composition; the main pipeline queue uses a themed MUI `DataGrid` on desktop-class breakpoints with a responsive mobile queue fallback; implementation-facing copy is removed from the touched opportunities routes; existing query params, workspace section routing, permissions, validation, audit-backed server actions, and browser-local draft behavior remain intact; and the retired root-level UI guidance has been folded into durable docs before the root file is deleted.
+      Verify with: opportunities component and repository tests, full `npm run lint`, full `npm test`, full `npm run build`, `npm run db:seed`, full Playwright Chromium verification against the documented temporary built server, and `git diff --check`.
+
 ## Quality Bar
 
 The unchecked boxes below are standing engineering requirements for any future change, not incomplete deliverables on the project checklist.
@@ -879,8 +973,8 @@ The unchecked boxes below are standing engineering requirements for any future c
 
 Update this section at the end of every coding loop.
 
-- Current status: `P0-01` through `P10-04` remain complete, the MVP/Beta/Pilot release gates remain met, deferred follow-on `FP-01` remains complete, and the post-completion UI refactor program remains complete through `UI-13`. This `2026-04-20T16:31:57Z` docs-only follow-up again treated the request as a follow-up to completed `P0-04` because the tracked project checklist is already finished. The durable developer docs now explicitly state that the default compose app stack does not apply Prisma migrations or seed data automatically, document both compose-first and host-assisted bootstrap flows, call out the exact `public.users` auth error and `public.opportunity_tasks` worker/db error as missing-schema symptoms, and note that `/api/health` currently proves database reachability plus document-storage readiness rather than full migration state. `docs/security.md` now also matches the current audit producers and `/settings` retry plus recalibration behavior, the seeded opportunity stage descriptions are consistent again, and a non-amended docs-only commit now preserves that recovery guidance on the current branch tip.
-- Next recommended item: none. The tracked PRD checklist is complete.
-- Blockers: no open blocker remains on the project checklist. The active local environment can still show missing-table failures until the documented recovery commands are run against that database: `docker compose run --rm --build web npx prisma migrate deploy`; `docker compose run --rm --build web npm run db:seed`; and `docker compose restart web worker`. After reseeding, the operator should sign in again so the browser does not reuse a stale JWT session. Prior non-blocking environment notes remain accurate: after route-level or smoke-spec changes in this sandbox, the compose browser path can still require an explicit `docker compose -f docker-compose.test.yml build web playwright` refresh before Chromium sees the latest app bundle and the latest browser assertions together; host-native Node tooling in this sandbox remains less trustworthy than the compose path, so the canonical verification workflow should continue to prefer `docker compose`; scheduled sync execution is only implemented for saved searches whose `sourceSystem` is `sam_gov`, so the seeded future-connector search still logs a warning and remains non-executable until those connectors land; and the CRM, document-repository, and communication adapters are deterministic dry runs only, so no live outbound credentials, webhook validation, or callback signatures are in scope yet. `make clean-dev-artifacts` is intentionally skipped in this loop because the user is actively debugging a live missing-table environment and teardown would erase evidence and disrupt recovery.
-- Files touched in latest loop: `README.md`, `docs/runbook.md`, `docs/security.md`, `docs/deployment.md`, `NOTES.md`, and `PRD.md`.
-- Tests run in latest loop: docs-focused verification only. Commands run: `git diff --check`; `docker compose config -q`; and targeted `rg -n "public\\.users|opportunity_tasks|migrate deploy|health route checks database reachability|saved-search retry and scoring recalibration|Current audit producers are" README.md docs/runbook.md docs/security.md`. Verification in this latest loop did not use compose-managed automated tests or Playwright because the diff is documentation-only.
+- Current status: `P0-01` through `P10-04` remain complete, the MVP/Beta/Pilot release gates remain met, deferred follow-on `FP-01` remains complete, the earlier post-completion UI refactor program remains complete through `UI-13`, and the post-completion MUI follow-ups now remain complete through `MUI-20`. The opportunities route family now uses the compact MUI operator baseline, the `/opportunities` shell runs on a wider canvas with reduced horizontal padding, the list is table-first, the selected-pursuit brief now opens in a right-side preview drawer instead of sitting under the queue, the main queue runs through a themed MUI `DataGrid` with a responsive mobile fallback, the queue density now defaults to `compact`, and the obsolete root-level UI guide has been folded into durable docs and deleted from repo root.
+- Next recommended item: continue the semantic reset with another route-family slice for `/sources`, `/analytics`, or any remaining hybrid admin/detail surface still carrying pre-reset composition.
+- Blockers: no product blocker is open. The user-kept live stack on `3000` should remain untouched; use a temporary built server on `127.0.0.1:3002` with `SAM_GOV_USE_FIXTURES=true` for deterministic local Chromium verification because a second `next dev` instance cannot run against the same repo while the kept dev server is already active. The serialized local Playwright smoke suite still mutates shared seeded data, so rerunning `npm run e2e` after a partial failure still requires `npm run db:seed` first. During the temporary-server smoke run, the app still logs the pre-existing seeded document download `ENOENT` errors under `.data/opportunity-documents/...`; the Chromium suite passes, but the missing seeded files remain an operational cleanup item outside this ticket. `make clean-dev-artifacts` remains intentionally skipped because the user asked to keep the environment available, and the refreshed temporary `3002` server is still running at loop end.
+- Files touched in latest loop: `NOTES.md`, `PRD.md`, `src/app/(app)/opportunities/page.tsx`, `src/components/opportunities/opportunity-list.tsx`, `src/components/opportunities/opportunity-list.test.tsx`, and `tests/smoke.spec.ts`.
+- Tests run in latest loop: focused `npx eslint src/app/'(app)'/opportunities/page.tsx src/components/opportunities/opportunity-list.tsx src/components/opportunities/opportunity-list.test.tsx tests/smoke.spec.ts`; focused `npx vitest run src/components/opportunities/opportunity-list.test.tsx`; focused Chromium reruns via `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3002 CI=1 npx playwright test tests/smoke.spec.ts --project=chromium -g "authenticated homepage smoke test|users can open the opportunity workspace and review seeded sections|small-screen users can navigate from the shell drawer|tablet route sweep"`; full local `npm run lint`; full local `npm test`; full local `npm run build`; repeated `npm run db:seed`; final full local Chromium smoke via `SAM_GOV_USE_FIXTURES=true PLAYWRIGHT_BASE_URL=http://127.0.0.1:3002 npm run e2e`; and `git diff --check`. Verification used the existing host-side app plus the temporary built server; `docker compose` was not used in this follow-up because the user-kept live stack on `3000` had to remain untouched.

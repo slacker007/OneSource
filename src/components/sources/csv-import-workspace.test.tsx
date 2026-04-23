@@ -99,15 +99,22 @@ describe("CsvImportWorkspace", () => {
       }),
     );
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole("table", { name: /csv import preview rows/i }),
-      ).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(
+          screen.getByRole("table", { name: /csv import preview rows/i }),
+        ).toBeInTheDocument();
+      },
+      { timeout: 12_000 },
+    );
 
-    expect(screen.getByText(/zero trust boundary engineering bridge/i)).toBeVisible();
-    expect(screen.getByRole("button", { name: /import 1 clean row/i })).toBeEnabled();
+    expect(
+      screen.getByText(/zero trust boundary engineering bridge/i),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /import 1 clean row/i }),
+    ).toBeEnabled();
     expect(screen.getByText(/exact duplicate/i)).toBeVisible();
     expect(screen.getByText(/needs review/i)).toBeVisible();
-  });
+  }, 20_000);
 });

@@ -2,23 +2,23 @@
 
 ## Purpose
 
-This document translates `OneSource-UI-Secification-Guide.md` into a Ralph-Loop-ready execution plan anchored in `PRD.md` and the engineering rules in `AGENTS.md`.
+This document is the durable Ralph-Loop execution plan for OneSource UI evolution, anchored in `PRD.md` and the engineering rules in `AGENTS.md`.
 
 The goal is not a cosmetic reskin. The goal is to turn the current product into a denser, more operational, enterprise-grade capture command center while preserving the functional coverage already delivered in Phases `P0` through `P10`.
 
 ## Source Inputs
 
-- `OneSource-UI-Secification-Guide.md`
 - `PRD.md`
 - `AGENTS.md`
 - Current route and component inventory under `src/app` and `src/components`
+- Historical UI direction previously captured in the removed root-level guide, now folded into this document for durable repo memory
 
 ## Program Guardrails
 
 - Preserve feature parity while changing information architecture, hierarchy, and interaction design.
 - Keep every loop scoped to one checklist item from the UI refactor program unless a trivial dependent follow-up is required to make that item usable.
 - Reuse existing server-side modules, validation, permissions, and audit paths wherever possible. The refactor should change the UI operating model, not scatter business logic into components.
-- Do not copy GovWin IQ layouts, copy, colors, iconography, or page composition. Borrow only the abstract product qualities called out in the UI guide.
+- Do not copy GovWin IQ layouts, copy, colors, iconography, or page composition. Borrow only the abstract product qualities captured in this plan.
 - Treat saved views, command/search, notifications, preview panels, and denser list workflows as product features, not decorative upgrades. They need real data contracts, persistence where required, and automated coverage.
 - No UI item is complete until the affected route is functional end to end, the full automated suite still passes, and the changed route has Playwright coverage on a live app instance.
 
@@ -135,7 +135,7 @@ The goal is not a cosmetic reskin. The goal is to turn the current product into 
 
 ## Ralph-Loop Execution Sequence
 
-The UI guide already proposes the correct high-level order. Future agents should execute the program in this sequence and keep each item independently shippable:
+This plan keeps the correct high-level order for the UI program. Future agents should execute the program in this sequence and keep each item independently shippable:
 
 1. `UI-01` Design tokens and status semantics
 2. `UI-02` Shared interaction primitives

@@ -1,6 +1,4 @@
 "use client";
-
-import Link from "next/link";
 import {
   startTransition,
   useActionState,
@@ -12,9 +10,12 @@ import {
 } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import {
   INITIAL_OPPORTUNITY_FORM_ACTION_STATE,
@@ -178,13 +179,16 @@ export function OpportunityForm({
 
   return (
     <section className="space-y-6">
-      <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
+      <Surface
+        component="header"
+        sx={{ bgcolor: "background.paper", px: { xs: 3, sm: 4 }, py: 3 }}
+      >
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
               <Badge>{modeLabel}</Badge>
               <Badge tone="muted">{snapshot.currentStageLabel}</Badge>
-              <Badge tone="warning">Browser draft autosave</Badge>
+              <Badge tone="warning">Local draft protection</Badge>
             </div>
             <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
               {snapshot.mode === "create"
@@ -198,62 +202,71 @@ export function OpportunityForm({
 
           <div className="grid gap-3 sm:grid-cols-3">
             <SummaryCard
-              label="Workspace"
-              supportingText="Organization-scoped form options"
+              label="Organization"
+              supportingText="Current operating workspace"
               value={snapshot.organization.name}
             />
             <SummaryCard
               label="Draft status"
               supportingText={
-                restoredDraft ? "Unsaved browser-local edits were restored" : "Local autosave only"
+                restoredDraft
+                  ? "Unsaved local edits were restored"
+                  : "Draft stays in this browser until save"
               }
               value={isPending ? "Saving..." : "Ready"}
             />
             <SummaryCard
-              label="Source context"
+              label="Source origin"
               supportingText={
                 snapshot.updatedAt
                   ? `Last updated ${formatIsoDate(snapshot.updatedAt)}`
-                  : "No source-linked metadata yet"
+                  : "No source-linked context yet"
               }
               value={humanizeSourceSystem(snapshot.originSourceSystem)}
             />
           </div>
         </div>
-      </header>
+      </Surface>
 
       {feedback ? (
-        <Banner
+        <FeedbackBanner
           message={feedback.message}
+          role="status"
           title={feedback.title}
-          tone={feedback.tone}
+          tone="success"
         />
       ) : null}
 
       {restoredDraft ? (
-        <Banner
+        <FeedbackBanner
           message="The restored values have not been saved to the database yet."
+          role="status"
           title="Unsaved draft restored"
           tone="warning"
         />
       ) : null}
 
       {formState.formError ? (
-        <Banner
+        <FeedbackBanner
+          ariaLive="assertive"
           message={formState.formError}
+          role="alert"
           title="Opportunity form needs attention"
           tone="danger"
         />
       ) : null}
 
-      <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
+      <Surface
+        component="section"
+        sx={{ bgcolor: "background.paper", px: { xs: 3, sm: 4 }, py: 3 }}
+      >
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Opportunity form
+              Pursuit record
             </p>
             <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
-              Validation-backed tracked opportunity details
+              Opportunity details
             </h2>
           </div>
 
@@ -388,11 +401,7 @@ export function OpportunityForm({
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap gap-3">
-              <button
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)] disabled:cursor-not-allowed disabled:opacity-70"
-                disabled={isPending}
-                type="submit"
-              >
+              <Button disabled={isPending} type="submit">
                 {isPending
                   ? snapshot.mode === "create"
                     ? "Creating opportunity..."
@@ -400,54 +409,29 @@ export function OpportunityForm({
                   : snapshot.mode === "create"
                     ? "Create opportunity"
                     : "Save changes"}
-              </button>
+              </Button>
 
-              <button
-                className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-white px-5 py-3 text-sm font-medium text-foreground transition hover:bg-[rgba(15,28,31,0.03)]"
+              <Button
                 onClick={handleResetToSavedValues}
+                tone="neutral"
                 type="button"
+                variant="outlined"
               >
                 Reset to saved values
-              </button>
+              </Button>
             </div>
 
-            <Link
-              className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
+            <Button
+              density="compact"
               href="/opportunities"
+              variant="text"
             >
               Back to opportunity list
-            </Link>
+            </Button>
           </div>
         </form>
-      </section>
+      </Surface>
     </section>
-  );
-}
-
-function Banner({
-  message,
-  title,
-  tone,
-}: {
-  message: string;
-  title: string;
-  tone: "danger" | "success" | "warning";
-}) {
-  const toneClassName =
-    tone === "success"
-      ? "border-[rgba(19,78,68,0.24)] bg-[rgba(227,242,239,0.95)] text-[rgb(19,78,68)]"
-      : tone === "warning"
-        ? "border-[rgba(182,125,39,0.24)] bg-[rgba(255,247,227,0.96)] text-[rgb(133,97,38)]"
-        : "border-[rgba(146,86,57,0.24)] bg-[rgba(253,241,236,0.96)] text-[rgb(133,69,49)]";
-
-  return (
-    <div
-      className={`rounded-[24px] border px-5 py-4 shadow-[0_12px_30px_rgba(20,37,34,0.05)] ${toneClassName}`}
-      role="status"
-    >
-      <p className="text-sm font-semibold">{title}</p>
-      <p className="mt-1 text-sm leading-6">{message}</p>
-    </div>
   );
 }
 
@@ -461,11 +445,11 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <article className="border-border rounded-[24px] border bg-white px-4 py-4 text-sm shadow-[0_12px_30px_rgba(20,37,34,0.06)]">
+    <Surface component="article" sx={{ px: 2, py: 2 }} className="text-sm">
       <p className="text-muted text-xs tracking-[0.2em] uppercase">{label}</p>
       <p className="mt-2 font-semibold text-foreground">{value}</p>
       <p className="mt-1 text-muted">{supportingText}</p>
-    </article>
+    </Surface>
   );
 }
 

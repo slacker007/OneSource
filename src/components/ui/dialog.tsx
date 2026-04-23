@@ -1,7 +1,13 @@
 "use client";
 
-import { useId } from "react";
-import type { ReactNode } from "react";
+import CloseIcon from "@mui/icons-material/Close";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import Portal from "@mui/material/Portal";
+import Typography from "@mui/material/Typography";
+import { useId, type ReactNode } from "react";
+
+import { Surface } from "@/components/ui/surface";
 
 type DialogProps = {
   children: ReactNode;
@@ -28,48 +34,110 @@ export function Dialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
-      <button
-        aria-label={`Close ${title}`}
-        className="absolute inset-0 bg-[rgba(15,28,31,0.5)]"
-        onClick={onClose}
-        type="button"
-      />
-      <div
-        aria-describedby={description ? descriptionId : undefined}
-        aria-labelledby={titleId}
-        aria-modal="true"
-        className="border-border relative z-10 w-full max-w-2xl rounded-[32px] border bg-[rgba(255,249,239,0.98)] p-6 shadow-[0_30px_90px_rgba(15,28,31,0.22)]"
-        role="dialog"
+    <Portal>
+      <Box
+        sx={{
+          inset: 0,
+          position: "fixed",
+          px: 2,
+          py: 3,
+          zIndex: 1300,
+        }}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <h2
-              className="font-heading text-foreground text-3xl font-semibold tracking-[-0.04em]"
-              id={titleId}
-            >
-              {title}
-            </h2>
-            {description ? (
-              <p className="text-muted max-w-2xl text-sm leading-6" id={descriptionId}>
-                {description}
-              </p>
-            ) : null}
-          </div>
-          <button
-            aria-label={`Dismiss ${title}`}
-            className="border-border rounded-full border bg-white px-3 py-2 text-sm font-medium"
-            onClick={onClose}
-            type="button"
+        <Box
+          aria-label={`Close ${title}`}
+          component="button"
+          onClick={onClose}
+          sx={{
+            bgcolor: "rgba(15,28,31,0.5)",
+            border: 0,
+            cursor: "pointer",
+            inset: 0,
+            position: "absolute",
+          }}
+          type="button"
+        />
+        <Box
+          sx={{
+            alignItems: "center",
+            display: "flex",
+            inset: 0,
+            justifyContent: "center",
+            pointerEvents: "none",
+            position: "absolute",
+            px: 2,
+            py: 3,
+          }}
+        >
+          <Surface
+            aria-modal="true"
+            aria-describedby={description ? descriptionId : undefined}
+            aria-labelledby={titleId}
+            role="dialog"
+            sx={{
+              bgcolor: "rgba(255,249,239,0.98)",
+              maxWidth: 720,
+              p: 3,
+              pointerEvents: "auto",
+              width: "100%",
+            }}
           >
-            Close
-          </button>
-        </div>
+            <Box
+              sx={{
+                alignItems: "flex-start",
+                display: "flex",
+                gap: 2,
+                justifyContent: "space-between",
+              }}
+            >
+              <div>
+                <Typography
+                  component="h2"
+                  id={titleId}
+                  sx={{
+                    fontFamily: "var(--font-heading), sans-serif",
+                    fontSize: "1.9rem",
+                    fontWeight: 600,
+                    letterSpacing: "-0.04em",
+                  }}
+                >
+                  {title}
+                </Typography>
+                {description ? (
+                  <Typography
+                    id={descriptionId}
+                    sx={{
+                      color: "text.secondary",
+                      fontSize: "0.94rem",
+                      lineHeight: 1.6,
+                      mt: 1,
+                    }}
+                  >
+                    {description}
+                  </Typography>
+                ) : null}
+              </div>
+              <IconButton aria-label={`Dismiss ${title}`} onClick={onClose}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
 
-        <div className="mt-6">{children}</div>
+            <Box sx={{ mt: 3 }}>{children}</Box>
 
-        {footer ? <div className="mt-6 border-border border-t pt-4">{footer}</div> : null}
-      </div>
-    </div>
+            {footer ? (
+              <Box
+                sx={{
+                  borderTop: (theme) => `1px solid ${theme.palette.divider}`,
+                  mt: 3,
+                  pt: 2,
+                }}
+              >
+                {footer}
+              </Box>
+            ) : null}
+          </Surface>
+        </Box>
+      </Box>
+    </Portal>
   );
 }

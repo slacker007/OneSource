@@ -1,12 +1,15 @@
 "use client";
 
-import Link from "next/link";
+import Checkbox from "@mui/material/Checkbox";
 import { useActionState, useState, type ChangeEvent } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import {
   INITIAL_KNOWLEDGE_ASSET_FORM_ACTION_STATE,
@@ -101,7 +104,7 @@ export function KnowledgeForm({
 
   return (
     <section className="space-y-6">
-      <header className="border-border bg-surface rounded-[28px] border px-6 py-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-8">
+      <Surface component="header" sx={{ px: { sm: 4, xs: 3 }, py: 3 }}>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -158,19 +161,22 @@ export function KnowledgeForm({
             />
           </div>
         </div>
-      </header>
+      </Surface>
 
       {feedback ? (
-        <Banner
+        <FeedbackBanner
           message={feedback.message}
+          role="status"
           title={feedback.title}
-          tone={feedback.tone}
+          tone={feedback.tone === "warning" ? "warning" : "info"}
         />
       ) : null}
 
       {formState.formError ? (
-        <Banner
+        <FeedbackBanner
+          ariaLive="assertive"
           message={formState.formError}
+          role="alert"
           title="Knowledge asset needs attention"
           tone="danger"
         />
@@ -185,7 +191,7 @@ export function KnowledgeForm({
           />
         ) : null}
 
-        <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
+        <Surface component="section" sx={{ px: { sm: 4, xs: 3 }, py: 3 }}>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-muted text-xs tracking-[0.24em] uppercase">
@@ -196,12 +202,9 @@ export function KnowledgeForm({
               </h2>
             </div>
 
-            <Link
-              className="text-sm font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
-              href="/knowledge"
-            >
+            <Button href="/knowledge" tone="neutral" variant="text">
               Return to library
-            </Link>
+            </Button>
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -286,9 +289,9 @@ export function KnowledgeForm({
               />
             </FormField>
           </div>
-        </section>
+        </Surface>
 
-        <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
+        <Surface component="section" sx={{ px: { sm: 4, xs: 3 }, py: 3 }}>
           <div className="space-y-2">
             <p className="text-muted text-xs tracking-[0.24em] uppercase">
               Structured retrieval
@@ -345,9 +348,9 @@ export function KnowledgeForm({
               title="Vehicles"
             />
           </div>
-        </section>
+        </Surface>
 
-        <section className="border-border bg-surface rounded-[32px] border px-6 py-6 shadow-[0_20px_60px_rgba(20,37,34,0.08)] sm:px-8">
+        <Surface component="section" sx={{ px: { sm: 4, xs: 3 }, py: 3 }}>
           <div className="space-y-2">
             <p className="text-muted text-xs tracking-[0.24em] uppercase">
               Opportunity links
@@ -374,13 +377,13 @@ export function KnowledgeForm({
               );
 
               return (
-                <label
+                <Surface
+                  component="label"
                   key={opportunity.value}
-                  className="border-border flex items-start gap-3 rounded-[24px] border bg-white px-4 py-4 shadow-[0_10px_24px_rgba(20,37,34,0.04)]"
+                  sx={{ borderRadius: 3, px: 2, py: 2 }}
                 >
-                  <input
+                  <Checkbox
                     checked={isChecked}
-                    className="border-border mt-1 h-4 w-4 rounded text-[rgb(19,78,68)]"
                     name="opportunityIds"
                     onChange={(event) =>
                       handleOpportunityToggle(
@@ -388,8 +391,8 @@ export function KnowledgeForm({
                         event.target.checked,
                       )
                     }
-                    type="checkbox"
                     value={opportunity.value}
+                    sx={{ mt: -0.5 }}
                   />
                   <span className="space-y-1">
                     <span className="text-foreground block text-sm font-medium">
@@ -399,31 +402,24 @@ export function KnowledgeForm({
                       {opportunity.currentStageLabel}
                     </span>
                   </span>
-                </label>
+                </Surface>
               );
             })}
           </div>
-        </section>
+        </Surface>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-3">
-            <button
-              className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)] disabled:cursor-not-allowed disabled:bg-[rgba(19,78,68,0.55)]"
-              disabled={isPending}
-              type="submit"
-            >
+            <Button disabled={isPending} type="submit">
               {isPending
                 ? "Saving knowledge asset..."
                 : snapshot.mode === "create"
                   ? "Create knowledge asset"
                   : "Save knowledge asset"}
-            </button>
-            <Link
-              className="border-border text-foreground inline-flex min-h-12 items-center justify-center rounded-full border bg-white px-5 py-3 text-sm font-medium transition hover:bg-[rgba(15,28,31,0.03)]"
-              href="/knowledge"
-            >
+            </Button>
+            <Button href="/knowledge" tone="neutral" variant="outlined">
               Cancel
-            </Link>
+            </Button>
           </div>
         </div>
       </form>
@@ -435,12 +431,9 @@ export function KnowledgeForm({
             type="hidden"
             value={snapshot.assetId}
           />
-          <button
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-[rgba(148,53,53,0.22)] bg-[rgba(148,53,53,0.08)] px-5 py-3 text-sm font-medium text-[rgb(125,39,39)] transition hover:bg-[rgba(148,53,53,0.14)]"
-            type="submit"
-          >
+          <Button tone="danger" type="submit" variant="soft">
             Delete knowledge asset
-          </button>
+          </Button>
         </form>
       ) : null}
     </section>
@@ -457,32 +450,13 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <article className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-white px-4 py-4">
+    <Surface component="article" sx={{ borderRadius: 3, px: 2, py: 2 }}>
       <p className="text-muted text-xs tracking-[0.18em] uppercase">{label}</p>
       <p className="font-heading text-foreground mt-3 text-3xl font-semibold tracking-[-0.04em]">
         {value}
       </p>
       <p className="text-muted mt-2 text-xs leading-5">{supportingText}</p>
-    </article>
-  );
-}
-
-function Banner({
-  message,
-  title,
-  tone,
-}: {
-  message: string;
-  title: string;
-  tone: "accent" | "warning" | "danger";
-}) {
-  return (
-    <section className="border-border rounded-[28px] border bg-white px-6 py-5 shadow-[0_14px_34px_rgba(20,37,34,0.06)]">
-      <div className="flex flex-wrap gap-3">
-        <Badge tone={tone}>{title}</Badge>
-      </div>
-      <p className="text-muted mt-3 text-sm leading-6">{message}</p>
-    </section>
+    </Surface>
   );
 }
 
@@ -510,7 +484,7 @@ function FacetCheckboxFieldset({
   title: string;
 }) {
   return (
-    <section className="border-border space-y-3 rounded-[24px] border bg-white px-4 py-4 shadow-[0_10px_24px_rgba(20,37,34,0.04)]">
+    <Surface component="section" sx={{ borderRadius: 3, px: 2, py: 2 }}>
       <div className="space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-foreground text-sm font-medium">{title}</p>
@@ -534,13 +508,18 @@ function FacetCheckboxFieldset({
             const isChecked = selectedValues.includes(option.value);
 
             return (
-              <label
+              <Surface
+                component="label"
                 key={`${field}-${option.value}`}
-                className="border-border flex items-start gap-3 rounded-[20px] border bg-[rgba(15,28,31,0.02)] px-4 py-3"
+                sx={{
+                  bgcolor: "rgba(15, 28, 31, 0.02)",
+                  borderRadius: 2.5,
+                  px: 2,
+                  py: 1.5,
+                }}
               >
-                <input
+                <Checkbox
                   checked={isChecked}
-                  className="border-border mt-1 h-4 w-4 rounded text-[rgb(19,78,68)]"
                   name={field}
                   onChange={(event) =>
                     onToggle({
@@ -549,8 +528,8 @@ function FacetCheckboxFieldset({
                       value: option.value,
                     })
                   }
-                  type="checkbox"
                   value={option.value}
+                  sx={{ mt: -0.5 }}
                 />
                 <span className="space-y-1">
                   <span className="text-foreground block text-sm font-medium">
@@ -562,12 +541,12 @@ function FacetCheckboxFieldset({
                     </span>
                   ) : null}
                 </span>
-              </label>
+              </Surface>
             );
           })}
         </div>
       )}
-    </section>
+    </Surface>
   );
 }
 

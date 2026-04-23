@@ -1,33 +1,53 @@
 "use client";
 
+import Stack from "@mui/material/Stack";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
+
+import { Button } from "@/components/ui/button";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
 
 type SignInFormProps = {
   defaultEmail?: string;
 };
 
+type SignInFieldErrors = {
+  email?: string;
+  password?: string;
+};
+
 export function SignInForm({ defaultEmail = "" }: SignInFormProps) {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [fieldErrors, setFieldErrors] = useState<SignInFieldErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function submitCredentials(email: string, password: string) {
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl: "/",
-    });
+    setIsSubmitting(true);
 
-    if (!result || result.error) {
-      setErrorMessage("Invalid email or password.");
-      return;
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: "/",
+      });
+
+      if (!result || result.error) {
+        setErrorMessage("Invalid email or password.");
+        return;
+      }
+
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setErrorMessage("Sign-in could not be completed.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    router.replace("/");
-    router.refresh();
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -37,72 +57,74 @@ export function SignInForm({ defaultEmail = "" }: SignInFormProps) {
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
 
-    if (!email || !password) {
-      setErrorMessage("Email and password are required.");
+    const nextFieldErrors: SignInFieldErrors = {
+      email: email ? undefined : "Enter your email address.",
+      password: password ? undefined : "Enter your password.",
+    };
+
+    if (nextFieldErrors.email || nextFieldErrors.password) {
+      setFieldErrors(nextFieldErrors);
+      setErrorMessage("Enter the required credentials to continue.");
       return;
     }
 
+    setFieldErrors({});
     setErrorMessage(null);
-
-    startTransition(() => {
-      void submitCredentials(email, password);
-    });
+    void submitCredentials(email, password);
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      <div className="space-y-2">
-        <label
-          className="text-foreground text-sm font-medium"
-          htmlFor="email"
-        >
-          Email
-        </label>
-        <input
-          autoComplete="email"
-          className="border-border focus:border-accent focus:ring-accent/20 text-foreground w-full rounded-2xl border bg-white px-4 py-3 text-sm outline-none ring-0 transition-shadow focus:ring-4"
-          defaultValue={defaultEmail}
-          id="email"
-          name="email"
-          placeholder="admin@onesource.local"
-          type="email"
-        />
-      </div>
+    <Stack component="form" noValidate onSubmit={handleSubmit} spacing={3}>
+      <Stack spacing={2.5}>
+        <FormField error={fieldErrors.email} label="Email" htmlFor="email">
+          <Input
+            aria-invalid={Boolean(fieldErrors.email)}
+            autoComplete="email"
+            defaultValue={defaultEmail}
+            disabled={isSubmitting}
+            id="email"
+            name="email"
+            placeholder="admin@onesource.local"
+            required
+            type="email"
+          />
+        </FormField>
 
-      <div className="space-y-2">
-        <label
-          className="text-foreground text-sm font-medium"
-          htmlFor="password"
-        >
-          Password
-        </label>
-        <input
-          autoComplete="current-password"
-          className="border-border focus:border-accent focus:ring-accent/20 text-foreground w-full rounded-2xl border bg-white px-4 py-3 text-sm outline-none ring-0 transition-shadow focus:ring-4"
-          id="password"
-          name="password"
-          placeholder="Local development password"
-          type="password"
-        />
-      </div>
+        <FormField error={fieldErrors.password} label="Password" htmlFor="password">
+          <Input
+            aria-invalid={Boolean(fieldErrors.password)}
+            autoComplete="current-password"
+            disabled={isSubmitting}
+            id="password"
+            name="password"
+            placeholder="Local development password"
+            required
+            type="password"
+          />
+        </FormField>
+      </Stack>
 
       {errorMessage ? (
-        <p
-          aria-live="polite"
-          className="rounded-2xl border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-          role="alert"
+        <FeedbackBanner
+          message={errorMessage}
+          title={
+            fieldErrors.email || fieldErrors.password
+              ? "Credentials required"
+              : "Sign-in failed"
+          }
+          tone="warning"
         >
-          {errorMessage}
-        </p>
+        </FeedbackBanner>
       ) : null}
 
-      <button
-        className="bg-accent hover:bg-accent-strong inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-        disabled={isPending}
+      <Button
+        disabled={isSubmitting}
+        fullWidth
         type="submit"
+        variant="solid"
       >
-        {isPending ? "Signing in..." : "Sign in"}
-      </button>
-    </form>
+        {isSubmitting ? "Signing in..." : "Sign in"}
+      </Button>
+    </Stack>
   );
 }

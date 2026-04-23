@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 
+import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
+import { Surface } from "@/components/ui/surface";
 
 type AppErrorBoundaryProps = {
   error: Error & {
@@ -36,33 +41,80 @@ export function AppErrorBoundary({
   }, [error, scopeLabel]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(209,229,220,0.72),_rgba(250,247,242,0.95)_55%)] px-6 py-16">
-      <div className="w-full max-w-2xl rounded-[32px] border border-border bg-surface px-6 py-8 shadow-[0_24px_80px_rgba(20,37,34,0.12)] sm:px-8">
-        <p className="text-muted text-xs tracking-[0.24em] uppercase">
+    <Box
+      component="main"
+      sx={{
+        alignItems: "center",
+        background:
+          "radial-gradient(circle at top, rgba(209,229,220,0.72), rgba(250,247,242,0.95) 55%)",
+        display: "flex",
+        justifyContent: "center",
+        minHeight: "100vh",
+        px: 3,
+        py: 8,
+      }}
+    >
+      <Surface
+        sx={{
+          maxWidth: "40rem",
+          px: { xs: 3, sm: 4 },
+          py: 4,
+          width: "100%",
+        }}
+      >
+        <Typography
+          sx={{
+            color: "text.secondary",
+            fontSize: "0.72rem",
+            letterSpacing: "0.24em",
+            textTransform: "uppercase",
+          }}
+        >
           {scopeLabel}
-        </p>
-        <h1 className="font-heading mt-3 text-3xl font-semibold tracking-[-0.04em] text-foreground">
+        </Typography>
+        <Typography
+          component="h1"
+          sx={{
+            fontFamily: "var(--font-heading), sans-serif",
+            fontSize: { xs: "2rem", sm: "2.25rem" },
+            fontWeight: 600,
+            letterSpacing: "-0.04em",
+            mt: 1.5,
+          }}
+        >
           {title}
-        </h1>
-        <div className="mt-6">
+        </Typography>
+        <Box sx={{ mt: 3 }}>
           <ErrorState
-            title="The current page could not finish rendering"
-            message="OneSource caught the failure in a route-level error boundary. Reset the view to retry this route, or return to the previous page if the problem persists."
             action={
-              <button
-                className="rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-xs font-medium tracking-[0.16em] text-white uppercase"
+              <Button
                 onClick={() => reset()}
-                type="button"
+                tone="primary"
+                variant="solid"
               >
                 Retry route
-              </button>
+              </Button>
             }
+            message="OneSource caught the failure in a route-level error boundary. Reset the view to retry this route, or return to the previous page if the problem persists."
+            title="The current page could not finish rendering"
           />
-        </div>
-        <p className="text-muted mt-4 text-xs leading-6">
-          Error digest: <span className="font-mono">{error.digest ?? "n/a"}</span>
-        </p>
-      </div>
-    </main>
+        </Box>
+        <Stack direction="row" spacing={0.75} sx={{ mt: 2 }}>
+          <Typography sx={{ color: "text.secondary", fontSize: "0.78rem" }}>
+            Error digest:
+          </Typography>
+          <Typography
+            component="span"
+            sx={{
+              color: "text.secondary",
+              fontFamily: "monospace",
+              fontSize: "0.78rem",
+            }}
+          >
+            {error.digest ?? "n/a"}
+          </Typography>
+        </Stack>
+      </Surface>
+    </Box>
   );
 }

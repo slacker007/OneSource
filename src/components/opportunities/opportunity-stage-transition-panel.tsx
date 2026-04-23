@@ -2,10 +2,13 @@
 
 import { useActionState, useState } from "react";
 
+import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import {
   INITIAL_OPPORTUNITY_STAGE_TRANSITION_ACTION_STATE,
@@ -49,7 +52,7 @@ export function OpportunityStageTransitionPanel({
     rationale.trim().length === 0;
 
   return (
-    <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
+    <Surface component="article" sx={{ bgcolor: "background.paper", p: 3 }}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <p className="text-muted text-xs tracking-[0.24em] uppercase">
@@ -114,17 +117,13 @@ export function OpportunityStageTransitionPanel({
                 />
               </FormField>
 
-              <button
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)] disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isSubmitDisabled}
-                type="submit"
-              >
+              <Button disabled={isSubmitDisabled} type="submit">
                 {isPending
                   ? "Updating stage..."
                   : selectedOption
                     ? `Move to ${selectedOption.stageLabel}`
                     : "Move stage"}
-              </button>
+              </Button>
             </div>
 
             {selectedOption ? (
@@ -189,25 +188,14 @@ export function OpportunityStageTransitionPanel({
             ) : null}
           </div>
 
-          {formState.formError ? (
-            <p
-              className="rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-              role="alert"
-            >
-              {formState.formError}
-            </p>
-          ) : null}
-
-          {formState.successMessage ? (
-            <p
-              className="rounded-[18px] border border-[rgba(32,95,85,0.25)] bg-[rgba(229,243,239,0.85)] px-4 py-3 text-sm text-[rgb(16,66,57)]"
-              role="status"
-            >
-              {formState.successMessage}
-            </p>
-          ) : null}
+          <ActionFeedback
+            errorMessage={formState.formError}
+            errorTitle="Stage transition needs attention"
+            successMessage={formState.successMessage}
+            successTitle="Stage updated"
+          />
         </form>
       )}
-    </article>
+    </Surface>
   );
 }

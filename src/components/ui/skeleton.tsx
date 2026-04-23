@@ -1,16 +1,24 @@
-import type { HTMLAttributes } from "react";
+import MuiSkeleton, { type SkeletonProps as MuiSkeletonProps } from "@mui/material/Skeleton";
 
-import { cn } from "@/lib/cn";
+import { mergeSx } from "@/components/ui/merge-sx";
 
-type SkeletonProps = {
-  className?: string;
-} & HTMLAttributes<HTMLDivElement>;
+type SkeletonProps = MuiSkeletonProps;
 
-export function Skeleton({ className, ...props }: SkeletonProps) {
+export function Skeleton({ sx, ...props }: SkeletonProps) {
   return (
-    <div
+    <MuiSkeleton
       aria-hidden="true"
-      className={cn("ui-skeleton", className)}
+      animation="wave"
+      sx={mergeSx(
+        [
+          {
+            borderRadius: 1.5,
+            transform: "none",
+          },
+        ],
+        sx,
+      )}
+      variant="rounded"
       {...props}
     />
   );

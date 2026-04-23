@@ -9,8 +9,8 @@ This runbook captures the real operational procedures for the current repo basel
 - `web`: Next.js production server on port `3000`
 - `db`: PostgreSQL 16 on port `5432`
 - `worker`: background process that scans deadline reminders, due `sam.gov` saved searches, queued document parsing work, and stale opportunity scorecards while writing structured summary logs
-- `test`: profile-gated compose runner for lint, build, and unit tests
-- `playwright`: profile-gated Chromium browser test runner
+- `test`: isolated compose test runner in the `onesource-test` project, kept alive for repeated lint, unit, build, migrate, and seed commands through `docker compose exec`
+- `playwright`: isolated compose Chromium browser test runner in the `onesource-test` project
 
 ## Preconditions
 
@@ -86,6 +86,30 @@ make compose-up-detached
 
 `make compose-up` and `make compose-up-detached` do not run Prisma migrations or seed data for the default stack. On a fresh database, skipping bootstrap commonly surfaces `public.users` or `public.opportunity_tasks` missing-table errors from the auth path and the worker.
 
+## Compose Test Stack
+
+The canonical containerized verification workflow now runs through the isolated `onesource-test` compose project:
+
+```bash
+make compose-test-lint
+make compose-test
+make compose-test-build
+make compose-test-e2e
+```
+
+Operational details:
+
+- `make compose-test-lint`, `make compose-test`, `make compose-test-build`, and `make compose-test-bootstrap` reuse a persistent bind-mounted `test` container and a named `node_modules` volume through `docker compose exec`, so repeated verification does not rebuild the test image every time.
+- `make compose-test-image` is the explicit test-runner rebuild path when Docker inputs or dependency inputs changed and the baked runner must be refreshed on purpose.
+- `make compose-test-e2e` still starts by stopping the default compose stack, then boots the isolated browser path. Restore the live stack afterward if it must remain available:
+
+```bash
+docker compose run --rm --build web npx prisma migrate deploy
+docker compose run --rm --build web npm run db:seed
+docker compose up --build -d web worker
+curl http://127.0.0.1:3000/api/health
+```
+
 ## Health Checks
 
 Inspect running services:
@@ -158,7 +182,7 @@ npm run db:seed
 
 The current seed is idempotent enough for local development. It upserts the default organization, system roles, and seven realistic local users; persists one organization scoring profile with target NAICS codes, focus agencies, relationship agencies, capability inventory rows, certification rows, selected vehicles, and six weighted scoring criteria; persists five agencies, five contract vehicles, and five competitors; creates connector configs for `sam.gov`, `usaspending_api`, `gsa_ebuy`, and `csv_upload`; seeds one imported `sam.gov` opportunity with retained source attachments, contacts, and a create-opportunity import decision already in `capture_active`; seeds one `usaspending_api` award-enrichment record linked to the same opportunity with an award child row and a link-to-existing import decision; seeds four additional manual opportunities across `qualified`, `proposal_in_development`, `submitted`, and `no_bid`; seeds realistic workspace data with varied tasks, milestones, notes, documents, stage transitions, scorecards, bid decisions, closeouts, proposal tracking records, proposal checklist items, proposal-linked documents, activity events, retained extracted text, queued extraction status, and local-disk document paths; then runs the same deadline-reminder sweep used by the worker so the app opens with truthful overdue and upcoming reminder state before appending the bootstrap audit-log record.
 
-The same seed also writes deterministic local password hashes for all seven users so the credentials-provider sign-in flow works immediately in development. Use the admin email `admin@onesource.local` or the viewer email `avery.stone@onesource.local` plus the shared local development password documented in [src/lib/auth/local-demo-auth.mjs](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/local-demo-auth.mjs:1) for smoke verification only.
+The same seed also writes deterministic local password hashes for all seven users so the credentials-provider sign-in flow works immediately in development. Use the admin email `admin@onesource.local` or the viewer email `avery.stone@onesource.local` plus the shared local development password `LocalDevOnly!123`, documented in [src/lib/auth/local-demo-auth.mjs](/Users/maverick/Documents/RalphLoops/OneSource/src/lib/auth/local-demo-auth.mjs:1), for smoke verification only.
 
 ## Disposable Local Reset And Reseed
 

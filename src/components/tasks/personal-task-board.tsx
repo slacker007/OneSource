@@ -1,12 +1,13 @@
 import Link from "next/link";
 
+import { Button } from "@/components/ui/button";
 import { ActiveFilterChipBar } from "@/components/ui/active-filter-chip-bar";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { PreviewPanel } from "@/components/ui/preview-panel";
 import { SavedViewControls } from "@/components/ui/saved-view-controls";
-import { cn } from "@/lib/cn";
+import { Surface } from "@/components/ui/surface";
 import type {
   TaskBoardItem,
   TaskBoardSnapshot,
@@ -102,7 +103,7 @@ export function PersonalTaskBoard({
 
   return (
     <section className="space-y-6">
-      <header className="ui-surface space-y-6 px-6 py-6 sm:px-8">
+      <Surface component="header" sx={{ px: { sm: 4, xs: 3 }, py: 3 }}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -122,12 +123,9 @@ export function PersonalTaskBoard({
             </div>
           </div>
 
-          <Link
-            className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-pill)] border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:border-border-strong hover:bg-surface-strong"
-            href="/opportunities"
-          >
+          <Button href="/opportunities" tone="neutral" variant="outlined">
             Open pipeline
-          </Link>
+          </Button>
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
@@ -163,7 +161,7 @@ export function PersonalTaskBoard({
             value={String(snapshot.summary.unassignedTaskCount)}
           />
         </div>
-      </header>
+      </Surface>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_380px] xl:items-start">
         <div className="space-y-4">
@@ -187,12 +185,11 @@ export function PersonalTaskBoard({
         <PreviewPanel
           actions={
             focusedTask ? (
-              <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-pill)] bg-[rgb(19,78,68)] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
+              <Button
                 href={`/opportunities/${focusedTask.opportunityId}?section=tasks`}
               >
                 Open task in workspace
-              </Link>
+              </Button>
             ) : undefined
           }
           className="xl:sticky xl:top-24"
@@ -201,6 +198,7 @@ export function PersonalTaskBoard({
             "Choose a task from the active view to inspect ownership, due-date pressure, and the linked pursuit."
           }
           eyebrow="Task preview"
+          label="Task preview"
           metadata={
             focusedTask
               ? [
@@ -305,7 +303,7 @@ function MyTasksView({
   return (
     <div className="space-y-4">
       {sections.map((section) => (
-        <section className="ui-surface space-y-4 px-5 py-5" key={section.key}>
+        <Surface component="section" key={section.key} sx={{ px: 2.5, py: 2.5 }}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex flex-wrap gap-2">
@@ -330,7 +328,7 @@ function MyTasksView({
               />
             ))}
           </div>
-        </section>
+        </Surface>
       ))}
     </div>
   );
@@ -355,7 +353,7 @@ function TeamTasksView({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {snapshot.teamTasks.lanes.map((lane) => (
-        <section className="ui-surface space-y-4 px-5 py-5" key={lane.key}>
+        <Surface component="section" key={lane.key} sx={{ px: 2.5, py: 2.5 }}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground">{lane.label}</h2>
@@ -378,7 +376,7 @@ function TeamTasksView({
               />
             ))}
           </div>
-        </section>
+        </Surface>
       ))}
     </div>
   );
@@ -403,7 +401,7 @@ function CalendarTasksView({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {snapshot.calendar.buckets.map((bucket) => (
-        <section className="ui-surface space-y-4 px-5 py-5" key={bucket.key}>
+        <Surface component="section" key={bucket.key} sx={{ px: 2.5, py: 2.5 }}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex flex-wrap gap-2">
@@ -427,7 +425,7 @@ function CalendarTasksView({
               />
             ))}
           </div>
-        </section>
+        </Surface>
       ))}
     </div>
   );
@@ -453,7 +451,7 @@ function KanbanTasksView({
     <div className="overflow-x-auto">
       <div className="grid min-w-[960px] gap-4 xl:min-w-0 xl:grid-cols-5">
         {snapshot.kanban.columns.map((column) => (
-          <section className="ui-surface space-y-4 px-4 py-4" key={column.key}>
+          <Surface component="section" key={column.key} sx={{ px: 2, py: 2 }}>
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2">
                 <Badge tone={statusTone(column.key)}>{column.label}</Badge>
@@ -486,7 +484,7 @@ function KanbanTasksView({
                 title={`No ${column.label.toLowerCase()} tasks`}
               />
             )}
-          </section>
+          </Surface>
         ))}
       </div>
     </div>
@@ -505,17 +503,26 @@ function TaskListItem({
   return (
     <Link
       aria-current={active ? "true" : undefined}
-      className={cn(
-        "block rounded-[20px] border px-4 py-4 transition",
-        active
-          ? "border-accent bg-accent-soft/60 shadow-[0_14px_28px_rgba(19,78,68,0.12)]"
-          : "border-border bg-surface hover:border-border-strong hover:bg-surface-strong",
-      )}
+      className="block"
       href={buildTaskHref({
         focusTaskId: task.id,
         view,
       })}
     >
+      <Surface
+        sx={{
+          bgcolor: active ? "rgba(30, 93, 102, 0.12)" : "background.paper",
+          borderColor: active ? "primary.main" : "divider",
+          boxShadow: active ? "0 14px 28px rgba(19, 78, 68, 0.12)" : undefined,
+          px: 2,
+          py: 2,
+          transition: "background-color 180ms ease, border-color 180ms ease",
+          "&:hover": {
+            bgcolor: active ? "rgba(30, 93, 102, 0.16)" : "rgba(18, 33, 40, 0.035)",
+            borderColor: active ? "primary.main" : "text.secondary",
+          },
+        }}
+      >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
@@ -541,6 +548,7 @@ function TaskListItem({
         <span>{task.opportunityStageLabel}</span>
         <span>{task.assigneeName ?? "Unassigned"}</span>
       </div>
+      </Surface>
     </Link>
   );
 }
@@ -555,11 +563,11 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <div className="rounded-[20px] border border-border bg-surface px-5 py-5">
+    <Surface sx={{ borderRadius: 2.5, px: 2.5, py: 2.5 }}>
       <p className="text-xs tracking-[0.22em] text-muted uppercase">{label}</p>
       <p className="mt-3 text-3xl font-semibold text-foreground">{value}</p>
       <p className="mt-2 text-sm leading-6 text-muted">{supportingText}</p>
-    </div>
+    </Surface>
   );
 }
 

@@ -5,7 +5,11 @@ import {
   ActiveFilterChipBar,
   type ActiveFilterChip,
 } from "@/components/ui/active-filter-chip-bar";
-import { DataTable } from "@/components/ui/data-table";
+import {
+  DATA_TABLE_SURFACE_OVERFLOW,
+  DATA_TABLE_SURFACE_RADIUS_PX,
+  DataTable,
+} from "@/components/ui/data-table";
 import { DensityToggle } from "@/components/ui/density-toggle";
 import { PreviewPanel } from "@/components/ui/preview-panel";
 import { PreviewPanelSkeleton } from "@/components/ui/preview-panel-skeleton";
@@ -59,15 +63,14 @@ describe("UI interaction primitives", () => {
       </div>,
     );
 
-    const allPursuitsLink = screen.getByText(/all pursuits/i).closest("a");
-    const stageFilterChip = screen.getByText(/stage · qualified/i).closest("a");
-    const clearAllLink = screen.getByText(/clear all/i).closest("a");
-    const compactLink = screen.getByText(/^compact$/i).closest("a");
-
-    expect(allPursuitsLink).not.toBeNull();
-    expect(stageFilterChip).not.toBeNull();
-    expect(clearAllLink).not.toBeNull();
-    expect(compactLink).not.toBeNull();
+    const allPursuitsLink = screen.getByRole("link", {
+      name: /all pursuits\s*default/i,
+    });
+    const stageFilterChip = screen.getByRole("link", {
+      name: /remove stage · qualified/i,
+    });
+    const clearAllLink = screen.getByRole("link", { name: /clear all/i });
+    const compactLink = screen.getByRole("link", { name: /^compact$/i });
 
     expect(allPursuitsLink).toHaveAttribute(
       "aria-current",
@@ -120,6 +123,7 @@ describe("UI interaction primitives", () => {
         <PreviewPanel
           description="Opportunity summary and current next steps."
           eyebrow="Preview"
+          label="Selected preview"
           metadata={[
             { label: "Stage", value: "Qualified" },
             { label: "Deadline", value: "May 8, 2026" },
@@ -137,7 +141,7 @@ describe("UI interaction primitives", () => {
     expect(screen.getByRole("row", { selected: true })).toHaveTextContent(
       /army cloud operations/i,
     );
-    expect(screen.getByText(/sorted ascending/i)).toHaveClass("sr-only");
+    expect(screen.getByText(/sorted ascending/i)).toBeInTheDocument();
     expect(screen.getByRole("row", { selected: true })).toHaveAttribute(
       "tabindex",
       "0",
@@ -147,5 +151,8 @@ describe("UI interaction primitives", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText(/capture brief/i)[0]).toBeInTheDocument();
     expect(screen.getAllByRole("table")).toHaveLength(1);
+
+    expect(DATA_TABLE_SURFACE_RADIUS_PX).toBe("12px");
+    expect(DATA_TABLE_SURFACE_OVERFLOW).toBe("visible");
   });
 });

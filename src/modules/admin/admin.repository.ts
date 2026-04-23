@@ -1,6 +1,9 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 
-import type { AdminWorkspaceSnapshot } from "./admin.types";
+import type {
+  AdminSettingsSnapshot,
+  AdminUserManagementSnapshot,
+} from "./admin.types";
 import {
   buildScoringRecalibrationSnapshot,
   type ScoringRecalibrationObservation,
@@ -14,7 +17,29 @@ import {
   type AdminSourceConnectorHealthRecord,
 } from "./source-operations";
 
-const organizationAdminSnapshotArgs =
+const auditLogSummaryArgs =
+  Prisma.validator<Prisma.AuditLogDefaultArgs>()({
+  select: {
+    id: true,
+    occurredAt: true,
+    action: true,
+    actorType: true,
+    actorIdentifier: true,
+    targetType: true,
+    targetId: true,
+    targetDisplay: true,
+    summary: true,
+    metadata: true,
+    actorUser: {
+      select: {
+        name: true,
+        email: true,
+      },
+    },
+  },
+});
+
+const organizationSettingsSnapshotArgs =
   Prisma.validator<Prisma.OrganizationDefaultArgs>()({
   select: {
     id: true,
@@ -107,21 +132,40 @@ const organizationAdminSnapshotArgs =
         auditLogs: true,
       },
     },
-    users: {
+    auditLogs: {
       orderBy: {
-        email: "asc",
+        occurredAt: "desc",
       },
+      take: 12,
+      ...auditLogSummaryArgs,
+    },
+  },
+});
+
+const organizationUserManagementSnapshotArgs =
+  Prisma.validator<Prisma.OrganizationDefaultArgs>()({
+  select: {
+    id: true,
+    name: true,
+    roles: {
+      orderBy: {
+        name: "asc",
+      },
+      select: {
+        key: true,
+        name: true,
+        description: true,
+      },
+    },
+    users: {
+      orderBy: [{ status: "asc" }, { email: "asc" }],
       select: {
         id: true,
         name: true,
         email: true,
         status: true,
         roles: {
-          orderBy: {
-            role: {
-              name: "asc",
-            },
-          },
+          orderBy: [{ assignedAt: "desc" }, { role: { name: "asc" } }],
           select: {
             assignedAt: true,
             role: {
@@ -130,30 +174,6 @@ const organizationAdminSnapshotArgs =
                 name: true,
               },
             },
-          },
-        },
-      },
-    },
-    auditLogs: {
-      orderBy: {
-        occurredAt: "desc",
-      },
-      take: 12,
-      select: {
-        id: true,
-        occurredAt: true,
-        action: true,
-        actorType: true,
-        actorIdentifier: true,
-        targetType: true,
-        targetId: true,
-        targetDisplay: true,
-        summary: true,
-        metadata: true,
-        actorUser: {
-          select: {
-            name: true,
-            email: true,
           },
         },
       },
@@ -362,6 +382,7 @@ const recalibrationOpportunityArgs =
 export type AdminRepositoryClient = Pick<
   PrismaClient,
   | "organization"
+  | "user"
   | "opportunity"
   | "sourceConnectorConfig"
   | "sourceSavedSearch"
@@ -369,8 +390,14 @@ export type AdminRepositoryClient = Pick<
   | "sourceSyncRun"
 >;
 
-export type OrganizationAdminRecord = Prisma.OrganizationGetPayload<
-  typeof organizationAdminSnapshotArgs
+export type OrganizationSettingsRecord = Prisma.OrganizationGetPayload<
+  typeof organizationSettingsSnapshotArgs
+>;
+export type OrganizationUserManagementRecord = Prisma.OrganizationGetPayload<
+  typeof organizationUserManagementSnapshotArgs
+>;
+export type AuditLogSummaryPayload = Prisma.AuditLogGetPayload<
+  typeof auditLogSummaryArgs
 >;
 export type SourceConnectorHealthPayload = Prisma.SourceConnectorConfigGetPayload<
   typeof sourceConnectorHealthArgs
@@ -388,15 +415,16 @@ export type RecalibrationOpportunityPayload = Prisma.OpportunityGetPayload<
   typeof recalibrationOpportunityArgs
 >;
 
-export async function getAdminWorkspaceSnapshot({
+export async function getAdminSettingsSnapshot({
   db,
   organizationId,
 }: {
   db: AdminRepositoryClient;
   organizationId: string;
-}): Promise<AdminWorkspaceSnapshot | null> {
+}): Promise<AdminSettingsSnapshot | null> {
   const [
     organization,
+    adminUserCount,
     connectorHealthRecords,
     recentSyncRunRecords,
     savedSearchRecords,
@@ -408,7 +436,19 @@ export async function getAdminWorkspaceSnapshot({
         where: {
           id: organizationId,
         },
-        ...organizationAdminSnapshotArgs,
+        ...organizationSettingsSnapshotArgs,
+      }),
+      db.user.count({
+        where: {
+          organizationId,
+          roles: {
+            some: {
+              role: {
+                key: "admin",
+              },
+            },
+          },
+        },
       }),
       db.sourceConnectorConfig.findMany({
         where: {
@@ -467,26 +507,6 @@ export async function getAdminWorkspaceSnapshot({
   if (!organization) {
     return null;
   }
-
-  const users = organization.users.map((user) => {
-    const roles = user.roles.map((assignment) => ({
-      key: assignment.role.key,
-      label: assignment.role.name,
-      assignedAt: assignment.assignedAt.toISOString(),
-    }));
-
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      status: user.status,
-      roleKeys: roles.map((role) => role.key),
-      roleLabels: roles.map((role) => role.label),
-      roles,
-    };
-  });
-
-  const adminUserCount = users.filter((user) => user.roleKeys.includes("admin")).length;
   const agenciesById = new Map(
     organization.agencies.map((agency) => [
       agency.id,
@@ -614,26 +634,94 @@ export async function getAdminWorkspaceSnapshot({
       lastSyncedAt: savedSearch.lastSyncedAt?.toISOString() ?? null,
       filterSummary: buildSavedSearchFilterSummary(savedSearch),
     })),
-    users,
-    recentAuditEvents: organization.auditLogs.map((auditLog) => ({
-      id: auditLog.id,
-      occurredAt: auditLog.occurredAt.toISOString(),
-      action: auditLog.action,
-      actionLabel: formatAuditActionLabel(auditLog.action),
-      actorType: auditLog.actorType,
-      actorLabel:
-        auditLog.actorUser?.name ??
-        auditLog.actorUser?.email ??
-        auditLog.actorIdentifier ??
-        formatEnumLabel(auditLog.actorType),
-      targetLabel:
-        auditLog.targetDisplay ??
-        auditLog.targetId ??
-        formatEnumLabel(auditLog.targetType),
-      targetType: auditLog.targetType,
-      summary: auditLog.summary,
-      metadataPreview: formatAuditMetadataPreview(auditLog.metadata),
+    recentAuditEvents: organization.auditLogs.map(mapAuditEventSummary),
+  };
+}
+
+export async function getAdminUserManagementSnapshot({
+  db,
+  organizationId,
+}: {
+  db: AdminRepositoryClient;
+  organizationId: string;
+}): Promise<AdminUserManagementSnapshot | null> {
+  const organization = await db.organization.findUnique({
+    where: {
+      id: organizationId,
+    },
+    ...organizationUserManagementSnapshotArgs,
+  });
+
+  if (!organization) {
+    return null;
+  }
+
+  const users = organization.users.map(mapAdminUserSummary);
+
+  return {
+    organizationId: organization.id,
+    organizationName: organization.name,
+    totalUserCount: users.length,
+    activeUserCount: users.filter((user) => user.status === "ACTIVE").length,
+    invitedUserCount: users.filter((user) => user.status === "INVITED").length,
+    disabledUserCount: users.filter((user) => user.status === "DISABLED").length,
+    adminUserCount: users.filter((user) => user.roleKeys.includes("admin")).length,
+    roleOptions: organization.roles.map((role) => ({
+      key: role.key,
+      label: role.name,
+      description: role.description,
     })),
+    users,
+  };
+}
+
+function mapAdminUserSummary(
+  user: OrganizationUserManagementRecord["users"][number],
+) {
+  const roles = user.roles.map((assignment) => ({
+    key: assignment.role.key,
+    label: assignment.role.name,
+    assignedAt: assignment.assignedAt.toISOString(),
+  }));
+  const latestRoleAssignedAt = roles.reduce<string | null>((latest, role) => {
+    if (!latest || role.assignedAt > latest) {
+      return role.assignedAt;
+    }
+
+    return latest;
+  }, null);
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    status: user.status,
+    latestRoleAssignedAt,
+    roleKeys: roles.map((role) => role.key),
+    roleLabels: roles.map((role) => role.label),
+    roles,
+  };
+}
+
+function mapAuditEventSummary(auditLog: AuditLogSummaryPayload) {
+  return {
+    id: auditLog.id,
+    occurredAt: auditLog.occurredAt.toISOString(),
+    action: auditLog.action,
+    actionLabel: formatAuditActionLabel(auditLog.action),
+    actorType: auditLog.actorType,
+    actorLabel:
+      auditLog.actorUser?.name ??
+      auditLog.actorUser?.email ??
+      auditLog.actorIdentifier ??
+      formatEnumLabel(auditLog.actorType),
+    targetLabel:
+      auditLog.targetDisplay ??
+      auditLog.targetId ??
+      formatEnumLabel(auditLog.targetType),
+    targetType: auditLog.targetType,
+    summary: auditLog.summary,
+    metadataPreview: formatAuditMetadataPreview(auditLog.metadata),
   };
 }
 

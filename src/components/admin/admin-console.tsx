@@ -1,11 +1,28 @@
-import type { AdminWorkspaceSnapshot } from "@/modules/admin/admin.types";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+
+import type { AdminSettingsSnapshot } from "@/modules/admin/admin.types";
+import {
+  formatEnumLabel,
+  formatUtcTimestamp,
+  mapFeedbackBannerTone,
+  MetricPair,
+  ProfileBadgeGroup,
+  SectionJumpLink,
+  SummaryCard,
+} from "@/components/admin/admin-shared";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
+import { onesourceTokens } from "@/theme/onesource-theme";
 
 type AdminConsoleProps = {
   recalibrateScoringProfileAction: (formData: FormData) => Promise<void>;
@@ -14,7 +31,7 @@ type AdminConsoleProps = {
     email?: string | null;
   };
   retrySourceSyncAction: (formData: FormData) => Promise<void>;
-  snapshot: AdminWorkspaceSnapshot | null;
+  snapshot: AdminSettingsSnapshot | null;
   scoringRecalibrationNotice?: {
     message: string;
     tone: "accent" | "warning" | "danger";
@@ -37,140 +54,179 @@ export function AdminConsole({
 
   if (!snapshot) {
     return (
-      <section className="space-y-4">
-        <p className="text-muted text-sm tracking-[0.26em] uppercase">
+      <Stack component="section" spacing={2}>
+        <Typography
+          sx={{
+            color: onesourceTokens.color.text.muted,
+            fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+            fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+            letterSpacing: "0.26em",
+            textTransform: "uppercase",
+          }}
+        >
           Settings
-        </p>
-        <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-          Workspace settings
-        </h1>
-        <ErrorState
-          message="Organization-scoped admin data could not be loaded for this session. Re-seed the local database or verify the authenticated user still belongs to an active organization."
-          title="Workspace settings are unavailable"
-        />
-      </section>
+        </Typography>
+        <Surface sx={{ p: { xs: 3, sm: 4 } }}>
+          <Typography variant="h1" sx={{ fontSize: { xs: "2rem", sm: "2.35rem" } }}>
+            Workspace settings
+          </Typography>
+          <ErrorState
+            className="mt-4"
+            message="Organization-scoped admin data could not be loaded for this session. Re-seed the local database or verify the authenticated user still belongs to an active organization."
+            title="Workspace settings are unavailable"
+          />
+        </Surface>
+      </Stack>
     );
   }
 
   return (
     <section className="space-y-6">
-      <header className="border-border bg-surface rounded-[32px] border px-6 py-8 shadow-[0_24px_80px_rgba(20,37,34,0.12)] sm:px-8">
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Badge>Settings</Badge>
-            <Badge tone="muted">{snapshot.organizationName}</Badge>
-            <Badge tone="accent">Operator workspace</Badge>
-          </div>
-          <h1 className="font-heading text-foreground text-4xl font-semibold tracking-[-0.04em]">
-            Workspace settings
-          </h1>
-          <p className="text-muted max-w-3xl text-sm leading-7">
-            Run the organization from one settings workspace: review connector
-            health, saved-search coverage, scoring inputs, role assignments,
-            and recent audit activity without leaving the protected admin
-            route.
-          </p>
-          {sourceSyncRetryNotice ? (
-            <div className="rounded-[24px] border border-border bg-white p-4">
-              <Badge tone={sourceSyncRetryNotice.tone}>Source sync retry</Badge>
-              <p className="text-muted mt-3 text-sm leading-6">
-                {sourceSyncRetryNotice.message}
-              </p>
-            </div>
-          ) : null}
-          {scoringRecalibrationNotice ? (
-            <div className="rounded-[24px] border border-border bg-white p-4">
-              <Badge tone={scoringRecalibrationNotice.tone}>
-                Scoring recalibration
-              </Badge>
-              <p className="text-muted mt-3 text-sm leading-6">
-                {scoringRecalibrationNotice.message}
-              </p>
-            </div>
-          ) : null}
-        </div>
+      <Surface
+        component="header"
+        sx={{
+          boxShadow: onesourceTokens.elevation.hero,
+          px: { xs: 3, sm: 4 },
+          py: 4,
+        }}
+      >
+        <Stack spacing={3}>
+          <Stack spacing={1.5}>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+              <Badge>Settings</Badge>
+              <Badge tone="muted">{snapshot.organizationName}</Badge>
+              <Badge tone="accent">Operator workspace</Badge>
+            </Stack>
+            <Typography variant="h1" sx={{ fontSize: { xs: "2rem", sm: "2.35rem" } }}>
+              Workspace settings
+            </Typography>
+            <Typography color="text.secondary" sx={{ maxWidth: "52rem" }}>
+              Run the workspace from one operator hub: review connector
+              health, saved-search coverage, scoring inputs, and recent audit
+              activity without dragging user administration into the same page.
+            </Typography>
+            {sourceSyncRetryNotice ? (
+              <FeedbackBanner
+                className="mt-4"
+                message={sourceSyncRetryNotice.message}
+                title="Source sync retry"
+                tone={mapFeedbackBannerTone(sourceSyncRetryNotice.tone)}
+              />
+            ) : null}
+            {scoringRecalibrationNotice ? (
+              <FeedbackBanner
+                className="mt-4"
+                message={scoringRecalibrationNotice.message}
+                title="Scoring recalibration"
+                tone={mapFeedbackBannerTone(scoringRecalibrationNotice.tone)}
+              />
+            ) : null}
+          </Stack>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-          <SummaryCard
-            label="Current operator"
-            value={viewerLabel}
-            supportingText={sessionUser.email ?? "Signed-in session"}
-          />
-          <SummaryCard
-            label="People"
-            value={String(snapshot.totalUserCount)}
-            supportingText="Users in this workspace"
-          />
-          <SummaryCard
-            label="Admin seats"
-            value={String(snapshot.adminUserCount)}
-            supportingText="Users carrying the admin role"
-          />
-          <SummaryCard
-            label="Saved searches"
-            value={String(snapshot.savedSearches.length)}
-            supportingText="Discovery definitions under management"
-          />
-          <SummaryCard
-            label="Connector alerts"
-            value={String(
-              snapshot.sourceOperations.rateLimitedConnectorCount +
-                snapshot.sourceOperations.failedImportReviewCount,
-            )}
-            supportingText="Rate limits plus import review backlog"
-          />
-          <SummaryCard
-            label="Audit rows"
-            value={String(snapshot.totalAuditLogCount)}
-            supportingText="Recent organization-scoped events"
-          />
-        </div>
+          <Box
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: {
+                md: "repeat(3, minmax(0, 1fr))",
+                xl: "repeat(6, minmax(0, 1fr))",
+              },
+            }}
+          >
+            <SummaryCard
+              label="Current operator"
+              value={viewerLabel}
+              supportingText={sessionUser.email ?? "Signed-in session"}
+            />
+            <SummaryCard
+              label="People"
+              value={String(snapshot.totalUserCount)}
+              supportingText="Users in this workspace"
+            />
+            <SummaryCard
+              label="Admin seats"
+              value={String(snapshot.adminUserCount)}
+              supportingText="Users carrying the admin role"
+            />
+            <SummaryCard
+              label="Saved searches"
+              value={String(snapshot.savedSearches.length)}
+              supportingText="Discovery definitions under management"
+            />
+            <SummaryCard
+              label="Connector alerts"
+              value={String(
+                snapshot.sourceOperations.rateLimitedConnectorCount +
+                  snapshot.sourceOperations.failedImportReviewCount,
+              )}
+              supportingText="Rate limits plus import review backlog"
+            />
+            <SummaryCard
+              label="Audit rows"
+              value={String(snapshot.totalAuditLogCount)}
+              supportingText="Recent organization-scoped events"
+            />
+          </Box>
 
-        <nav
-          aria-label="Workspace settings sections"
-          className="mt-6 flex flex-wrap gap-2"
-        >
-          <SectionJumpLink href="#workspace-overview">Workspace</SectionJumpLink>
-          <SectionJumpLink href="#source-operations-heading">
-            Connectors
-          </SectionJumpLink>
-          <SectionJumpLink href="#saved-searches-heading">
-            Saved searches
-          </SectionJumpLink>
-          <SectionJumpLink href="#scoring-profile-heading">
-            Scoring profile
-          </SectionJumpLink>
-          <SectionJumpLink href="#assigned-roles-heading">
-            Users &amp; roles
-          </SectionJumpLink>
-          <SectionJumpLink href="#recent-audit-heading">Audit</SectionJumpLink>
-        </nav>
-      </header>
+          <Stack
+            aria-label="Workspace settings sections"
+            component="nav"
+            direction="row"
+            spacing={1}
+            sx={{ flexWrap: "wrap" }}
+          >
+            <SectionJumpLink href="#workspace-overview">
+              Workspace
+            </SectionJumpLink>
+            <SectionJumpLink href="#source-operations-heading">
+              Connectors
+            </SectionJumpLink>
+            <SectionJumpLink href="#saved-searches-heading">
+              Saved searches
+            </SectionJumpLink>
+            <SectionJumpLink href="#scoring-profile-heading">
+              Scoring profile
+            </SectionJumpLink>
+            <SectionJumpLink href="#recent-audit-heading">Audit</SectionJumpLink>
+          </Stack>
+        </Stack>
+      </Surface>
 
       <div className="grid gap-6">
-        <section
+        <Surface
           aria-labelledby="workspace-overview-heading"
-          className="border-border bg-surface space-y-4 rounded-[28px] border px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.08)] sm:px-6"
+          className="space-y-4"
+          component="section"
           id="workspace-overview"
+          sx={{
+            boxShadow: "0 16px 40px rgba(20, 37, 34, 0.08)",
+            px: { xs: 2.5, sm: 3 },
+            py: 3,
+          }}
         >
-          <div className="space-y-2">
-            <p className="text-muted text-xs tracking-[0.24em] uppercase">
-              Workspace overview
-            </p>
-            <h2
-              className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
-              id="workspace-overview-heading"
+          <Stack spacing={1}>
+            <Typography
+              sx={{
+                color: onesourceTokens.color.text.muted,
+                fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+                fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+                letterSpacing: "0.24em",
+                textTransform: "uppercase",
+              }}
             >
+              Workspace overview
+            </Typography>
+            <Typography id="workspace-overview-heading" variant="h3">
               Operator briefing
-            </h2>
-            <p className="text-muted text-sm leading-6">
+            </Typography>
+            <Typography color="text.secondary" variant="body2">
               Keep the current workspace posture visible before you move into
               connector, search, scoring, or access-control detail.
-            </p>
-          </div>
+            </Typography>
+          </Stack>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-            <article className="border-border bg-surface-muted rounded-[24px] border px-5 py-5">
+            <Surface className="px-5 py-5" tone="muted">
               <p className="text-muted text-xs tracking-[0.2em] uppercase">
                 Organization
               </p>
@@ -196,7 +252,7 @@ export function AdminConsole({
                   connectors
                 </Badge>
               </div>
-            </article>
+            </Surface>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <SummaryCard
@@ -207,18 +263,23 @@ export function AdminConsole({
               <SummaryCard
                 label="Last successful sync"
                 value={
-                  snapshot.sourceOperations.lastSuccessfulSyncSourceDisplayName ??
+                  snapshot.sourceOperations
+                    .lastSuccessfulSyncSourceDisplayName ??
                   "No successful sync yet"
                 }
                 supportingText={
                   snapshot.sourceOperations.lastSuccessfulSyncAt
-                    ? formatUtcTimestamp(snapshot.sourceOperations.lastSuccessfulSyncAt)
+                    ? formatUtcTimestamp(
+                        snapshot.sourceOperations.lastSuccessfulSyncAt,
+                      )
                     : "No completed successful sync run is recorded yet"
                 }
               />
               <SummaryCard
                 label="Capabilities"
-                value={String(snapshot.scoringProfile?.capabilities.length ?? 0)}
+                value={String(
+                  snapshot.scoringProfile?.capabilities.length ?? 0,
+                )}
                 supportingText="Active capability statements"
               />
               <SummaryCard
@@ -230,9 +291,12 @@ export function AdminConsole({
               />
             </div>
           </div>
-        </section>
+        </Surface>
 
-        <section aria-labelledby="source-operations-heading" className="space-y-4">
+        <section
+          aria-labelledby="source-operations-heading"
+          className="space-y-4"
+        >
           <div className="space-y-2">
             <p className="text-muted text-xs tracking-[0.24em] uppercase">
               Connectors
@@ -267,7 +331,9 @@ export function AdminConsole({
             />
             <SummaryCard
               label="Rate-limited"
-              value={String(snapshot.sourceOperations.rateLimitedConnectorCount)}
+              value={String(
+                snapshot.sourceOperations.rateLimitedConnectorCount,
+              )}
               supportingText="Connectors waiting on upstream throttling"
             />
             <SummaryCard
@@ -278,7 +344,9 @@ export function AdminConsole({
               }
               supportingText={
                 snapshot.sourceOperations.lastSuccessfulSyncAt
-                  ? formatUtcTimestamp(snapshot.sourceOperations.lastSuccessfulSyncAt)
+                  ? formatUtcTimestamp(
+                      snapshot.sourceOperations.lastSuccessfulSyncAt,
+                    )
                   : "No completed successful sync run is recorded yet"
               }
             />
@@ -293,17 +361,20 @@ export function AdminConsole({
                 cell: (connector) => (
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-2">
-                      <Badge tone={getConnectorHealthTone(connector.healthStatus)}>
+                      <Badge
+                        tone={getConnectorHealthTone(connector.healthStatus)}
+                      >
                         {formatEnumLabel(connector.healthStatus)}
                       </Badge>
                       <Badge tone="muted">{connector.sourceSystemKey}</Badge>
                     </div>
                     <div>
-                      <p className="font-medium text-foreground">
+                      <p className="text-foreground font-medium">
                         {connector.sourceDisplayName}
                       </p>
                       <p className="text-muted text-xs">
-                        {connector.connectorVersion ?? "No connector version recorded"}
+                        {connector.connectorVersion ??
+                          "No connector version recorded"}
                       </p>
                     </div>
                   </div>
@@ -329,7 +400,7 @@ export function AdminConsole({
                 header: "Sync state",
                 cell: (connector) => (
                   <div className="space-y-2">
-                    <p className="font-medium text-foreground">
+                    <p className="text-foreground font-medium">
                       {connector.lastSuccessfulSyncAt
                         ? formatUtcTimestamp(connector.lastSuccessfulSyncAt)
                         : "No successful sync recorded"}
@@ -351,12 +422,9 @@ export function AdminConsole({
                           type="hidden"
                           value={connector.latestRetryableSavedSearchId}
                         />
-                        <button
-                          className="rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-xs font-medium tracking-[0.16em] text-white uppercase"
-                          type="submit"
-                        >
+                        <Button density="compact" type="submit">
                           Retry sync
-                        </button>
+                        </Button>
                       </form>
                     ) : null}
                   </div>
@@ -367,7 +435,9 @@ export function AdminConsole({
                 header: "Rate limits",
                 cell: (connector) => (
                   <div className="space-y-2">
-                    <Badge tone={connector.latestRateLimitAt ? "warning" : "accent"}>
+                    <Badge
+                      tone={connector.latestRateLimitAt ? "warning" : "accent"}
+                    >
                       {connector.latestRateLimitAt ? "Rate limited" : "Clear"}
                     </Badge>
                     <p className="text-muted text-xs leading-5">
@@ -378,10 +448,11 @@ export function AdminConsole({
                     <p className="text-muted text-xs leading-5">
                       {connector.latestRateLimitAt
                         ? `${formatUtcTimestamp(connector.latestRateLimitAt)} · ${
-                            connector.latestRateLimitMessage ?? "Upstream rate limit recorded."
+                            connector.latestRateLimitMessage ??
+                            "Upstream rate limit recorded."
                           }`
-                        : connector.rateLimitNotes ??
-                          "No recent rate-limit event is recorded for this connector."}
+                        : (connector.rateLimitNotes ??
+                          "No recent rate-limit event is recorded for this connector.")}
                     </p>
                   </div>
                 ),
@@ -415,11 +486,12 @@ export function AdminConsole({
                         ) : null}
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">
+                        <p className="text-foreground font-medium">
                           {run.sourceDisplayName}
                         </p>
                         <p className="text-muted text-xs">
-                          {run.savedSearchName ?? "Manual or connector-wide sync"}
+                          {run.savedSearchName ??
+                            "Manual or connector-wide sync"}
                         </p>
                       </div>
                     </div>
@@ -429,7 +501,7 @@ export function AdminConsole({
                   key: "counts",
                   header: "Counts",
                   cell: (run) => (
-                    <div className="space-y-1 text-xs text-muted">
+                    <div className="text-muted space-y-1 text-xs">
                       <p>Fetched: {run.recordsFetched}</p>
                       <p>Imported: {run.recordsImported}</p>
                       <p>Failed: {run.recordsFailed}</p>
@@ -441,13 +513,14 @@ export function AdminConsole({
                   header: "Details",
                   cell: (run) => (
                     <div className="space-y-2">
-                      <p className="text-xs text-muted">
+                      <p className="text-muted text-xs">
                         {formatEnumLabel(run.triggerType)}
                         {run.httpStatus ? ` · HTTP ${run.httpStatus}` : ""}
                         {run.errorCode ? ` · ${run.errorCode}` : ""}
                       </p>
                       <p className="text-muted text-xs leading-5">
-                        {run.errorMessage ?? "No sync error was recorded for this run."}
+                        {run.errorMessage ??
+                          "No sync error was recorded for this run."}
                       </p>
                       {run.canRetry ? (
                         <form action={retrySourceSyncAction}>
@@ -456,12 +529,9 @@ export function AdminConsole({
                             type="hidden"
                             value={run.savedSearchId ?? ""}
                           />
-                          <button
-                            className="rounded-full bg-[rgb(19,78,68)] px-4 py-2 text-xs font-medium tracking-[0.16em] text-white uppercase"
-                            type="submit"
-                          >
+                          <Button density="compact" type="submit">
                             Retry sync
-                          </button>
+                          </Button>
                         </form>
                       ) : null}
                     </div>
@@ -500,7 +570,9 @@ export function AdminConsole({
                   header: "Source",
                   cell: (review) => (
                     <div>
-                      <p className="font-medium text-foreground">{review.sourceTitle}</p>
+                      <p className="text-foreground font-medium">
+                        {review.sourceTitle}
+                      </p>
                       <p className="text-muted text-xs">
                         {review.sourceDisplayName} · {review.sourceRecordId}
                       </p>
@@ -516,7 +588,9 @@ export function AdminConsole({
                         <Badge tone={getImportReviewTone(review.status)}>
                           {formatEnumLabel(review.status)}
                         </Badge>
-                        <Badge tone="muted">{formatEnumLabel(review.mode)}</Badge>
+                        <Badge tone="muted">
+                          {formatEnumLabel(review.mode)}
+                        </Badge>
                       </div>
                       {review.targetOpportunityTitle ? (
                         <p className="text-muted text-xs">
@@ -530,7 +604,8 @@ export function AdminConsole({
                   key: "rationale",
                   header: "Rationale",
                   cell: (review) =>
-                    review.rationale ?? "No rationale was recorded for this review item.",
+                    review.rationale ??
+                    "No rationale was recorded for this review item.",
                 },
                 {
                   key: "requested",
@@ -559,10 +634,7 @@ export function AdminConsole({
           </div>
         </section>
 
-        <section
-          aria-labelledby="saved-searches-heading"
-          className="space-y-4"
-        >
+        <section aria-labelledby="saved-searches-heading" className="space-y-4">
           <div className="space-y-2">
             <p className="text-muted text-xs tracking-[0.24em] uppercase">
               Saved searches
@@ -589,7 +661,9 @@ export function AdminConsole({
                 cell: (savedSearch) => (
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-2">
-                      <Badge tone="muted">{savedSearch.sourceDisplayName}</Badge>
+                      <Badge tone="muted">
+                        {savedSearch.sourceDisplayName}
+                      </Badge>
                       <Badge
                         tone={
                           savedSearch.sourceSystem === "sam_gov"
@@ -603,7 +677,7 @@ export function AdminConsole({
                       </Badge>
                     </div>
                     <div>
-                      <p className="font-medium text-foreground">
+                      <p className="text-foreground font-medium">
                         {savedSearch.name}
                       </p>
                       <p className="text-muted text-xs leading-5">
@@ -621,13 +695,16 @@ export function AdminConsole({
                   savedSearch.filterSummary.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {savedSearch.filterSummary.map((summary) => (
-                        <Badge key={`${savedSearch.id}-${summary}`} tone="muted">
+                        <Badge
+                          key={`${savedSearch.id}-${summary}`}
+                          tone="muted"
+                        >
                           {summary}
                         </Badge>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted">
+                    <p className="text-muted text-sm">
                       No parsed filter summary is available for this search.
                     </p>
                   ),
@@ -636,7 +713,7 @@ export function AdminConsole({
                 key: "activity",
                 header: "Activity",
                 cell: (savedSearch) => (
-                  <div className="space-y-2 text-xs text-muted">
+                  <div className="text-muted space-y-2 text-xs">
                     <p>
                       Last executed:{" "}
                       {savedSearch.lastExecutedAt
@@ -657,11 +734,9 @@ export function AdminConsole({
                 key: "ownership",
                 header: "Ownership",
                 cell: (savedSearch) => (
-                  <div className="space-y-2 text-xs text-muted">
+                  <div className="text-muted space-y-2 text-xs">
                     <p>Owner: {savedSearch.createdByLabel}</p>
-                    <p>
-                      Created {formatUtcTimestamp(savedSearch.createdAt)}
-                    </p>
+                    <p>Created {formatUtcTimestamp(savedSearch.createdAt)}</p>
                     <p>
                       {savedSearch.connectorVersion
                         ? `Connector ${savedSearch.connectorVersion}`
@@ -706,7 +781,7 @@ export function AdminConsole({
           {snapshot.scoringProfile ? (
             <div className="space-y-6">
               <div className="grid gap-4 lg:grid-cols-2">
-                <article className="border-border rounded-[24px] border bg-white p-5">
+                <Surface className="p-5">
                   <p className="text-muted text-xs tracking-[0.22em] uppercase">
                     Overview
                   </p>
@@ -714,9 +789,9 @@ export function AdminConsole({
                     {snapshot.scoringProfile.overview ??
                       "No organization overview has been recorded yet."}
                   </p>
-                </article>
+                </Surface>
 
-                <article className="border-border rounded-[24px] border bg-white p-5">
+                <Surface className="p-5">
                   <p className="text-muted text-xs tracking-[0.22em] uppercase">
                     Strategic focus
                   </p>
@@ -724,7 +799,7 @@ export function AdminConsole({
                     {snapshot.scoringProfile.strategicFocus ??
                       "No strategic focus statement has been recorded yet."}
                   </p>
-                </article>
+                </Surface>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
@@ -773,7 +848,7 @@ export function AdminConsole({
                     header: "Capability",
                     cell: (capability) => (
                       <div>
-                        <p className="font-medium text-foreground">
+                        <p className="text-foreground font-medium">
                           {capability.label}
                         </p>
                         <p className="text-muted text-xs">{capability.key}</p>
@@ -797,7 +872,10 @@ export function AdminConsole({
                     cell: (capability) => (
                       <div className="flex flex-wrap gap-2">
                         {capability.keywords.map((keyword) => (
-                          <Badge key={`${capability.id}-${keyword}`} tone="muted">
+                          <Badge
+                            key={`${capability.id}-${keyword}`}
+                            tone="muted"
+                          >
                             {keyword}
                           </Badge>
                         ))}
@@ -824,7 +902,7 @@ export function AdminConsole({
                       header: "Certification",
                       cell: (certification) => (
                         <div>
-                          <p className="font-medium text-foreground">
+                          <p className="text-foreground font-medium">
                             {certification.label}
                           </p>
                           <p className="text-muted text-xs">
@@ -858,7 +936,7 @@ export function AdminConsole({
                       header: "Vehicle",
                       cell: (vehicle) => (
                         <div>
-                          <p className="font-medium text-foreground">
+                          <p className="text-foreground font-medium">
                             {vehicle.name}
                           </p>
                           <p className="text-muted text-xs">{vehicle.code}</p>
@@ -870,7 +948,9 @@ export function AdminConsole({
                       header: "Access",
                       cell: (vehicle) => (
                         <div className="flex flex-wrap gap-2">
-                          <Badge tone={vehicle.isPreferred ? "accent" : "muted"}>
+                          <Badge
+                            tone={vehicle.isPreferred ? "accent" : "muted"}
+                          >
                             {vehicle.isPreferred ? "Preferred" : "Active"}
                           </Badge>
                           {vehicle.vehicleType ? (
@@ -901,7 +981,7 @@ export function AdminConsole({
                     header: "Criterion",
                     cell: (criterion) => (
                       <div>
-                        <p className="font-medium text-foreground">
+                        <p className="text-foreground font-medium">
                           {criterion.label}
                         </p>
                         <p className="text-muted text-xs">{criterion.key}</p>
@@ -947,10 +1027,10 @@ export function AdminConsole({
                     Scoring recalibration
                   </h3>
                   <p className="text-muted max-w-3xl text-sm leading-6">
-                    Use closed opportunity outcomes and recommendation
-                    alignment to tune factor weights and thresholds without
-                    editing code. Saving this form bumps the scoring model
-                    version and recalculates current scorecards immediately.
+                    Use closed opportunity outcomes and recommendation alignment
+                    to tune factor weights and thresholds without editing code.
+                    Saving this form bumps the scoring model version and
+                    recalculates current scorecards immediately.
                   </p>
                 </div>
 
@@ -958,14 +1038,16 @@ export function AdminConsole({
                   <SummaryCard
                     label="Closed outcomes"
                     value={String(
-                      snapshot.scoringProfile.recalibration.closedOpportunityCount,
+                      snapshot.scoringProfile.recalibration
+                        .closedOpportunityCount,
                     )}
                     supportingText="Awarded, lost, and no-bid records with outcome evidence"
                   />
                   <SummaryCard
                     label="Scored samples"
                     value={String(
-                      snapshot.scoringProfile.recalibration.sampledOpportunityCount,
+                      snapshot.scoringProfile.recalibration
+                        .sampledOpportunityCount,
                     )}
                     supportingText="Closed records carrying a current scorecard"
                   />
@@ -1021,205 +1103,215 @@ export function AdminConsole({
                         />
                       }
                       getRowKey={(summary) => summary.key}
-                      rows={snapshot.scoringProfile.recalibration.outcomeSummaries}
+                      rows={
+                        snapshot.scoringProfile.recalibration.outcomeSummaries
+                      }
                     />
 
-                    <article className="border-border rounded-[24px] border bg-white p-5">
+                    <Surface className="p-5">
                       <p className="text-muted text-xs tracking-[0.22em] uppercase">
                         Recalibration summary
                       </p>
                       <p className="text-muted mt-3 text-sm leading-7">
-                        {snapshot.scoringProfile.recalibration.suggestionSummary}
+                        {
+                          snapshot.scoringProfile.recalibration
+                            .suggestionSummary
+                        }
                       </p>
-                    </article>
+                    </Surface>
                   </div>
 
-                  <form
-                    action={recalibrateScoringProfileAction}
-                    className="rounded-[28px] border border-border bg-[linear-gradient(180deg,rgba(248,252,250,1),rgba(239,247,243,0.94))] px-5 py-5 shadow-[0_16px_40px_rgba(20,37,34,0.06)]"
-                  >
-                    <div className="grid gap-4 xl:grid-cols-3">
-                      <FormField
-                        htmlFor="scoring-go-threshold"
-                        hint="Score percent required before the engine recommends GO."
-                        label="GO threshold"
-                      >
-                        <Input
-                          defaultValue={
-                            snapshot.scoringProfile.goRecommendationThreshold
-                          }
-                          id="scoring-go-threshold"
-                          max={100}
-                          min={0}
-                          name="goRecommendationThreshold"
-                          step="0.01"
-                          type="number"
-                        />
-                      </FormField>
-
-                      <FormField
-                        htmlFor="scoring-defer-threshold"
-                        hint="Score percent required before the engine recommends DEFER instead of NO_GO."
-                        label="DEFER threshold"
-                      >
-                        <Input
-                          defaultValue={
-                            snapshot.scoringProfile.deferRecommendationThreshold
-                          }
-                          id="scoring-defer-threshold"
-                          max={100}
-                          min={0}
-                          name="deferRecommendationThreshold"
-                          step="0.01"
-                          type="number"
-                        />
-                      </FormField>
-
-                      <FormField
-                        htmlFor="scoring-risk-floor"
-                        hint="Minimum risk factor percent required before a GO recommendation is allowed."
-                        label="Risk floor"
-                      >
-                        <Input
-                          defaultValue={
-                            snapshot.scoringProfile.minimumRiskScorePercent
-                          }
-                          id="scoring-risk-floor"
-                          max={100}
-                          min={0}
-                          name="minimumRiskScorePercent"
-                          step="0.01"
-                          type="number"
-                        />
-                      </FormField>
-                    </div>
-
-                    <div className="mt-5 space-y-4">
-                      {snapshot.scoringProfile.recalibration.factorInsights.map(
-                        (factor) => (
-                          <article
-                            className="rounded-[22px] border border-border bg-white px-4 py-4"
-                            key={factor.key}
-                          >
-                            <input
-                              name={`suggestedWeight_${factor.key}`}
-                              type="hidden"
-                              value={factor.suggestedWeight}
-                            />
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                              <div>
-                                <div className="flex flex-wrap gap-2">
-                                  <Badge tone="muted">{factor.key}</Badge>
-                                  <Badge
-                                    tone={
-                                      factor.recommendation === "increase"
-                                        ? "accent"
-                                        : factor.recommendation === "decrease"
-                                        ? "warning"
-                                        : "muted"
-                                    }
-                                  >
-                                    {factor.recommendation === "hold"
-                                      ? "Hold"
-                                      : factor.recommendation === "increase"
-                                      ? "Increase"
-                                      : "Decrease"}
-                                  </Badge>
-                                </div>
-                                <h4 className="mt-3 text-base font-semibold text-foreground">
-                                  {factor.label}
-                                </h4>
-                                <p className="text-muted mt-2 text-sm leading-6">
-                                  {factor.rationale}
-                                </p>
-                              </div>
-
-                              <div className="grid min-w-60 gap-2 text-sm text-muted sm:grid-cols-2">
-                                <MetricPair
-                                  label="Current"
-                                  value={factor.currentWeight}
-                                />
-                                <MetricPair
-                                  label="Suggested"
-                                  value={factor.suggestedWeight}
-                                />
-                                <MetricPair
-                                  label="Awarded avg"
-                                  value={
-                                    factor.awardedAveragePercent
-                                      ? `${factor.awardedAveragePercent}%`
-                                      : "N/A"
-                                  }
-                                />
-                                <MetricPair
-                                  label="Non-award avg"
-                                  value={
-                                    factor.nonAwardAveragePercent
-                                      ? `${factor.nonAwardAveragePercent}%`
-                                      : "N/A"
-                                  }
-                                />
-                              </div>
-                            </div>
-
-                            <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_auto] xl:items-end">
-                              <FormField
-                                htmlFor={`weight-${factor.key}`}
-                                hint={`Evidence rows: ${factor.evidenceCount}${
-                                  factor.outcomeLiftPercent
-                                    ? ` · Outcome lift ${factor.outcomeLiftPercent}%`
-                                    : ""
-                                }`}
-                                label="Manual weight"
-                              >
-                                <Input
-                                  defaultValue={factor.currentWeight}
-                                  id={`weight-${factor.key}`}
-                                  min={0}
-                                  name={`weight_${factor.key}`}
-                                  step="0.01"
-                                  type="number"
-                                />
-                              </FormField>
-                            </div>
-                          </article>
-                        ),
-                      )}
-                    </div>
-
-                    <FormField
-                      className="mt-5"
-                      htmlFor="scoring-recalibration-note"
-                      hint="Optional operator note captured in audit metadata."
-                      label="Recalibration note"
+                  <form action={recalibrateScoringProfileAction}>
+                    <Surface
+                      sx={{
+                        backgroundImage:
+                          "linear-gradient(180deg, rgba(248, 252, 250, 1), rgba(239, 247, 243, 0.94))",
+                        boxShadow: "0 16px 40px rgba(20, 37, 34, 0.06)",
+                        px: 2.5,
+                        py: 2.5,
+                      }}
                     >
-                      <Textarea
-                        defaultValue=""
-                        id="scoring-recalibration-note"
-                        name="recalibrationNote"
-                        placeholder="Summarize why the scoring profile is changing and what outcome evidence drove the update."
-                        rows={3}
-                      />
-                    </FormField>
+                      <div className="grid gap-4 xl:grid-cols-3">
+                        <FormField
+                          htmlFor="scoring-go-threshold"
+                          hint="Score percent required before the engine recommends GO."
+                          label="GO threshold"
+                        >
+                          <Input
+                            defaultValue={
+                              snapshot.scoringProfile.goRecommendationThreshold
+                            }
+                            id="scoring-go-threshold"
+                            max={100}
+                            min={0}
+                            name="goRecommendationThreshold"
+                            step="0.01"
+                            type="number"
+                          />
+                        </FormField>
 
-                    <div className="mt-5 flex flex-wrap justify-end gap-3">
-                      <button
-                        className="inline-flex min-h-12 items-center justify-center rounded-full border border-[rgba(19,78,68,0.2)] bg-white px-5 py-3 text-sm font-medium text-[rgb(19,78,68)] shadow-[0_10px_24px_rgba(20,37,34,0.05)] transition hover:bg-[rgba(255,255,255,0.92)]"
-                        name="recalibrationMode"
-                        type="submit"
-                        value="suggested"
+                        <FormField
+                          htmlFor="scoring-defer-threshold"
+                          hint="Score percent required before the engine recommends DEFER instead of NO_GO."
+                          label="DEFER threshold"
+                        >
+                          <Input
+                            defaultValue={
+                              snapshot.scoringProfile
+                                .deferRecommendationThreshold
+                            }
+                            id="scoring-defer-threshold"
+                            max={100}
+                            min={0}
+                            name="deferRecommendationThreshold"
+                            step="0.01"
+                            type="number"
+                          />
+                        </FormField>
+
+                        <FormField
+                          htmlFor="scoring-risk-floor"
+                          hint="Minimum risk factor percent required before a GO recommendation is allowed."
+                          label="Risk floor"
+                        >
+                          <Input
+                            defaultValue={
+                              snapshot.scoringProfile.minimumRiskScorePercent
+                            }
+                            id="scoring-risk-floor"
+                            max={100}
+                            min={0}
+                            name="minimumRiskScorePercent"
+                            step="0.01"
+                            type="number"
+                          />
+                        </FormField>
+                      </div>
+
+                      <div className="mt-5 space-y-4">
+                        {snapshot.scoringProfile.recalibration.factorInsights.map(
+                          (factor) => (
+                            <Surface className="px-4 py-4" key={factor.key}>
+                              <input
+                                name={`suggestedWeight_${factor.key}`}
+                                type="hidden"
+                                value={factor.suggestedWeight}
+                              />
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <div className="flex flex-wrap gap-2">
+                                    <Badge tone="muted">{factor.key}</Badge>
+                                    <Badge
+                                      tone={
+                                        factor.recommendation === "increase"
+                                          ? "accent"
+                                          : factor.recommendation === "decrease"
+                                            ? "warning"
+                                            : "muted"
+                                      }
+                                    >
+                                      {factor.recommendation === "hold"
+                                        ? "Hold"
+                                        : factor.recommendation === "increase"
+                                          ? "Increase"
+                                          : "Decrease"}
+                                    </Badge>
+                                  </div>
+                                  <h4 className="text-foreground mt-3 text-base font-semibold">
+                                    {factor.label}
+                                  </h4>
+                                  <p className="text-muted mt-2 text-sm leading-6">
+                                    {factor.rationale}
+                                  </p>
+                                </div>
+
+                                <div className="text-muted grid min-w-60 gap-2 text-sm sm:grid-cols-2">
+                                  <MetricPair
+                                    label="Current"
+                                    value={factor.currentWeight}
+                                  />
+                                  <MetricPair
+                                    label="Suggested"
+                                    value={factor.suggestedWeight}
+                                  />
+                                  <MetricPair
+                                    label="Awarded avg"
+                                    value={
+                                      factor.awardedAveragePercent
+                                        ? `${factor.awardedAveragePercent}%`
+                                        : "N/A"
+                                    }
+                                  />
+                                  <MetricPair
+                                    label="Non-award avg"
+                                    value={
+                                      factor.nonAwardAveragePercent
+                                        ? `${factor.nonAwardAveragePercent}%`
+                                        : "N/A"
+                                    }
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_auto] xl:items-end">
+                                <FormField
+                                  htmlFor={`weight-${factor.key}`}
+                                  hint={`Evidence rows: ${factor.evidenceCount}${
+                                    factor.outcomeLiftPercent
+                                      ? ` · Outcome lift ${factor.outcomeLiftPercent}%`
+                                      : ""
+                                  }`}
+                                  label="Manual weight"
+                                >
+                                  <Input
+                                    defaultValue={factor.currentWeight}
+                                    id={`weight-${factor.key}`}
+                                    min={0}
+                                    name={`weight_${factor.key}`}
+                                    step="0.01"
+                                    type="number"
+                                  />
+                                </FormField>
+                              </div>
+                            </Surface>
+                          ),
+                        )}
+                      </div>
+
+                      <FormField
+                        className="mt-5"
+                        htmlFor="scoring-recalibration-note"
+                        hint="Optional operator note captured in audit metadata."
+                        label="Recalibration note"
                       >
-                        Apply observed-outcome suggestions
-                      </button>
-                      <button
-                        className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)]"
-                        name="recalibrationMode"
-                        type="submit"
-                        value="manual"
-                      >
-                        Save manual recalibration
-                      </button>
-                    </div>
+                        <Textarea
+                          defaultValue=""
+                          id="scoring-recalibration-note"
+                          name="recalibrationNote"
+                          placeholder="Summarize why the scoring profile is changing and what outcome evidence drove the update."
+                          rows={3}
+                        />
+                      </FormField>
+
+                      <div className="mt-5 flex flex-wrap justify-end gap-3">
+                        <Button
+                          name="recalibrationMode"
+                          tone="neutral"
+                          type="submit"
+                          value="suggested"
+                          variant="outlined"
+                        >
+                          Apply observed-outcome suggestions
+                        </Button>
+                        <Button
+                          name="recalibrationMode"
+                          type="submit"
+                          value="manual"
+                        >
+                          Save manual recalibration
+                        </Button>
+                      </div>
+                    </Surface>
                   </form>
                 </div>
               </section>
@@ -1232,81 +1324,7 @@ export function AdminConsole({
           )}
         </section>
 
-        <div className="grid gap-6 xl:grid-cols-2">
-          <section aria-labelledby="assigned-roles-heading" className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-muted text-xs tracking-[0.24em] uppercase">
-                User visibility
-              </p>
-              <h2
-                className="font-heading text-foreground text-2xl font-semibold tracking-[-0.03em]"
-                id="assigned-roles-heading"
-              >
-                Users & roles
-              </h2>
-              <p className="text-muted text-sm leading-6">
-                Confirm status, assigned roles, and invitation coverage before
-                making policy or workflow changes elsewhere in the workspace.
-              </p>
-            </div>
-
-            <DataTable
-              ariaLabel="Users and roles"
-              columns={[
-                {
-                  key: "user",
-                  header: "User",
-                  cell: (user) => (
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {user.name ?? user.email}
-                      </p>
-                      <p className="text-muted text-xs">{user.email}</p>
-                    </div>
-                  ),
-                },
-                {
-                  key: "status",
-                  header: "Status",
-                  cell: (user) => (
-                    <Badge tone={user.status === "ACTIVE" ? "accent" : "warning"}>
-                      {formatEnumLabel(user.status)}
-                    </Badge>
-                  ),
-                },
-                {
-                  key: "roles",
-                  header: "Assigned roles",
-                  cell: (user) =>
-                    user.roles.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {user.roles.map((role) => (
-                          <Badge
-                            key={`${user.id}-${role.key}`}
-                            title={`Assigned ${formatUtcTimestamp(role.assignedAt)}`}
-                            tone="muted"
-                          >
-                            {role.label}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <Badge tone="warning">No roles assigned</Badge>
-                    ),
-                },
-              ]}
-              emptyState={
-                <EmptyState
-                  message="User assignments will appear here once the organization has seeded or created users."
-                  title="No organization users are available yet"
-                />
-              }
-              getRowKey={(user) => user.id}
-              rows={snapshot.users}
-            />
-          </section>
-
-          <section aria-labelledby="recent-audit-heading" className="space-y-4">
+        <section aria-labelledby="recent-audit-heading" className="space-y-4">
             <div className="space-y-2">
               <p className="text-muted text-xs tracking-[0.24em] uppercase">
                 Audit visibility
@@ -1336,7 +1354,7 @@ export function AdminConsole({
                         <Badge tone="muted">{event.action}</Badge>
                       </div>
                       {event.summary ? (
-                        <p className="text-sm leading-6 text-muted">
+                        <p className="text-muted text-sm leading-6">
                           {event.summary}
                         </p>
                       ) : null}
@@ -1348,7 +1366,7 @@ export function AdminConsole({
                   header: "Actor",
                   cell: (event) => (
                     <div>
-                      <p className="font-medium text-foreground">
+                      <p className="text-foreground font-medium">
                         {event.actorLabel}
                       </p>
                       <p className="text-muted text-xs">
@@ -1362,7 +1380,7 @@ export function AdminConsole({
                   header: "Target",
                   cell: (event) => (
                     <div>
-                      <p className="font-medium text-foreground">
+                      <p className="text-foreground font-medium">
                         {event.targetLabel}
                       </p>
                       <p className="text-muted text-xs">
@@ -1395,89 +1413,12 @@ export function AdminConsole({
               getRowKey={(event) => event.id}
               rows={snapshot.recentAuditEvents}
             />
-          </section>
-        </div>
+        </section>
       </div>
     </section>
   );
 }
 
-function SectionJumpLink({
-  children,
-  href,
-}: {
-  children: string;
-  href: string;
-}) {
-  return (
-    <a
-      className="inline-flex min-h-9 items-center rounded-[var(--radius-pill)] border border-border bg-surface-muted px-3 py-2 text-sm text-muted transition hover:border-border-strong hover:text-foreground"
-      href={href}
-    >
-      {children}
-    </a>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  supportingText,
-}: {
-  label: string;
-  value: string;
-  supportingText: string;
-}) {
-  return (
-    <article className="border-border rounded-[24px] border bg-white p-5">
-      <p className="text-muted text-xs tracking-[0.22em] uppercase">{label}</p>
-      <p className="text-foreground mt-3 text-lg font-semibold">{value}</p>
-      <p className="text-muted mt-2 text-sm leading-6">{supportingText}</p>
-    </article>
-  );
-}
-
-function MetricPair({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-[18px] bg-[rgba(15,28,31,0.04)] px-3 py-3">
-      <p className="text-[11px] tracking-[0.16em] uppercase">{label}</p>
-      <p className="mt-2 font-medium text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function ProfileBadgeGroup({
-  badges,
-  emptyLabel,
-  title,
-}: {
-  badges: string[];
-  emptyLabel: string;
-  title: string;
-}) {
-  return (
-    <article className="border-border rounded-[24px] border bg-white p-5">
-      <p className="text-muted text-xs tracking-[0.22em] uppercase">{title}</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {badges.length > 0 ? (
-          badges.map((badge) => (
-            <Badge key={`${title}-${badge}`} tone="muted">
-              {badge}
-            </Badge>
-          ))
-        ) : (
-          <Badge tone="warning">{emptyLabel}</Badge>
-        )}
-      </div>
-    </article>
-  );
-}
 
 function getConnectorHealthTone(status: string) {
   switch (status) {
@@ -1541,19 +1482,4 @@ function getOutcomeTone(status: string) {
     default:
       return "muted";
   }
-}
-
-function formatEnumLabel(value: string) {
-  return value
-    .split(/[_\s-]+/g)
-    .filter(Boolean)
-    .map(
-      (segment) =>
-        segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase(),
-    )
-    .join(" ");
-}
-
-function formatUtcTimestamp(value: string) {
-  return value.replace("T", " ").replace(".000Z", " UTC");
 }

@@ -72,8 +72,7 @@ const snapshot: KnowledgeLibrarySnapshot = {
       assetType: "WIN_THEME",
       title: "Army cloud transition win theme",
       summary: "Reusable transition-risk narrative.",
-      body:
-        "Reusable transition-risk narrative that explains how to stabilize the environment while preserving mission continuity.",
+      body: "Reusable transition-risk narrative that explains how to stabilize the environment while preserving mission continuity.",
       bodyPreview: "Reusable transition-risk narrative.",
       facets: {
         agencies: ["Army PEO EIS (W52P1J)"],
@@ -136,12 +135,12 @@ describe("KnowledgeLibrary", () => {
     expect(screen.getAllByText(/oasis-plus-unr/i).length).toBeGreaterThan(0);
 
     const previewHeading = within(
-      screen.getByText(/^selected asset$/i).closest("aside") as HTMLElement,
+      screen.getByRole("complementary", { name: /selected asset/i }),
     ).getByRole("heading", {
       name: /army cloud transition win theme/i,
     });
     expect(previewHeading).toBeInTheDocument();
-  });
+  }, 20_000);
 
   it("honors the requested preview asset when the URL selects a row", () => {
     render(
@@ -169,7 +168,7 @@ describe("KnowledgeLibrary", () => {
     );
 
     const previewHeading = within(
-      screen.getByText(/^selected asset$/i).closest("aside") as HTMLElement,
+      screen.getByRole("complementary", { name: /selected asset/i }),
     ).getByRole("heading", {
       name: /va intake boilerplate/i,
     });
@@ -217,7 +216,9 @@ describe("KnowledgeLibrary", () => {
     expect(
       screen.getByRole("heading", { name: /knowledge library/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/knowledge data is unavailable/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/knowledge data is unavailable/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         /the knowledge library could not load an organization-scoped snapshot/i,

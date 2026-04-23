@@ -10,11 +10,14 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
+import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import {
   formatOpportunityTaskDateInputValue,
@@ -110,7 +113,7 @@ export function OpportunityTaskManager({
     <div className="space-y-5">
       <form
         action={createFormAction}
-        className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(244,248,246,0.9)] px-5 py-5"
+        aria-label="Add execution task"
         onSubmitCapture={(event) => {
           setOptimisticCreatedTask(
             buildOptimisticTaskDraft(
@@ -122,20 +125,21 @@ export function OpportunityTaskManager({
         ref={createFormRef}
       >
         <input name="opportunityId" type="hidden" value={opportunityId} />
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 className="text-base font-semibold text-foreground">
-              Add execution task
-            </h3>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Create pursuit work items with assignee, due date, status, and
-              priority without leaving the workspace.
-            </p>
+        <Surface sx={{ bgcolor: "background.paper", p: 2.5 }}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                Add execution task
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                Create pursuit work items with assignee, due date, status, and
+                priority without leaving the workspace.
+              </p>
+            </div>
+            <Badge tone="accent">Personal views update automatically</Badge>
           </div>
-          <Badge tone="accent">Personal views update automatically</Badge>
-        </div>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          <div className="mt-5 grid gap-4 xl:grid-cols-2">
           <FormField
             error={createState.fieldErrors.title}
             htmlFor="task-create-title"
@@ -213,50 +217,37 @@ export function OpportunityTaskManager({
               </Select>
             </FormField>
           </div>
-        </div>
+          </div>
 
-        <FormField
-          className="mt-4"
-          error={createState.fieldErrors.description}
-          htmlFor="task-create-description"
-          label="Description"
-        >
-          <Textarea
-            defaultValue=""
-            id="task-create-description"
-            name="description"
-            placeholder="Summarize the deliverable, dependencies, or decision support needed."
-            rows={4}
+          <FormField
+            className="mt-4"
+            error={createState.fieldErrors.description}
+            htmlFor="task-create-description"
+            label="Description"
+          >
+            <Textarea
+              defaultValue=""
+              id="task-create-description"
+              name="description"
+              placeholder="Summarize the deliverable, dependencies, or decision support needed."
+              rows={4}
+            />
+          </FormField>
+
+          <ActionFeedback
+            className="mt-4"
+            errorMessage={createState.formError}
+            errorTitle="Task needs attention"
+            successMessage={createState.successMessage}
+            successTitle="Task created"
           />
-        </FormField>
 
-        {createState.formError ? (
-          <p
-            className="mt-4 rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-            role="alert"
-          >
-            {createState.formError}
-          </p>
-        ) : null}
-
-        {createState.successMessage ? (
-          <p
-            className="mt-4 rounded-[18px] border border-[rgba(32,95,85,0.25)] bg-[rgba(229,243,239,0.85)] px-4 py-3 text-sm text-[rgb(16,66,57)]"
-            role="status"
-          >
-            {createState.successMessage}
-          </p>
-        ) : null}
-
-        <div className="mt-5 flex flex-wrap justify-end gap-3">
-          <button
-            className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)] disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={createIsPending}
-            type="submit"
-          >
-            {createIsPending ? "Creating task..." : "Create task"}
-          </button>
-        </div>
+          <div className="mt-5 flex flex-wrap justify-end gap-3">
+            <Button disabled={createIsPending} type="submit">
+              {createIsPending ? "Creating task..." : "Create task"}
+            </Button>
+          </div>
+        </Surface>
       </form>
 
       {visibleTasks.length > 0 ? (
@@ -369,7 +360,10 @@ function EditableTaskCard({
   }, [deleteState, router, updateState]);
 
   return (
-    <article className="rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(246,239,228,0.55)] px-5 py-5">
+    <Surface
+      component="article"
+      sx={{ bgcolor: "rgba(246,239,228,0.55)", p: 2.5 }}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <h3 className="text-base font-semibold text-foreground">{task.title}</h3>
@@ -497,57 +491,40 @@ function EditableTaskCard({
             {task.createdByName ? ` · Created by ${task.createdByName}` : ""}
           </p>
 
-          {updateState.formError ? (
-            <p
-              className="rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-              role="alert"
-            >
-              {updateState.formError}
-            </p>
-          ) : null}
-
-          {updateState.successMessage ? (
-            <p
-              className="rounded-[18px] border border-[rgba(32,95,85,0.25)] bg-[rgba(229,243,239,0.85)] px-4 py-3 text-sm text-[rgb(16,66,57)]"
-              role="status"
-            >
-              {updateState.successMessage}
-            </p>
-          ) : null}
+          <ActionFeedback
+            errorMessage={updateState.formError}
+            errorTitle="Task update needs attention"
+            successMessage={updateState.successMessage}
+            successTitle="Task updated"
+          />
 
           <div className="flex flex-wrap justify-between gap-3">
-            <button
-              className="inline-flex min-h-12 items-center justify-center rounded-full bg-[rgb(19,78,68)] px-5 py-3 text-sm font-medium text-white shadow-[0_14px_30px_rgba(19,78,68,0.22)] transition hover:bg-[rgb(16,66,57)] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={updateIsPending}
-              type="submit"
-            >
+            <Button disabled={updateIsPending} type="submit">
               {updateIsPending ? "Saving task..." : "Save task"}
-            </button>
+            </Button>
           </div>
         </form>
 
         <form action={deleteFormAction}>
           <input name="opportunityId" type="hidden" value={opportunityId} />
           <input name="taskId" type="hidden" value={task.id} />
-          <button
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-[rgba(133,69,49,0.2)] bg-white px-5 py-3 text-sm font-medium text-[rgb(133,69,49)] transition hover:bg-[rgba(251,242,230,0.8)] disabled:cursor-not-allowed disabled:opacity-60"
+          <Button
             disabled={deleteIsPending}
+            tone="danger"
             type="submit"
+            variant="soft"
           >
             {deleteIsPending ? "Deleting task..." : "Delete task"}
-          </button>
+          </Button>
         </form>
       </div>
 
-      {deleteState.formError ? (
-        <p
-          className="mt-4 rounded-[18px] border border-[#dca167]/50 bg-[#fbf2e6] px-4 py-3 text-sm text-[#7e431f]"
-          role="alert"
-        >
-          {deleteState.formError}
-        </p>
-      ) : null}
-    </article>
+      <ActionFeedback
+        className="mt-4"
+        errorMessage={deleteState.formError}
+        errorTitle="Task deletion needs attention"
+      />
+    </Surface>
   );
 }
 

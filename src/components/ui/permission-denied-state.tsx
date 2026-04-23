@@ -1,7 +1,8 @@
-import Link from "next/link";
+import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import type { ReactNode } from "react";
 
-import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
+import { StatePanel } from "@/components/ui/state-panel";
 
 type PermissionDeniedStateProps = {
   action?: ReactNode;
@@ -21,20 +22,30 @@ export function PermissionDeniedState({
   const resolvedTitle = title ?? `You do not have access to ${blockedArea}.`;
 
   return (
-    <section className={cn("ui-state ui-state-permission", className)}>
-      <p className="ui-state-eyebrow">Permission denied</p>
-      <h1 className="ui-state-title">{resolvedTitle}</h1>
-      <p className="ui-state-body">{message}</p>
-      <div className="ui-state-actions">
-        {action ?? (
-          <Link
+    <StatePanel
+      action={
+        action ?? (
+          <Button
             href="/"
-            className="inline-flex items-center rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft"
+            tone="primary"
+            variant="solid"
           >
             Return to dashboard
-          </Link>
-        )}
-      </div>
-    </section>
+          </Button>
+        )
+      }
+      className={className}
+      component="section"
+      eyebrow="Permission denied"
+      icon={<ShieldOutlinedIcon fontSize="small" />}
+      message={message}
+      sx={{
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.9), rgba(250,252,255,0.96))",
+      }}
+      title={resolvedTitle}
+      titleComponent="h1"
+      tone="info"
+    />
   );
 }

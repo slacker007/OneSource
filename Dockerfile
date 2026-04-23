@@ -59,6 +59,13 @@ RUN --mount=type=bind,source=vendor,target=/vendor,readonly \
   fi \
   && rm -rf /tmp/npm-offline-cache
 
+FROM base AS test
+ENV NODE_ENV=test
+COPY package.json package-lock.json prisma.config.mjs /opt/onesource-test/
+COPY prisma /opt/onesource-test/prisma
+COPY --from=deps /app/node_modules /opt/onesource-test/node_modules
+COPY . .
+
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -69,6 +76,14 @@ ENV NODE_ENV=production
 COPY --from=builder /app ./
 EXPOSE 3000
 CMD ["npm", "run", "start:compose"]
+
+FROM base AS e2e-web
+ENV NODE_ENV=production
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+EXPOSE 3000
+CMD ["node", "server.js"]
 
 FROM mcr.microsoft.com/playwright:v1.59.1-noble AS playwright
 WORKDIR /app
