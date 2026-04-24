@@ -14,7 +14,7 @@ import { onesourceTokens } from "@/theme/onesource-theme";
 export type DataTableDensity = "compact" | "comfortable";
 export type DataTableSortDirection = "asc" | "desc";
 export const DATA_TABLE_SURFACE_OVERFLOW = "visible";
-export const DATA_TABLE_SURFACE_RADIUS_PX = `${onesourceTokens.radius.control}px`;
+export const DATA_TABLE_SURFACE_RADIUS_PX = `${onesourceTokens.radius.button}px`;
 
 type DataTableColumn<Row> = {
   cell: (row: Row) => ReactNode;
@@ -98,17 +98,17 @@ export function DataTable<Row>({
               {columns.map((column) => (
                 <TableCell
                   key={column.key}
-                  className={cn(
-                    column.headerClassName,
-                  )}
+                  className={cn(column.headerClassName)}
                   component="th"
                   scope="col"
                   sx={{
                     backgroundColor: onesourceTokens.color.surface.default,
                     color: "text.secondary",
                     fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
-                    fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
-                    letterSpacing: onesourceTokens.typographyRole.eyebrow.letterSpacing,
+                    fontWeight:
+                      onesourceTokens.typographyRole.eyebrow.fontWeight,
+                    letterSpacing:
+                      onesourceTokens.typographyRole.eyebrow.letterSpacing,
                     px: 2,
                     py: 1.75,
                     textTransform: "uppercase",
@@ -149,7 +149,10 @@ export function DataTable<Row>({
                           width: "1px",
                         }}
                       >
-                        Sorted {column.sortDirection === "asc" ? "ascending" : "descending"}
+                        Sorted{" "}
+                        {column.sortDirection === "asc"
+                          ? "ascending"
+                          : "descending"}
                       </Box>
                     ) : null}
                   </Box>
@@ -165,14 +168,13 @@ export function DataTable<Row>({
                   aria-selected={selectedRowId === getRowKey(row)}
                   hover
                   selected={selectedRowId === getRowKey(row)}
-                  className={cn(
-                    getRowClassName?.(row),
-                  )}
+                  className={cn(getRowClassName?.(row))}
                   tabIndex={0}
                   sx={{
                     transition: "background-color 160ms ease",
                     "&.Mui-selected": {
-                      backgroundColor: onesourceTokens.interaction.selectedOverlay,
+                      backgroundColor:
+                        onesourceTokens.interaction.selectedOverlay,
                     },
                     "&.Mui-selected:hover": {
                       backgroundColor: alphaFromHex(
@@ -181,7 +183,8 @@ export function DataTable<Row>({
                       ),
                     },
                     "&:focus-visible": {
-                      backgroundColor: onesourceTokens.interaction.selectedOverlay,
+                      backgroundColor:
+                        onesourceTokens.interaction.selectedOverlay,
                       outline: `2px solid ${alphaFromHex(
                         onesourceTokens.color.accent.main,
                         0.32,
@@ -196,10 +199,7 @@ export function DataTable<Row>({
                   {columns.map((column) => (
                     <TableCell
                       key={column.key}
-                      className={cn(
-                        "text-foreground",
-                        column.className,
-                      )}
+                      className={cn("text-foreground", column.className)}
                       sx={{
                         color: "text.primary",
                         fontSize: compact ? "0.92rem" : "0.95rem",

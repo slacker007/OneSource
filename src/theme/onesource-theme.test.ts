@@ -49,6 +49,6 @@ describe("onesourceTheme", () => {
           borderRadius: number;
         }
       ).borderRadius,
-    ).toBe(12);
+    ).toBe(6);
   });
 });

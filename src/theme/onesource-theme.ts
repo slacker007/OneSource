@@ -635,7 +635,7 @@ const onesourceTheme = createTheme({
     MuiDataGrid: {
       styleOverrides: {
         root: {
-          borderRadius: onesourceTokens.radius.control,
+          borderRadius: onesourceTokens.radius.button,
           borderColor: onesourceTokens.color.border.subtle,
           backgroundColor: onesourceTokens.color.surface.raised,
         },

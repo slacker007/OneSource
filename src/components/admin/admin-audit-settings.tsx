@@ -205,6 +205,7 @@ export function AdminAuditSettings({ snapshot }: AdminAuditSettingsProps) {
       <Surface
         component="header"
         sx={{
+          borderRadius: `${onesourceTokens.radius.button}px`,
           boxShadow: onesourceTokens.elevation.hero,
           px: { xs: 3, sm: 4 },
           py: 4,
