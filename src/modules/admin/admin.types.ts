@@ -225,17 +225,61 @@ export type AdminSavedSearchSummary = {
   filterSummary: string[];
 };
 
-export type AdminSettingsSnapshot = {
+export type AdminSettingsOverviewSnapshot = {
   organizationId: string;
   organizationName: string;
   totalUserCount: number;
   adminUserCount: number;
   totalAuditLogCount: number;
-  scoringProfile: AdminScoringProfileSummary | null;
+  scoringProfileSummary: {
+    activeScoringModelKey: string;
+    activeScoringModelVersion: string;
+    capabilityCount: number;
+    scoringCriteriaCount: number;
+  } | null;
+  sourceOperationsSummary: Pick<
+    AdminSourceOperationsSnapshot,
+    | "totalConnectorCount"
+    | "activeConnectorCount"
+    | "healthyConnectorCount"
+    | "rateLimitedConnectorCount"
+    | "failedImportReviewCount"
+    | "lastSuccessfulSyncAt"
+    | "lastSuccessfulSyncSourceDisplayName"
+  >;
+  savedSearchCount: number;
+};
+
+export type AdminConnectorSettingsSnapshot = {
+  organizationId: string;
+  organizationName: string;
   sourceOperations: AdminSourceOperationsSnapshot;
+};
+
+export type AdminSavedSearchSettingsSnapshot = {
+  organizationId: string;
+  organizationName: string;
   savedSearches: AdminSavedSearchSummary[];
+};
+
+export type AdminScoringSettingsSnapshot = {
+  organizationId: string;
+  organizationName: string;
+  scoringProfile: AdminScoringProfileSummary | null;
+};
+
+export type AdminAuditSettingsSnapshot = {
+  organizationId: string;
+  organizationName: string;
+  totalAuditLogCount: number;
   recentAuditEvents: AdminAuditEventSummary[];
 };
+
+export type AdminSettingsSnapshot = AdminSettingsOverviewSnapshot &
+  AdminConnectorSettingsSnapshot &
+  AdminSavedSearchSettingsSnapshot &
+  AdminScoringSettingsSnapshot &
+  AdminAuditSettingsSnapshot;
 
 export type AdminUserManagementSnapshot = {
   organizationId: string;

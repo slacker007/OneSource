@@ -17,10 +17,10 @@ The current repo includes the first live authentication, authorization, audit-em
 - JWT-backed sessions enriched with `organizationId` and `roleKeys`, then revalidated against the live `users` table on refresh so deleted or disabled seeded users fall back to sign-in instead of reaching authenticated routes or write paths with stale actor IDs
 - shared role-to-permission policy helpers that can run in both server and client code
 - server-side protected-route gating in the `(app)` route group
-- server-side permission guards for restricted routes and mutating surfaces such as `/analytics`, `/settings`, source import actions under `/sources`, and `/opportunities/new` plus `/opportunities/[opportunityId]/edit`, with a public permission-denied route
+- server-side permission guards for restricted routes and mutating surfaces such as `/analytics`, the `/settings` route family, source import actions under `/sources`, and `/opportunities/new` plus `/opportunities/[opportunityId]/edit`, with a public permission-denied route
 - structured JSON logging for degraded health checks plus opportunity-document download authentication, authorization, and local-disk failure paths
 - authenticated-shell navigation that hides the analytics route when the signed-in role set lacks `view_decision_support`
-- an admin console that lets admins inspect current role assignments, recent audit events, source-sync health, and the seeded organization scoring profile, and lets only `manage_workspace_settings` users queue saved-search retries and recalibrate scoring weights and thresholds through audited server-side writes
+- focused admin workspaces that let admins inspect current role assignments, recent audit events, source-sync health, saved-search coverage, and the seeded organization scoring profile, and let only `manage_workspace_settings` users queue saved-search retries and recalibrate scoring weights and thresholds through audited server-side writes
 - database-backed role assignments rather than hard-coded role enums in application code
 - append-oriented audit-log storage with actor, target, summary, and JSON metadata fields
 - shared audited opportunity write services for tracked-opportunity, proposal, task, milestone, note, document, import-decision, stage-transition, bid-decision, and closeout flows
@@ -94,13 +94,13 @@ The current launch-hardening review revalidated these server-enforced permission
 - `manage_pipeline`
   - required for tracked-opportunity create or edit routes, opportunity workspace mutations, and knowledge create or edit actions
 - `manage_workspace_settings`
-  - required for `/settings` and its recalibration or retry actions
+  - required for `/settings`, `/settings/connectors`, `/settings/saved-searches`, `/settings/scoring`, `/settings/audit`, `/settings/users`, and the settings recalibration, retry, invite, role-update, disable, and re-enable actions
 
-Current review result: the repo’s major restricted routes still gate server-side on shared permission helpers rather than client-only affordances, and viewer denial on `/settings` remains covered by browser verification.
+Current review result: the repo’s major restricted routes still gate server-side on shared permission helpers rather than client-only affordances, and viewer denial on the settings route family remains covered by browser verification.
 
 ## Current Risks And Pending Work
 
-- Only the initial role-based authorization slice exists today. The app shell requires authentication, `/analytics` requires `view_decision_support`, `/settings` requires the admin role, source-search and CSV import actions require `manage_source_searches`, and the tracked-opportunity create/edit flows require `manage_pipeline`, but most business workflows still need finer-grained per-action and per-record enforcement.
+- Only the initial role-based authorization slice exists today. The app shell requires authentication, `/analytics` requires `view_decision_support`, the `/settings` route family requires the admin role, source-search and CSV import actions require `manage_source_searches`, and the tracked-opportunity create/edit flows require `manage_pipeline`, but most business workflows still need finer-grained per-action and per-record enforcement.
 - CSV import rows are treated as untrusted input. The browser preview is advisory only; the server action rebuilds the preview from uploaded CSV text, revalidates mapped fields, and rechecks duplicates before importing ready rows into the pipeline.
 - Document uploads are treated as untrusted input. The server action revalidates the file metadata, bounds file size, writes under the configured storage root, and only exposes downloads back through an authenticated organization-scoped route.
 - Plain-text extraction currently runs only for UTF-8 text-like uploads. Binary formats are retained with explicit `NOT_REQUESTED` extraction status so later retry jobs can process them without fabricating content.

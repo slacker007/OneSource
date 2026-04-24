@@ -153,6 +153,20 @@ describe("AppShellFrame", () => {
     expect(
       within(primaryNavigation).getByRole("link", { name: /^users & roles$/i }),
     ).toBeInTheDocument();
+    expect(
+      within(primaryNavigation).getByRole("link", { name: /^connectors$/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(primaryNavigation).getByRole("link", {
+        name: /^saved searches$/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(primaryNavigation).getByRole("link", { name: /^scoring$/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(primaryNavigation).getByRole("link", { name: /^audit$/i }),
+    ).toBeInTheDocument();
   });
 
   it("opens the command center, filters results, and persists pinned work", async () => {
@@ -381,6 +395,39 @@ describe("AppShellFrame", () => {
     });
 
     expect(usersLink).toHaveAttribute("aria-current", "page");
+    expect(settingsLink).not.toHaveAttribute("aria-current");
+  });
+
+  it("highlights the focused settings child route instead of the overview", () => {
+    render(
+      <AppShellFrame
+        allowDecisionSupport
+        allowWorkspaceSettings
+        currentPath="/settings/scoring"
+        sessionUser={{
+          email: "admin@onesource.local",
+          name: "Admin User",
+          organizationId: "org_123",
+          roleKeys: ["admin"],
+          userId: "user_123",
+        }}
+        shellSnapshot={buildShellSnapshot()}
+      >
+        <div>Scoring page</div>
+      </AppShellFrame>,
+    );
+
+    const primaryNavigation = screen.getByRole("navigation", {
+      name: /primary navigation/i,
+    });
+    const settingsLink = within(primaryNavigation).getByRole("link", {
+      name: /^settings$/i,
+    });
+    const scoringLink = within(primaryNavigation).getByRole("link", {
+      name: /^scoring$/i,
+    });
+
+    expect(scoringLink).toHaveAttribute("aria-current", "page");
     expect(settingsLink).not.toHaveAttribute("aria-current");
   });
 });

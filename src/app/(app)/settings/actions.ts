@@ -18,7 +18,7 @@ export async function queueSourceSyncRetryAction(formData: FormData) {
   const { session } = await requireAppPermission("manage_workspace_settings");
   const savedSearchId = readRequiredString(formData.get("savedSearchId"));
 
-  let redirectPath = "/settings";
+  let redirectPath = "/settings/connectors";
 
   try {
     const result = await queueSourceSyncRetry({
@@ -27,9 +27,9 @@ export async function queueSourceSyncRetryAction(formData: FormData) {
       savedSearchId,
     });
 
-    redirectPath = `/settings?sourceSyncRetry=success&sourceSyncRetryStatus=${result.status.toLowerCase()}`;
+    redirectPath = `/settings/connectors?sourceSyncRetry=success&sourceSyncRetryStatus=${result.status.toLowerCase()}`;
   } catch (error) {
-    redirectPath = `/settings?sourceSyncRetry=error&sourceSyncRetryMessage=${encodeURIComponent(
+    redirectPath = `/settings/connectors?sourceSyncRetry=error&sourceSyncRetryMessage=${encodeURIComponent(
       error instanceof Error
         ? error.message
         : "The saved search retry could not be completed.",
@@ -41,8 +41,10 @@ export async function queueSourceSyncRetryAction(formData: FormData) {
 
 export async function recalibrateScoringProfileAction(formData: FormData) {
   const { session } = await requireAppPermission("manage_workspace_settings");
-  const recalibrationMode = readRequiredString(formData.get("recalibrationMode"));
-  let redirectPath = "/settings";
+  const recalibrationMode = readRequiredString(
+    formData.get("recalibrationMode"),
+  );
+  let redirectPath = "/settings/scoring";
 
   try {
     const weightPrefix =
@@ -52,8 +54,7 @@ export async function recalibrateScoringProfileAction(formData: FormData) {
       input: {
         organizationId: session.user.organizationId,
         performedByUserId: session.user.id,
-        mode:
-          recalibrationMode === "suggested" ? "suggested" : "manual",
+        mode: recalibrationMode === "suggested" ? "suggested" : "manual",
         note: readOptionalString(formData.get("recalibrationNote")),
         goRecommendationThreshold: parseRequiredDecimal(
           formData.get("goRecommendationThreshold"),
@@ -74,13 +75,13 @@ export async function recalibrateScoringProfileAction(formData: FormData) {
       },
     });
 
-    redirectPath = `/settings?scoringRecalibration=success&scoringRecalibrationMode=${encodeURIComponent(
+    redirectPath = `/settings/scoring?scoringRecalibration=success&scoringRecalibrationMode=${encodeURIComponent(
       recalibrationMode,
     )}&scoringRecalibrationRecalculated=${result.sweepResult.recalculatedOpportunities}&scoringRecalibrationVersion=${encodeURIComponent(
       result.scoringModelVersion,
     )}`;
   } catch (error) {
-    redirectPath = `/settings?scoringRecalibration=error&scoringRecalibrationMessage=${encodeURIComponent(
+    redirectPath = `/settings/scoring?scoringRecalibration=error&scoringRecalibrationMessage=${encodeURIComponent(
       error instanceof Error
         ? error.message
         : "The scoring recalibration could not be completed.",

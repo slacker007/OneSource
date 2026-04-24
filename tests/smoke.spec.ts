@@ -251,7 +251,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(
     page.getByRole("complementary", { name: /selected pursuit/i }),
   ).toBeVisible();
-  await page.getByRole("button", { name: /close opportunity preview/i }).click();
+  await page
+    .getByRole("button", { name: /close opportunity preview/i })
+    .click();
   await page
     .getByLabel("Primary navigation")
     .getByRole("link", { name: /^Knowledge/i })
@@ -382,7 +384,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page.getByText(/title: cloud operations/i)).toBeVisible();
   await page.getByRole("link", { name: /^inspect import$/i }).click();
   await expect(page).toHaveURL(/preview=/);
-  await expect(page.getByRole("link", { name: /close preview/i })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /close preview/i }),
+  ).toBeVisible();
   const linkButton = page.getByRole("button", {
     name: /merge into selected opportunity|link to selected opportunity/i,
   });
@@ -486,6 +490,24 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     }),
   ).toBeVisible();
   await expect(
+    page.getByRole("link", { name: /open connectors/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /open saved searches/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /open scoring profile/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /open audit activity/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", {
+      name: /source connector health/i,
+    }),
+  ).toHaveCount(0);
+  await page.goto("/settings/connectors");
+  await expect(
     page.getByRole("heading", {
       name: /connector operations/i,
     }),
@@ -505,9 +527,21 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
       name: /failed import review/i,
     }),
   ).toBeVisible();
+  await expect(page.getByText(/sam\.gov/i).first()).toBeVisible();
+  await expect(page.getByText(/rate[- ]limited/i).first()).toBeVisible();
+  await expect(page.getByText(/rejected/i).first()).toBeVisible();
+  await page
+    .getByRole("button", { name: /retry sync/i })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/settings\/connectors\?/);
+  await expect(
+    page.getByText(/saved search retry has been queued/i),
+  ).toBeVisible();
+  await page.goto("/settings/saved-searches");
   await expect(
     page.getByRole("heading", {
-      name: /search registry/i,
+      name: /^saved searches$/i,
     }),
   ).toBeVisible();
   await expect(
@@ -516,15 +550,7 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     }),
   ).toBeVisible();
   await expect(page.getByText(/sam\.gov/i).first()).toBeVisible();
-  await expect(page.getByText(/rate[- ]limited/i).first()).toBeVisible();
-  await expect(page.getByText(/rejected/i).first()).toBeVisible();
-  await page
-    .getByRole("button", { name: /retry sync/i })
-    .first()
-    .click();
-  await expect(
-    page.getByText(/saved search retry has been queued/i),
-  ).toBeVisible();
+  await page.goto("/settings/scoring");
   await expect(
     page.getByRole("heading", {
       name: /scoring profile/i,
@@ -559,14 +585,21 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await page
     .getByRole("button", { name: /save manual recalibration/i })
     .click();
+  await expect(page).toHaveURL(/\/settings\/scoring\?/);
   await expect(page).toHaveURL(/scoringRecalibration=success/);
   await expect(
     page.getByText(/manual scoring recalibration was saved/i),
   ).toBeVisible();
   await expect(page.locator("#weight-capability_fit")).toHaveValue("28.25");
   await expect(page.getByText(/model default_capture_v1/i)).toBeVisible();
+  await page.goto("/settings/audit");
   await expect(
     page.getByRole("heading", {
+      name: /audit activity/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", {
       name: /audit activity/i,
     }),
   ).toBeVisible();
@@ -624,7 +657,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   ).toBeVisible();
   await page.getByLabel(/search users/i).fill(managedUserEmail);
   await expect(
-    page.getByRole("grid", { name: /workspace users/i }).getByText(managedUserEmail),
+    page
+      .getByRole("grid", { name: /workspace users/i })
+      .getByText(managedUserEmail),
   ).toBeVisible();
   await page
     .getByRole("grid", { name: /workspace users/i })
@@ -645,7 +680,9 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     selectedUserPanel.getByRole("checkbox", { name: /admin/i }),
   ).toBeChecked();
   const disableMutation = waitForUsersMutation();
-  await selectedUserPanel.getByRole("button", { name: /disable user/i }).click();
+  await selectedUserPanel
+    .getByRole("button", { name: /disable user/i })
+    .click();
   await disableMutation;
   await page.reload();
   await page.getByLabel(/search users/i).fill(managedUserEmail);
@@ -1024,9 +1061,7 @@ test("users can record closeout notes on a closed opportunity workspace", async 
       hasText: /navy training range modernization support/i,
     })
     .first();
-  await navyOpportunityCard
-    .getByRole("link", { name: /preview/i })
-    .click();
+  await navyOpportunityCard.getByRole("link", { name: /preview/i }).click();
   const closedWorkspaceHref = await page
     .getByRole("complementary", { name: /selected pursuit/i })
     .getByRole("link", { name: /^Open workspace$/i })
@@ -1093,9 +1128,7 @@ test("users can update proposal tracking on an active proposal workspace", async
     })
     .first();
   await expect(vaOpportunityCard).toBeVisible();
-  await vaOpportunityCard
-    .getByRole("link", { name: /preview/i })
-    .click();
+  await vaOpportunityCard.getByRole("link", { name: /preview/i }).click();
   const proposalWorkspaceHref = await page
     .getByRole("complementary", { name: /selected pursuit/i })
     .getByRole("link", { name: /^Open workspace$/i })
@@ -1181,7 +1214,10 @@ test("desktop shell exposes the persistent drawer, command utilities, and notifi
 
   await page.keyboard.press("Control+k");
   await expect(page.getByText(/^pinned work$/i)).toBeVisible();
-  await page.getByRole("link", { name: /create pursuit/i }).first().click();
+  await page
+    .getByRole("link", { name: /create pursuit/i })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/opportunities\/new$/);
   await expect(
     page.getByRole("heading", { name: /create a tracked opportunity/i }),
@@ -1236,11 +1272,16 @@ test.describe("mobile navigation", () => {
         name: /opportunity pipeline/i,
       }),
     ).toBeVisible();
-    await page.getByRole("link", { name: /preview/i }).first().click();
+    await page
+      .getByRole("link", { name: /preview/i })
+      .first()
+      .click();
     await expect(
       page.getByRole("complementary", { name: /selected pursuit/i }),
     ).toBeVisible();
-    await page.getByRole("button", { name: /close opportunity preview/i }).click();
+    await page
+      .getByRole("button", { name: /close opportunity preview/i })
+      .click();
     await expect(
       page.getByRole("button", { name: /open command search/i }),
     ).toBeVisible();
@@ -1268,6 +1309,10 @@ test.describe("tablet route sweep", () => {
       { heading: /external source search/i, route: "/sources" },
       { heading: /decision console/i, route: "/analytics" },
       { heading: /workspace settings/i, route: "/settings" },
+      { heading: /connector operations/i, route: "/settings/connectors" },
+      { heading: /^saved searches$/i, route: "/settings/saved-searches" },
+      { heading: /scoring profile/i, route: "/settings/scoring" },
+      { heading: /audit activity/i, route: "/settings/audit" },
       { heading: /user administration/i, route: "/settings/users" },
     ];
 
@@ -1330,4 +1375,15 @@ test("viewer users are blocked from the restricted settings route", async ({
   await expect(page).toHaveURL(
     /\/forbidden\?permission=manage_workspace_settings$/,
   );
+  for (const blockedRoute of [
+    "/settings/connectors",
+    "/settings/saved-searches",
+    "/settings/scoring",
+    "/settings/audit",
+  ]) {
+    await page.goto(blockedRoute);
+    await expect(page).toHaveURL(
+      /\/forbidden\?permission=manage_workspace_settings$/,
+    );
+  }
 });

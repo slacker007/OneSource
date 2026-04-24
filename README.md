@@ -33,7 +33,11 @@ The repo includes these main product surfaces:
 - `/tasks` personal execution queue
 - `/knowledge` library plus create and edit flows
 - `/analytics` decision console
-- `/settings` operations workspace
+- `/settings` workspace admin overview
+- `/settings/connectors` connector operations workspace
+- `/settings/saved-searches` saved-search registry
+- `/settings/scoring` scoring profile and recalibration workspace
+- `/settings/audit` audit activity workspace
 - `/settings/users` users-and-roles workspace
 - `/api/health` runtime health endpoint
 

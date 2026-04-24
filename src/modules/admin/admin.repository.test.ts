@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  getAdminAuditSettingsSnapshot,
+  getAdminConnectorSettingsSnapshot,
+  getAdminSavedSearchSettingsSnapshot,
+  getAdminScoringSettingsSnapshot,
   getAdminSettingsSnapshot,
+  getAdminSettingsOverviewSnapshot,
   getAdminUserManagementSnapshot,
   type AdminRepositoryClient,
   type OrganizationSettingsRecord,
@@ -259,7 +264,8 @@ function buildConnectorHealthRecords() {
         "Public award-search endpoint validated without stored credentials.",
       rateLimitProfile: {
         strategy: "public_post_api",
-        notes: "Award intelligence requests are body-based rather than query-only.",
+        notes:
+          "Award intelligence requests are body-based rather than query-only.",
       },
       _count: {
         savedSearches: 1,
@@ -511,6 +517,7 @@ function createRepositoryClient(
       findMany: vi.fn().mockResolvedValue(buildRecentSyncRuns()),
     },
     sourceSavedSearch: {
+      count: vi.fn().mockResolvedValue(2),
       findMany: vi.fn().mockResolvedValue(buildSavedSearches()),
     },
     sourceImportDecision: {
@@ -574,7 +581,9 @@ describe("admin.repository", () => {
       sampledOpportunityCount: 2,
       recommendationAlignmentPercent: "50.00",
     });
-    expect(snapshot?.scoringProfile?.recalibration.factorInsights[0]).toMatchObject({
+    expect(
+      snapshot?.scoringProfile?.recalibration.factorInsights[0],
+    ).toMatchObject({
       key: "capability_fit",
       currentWeight: "30.00",
       suggestedWeight: "30.00",
@@ -589,7 +598,7 @@ describe("admin.repository", () => {
       targetLabel: "Default Organization",
     });
     expect(snapshot?.recentAuditEvents[0].metadataPreview).toContain(
-      "\"seededOpportunityCount\":5",
+      '"seededOpportunityCount":5',
     );
     expect(snapshot?.recentAuditEvents[1]).toMatchObject({
       actionLabel: "Opportunity / Stage Transition",
@@ -641,6 +650,62 @@ describe("admin.repository", () => {
       connectorVersion: null,
       createdByLabel: "Unknown owner",
       filterSummary: ["Agency Department of Veterans Affairs"],
+    });
+  });
+
+  it("maps focused settings route snapshots without requiring one oversized page payload", async () => {
+    const db = createRepositoryClient(buildOrganizationAdminRecord());
+
+    const overview = await getAdminSettingsOverviewSnapshot({
+      db,
+      organizationId: "org_123",
+    });
+    const connectors = await getAdminConnectorSettingsSnapshot({
+      db,
+      organizationId: "org_123",
+    });
+    const savedSearches = await getAdminSavedSearchSettingsSnapshot({
+      db,
+      organizationId: "org_123",
+    });
+    const scoring = await getAdminScoringSettingsSnapshot({
+      db,
+      organizationId: "org_123",
+    });
+    const audit = await getAdminAuditSettingsSnapshot({
+      db,
+      organizationId: "org_123",
+    });
+
+    expect(overview).toMatchObject({
+      organizationName: "Default Organization",
+      savedSearchCount: 2,
+      scoringProfileSummary: {
+        activeScoringModelKey: "default_capture_v1",
+        activeScoringModelVersion: "2026-04-18",
+        capabilityCount: 1,
+        scoringCriteriaCount: 1,
+      },
+      sourceOperationsSummary: {
+        totalConnectorCount: 2,
+        activeConnectorCount: 2,
+        failedImportReviewCount: 1,
+      },
+    });
+    expect(connectors?.sourceOperations.connectorHealth[0]).toMatchObject({
+      sourceDisplayName: "SAM.gov",
+      healthStatus: "rate_limited",
+    });
+    expect(savedSearches?.savedSearches[0]).toMatchObject({
+      name: "Active Air Force Knowledge Management",
+      sourceDisplayName: "SAM.gov",
+    });
+    expect(scoring?.scoringProfile).toMatchObject({
+      activeScoringModelKey: "default_capture_v1",
+    });
+    expect(audit?.recentAuditEvents[0]).toMatchObject({
+      action: "seed.bootstrap",
+      actorLabel: "Alex Morgan",
     });
   });
 
