@@ -5,6 +5,7 @@ import Typography from "@mui/material/Typography";
 import type { ReactNode } from "react";
 
 import { Surface } from "@/components/ui/surface";
+import { onesourceTokens } from "@/theme/onesource-theme";
 
 type PublicAccessShellProps = {
   children: ReactNode;
@@ -39,19 +40,21 @@ export function PublicAccessShell({
     >
       <Surface
         component="section"
-        sx={[
-          {
-            backdropFilter: "blur(18px)",
-            bgcolor: "rgba(252,249,244,0.96)",
-            borderRadius: 4,
-            boxShadow: "0 28px 80px rgba(14,32,35,0.28)",
-            mx: "auto",
-            p: { sm: 4.5, xs: 3 },
-            width: "100%",
-            maxWidth,
-          },
-          ...(surfaceSx ? [surfaceSx] : []),
-        ] as SxProps<Theme>}
+        sx={
+          [
+            {
+              backdropFilter: "blur(18px)",
+              bgcolor: "rgba(252,249,244,0.96)",
+              borderRadius: `${onesourceTokens.radius.panel}px`,
+              boxShadow: "0 28px 80px rgba(14,32,35,0.28)",
+              mx: "auto",
+              p: { sm: 4.5, xs: 3 },
+              width: "100%",
+              maxWidth,
+            },
+            ...(surfaceSx ? [surfaceSx] : []),
+          ] as SxProps<Theme>
+        }
       >
         <Stack spacing={{ sm: 3.5, xs: 3 }}>
           {eyebrow || title || description ? (

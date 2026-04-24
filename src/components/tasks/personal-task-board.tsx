@@ -9,6 +9,7 @@ import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { PreviewPanel } from "@/components/ui/preview-panel";
 import { SavedViewControls } from "@/components/ui/saved-view-controls";
 import { Surface } from "@/components/ui/surface";
+import { onesourceTokens } from "@/theme/onesource-theme";
 import type {
   TaskBoardItem,
   TaskBoardSnapshot,
@@ -613,7 +614,13 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <Surface sx={{ borderRadius: 2.5, px: 2.5, py: 2.5 }}>
+    <Surface
+      sx={{
+        borderRadius: `${onesourceTokens.radius.panel}px`,
+        px: 2.5,
+        py: 2.5,
+      }}
+    >
       <p className="text-xs tracking-[0.22em] text-muted uppercase">{label}</p>
       <p className="mt-3 text-3xl font-semibold text-foreground">{value}</p>
       <p className="mt-2 text-sm leading-6 text-muted">{supportingText}</p>

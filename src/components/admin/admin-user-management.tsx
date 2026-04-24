@@ -561,7 +561,7 @@ export function AdminUserManagement({
                       sx={{
                         alignItems: "flex-start",
                         border: `1px solid ${onesourceTokens.color.border.subtle}`,
-                        borderRadius: 3,
+                        borderRadius: `${onesourceTokens.radius.panel}px`,
                         m: 0,
                         px: 1.25,
                         py: 0.75,

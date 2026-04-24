@@ -816,7 +816,7 @@ export function AppShellFrame({
               placeholder="Search workspaces, tasks, knowledge, or saved searches"
               sx={{
                 bgcolor: alpha(onesourceTokens.color.neutral[0], 0.88),
-                borderRadius: 3,
+                borderRadius: `${onesourceTokens.radius.panel}px`,
                 boxShadow: onesourceTokens.elevation.raised,
                 "& .MuiOutlinedInput-input": {
                   fontSize: "0.94rem",
@@ -907,7 +907,7 @@ export function AppShellFrame({
                                 handleCommandItemSelection(workbenchItem)
                               }
                               sx={{
-                                borderRadius: 2.5,
+                                borderRadius: `${onesourceTokens.radius.panel}px`,
                                 color: "inherit",
                                 display: "block",
                                 flex: 1,
@@ -1051,7 +1051,7 @@ export function AppShellFrame({
                   bgcolor: alpha(onesourceTokens.color.neutral[0], 0.9),
                   border: "1px solid",
                   borderColor: onesourceTokens.color.border.subtle,
-                  borderRadius: 3,
+                  borderRadius: `${onesourceTokens.radius.panel}px`,
                   color: "inherit",
                   display: "block",
                   px: 2.5,

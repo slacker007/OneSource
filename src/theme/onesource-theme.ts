@@ -222,7 +222,7 @@ export const onesourceTokens: OneSourceThemeTokens = {
     button: 6,
     control: 12,
     menu: 16,
-    panel: 18,
+    panel: 6,
     pill: 999,
   },
   shell: {
@@ -324,7 +324,7 @@ const onesourceTheme = createTheme({
   cssVariables: true,
   onesource: onesourceTokens,
   shape: {
-    borderRadius: onesourceTokens.radius.control,
+    borderRadius: onesourceTokens.radius.panel,
   },
   palette: {
     mode: "light",
@@ -617,7 +617,7 @@ const onesourceTheme = createTheme({
     MuiMenuItem: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
+          borderRadius: onesourceTokens.radius.panel,
           fontSize: onesourceTokens.typographyRole.data.fontSize,
           minHeight: 40,
           "&.Mui-selected": {

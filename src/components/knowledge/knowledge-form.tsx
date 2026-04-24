@@ -12,6 +12,7 @@ import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
+import { onesourceTokens } from "@/theme/onesource-theme";
 import {
   INITIAL_KNOWLEDGE_ASSET_FORM_ACTION_STATE,
   type KnowledgeAssetFormActionState,
@@ -381,7 +382,11 @@ export function KnowledgeForm({
                 <Surface
                   component="label"
                   key={opportunity.value}
-                  sx={{ borderRadius: 3, px: 2, py: 2 }}
+                  sx={{
+                    borderRadius: `${onesourceTokens.radius.panel}px`,
+                    px: 2,
+                    py: 2,
+                  }}
                 >
                   <Checkbox
                     checked={isChecked}
@@ -451,7 +456,10 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <Surface component="article" sx={{ borderRadius: 3, px: 2, py: 2 }}>
+    <Surface
+      component="article"
+      sx={{ borderRadius: `${onesourceTokens.radius.panel}px`, px: 2, py: 2 }}
+    >
       <p className="text-muted text-xs tracking-[0.18em] uppercase">{label}</p>
       <p className="font-heading text-foreground mt-3 text-3xl font-semibold tracking-[-0.04em]">
         {value}
@@ -485,7 +493,10 @@ function FacetCheckboxFieldset({
   title: string;
 }) {
   return (
-    <Surface component="section" sx={{ borderRadius: 3, px: 2, py: 2 }}>
+    <Surface
+      component="section"
+      sx={{ borderRadius: `${onesourceTokens.radius.panel}px`, px: 2, py: 2 }}
+    >
       <div className="space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-foreground text-sm font-medium">{title}</p>
@@ -514,7 +525,7 @@ function FacetCheckboxFieldset({
                 key={`${field}-${option.value}`}
                 sx={{
                   bgcolor: "rgba(15, 28, 31, 0.02)",
-                  borderRadius: 2.5,
+                  borderRadius: `${onesourceTokens.radius.panel}px`,
                   px: 2,
                   py: 1.5,
                 }}

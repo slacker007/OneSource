@@ -802,7 +802,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       spacing={0.5}
       sx={{
         border: `1px solid ${onesourceTokens.color.border.subtle}`,
-        borderRadius: 2,
+        borderRadius: `${onesourceTokens.radius.panel}px`,
         minWidth: 0,
         p: 1.5,
       }}
@@ -902,7 +902,7 @@ function CompactMetric({ label, value }: { label: string; value: number }) {
       spacing={0.25}
       sx={{
         bgcolor: onesourceTokens.color.surface.muted,
-        borderRadius: 2,
+        borderRadius: `${onesourceTokens.radius.panel}px`,
         p: 1.25,
       }}
     >

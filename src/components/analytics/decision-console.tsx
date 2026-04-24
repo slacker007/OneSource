@@ -17,6 +17,7 @@ import { FormField } from "@/components/ui/form-field";
 import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { Surface } from "@/components/ui/surface";
+import { onesourceTokens } from "@/theme/onesource-theme";
 import type {
   BidDecisionOutcome,
   DecisionConsoleItem,
@@ -95,7 +96,7 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
           <Surface
             sx={{
               bgcolor: "rgba(18, 33, 40, 0.035)",
-              borderRadius: 3,
+              borderRadius: `${onesourceTokens.radius.panel}px`,
               px: 2.5,
               py: 2,
             }}
@@ -147,7 +148,7 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
         <Surface
           sx={{
             bgcolor: "rgba(18, 33, 40, 0.035)",
-            borderRadius: 3,
+            borderRadius: `${onesourceTokens.radius.panel}px`,
             mt: 3,
             px: 2.5,
             py: 2.5,
@@ -376,7 +377,7 @@ function SummaryCard({
     <Surface
       sx={{
         bgcolor: "rgba(18, 33, 40, 0.035)",
-        borderRadius: 2.75,
+        borderRadius: `${onesourceTokens.radius.panel}px`,
         px: 2.5,
         py: 2,
       }}
@@ -611,7 +612,7 @@ function DecisionMetric({
     <Surface
       sx={{
         bgcolor: "rgba(18, 33, 40, 0.035)",
-        borderRadius: 2.5,
+        borderRadius: `${onesourceTokens.radius.panel}px`,
         px: 2,
         py: 2,
       }}
@@ -639,7 +640,7 @@ function OpportunityWatchlist({
     <Surface
       sx={{
         bgcolor: "rgba(18, 33, 40, 0.035)",
-        borderRadius: 2.75,
+        borderRadius: `${onesourceTokens.radius.panel}px`,
         px: 2,
         py: 2,
       }}

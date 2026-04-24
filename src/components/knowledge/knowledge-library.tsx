@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/saved-view-controls";
 import { Select } from "@/components/ui/select";
 import { Surface } from "@/components/ui/surface";
+import { onesourceTokens } from "@/theme/onesource-theme";
 import type {
   KnowledgeAssetListQuery,
   KnowledgeAssetSummary,
@@ -333,7 +334,7 @@ export function KnowledgeLibrary({
               <Surface
                 sx={{
                   bgcolor: "rgba(18, 33, 40, 0.035)",
-                  borderRadius: 2.5,
+                  borderRadius: `${onesourceTokens.radius.panel}px`,
                   px: 2,
                   py: 2,
                 }}
@@ -380,7 +381,7 @@ export function KnowledgeLibrary({
                       <Surface
                         sx={{
                           bgcolor: "rgba(18, 33, 40, 0.035)",
-                          borderRadius: 2.5,
+                          borderRadius: `${onesourceTokens.radius.panel}px`,
                           px: 2,
                           py: 2,
                         }}
@@ -887,7 +888,10 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <Surface component="article" sx={{ borderRadius: 3, px: 2, py: 2 }}>
+    <Surface
+      component="article"
+      sx={{ borderRadius: `${onesourceTokens.radius.panel}px`, px: 2, py: 2 }}
+    >
       <p className="text-muted text-xs tracking-[0.18em] uppercase">{label}</p>
       <p className="font-heading text-foreground mt-3 text-3xl font-semibold tracking-[-0.04em]">
         {value}
