@@ -650,6 +650,9 @@ describe("admin.repository", () => {
     expect(snapshot?.recentAuditEvents[0].metadataPreview).toContain(
       '"seededOpportunityCount":5',
     );
+    expect(snapshot?.recentAuditEvents[0].metadataJson).toContain(
+      '"seededOpportunityCount": 5',
+    );
     expect(snapshot?.recentAuditEvents[1]).toMatchObject({
       actionLabel: "Opportunity / Stage Transition",
       actorLabel: "System",

@@ -1,4 +1,4 @@
-import { AdminAuditSettings } from "@/components/admin/admin-console";
+import { AdminAuditSettings } from "@/components/admin/admin-audit-settings";
 import { requireAppPermission } from "@/lib/auth/authorization";
 import { prisma } from "@/lib/prisma";
 import { getAdminAuditSettingsSnapshot } from "@/modules/admin/admin.repository";

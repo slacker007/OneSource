@@ -42,7 +42,7 @@ export function Button({
         : "text";
   const resolvedSx: SxProps<Theme>[] = [
     {
-      borderRadius: onesourceTokens.radius.button,
+      borderRadius: `${onesourceTokens.radius.button}px`,
       boxShadow: "none",
       fontSize: onesourceTokens.typographyRole.button.fontSize,
       fontWeight: onesourceTokens.typographyRole.button.fontWeight,

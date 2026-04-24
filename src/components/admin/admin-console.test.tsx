@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
+import { AdminAuditSettings } from "./admin-audit-settings";
 import {
-  AdminAuditSettings,
   AdminConnectorSettings,
   AdminConsole,
   AdminSavedSearchSettings,
@@ -146,16 +147,32 @@ describe("settings admin workspaces", () => {
     expect(screen.getByText(/cloud platform engineering/i)).toBeInTheDocument();
   });
 
-  it("renders audit activity as its own workspace", () => {
+  it("renders audit activity as a compact grid with metadata hidden until requested", async () => {
+    const user = userEvent.setup();
+
     render(<AdminAuditSettings snapshot={auditSnapshot} />);
 
     expect(
       screen.getByRole("heading", { name: /audit activity/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("table", { name: /audit activity/i }),
+      screen.getByRole("grid", { name: /audit activity/i }),
     ).toBeInTheDocument();
     expect(screen.getByText("seed.bootstrap")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/seededOpportunityCount/i),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /view metadata for seed/i }),
+    );
+
+    expect(
+      screen.getByRole("dialog", { name: /audit metadata/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/"seededOpportunityCount": 5/i),
+    ).toBeInTheDocument();
   });
 
   it("renders clear empty states when focused workspace snapshots are empty", () => {
@@ -435,6 +452,7 @@ const auditSnapshot: AdminAuditSettingsSnapshot = {
       targetLabel: "Default Organization",
       targetType: "organization",
       summary: "Initialized baseline organization.",
+      metadataJson: '{\n  "seededOpportunityCount": 5\n}',
       metadataPreview: '{"seededOpportunityCount":5}',
     },
   ],

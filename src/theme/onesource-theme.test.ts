@@ -18,9 +18,9 @@ describe("onesourceTheme", () => {
     expect(onesourceTheme.typography.h1?.fontFamily).toContain(
       "var(--font-heading)",
     );
-    expect(onesourceTheme.shape.borderRadius).toBe(12);
+    expect(onesourceTheme.shape.borderRadius).toBe(6);
     expect(onesourceTheme.onesource.radius.button).toBe(6);
-    expect(onesourceTheme.onesource.radius.panel).toBe(18);
+    expect(onesourceTheme.onesource.radius.panel).toBe(6);
     expect(onesourceTheme.onesource.sizing.controlHeightComfortable).toBe(44);
     expect(onesourceTheme.onesource.sizing.railCollapsed).toBe(84);
     expect(onesourceTheme.onesource.sizing.railExpanded).toBe(256);
@@ -49,6 +49,6 @@ describe("onesourceTheme", () => {
           borderRadius: number;
         }
       ).borderRadius,
-    ).toBe(12);
+    ).toBe(6);
   });
 });

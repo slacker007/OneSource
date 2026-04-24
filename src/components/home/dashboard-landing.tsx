@@ -724,7 +724,12 @@ function OpportunitySignal({ label, value }: { label: string; value: string }) {
     <Surface
       density="compact"
       tone="muted"
-      sx={{ borderRadius: 2, boxShadow: "none", px: 1.5, py: 1.25 }}
+      sx={{
+        borderRadius: `${onesourceTokens.radius.panel}px`,
+        boxShadow: "none",
+        px: 1.5,
+        py: 1.25,
+      }}
     >
       <Typography sx={SECTION_EYEBROW_SX}>{label}</Typography>
       <Typography sx={{ mt: 1, fontSize: "0.92rem", fontWeight: 600 }}>

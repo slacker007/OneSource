@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,13 +34,11 @@ type OpportunityFormProps = {
     state: OpportunityFormActionState,
     formData: FormData,
   ) => Promise<OpportunityFormActionState>;
-  feedback:
-    | {
-        tone: "success";
-        title: string;
-        message: string;
-      }
-    | null;
+  feedback: {
+    tone: "success";
+    title: string;
+    message: string;
+  } | null;
   snapshot: OpportunityFormSnapshot;
 };
 
@@ -77,7 +76,9 @@ export function OpportunityForm({
 
     void Promise.resolve().then(() => {
       try {
-        const storedValue = window.localStorage.getItem(snapshot.draftStorageKey);
+        const storedValue = window.localStorage.getItem(
+          snapshot.draftStorageKey,
+        );
         const parsed = storedValue
           ? parseOpportunityDraftValues(JSON.parse(storedValue))
           : null;
@@ -181,7 +182,7 @@ export function OpportunityForm({
     <section className="space-y-6">
       <Surface
         component="header"
-        sx={{ bgcolor: "background.paper", px: { xs: 3, sm: 4 }, py: 3 }}
+        sx={[PAGE_HEADER_SURFACE_SX, { bgcolor: "background.paper" }]}
       >
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
@@ -270,10 +271,7 @@ export function OpportunityForm({
             </h2>
           </div>
 
-          <p
-            aria-live="polite"
-            className="text-sm text-muted"
-          >
+          <p aria-live="polite" className="text-sm text-muted">
             {draftStatus}
           </p>
         </div>
@@ -284,7 +282,11 @@ export function OpportunityForm({
           onSubmit={handleSubmit}
         >
           {snapshot.opportunityId ? (
-            <input name="opportunityId" type="hidden" value={snapshot.opportunityId} />
+            <input
+              name="opportunityId"
+              type="hidden"
+              value={snapshot.opportunityId}
+            />
           ) : null}
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -421,11 +423,7 @@ export function OpportunityForm({
               </Button>
             </div>
 
-            <Button
-              density="compact"
-              href="/opportunities"
-              variant="text"
-            >
+            <Button density="compact" href="/opportunities" variant="text">
               Back to opportunity list
             </Button>
           </div>
@@ -460,7 +458,11 @@ function humanizeSourceSystem(sourceSystem: string | null) {
 
   return sourceSystem
     .split("_")
-    .map((segment) => segment.toUpperCase() === "SAM" ? segment.toUpperCase() : segment.charAt(0).toUpperCase() + segment.slice(1))
+    .map((segment) =>
+      segment.toUpperCase() === "SAM"
+        ? segment.toUpperCase()
+        : segment.charAt(0).toUpperCase() + segment.slice(1),
+    )
     .join(" ");
 }
 

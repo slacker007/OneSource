@@ -21,7 +21,7 @@
   --info-soft: rgba(3, 105, 161, 0.12);
   --shadow-surface: 0 6px 16px rgba(15, 23, 42, 0.05);
   --shadow-raised: 0 10px 24px rgba(15, 23, 42, 0.06);
-  --radius-panel: 18px;
+  --radius-panel: 6px;
   --radius-control: 12px;
   --radius-pill: 999px;
 }

@@ -35,6 +35,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { Surface } from "@/components/ui/surface";
 import { onesourceTokens } from "@/theme/onesource-theme";
@@ -212,11 +213,10 @@ export function AdminUserManagement({
         component="header"
         sx={{
           boxShadow: onesourceTokens.elevation.hero,
-          px: { xs: 3, sm: 4 },
-          py: 4,
+          ...PAGE_HEADER_SURFACE_SX,
         }}
       >
-        <Stack spacing={3}>
+        <Stack spacing={2}>
           <Stack spacing={1.5}>
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
               <Badge>Users & roles</Badge>
@@ -561,7 +561,7 @@ export function AdminUserManagement({
                       sx={{
                         alignItems: "flex-start",
                         border: `1px solid ${onesourceTokens.color.border.subtle}`,
-                        borderRadius: 3,
+                        borderRadius: `${onesourceTokens.radius.panel}px`,
                         m: 0,
                         px: 1.25,
                         py: 0.75,

@@ -13,6 +13,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import {
   PreviewPanel,
   type PreviewPanelMetadataItem,
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/saved-view-controls";
 import { Select } from "@/components/ui/select";
 import { Surface } from "@/components/ui/surface";
+import { onesourceTokens } from "@/theme/onesource-theme";
 import type {
   KnowledgeAssetListQuery,
   KnowledgeAssetSummary,
@@ -95,7 +97,7 @@ export function KnowledgeLibrary({
 
   return (
     <section className="space-y-6">
-      <Surface component="header" sx={{ px: { sm: 4, xs: 3 }, py: 3 }}>
+      <Surface component="header" sx={PAGE_HEADER_SURFACE_SX}>
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -118,9 +120,7 @@ export function KnowledgeLibrary({
 
           <div className="flex flex-col items-start gap-3 xl:items-end">
             {allowManageKnowledge ? (
-              <Button href="/knowledge/new">
-                Create knowledge asset
-              </Button>
+              <Button href="/knowledge/new">Create knowledge asset</Button>
             ) : null}
             <p className="text-right text-sm text-muted">
               Library workspace:{" "}
@@ -334,7 +334,7 @@ export function KnowledgeLibrary({
               <Surface
                 sx={{
                   bgcolor: "rgba(18, 33, 40, 0.035)",
-                  borderRadius: 2.5,
+                  borderRadius: `${onesourceTokens.radius.panel}px`,
                   px: 2,
                   py: 2,
                 }}
@@ -377,30 +377,27 @@ export function KnowledgeLibrary({
               {selectedAsset.linkedOpportunities.length > 0 ? (
                 <div className="space-y-3">
                   {selectedAsset.linkedOpportunities.map((opportunity) => (
-                    <article
-                      className="px-4 py-4"
-                      key={opportunity.id}
-                    >
+                    <article className="px-4 py-4" key={opportunity.id}>
                       <Surface
                         sx={{
                           bgcolor: "rgba(18, 33, 40, 0.035)",
-                          borderRadius: 2.5,
+                          borderRadius: `${onesourceTokens.radius.panel}px`,
                           px: 2,
                           py: 2,
                         }}
                       >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <Button
-                          href={`/opportunities/${opportunity.id}`}
-                          tone="neutral"
-                          variant="text"
-                        >
-                          {opportunity.title}
-                        </Button>
-                        <Badge tone="muted">
-                          {opportunity.currentStageLabel}
-                        </Badge>
-                      </div>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <Button
+                            href={`/opportunities/${opportunity.id}`}
+                            tone="neutral"
+                            variant="text"
+                          >
+                            {opportunity.title}
+                          </Button>
+                          <Badge tone="muted">
+                            {opportunity.currentStageLabel}
+                          </Badge>
+                        </div>
                       </Surface>
                     </article>
                   ))}
@@ -669,7 +666,8 @@ function TaxonomyShortcutSection({
       {options.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {options.map((option) => {
-            const nextValue = activeValue === option.value ? null : option.value;
+            const nextValue =
+              activeValue === option.value ? null : option.value;
 
             return (
               <Button
@@ -786,7 +784,9 @@ function KnowledgeActionsCell({
 }) {
   return (
     <div className="space-y-2">
-      <p className="font-medium text-foreground">{formatUtcDate(asset.updatedAt)}</p>
+      <p className="font-medium text-foreground">
+        {formatUtcDate(asset.updatedAt)}
+      </p>
       <p className="text-xs text-muted">
         {asset.updatedByLabel
           ? `Last updated by ${asset.updatedByLabel}`
@@ -888,7 +888,10 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <Surface component="article" sx={{ borderRadius: 3, px: 2, py: 2 }}>
+    <Surface
+      component="article"
+      sx={{ borderRadius: `${onesourceTokens.radius.panel}px`, px: 2, py: 2 }}
+    >
       <p className="text-muted text-xs tracking-[0.18em] uppercase">{label}</p>
       <p className="font-heading text-foreground mt-3 text-3xl font-semibold tracking-[-0.04em]">
         {value}
@@ -1120,10 +1123,7 @@ function buildPreviewMetadata(
   ];
 }
 
-function resolveOptionLabel(
-  options: KnowledgeFacetOption[],
-  value: string,
-) {
+function resolveOptionLabel(options: KnowledgeFacetOption[], value: string) {
   return options.find((option) => option.value === value)?.label ?? value;
 }
 

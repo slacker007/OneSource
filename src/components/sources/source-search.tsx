@@ -11,6 +11,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import {
   PreviewPanel,
   type PreviewPanelMetadataItem,
@@ -103,7 +104,7 @@ export function SourceSearch({
     <section className="space-y-6">
       <Surface
         component="header"
-        sx={{ bgcolor: "background.paper", px: { xs: 3, sm: 4 }, py: 3 }}
+        sx={[PAGE_HEADER_SURFACE_SX, { bgcolor: "background.paper" }]}
       >
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">

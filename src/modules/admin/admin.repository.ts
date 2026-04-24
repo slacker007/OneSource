@@ -1215,6 +1215,7 @@ function mapAuditEventSummary(auditLog: AuditLogSummaryPayload) {
       formatEnumLabel(auditLog.targetType),
     targetType: auditLog.targetType,
     summary: auditLog.summary,
+    metadataJson: formatAuditMetadataJson(auditLog.metadata),
     metadataPreview: formatAuditMetadataPreview(auditLog.metadata),
   };
 }
@@ -1385,6 +1386,16 @@ function formatAuditMetadataPreview(metadata: Prisma.JsonValue | null) {
   return serialized.length > 280
     ? `${serialized.slice(0, 277)}...`
     : serialized;
+}
+
+function formatAuditMetadataJson(metadata: Prisma.JsonValue | null) {
+  if (metadata === null) {
+    return null;
+  }
+
+  const serialized = JSON.stringify(metadata, null, 2);
+
+  return serialized || null;
 }
 
 function isDefined<T>(value: T | undefined): value is T {

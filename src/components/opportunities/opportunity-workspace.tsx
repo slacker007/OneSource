@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { KNOWLEDGE_ASSET_TYPE_LABELS } from "@/modules/knowledge/knowledge.types";
 import type { OpportunityBidDecisionActionState } from "@/modules/opportunities/opportunity-bid-decision-form.schema";
@@ -170,9 +171,8 @@ export function OpportunityWorkspace({
     snapshot.bidDecision?.finalOutcome ??
     snapshot.scorecard?.recommendationOutcome ??
     "Pending";
-  const stageControlSnapshot = buildOpportunityStageControlSnapshotFromWorkspace(
-    snapshot,
-  );
+  const stageControlSnapshot =
+    buildOpportunityStageControlSnapshotFromWorkspace(snapshot);
   const sectionNavItems = buildWorkspaceSectionNavItems(snapshot);
   const isProposalAvailable =
     Boolean(snapshot.proposal) ||
@@ -182,7 +182,7 @@ export function OpportunityWorkspace({
     <section className="space-y-5">
       <Surface
         component="header"
-        sx={{ bgcolor: "background.paper", px: { xs: 3, sm: 4 }, py: 3 }}
+        sx={[PAGE_HEADER_SURFACE_SX, { bgcolor: "background.paper" }]}
       >
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-4">
@@ -201,7 +201,9 @@ export function OpportunityWorkspace({
 
             <div className="flex flex-wrap gap-2">
               <Badge>Pursuit record</Badge>
-              <Badge tone="muted">{snapshot.opportunity.currentStageLabel}</Badge>
+              <Badge tone="muted">
+                {snapshot.opportunity.currentStageLabel}
+              </Badge>
               <Badge tone="warning">
                 {humanizeSourceSystem(snapshot.opportunity.originSourceSystem)}
               </Badge>
@@ -253,7 +255,8 @@ export function OpportunityWorkspace({
           <SummaryCard
             label="Lead agency"
             supportingText={
-              snapshot.opportunity.leadAgency?.organizationCode ?? "No agency code"
+              snapshot.opportunity.leadAgency?.organizationCode ??
+              "No agency code"
             }
             value={snapshot.opportunity.leadAgency?.name ?? "Unassigned"}
           />
@@ -554,31 +557,36 @@ function SummaryWorkspaceSection({
           <div className="mt-6 space-y-4">
             <DetailRow
               label="Notice and solicitation"
-              value={[
-                snapshot.opportunity.externalNoticeId
-                  ? `Notice ${snapshot.opportunity.externalNoticeId}`
-                  : null,
-                snapshot.opportunity.solicitationNumber
-                  ? `Solicitation ${snapshot.opportunity.solicitationNumber}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ") || "No notice or solicitation identifiers recorded"}
+              value={
+                [
+                  snapshot.opportunity.externalNoticeId
+                    ? `Notice ${snapshot.opportunity.externalNoticeId}`
+                    : null,
+                  snapshot.opportunity.solicitationNumber
+                    ? `Solicitation ${snapshot.opportunity.solicitationNumber}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") ||
+                "No notice or solicitation identifiers recorded"
+              }
             />
             <DetailRow
               label="Acquisition profile"
-              value={[
-                snapshot.opportunity.procurementTypeLabel,
-                snapshot.opportunity.setAsideDescription,
-                snapshot.opportunity.naicsCode
-                  ? `NAICS ${snapshot.opportunity.naicsCode}`
-                  : null,
-                snapshot.opportunity.classificationCode
-                  ? `PSC ${snapshot.opportunity.classificationCode}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ") || "No acquisition metadata recorded"}
+              value={
+                [
+                  snapshot.opportunity.procurementTypeLabel,
+                  snapshot.opportunity.setAsideDescription,
+                  snapshot.opportunity.naicsCode
+                    ? `NAICS ${snapshot.opportunity.naicsCode}`
+                    : null,
+                  snapshot.opportunity.classificationCode
+                    ? `PSC ${snapshot.opportunity.classificationCode}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "No acquisition metadata recorded"
+              }
             />
             <DetailRow
               label="Vehicle and competitor context"
@@ -646,7 +654,8 @@ function SummaryWorkspaceSection({
               label="History"
               supportingText="Decision and stage events recorded."
               value={String(
-                snapshot.decisionHistory.length + snapshot.stageTransitions.length,
+                snapshot.decisionHistory.length +
+                  snapshot.stageTransitions.length,
               )}
             />
           </div>
@@ -761,7 +770,9 @@ function CaptureProfileSection({
         />
         <DetailRow
           label="Place of performance"
-          value={snapshot.opportunity.placeOfPerformanceLocation ?? "Not captured"}
+          value={
+            snapshot.opportunity.placeOfPerformanceLocation ?? "Not captured"
+          }
         />
       </div>
     </article>
@@ -888,13 +899,16 @@ function countOpenTasks(tasks: OpportunityWorkspaceTask[]) {
 }
 
 function countOverdueTasks(tasks: OpportunityWorkspaceTask[]) {
-  return tasks.filter((task) => task.deadlineReminderState === "OVERDUE").length;
+  return tasks.filter((task) => task.deadlineReminderState === "OVERDUE")
+    .length;
 }
 
 function selectNextMilestone(milestones: OpportunityWorkspaceMilestone[]) {
-  return [...milestones].sort((left, right) =>
-    left.targetDate.localeCompare(right.targetDate),
-  )[0] ?? null;
+  return (
+    [...milestones].sort((left, right) =>
+      left.targetDate.localeCompare(right.targetDate),
+    )[0] ?? null
+  );
 }
 
 function buildSummaryWatchItems(snapshot: OpportunityWorkspaceSnapshot) {
@@ -933,8 +947,8 @@ function KnowledgeSuggestionsSection({
           </h2>
           <p className="text-muted mt-2 max-w-3xl text-sm leading-6">
             Ranked from direct opportunity linkage, lead-agency alignment,
-            contract-vehicle coverage, inferred capability fit, and contract-type
-            overlap.
+            contract-vehicle coverage, inferred capability fit, and
+            contract-type overlap.
           </p>
         </div>
 
@@ -1075,7 +1089,7 @@ function ScoringSection({
 }) {
   const recommendationSourceLabel = snapshot.scorecard?.scoringModelKey
     ? `rule_engine:${snapshot.scorecard.scoringModelKey}`
-    : snapshot.bidDecision?.recommendedByLabel ?? null;
+    : (snapshot.bidDecision?.recommendedByLabel ?? null);
 
   return (
     <article className="border-border rounded-[28px] border bg-[linear-gradient(135deg,rgba(32,95,85,0.97),rgba(16,58,53,1))] p-6 text-white shadow-[0_22px_60px_rgba(16,58,53,0.28)]">
@@ -1127,7 +1141,9 @@ function ScoringSection({
                 key={factor.id}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-base font-semibold">{factor.factorLabel}</h3>
+                  <h3 className="text-base font-semibold">
+                    {factor.factorLabel}
+                  </h3>
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <Badge
                       className="border-white/15 bg-white/10 text-white"
@@ -1156,19 +1172,30 @@ function ScoringSection({
             <div className="rounded-[22px] border border-white/12 bg-white/7 px-5 py-4">
               <h3 className="text-base font-semibold">Current decision</h3>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Badge className="border-white/15 bg-white/10 text-white" tone="muted">
+                <Badge
+                  className="border-white/15 bg-white/10 text-white"
+                  tone="muted"
+                >
                   {snapshot.bidDecision.decisionTypeKey
                     ? humanizeEnum(snapshot.bidDecision.decisionTypeKey)
                     : "Decision record"}
                 </Badge>
-                <Badge className="border-white/15 bg-white/10 text-white" tone="muted">
-                  Final {humanizeDecisionOutcome(snapshot.bidDecision.finalOutcome ?? "DEFER")}
+                <Badge
+                  className="border-white/15 bg-white/10 text-white"
+                  tone="muted"
+                >
+                  Final{" "}
+                  {humanizeDecisionOutcome(
+                    snapshot.bidDecision.finalOutcome ?? "DEFER",
+                  )}
                 </Badge>
               </div>
               <p className="mt-3 text-sm text-white/80">
                 Recommendation:{" "}
                 {snapshot.bidDecision.recommendationOutcome
-                  ? humanizeDecisionOutcome(snapshot.bidDecision.recommendationOutcome)
+                  ? humanizeDecisionOutcome(
+                      snapshot.bidDecision.recommendationOutcome,
+                    )
                   : "Pending"}
                 {snapshot.bidDecision.decidedByName
                   ? ` · Finalized by ${snapshot.bidDecision.decidedByName}`
@@ -1203,7 +1230,10 @@ function ScoringSection({
           <div className="rounded-[22px] border border-white/12 bg-white/7 px-5 py-4">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-base font-semibold">Decision history</h3>
-              <Badge className="border-white/15 bg-white/10 text-white" tone="muted">
+              <Badge
+                className="border-white/15 bg-white/10 text-white"
+                tone="muted"
+              >
                 {decisionHistory.length} recorded
               </Badge>
             </div>
@@ -1280,7 +1310,8 @@ function ProposalSection({
           <div className="flex flex-wrap gap-2">
             <Badge tone="accent">{proposal.statusLabel}</Badge>
             <Badge tone="muted">
-              {proposal.completedChecklistCount}/{proposal.totalChecklistCount} checklist
+              {proposal.completedChecklistCount}/{proposal.totalChecklistCount}{" "}
+              checklist
             </Badge>
             {proposal.ownerName ? <Badge>{proposal.ownerName}</Badge> : null}
           </div>
@@ -1457,9 +1488,12 @@ function CloseoutSection({
             <div className="space-y-4 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-white px-5 py-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap gap-2">
-                  <Badge tone="accent">{snapshot.closeout.outcomeStageLabel}</Badge>
+                  <Badge tone="accent">
+                    {snapshot.closeout.outcomeStageLabel}
+                  </Badge>
                   <Badge tone="muted">
-                    {snapshot.closeout.competitorName ?? "No competitor recorded"}
+                    {snapshot.closeout.competitorName ??
+                      "No competitor recorded"}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted">
@@ -1583,7 +1617,9 @@ function TasksSection({
                     </div>
                   </div>
                   <p className="text-sm text-muted">
-                    {task.dueAt ? `Due ${formatDate(task.dueAt)}` : "No due date"}
+                    {task.dueAt
+                      ? `Due ${formatDate(task.dueAt)}`
+                      : "No due date"}
                   </p>
                 </div>
 
@@ -1595,7 +1631,9 @@ function TasksSection({
 
                 <p className="mt-3 text-sm text-muted">
                   Owner: {task.assigneeName ?? "Unassigned"}
-                  {task.createdByName ? ` · Created by ${task.createdByName}` : ""}
+                  {task.createdByName
+                    ? ` · Created by ${task.createdByName}`
+                    : ""}
                 </p>
               </div>
             ))}
@@ -1611,7 +1649,9 @@ function TasksSection({
 
       <div className="mt-6 rounded-[24px] border border-[rgba(15,28,31,0.08)] bg-[rgba(255,255,255,0.9)] px-5 py-5">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-foreground">Milestones</h3>
+          <h3 className="text-base font-semibold text-foreground">
+            Milestones
+          </h3>
           <Badge tone="muted">{milestones.length}</Badge>
         </div>
 
@@ -1630,7 +1670,11 @@ function TasksSection({
           ) : milestones.length > 0 ? (
             <div className="space-y-3">
               {milestones.map((milestone) => (
-                <MilestoneCard key={milestone.id} milestone={milestone} compact />
+                <MilestoneCard
+                  key={milestone.id}
+                  milestone={milestone}
+                  compact
+                />
               ))}
             </div>
           ) : (
@@ -1781,7 +1825,9 @@ function NotesSection({
     <article className="border-border rounded-[28px] border bg-white p-6 shadow-[0_16px_40px_rgba(20,37,34,0.08)]">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-muted text-xs tracking-[0.24em] uppercase">Notes</p>
+          <p className="text-muted text-xs tracking-[0.24em] uppercase">
+            Notes
+          </p>
           <h2 className="font-heading text-foreground mt-2 text-2xl font-semibold tracking-[-0.03em]">
             Notes
           </h2>
@@ -1857,7 +1903,9 @@ function HistorySection({
             History
           </h2>
         </div>
-        <Badge tone="warning">{activity.length + stageTransitions.length} events</Badge>
+        <Badge tone="warning">
+          {activity.length + stageTransitions.length} events
+        </Badge>
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
@@ -1931,7 +1979,9 @@ function MilestoneCard({
     <div className="rounded-[20px] border border-[rgba(15,28,31,0.08)] bg-white/75 px-4 py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h4 className={`${compact ? "text-sm" : "text-base"} font-semibold text-foreground`}>
+          <h4
+            className={`${compact ? "text-sm" : "text-base"} font-semibold text-foreground`}
+          >
             {milestone.title}
           </h4>
           <p className="text-sm text-muted">
@@ -1948,7 +1998,9 @@ function MilestoneCard({
           {milestone.deadlineReminderState !== "NONE" ? (
             <Badge
               tone={
-                milestone.deadlineReminderState === "OVERDUE" ? "warning" : "accent"
+                milestone.deadlineReminderState === "OVERDUE"
+                  ? "warning"
+                  : "accent"
               }
             >
               {milestone.deadlineReminderState === "OVERDUE"
@@ -1959,7 +2011,9 @@ function MilestoneCard({
         </div>
       </div>
       {milestone.description ? (
-        <p className="mt-2 text-sm leading-6 text-muted">{milestone.description}</p>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          {milestone.description}
+        </p>
       ) : null}
     </div>
   );
@@ -1977,8 +2031,12 @@ function TimelineCard({
   return (
     <div className="rounded-[22px] border border-[rgba(15,28,31,0.08)] bg-[rgba(246,239,228,0.45)] px-4 py-4">
       <h4 className="text-base font-semibold text-foreground">{title}</h4>
-      <p className="mt-2 text-sm text-muted">{metadata.filter(Boolean).join(" · ")}</p>
-      {detail ? <p className="mt-2 text-sm leading-6 text-muted">{detail}</p> : null}
+      <p className="mt-2 text-sm text-muted">
+        {metadata.filter(Boolean).join(" · ")}
+      </p>
+      {detail ? (
+        <p className="mt-2 text-sm leading-6 text-muted">{detail}</p>
+      ) : null}
     </div>
   );
 }
@@ -2012,7 +2070,10 @@ function DecisionHistoryCard({
           <p className="mt-2 text-sm text-white/75">{metadata.join(" · ")}</p>
         </div>
         {decision.isCurrent ? (
-          <Badge className="border-white/20 bg-white/10 text-white" tone="muted">
+          <Badge
+            className="border-white/20 bg-white/10 text-white"
+            tone="muted"
+          >
             Current
           </Badge>
         ) : null}
@@ -2043,7 +2104,11 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <Surface component="article" sx={{ bgcolor: "background.paper", px: 2, py: 2 }} className="text-sm">
+    <Surface
+      component="article"
+      sx={{ bgcolor: "background.paper", px: 2, py: 2 }}
+      className="text-sm"
+    >
       <p className="text-muted text-xs tracking-[0.2em] uppercase">{label}</p>
       <p className="mt-2 font-semibold text-foreground">{value}</p>
       <p className="mt-1 text-muted">{supportingText}</p>
@@ -2051,28 +2116,18 @@ function SummaryCard({
   );
 }
 
-function WorkspaceMetric({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function WorkspaceMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[22px] border border-white/12 bg-white/7 px-4 py-4">
-      <p className="text-xs tracking-[0.2em] text-white/65 uppercase">{label}</p>
+      <p className="text-xs tracking-[0.2em] text-white/65 uppercase">
+        {label}
+      </p>
       <p className="mt-2 text-lg font-semibold text-white">{value}</p>
     </div>
   );
 }
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-1 border-b border-[rgba(15,28,31,0.06)] pb-4 last:border-b-0 last:pb-0">
       <p className="text-muted text-xs tracking-[0.2em] uppercase">{label}</p>
@@ -2095,7 +2150,10 @@ function humanizeSourceSystem(sourceSystem: string | null) {
 function humanizeEnum(value: string) {
   return value
     .split(/[_-]/g)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .map(
+      (segment) =>
+        segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase(),
+    )
     .join(" ");
 }
 

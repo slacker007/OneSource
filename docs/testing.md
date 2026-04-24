@@ -133,9 +133,9 @@ For the current Phase 8 knowledge slices, targeted verification should confirm:
 For the current admin-console slice, targeted unit verification should confirm:
 
 - the admin repository maps organization-scoped users with assigned roles into typed read models
-- the admin repository maps recent audit rows into stable route-specific display fields without exposing raw Prisma records to the page
+- the admin repository maps recent audit rows into stable route-specific display fields, including a bounded preview plus full pretty JSON metadata for explicit inspection, without exposing raw Prisma records to the page
 - the admin repository maps source connector health, recent sync runs, failed import review rows, saved-search registry summaries, scoring profile, audit visibility, and overview summaries into focused admin DTOs without leaking raw Prisma records to page components
-- the settings component suite renders populated and missing-organization states for the overview, connector operations, saved searches, scoring profile, audit activity, and user-role workspaces
+- the settings component suite renders populated and missing-organization states for the overview, connector operations, saved searches, scoring profile, audit activity, and user-role workspaces, and confirms organization audit metadata is hidden from the grid until the explicit drawer action opens it
 
 For the current Phase 7 source-sync observability slice, targeted verification should confirm:
 

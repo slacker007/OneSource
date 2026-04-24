@@ -36,6 +36,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Drawer } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { hasAppPermission } from "@/lib/auth/permissions";
 import type {
@@ -815,7 +816,7 @@ export function AppShellFrame({
               placeholder="Search workspaces, tasks, knowledge, or saved searches"
               sx={{
                 bgcolor: alpha(onesourceTokens.color.neutral[0], 0.88),
-                borderRadius: 3,
+                borderRadius: `${onesourceTokens.radius.panel}px`,
                 boxShadow: onesourceTokens.elevation.raised,
                 "& .MuiOutlinedInput-input": {
                   fontSize: "0.94rem",
@@ -906,7 +907,7 @@ export function AppShellFrame({
                                 handleCommandItemSelection(workbenchItem)
                               }
                               sx={{
-                                borderRadius: 2.5,
+                                borderRadius: `${onesourceTokens.radius.panel}px`,
                                 color: "inherit",
                                 display: "block",
                                 flex: 1,
@@ -1050,7 +1051,7 @@ export function AppShellFrame({
                   bgcolor: alpha(onesourceTokens.color.neutral[0], 0.9),
                   border: "1px solid",
                   borderColor: onesourceTokens.color.border.subtle,
-                  borderRadius: 3,
+                  borderRadius: `${onesourceTokens.radius.panel}px`,
                   color: "inherit",
                   display: "block",
                   px: 2.5,
@@ -1142,7 +1143,7 @@ export function AppShellFrame({
             borderBottom: `1px solid ${APP_HEADER_BORDER}`,
             position: "sticky",
             px: shellContentPaddingX,
-            py: 2,
+            py: PAGE_HEADER_SURFACE_SX.py,
             top: 0,
             zIndex: 20,
           }}
@@ -1151,7 +1152,7 @@ export function AppShellFrame({
             sx={{
               display: "flex",
               flexDirection: "column",
-              gap: 2,
+              gap: 1.25,
               marginX: "auto",
               maxWidth: shellContentMaxWidth,
               minWidth: 0,
@@ -1210,10 +1211,10 @@ export function AppShellFrame({
 
             <Stack
               direction={{ xl: "row", xs: "column" }}
-              spacing={3}
+              spacing={2}
               sx={{ justifyContent: "space-between" }}
             >
-              <Stack spacing={1}>
+              <Stack spacing={0.65}>
                 <Typography
                   sx={{
                     color: "text.secondary",
@@ -1230,9 +1231,10 @@ export function AppShellFrame({
                   sx={{
                     display: { lg: "block", xs: "none" },
                     fontFamily: "var(--font-heading), sans-serif",
-                    fontSize: "2rem",
+                    fontSize: "1.55rem",
                     fontWeight: 600,
                     letterSpacing: "-0.04em",
+                    lineHeight: 1.08,
                   }}
                 >
                   {activeDestination.label}
@@ -1240,19 +1242,19 @@ export function AppShellFrame({
                 <Typography
                   sx={{
                     color: "text.secondary",
-                    fontSize: "0.92rem",
-                    lineHeight: 1.7,
-                    maxWidth: 720,
+                    fontSize: "0.84rem",
+                    lineHeight: 1.45,
+                    maxWidth: 680,
                   }}
                 >
                   {activeDestination.description}
                 </Typography>
               </Stack>
 
-              <Stack spacing={1.5} sx={{ minWidth: { xl: 672 } }}>
+              <Stack spacing={1} sx={{ minWidth: { xl: 672 } }}>
                 <Stack
                   direction={{ sm: "row", xs: "column" }}
-                  spacing={1.5}
+                  spacing={1.25}
                   sx={{ justifyContent: { xl: "flex-end" } }}
                 >
                   <Button
@@ -1260,14 +1262,15 @@ export function AppShellFrame({
                     aria-haspopup="dialog"
                     aria-label="Open command search"
                     onClick={openCommandSurface}
+                    density="compact"
                     sx={{
                       bgcolor: "background.paper",
                       borderColor: "divider",
-                      borderRadius: 999,
+                      borderRadius: `${onesourceTokens.radius.button}px`,
                       boxShadow: onesourceTokens.elevation.surface,
                       justifyContent: "space-between",
                       px: 2,
-                      py: 1.5,
+                      py: 1,
                       width: "100%",
                       "&:hover": {
                         borderColor: alpha(
@@ -1302,6 +1305,7 @@ export function AppShellFrame({
                     aria-haspopup="dialog"
                     aria-label="Open notifications"
                     onClick={openNotificationsSurface}
+                    density="compact"
                     sx={{
                       boxShadow: onesourceTokens.elevation.surface,
                       whiteSpace: "nowrap",

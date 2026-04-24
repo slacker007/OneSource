@@ -2,6 +2,8 @@ import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import type { AriaRole, ReactNode } from "react";
 
+import { onesourceTokens } from "@/theme/onesource-theme";
+
 export type FeedbackBannerTone = "info" | "success" | "warning" | "danger";
 
 type FeedbackBannerProps = {
@@ -51,7 +53,7 @@ export function FeedbackBanner({
         alignItems: "flex-start",
         border: 1,
         borderColor: borderColorByTone[tone],
-        borderRadius: 3,
+        borderRadius: `${onesourceTokens.radius.panel}px`,
         boxShadow: "0 16px 40px rgba(20, 37, 34, 0.08)",
         px: 2,
         py: 1.5,
