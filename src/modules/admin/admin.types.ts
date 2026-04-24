@@ -62,6 +62,7 @@ export type AdminAuditEventSummary = {
   targetLabel: string;
   targetType: string;
   summary: string | null;
+  metadataJson: string | null;
   metadataPreview: string | null;
 };
 

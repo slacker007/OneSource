@@ -4,7 +4,6 @@ import Typography from "@mui/material/Typography";
 import type { ReactNode } from "react";
 
 import type {
-  AdminAuditSettingsSnapshot,
   AdminConnectorSettingsSnapshot,
   AdminSavedSearchSettingsSnapshot,
   AdminScoringSettingsSnapshot,
@@ -59,10 +58,6 @@ type AdminScoringSettingsProps = {
   recalibrateScoringProfileAction: (formData: FormData) => Promise<void>;
   scoringRecalibrationNotice?: FeedbackNotice | null;
   snapshot: AdminScoringSettingsSnapshot | null;
-};
-
-type AdminAuditSettingsProps = {
-  snapshot: AdminAuditSettingsSnapshot | null;
 };
 
 export function AdminConsole({ sessionUser, snapshot }: AdminConsoleProps) {
@@ -342,28 +337,6 @@ export function AdminScoringSettings({
         recalibrateScoringProfileAction={recalibrateScoringProfileAction}
         scoringProfile={snapshot.scoringProfile}
       />
-    </section>
-  );
-}
-
-export function AdminAuditSettings({ snapshot }: AdminAuditSettingsProps) {
-  if (!snapshot) {
-    return <MissingSettingsSnapshot title="Audit settings are unavailable" />;
-  }
-
-  return (
-    <section className="space-y-6">
-      <SettingsWorkspaceHeader
-        badges={["Settings", snapshot.organizationName, "Audit"]}
-        description="Inspect recent organization-scoped mutations without mixing audit review into connector, scoring, or user-management work."
-        title="Audit activity"
-      />
-      <SummaryCard
-        label="Audit rows"
-        supportingText="Total organization-scoped events"
-        value={String(snapshot.totalAuditLogCount)}
-      />
-      <AuditActivityTable recentAuditEvents={snapshot.recentAuditEvents} />
     </section>
   );
 }
@@ -1475,81 +1448,6 @@ function ScoringRecalibrationSection({
         </form>
       </div>
     </section>
-  );
-}
-
-function AuditActivityTable({
-  recentAuditEvents,
-}: {
-  recentAuditEvents: AdminAuditSettingsSnapshot["recentAuditEvents"];
-}) {
-  return (
-    <DataTable
-      ariaLabel="Audit activity"
-      columns={[
-        {
-          key: "action",
-          header: "Action",
-          cell: (event) => (
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-2">
-                <Badge>{event.actionLabel}</Badge>
-                <Badge tone="muted">{event.action}</Badge>
-              </div>
-              {event.summary ? (
-                <p className="text-muted text-sm leading-6">{event.summary}</p>
-              ) : null}
-            </div>
-          ),
-        },
-        {
-          key: "actor",
-          header: "Actor",
-          cell: (event) => (
-            <div>
-              <p className="text-foreground font-medium">{event.actorLabel}</p>
-              <p className="text-muted text-xs">
-                {formatEnumLabel(event.actorType)}
-              </p>
-            </div>
-          ),
-        },
-        {
-          key: "target",
-          header: "Target",
-          cell: (event) => (
-            <div>
-              <p className="text-foreground font-medium">{event.targetLabel}</p>
-              <p className="text-muted text-xs">
-                {formatEnumLabel(event.targetType)}
-              </p>
-            </div>
-          ),
-        },
-        {
-          key: "occurredAt",
-          header: "Occurred",
-          cell: (event) => (
-            <div className="space-y-2">
-              <p>{formatUtcTimestamp(event.occurredAt)}</p>
-              {event.metadataPreview ? (
-                <pre className="overflow-x-auto rounded-[18px] bg-[rgba(15,28,31,0.05)] px-3 py-3 text-xs leading-5 break-all whitespace-pre-wrap">
-                  {event.metadataPreview}
-                </pre>
-              ) : null}
-            </div>
-          ),
-        },
-      ]}
-      emptyState={
-        <EmptyState
-          message="Audit rows will appear here once write flows emit organization-scoped events."
-          title="No audit events are available yet"
-        />
-      }
-      getRowKey={(event) => event.id}
-      rows={recentAuditEvents}
-    />
   );
 }
 

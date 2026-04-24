@@ -162,6 +162,7 @@ describe("AdminUserManagement", () => {
               targetLabel: "admin@onesource.local",
               targetType: "user",
               summary: "Updated role assignments for admin@onesource.local.",
+              metadataJson: '{\n  "nextRoleKeys": [\n    "admin"\n  ]\n}',
               metadataPreview: '{"nextRoleKeys":["admin"]}',
             },
           ],

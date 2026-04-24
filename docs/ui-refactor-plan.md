@@ -420,6 +420,27 @@ Key outcomes:
 - Existing audited invite, role-update, disable, and re-enable actions are preserved and revalidate both the registry and selected-user route.
 - The same `manage_workspace_settings` server permission guard protects the registry, selected-user route, and all related actions.
 
+### MUI-26 Organization Audit Activity Polish
+
+Primary files:
+
+- `src/components/admin/admin-audit-settings.tsx`
+- `src/modules/admin/admin.repository.ts`
+- `src/app/(app)/settings/audit/page.tsx`
+- `tests/smoke.spec.ts`
+
+Implemented baseline:
+
+- `/settings/audit` uses a compact MUI `DataGrid` for organization-scoped audit rows instead of the older full-width table plus inline raw metadata.
+- The audit event count is part of the grid header treatment rather than a separate oversized metric card.
+- Row metadata is hidden by default and opens in a left-side flyout with row context plus pretty JSON when the operator explicitly requests it.
+
+Key outcomes:
+
+- The audit workspace is easier to scan at high row counts and matches the selected-user audit grid direction from `MUI-25`.
+- Metadata remains available for inspection without letting raw JSON dominate the table layout.
+- The same `manage_workspace_settings` server permission guard continues to protect the route.
+
 ### UI-13 Final Hardening
 
 Primary files:

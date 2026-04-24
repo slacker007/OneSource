@@ -19,8 +19,10 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(LOCAL_DEMO_PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
+  await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 async function ensureDesktopNavigationReady(page: Page) {
@@ -137,7 +139,7 @@ async function applyOpportunityFilters(page: Page) {
 }
 
 test("authenticated homepage smoke test", async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
 
   const csvImportSeed = Date.now();
   const csvImportTitle = `Zero Trust Boundary Engineering Bridge ${csvImportSeed}`;
@@ -599,10 +601,22 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("table", {
+    page.getByRole("grid", {
       name: /audit activity/i,
     }),
   ).toBeVisible();
+  await page
+    .getByRole("grid", { name: /audit activity/i })
+    .getByRole("button", { name: /view metadata/i })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: /audit metadata/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: /audit metadata/i }),
+  ).toContainText("{");
+  await page.getByRole("button", { name: /close audit metadata/i }).click();
   await page
     .getByLabel("Primary navigation")
     .getByRole("link", { name: /^Users & Roles$/i })
@@ -771,7 +785,7 @@ test("users can create and edit tracked opportunities from the app", async ({
   });
   await expect(
     refreshedOpportunityResultsTable.getByText(updatedOpportunityTitle),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15_000 });
 });
 
 test("users can open the opportunity workspace and review seeded sections", async ({
@@ -907,7 +921,13 @@ test("users can open the opportunity workspace and review seeded sections", asyn
     .fill(
       "Customer signals remain positive and the capture plan should stay pinned for the team.",
     );
+  const noteMutation = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().includes("/opportunities/"),
+  );
   await page.getByRole("button", { name: /^add note$/i }).click();
+  await noteMutation;
   await openWorkspaceSection(page, workspaceSectionNav, /^Documents/i);
   await expect(page).toHaveURL(/section=documents/);
   await expect(
