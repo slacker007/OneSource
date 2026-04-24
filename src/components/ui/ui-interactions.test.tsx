@@ -152,7 +152,7 @@ describe("UI interaction primitives", () => {
     expect(screen.getAllByText(/capture brief/i)[0]).toBeInTheDocument();
     expect(screen.getAllByRole("table")).toHaveLength(1);
 
-    expect(DATA_TABLE_SURFACE_RADIUS_PX).toBe("12px");
+    expect(DATA_TABLE_SURFACE_RADIUS_PX).toBe("6px");
     expect(DATA_TABLE_SURFACE_OVERFLOW).toBe("visible");
   });
 });
