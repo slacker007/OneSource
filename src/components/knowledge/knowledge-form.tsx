@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
@@ -104,7 +105,7 @@ export function KnowledgeForm({
 
   return (
     <section className="space-y-6">
-      <Surface component="header" sx={{ px: { sm: 4, xs: 3 }, py: 3 }}>
+      <Surface component="header" sx={PAGE_HEADER_SURFACE_SX}>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">

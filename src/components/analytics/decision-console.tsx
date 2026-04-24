@@ -14,6 +14,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { FormField } from "@/components/ui/form-field";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { Surface } from "@/components/ui/surface";
 import type {
@@ -51,8 +52,9 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
       (option) => option.value === snapshot.query.ranking,
     )?.label ?? "Value lens";
   const scopeLabel =
-    snapshot.scopeOptions.find((option) => option.value === snapshot.query.scope)
-      ?.label ?? "Active pipeline";
+    snapshot.scopeOptions.find(
+      (option) => option.value === snapshot.query.scope,
+    )?.label ?? "Active pipeline";
   const recommendationOnlyExamples = snapshot.rankedOpportunities.filter(
     (opportunity) =>
       opportunity.finalDecision === null &&
@@ -67,10 +69,7 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
 
   return (
     <section className="space-y-6">
-      <Surface
-        component="header"
-        sx={{ px: { sm: 4, xs: 3 }, py: 3 }}
-      >
+      <Surface component="header" sx={PAGE_HEADER_SURFACE_SX}>
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -87,8 +86,8 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
                 Compare ranking, decision posture, score bands, funnel
                 conversion, stage aging, and execution effort from one
                 comparison-first workspace. The current value lens uses the
-                strategic-alignment score factor as a proxy until contract
-                value is captured directly on opportunities.
+                strategic-alignment score factor as a proxy until contract value
+                is captured directly on opportunities.
               </p>
             </div>
           </div>
@@ -139,7 +138,9 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
           <SummaryCard
             label="Recommendation alignment"
             supportingText="Final decisions aligned to the latest recommendation"
-            value={formatPercent(snapshot.decisionAnalytics.recommendationAlignmentPercent)}
+            value={formatPercent(
+              snapshot.decisionAnalytics.recommendationAlignmentPercent,
+            )}
           />
         </div>
 
@@ -204,10 +205,7 @@ export function DecisionConsole({ snapshot }: DecisionConsoleProps) {
               </FormField>
 
               <div className="flex items-end">
-                <Button
-                  className="w-full"
-                  type="submit"
-                >
+                <Button className="w-full" type="submit">
                   Apply ranking
                 </Button>
               </div>
@@ -349,10 +347,7 @@ function AnalyticsSection({
   title: string;
 }) {
   return (
-    <Surface
-      component="section"
-      sx={{ px: { sm: 3, xs: 2.5 }, py: 2.5 }}
-    >
+    <Surface component="section" sx={{ px: { sm: 3, xs: 2.5 }, py: 2.5 }}>
       <div className="space-y-2">
         <p className="text-muted text-xs tracking-[0.22em] uppercase">
           {eyebrow}
@@ -445,11 +440,7 @@ function OpportunityCell({
   );
 }
 
-function DecisionCell({
-  opportunity,
-}: {
-  opportunity: DecisionConsoleItem;
-}) {
+function DecisionCell({ opportunity }: { opportunity: DecisionConsoleItem }) {
   return (
     <div className="space-y-2">
       <Badge tone={decisionTone(opportunity.currentOutcome)}>
@@ -475,31 +466,33 @@ function ScoreDistributionTable({
     <ComparisonTable
       ariaLabel="Score band comparison"
       headers={["Band", "Current calls", "Top pursuits"]}
-      rows={snapshot.decisionAnalytics.scoreDistributionBuckets.map((bucket) => {
-        const examples = snapshot.rankedOpportunities.filter((opportunity) =>
-          isOpportunityInScoreBucket(opportunity, bucket.key),
-        );
+      rows={snapshot.decisionAnalytics.scoreDistributionBuckets.map(
+        (bucket) => {
+          const examples = snapshot.rankedOpportunities.filter((opportunity) =>
+            isOpportunityInScoreBucket(opportunity, bucket.key),
+          );
 
-        return [
-          <div className="space-y-1" key={`${bucket.key}-label`}>
-            <p className="font-semibold text-foreground">{bucket.label}</p>
-            <p className="text-sm text-muted">
-              {bucket.opportunityCount}{" "}
-              {bucket.opportunityCount === 1 ? "pursuit" : "pursuits"}
-            </p>
-          </div>,
-          <p className="text-sm text-muted" key={`${bucket.key}-mix`}>
-            Go {bucket.currentCallCounts.GO} / Defer{" "}
-            {bucket.currentCallCounts.DEFER} / No-go{" "}
-            {bucket.currentCallCounts.NO_GO}
-          </p>,
-          <OpportunityLinkList
-            emptyLabel="No ranked pursuits in this score band."
-            items={examples.slice(0, 2)}
-            key={`${bucket.key}-examples`}
-          />,
-        ];
-      })}
+          return [
+            <div className="space-y-1" key={`${bucket.key}-label`}>
+              <p className="font-semibold text-foreground">{bucket.label}</p>
+              <p className="text-sm text-muted">
+                {bucket.opportunityCount}{" "}
+                {bucket.opportunityCount === 1 ? "pursuit" : "pursuits"}
+              </p>
+            </div>,
+            <p className="text-sm text-muted" key={`${bucket.key}-mix`}>
+              Go {bucket.currentCallCounts.GO} / Defer{" "}
+              {bucket.currentCallCounts.DEFER} / No-go{" "}
+              {bucket.currentCallCounts.NO_GO}
+            </p>,
+            <OpportunityLinkList
+              emptyLabel="No ranked pursuits in this score band."
+              items={examples.slice(0, 2)}
+              key={`${bucket.key}-examples`}
+            />,
+          ];
+        },
+      )}
     />
   );
 }
@@ -515,7 +508,9 @@ function EffortOutcomeTable({
       headers={["Call", "Average effort", "Sample pursuits"]}
       rows={snapshot.decisionAnalytics.effortOutcomeSummaries.map((summary) => {
         const examples = snapshot.rankedOpportunities
-          .filter((opportunity) => opportunity.currentOutcome === summary.outcome)
+          .filter(
+            (opportunity) => opportunity.currentOutcome === summary.outcome,
+          )
           .sort((left, right) => {
             if (right.effortUnits !== left.effortUnits) {
               return right.effortUnits - left.effortUnits;
@@ -680,7 +675,10 @@ function FunnelTable({
             {summary.numerator}/{summary.denominator}
           </p>
         </div>,
-        <p className="font-semibold text-foreground" key={`${summary.key}-rate`}>
+        <p
+          className="font-semibold text-foreground"
+          key={`${summary.key}-rate`}
+        >
           {formatNumericPercent(summary.ratePercent)}
         </p>,
         <Link
@@ -720,7 +718,10 @@ function StageAgingTable({
             Oldest {formatDayCount(summary.oldestAgeDays)}
           </p>
         </div>,
-        <div className="flex flex-col gap-2 text-sm" key={`${summary.stageKey}-links`}>
+        <div
+          className="flex flex-col gap-2 text-sm"
+          key={`${summary.stageKey}-links`}
+        >
           <Link
             className="font-medium text-[rgb(19,78,68)] underline-offset-4 hover:underline"
             href={buildOpportunityHref(summary.oldestOpportunityId)}
@@ -781,7 +782,8 @@ function ComparisonTable({
                 <TableCell
                   key={cellIndex}
                   sx={{
-                    borderBottomStyle: rowIndex === rows.length - 1 ? "none" : "solid",
+                    borderBottomStyle:
+                      rowIndex === rows.length - 1 ? "none" : "solid",
                     pl: 0,
                     pr: 2,
                     py: 2,

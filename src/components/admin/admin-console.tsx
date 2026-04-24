@@ -25,6 +25,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import { onesourceTokens } from "@/theme/onesource-theme";
@@ -357,11 +358,10 @@ function SettingsWorkspaceHeader({
       component="header"
       sx={{
         boxShadow: onesourceTokens.elevation.hero,
-        px: { xs: 3, sm: 4 },
-        py: 4,
+        ...PAGE_HEADER_SURFACE_SX,
       }}
     >
-      <Stack spacing={2.5}>
+      <Stack spacing={2}>
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
           {badges.map((badge, index) => (
             <Badge

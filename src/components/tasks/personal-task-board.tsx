@@ -5,6 +5,7 @@ import { ActiveFilterChipBar } from "@/components/ui/active-filter-chip-bar";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { PreviewPanel } from "@/components/ui/preview-panel";
 import { SavedViewControls } from "@/components/ui/saved-view-controls";
 import { Surface } from "@/components/ui/surface";
@@ -103,7 +104,7 @@ export function PersonalTaskBoard({
 
   return (
     <section className="space-y-6">
-      <Surface component="header" sx={{ px: { sm: 4, xs: 3 }, py: 3 }}>
+      <Surface component="header" sx={PAGE_HEADER_SURFACE_SX}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -117,8 +118,8 @@ export function PersonalTaskBoard({
               </h1>
               <p className="max-w-3xl text-sm leading-7 text-muted">
                 Move between personal priorities, team ownership, due-date
-                sequencing, and status lanes without losing reminder state or the
-                linked opportunity context.
+                sequencing, and status lanes without losing reminder state or
+                the linked opportunity context.
               </p>
             </div>
           </div>
@@ -152,7 +153,8 @@ export function PersonalTaskBoard({
             label="Overdue or blocked"
             supportingText="Priority work already outside the planned path."
             value={String(
-              snapshot.summary.overdueTaskCount + snapshot.summary.blockedTaskCount,
+              snapshot.summary.overdueTaskCount +
+                snapshot.summary.blockedTaskCount,
             )}
           />
           <SummaryCard
@@ -166,10 +168,16 @@ export function PersonalTaskBoard({
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_380px] xl:items-start">
         <div className="space-y-4">
           {viewState.view === "my_tasks" ? (
-            <MyTasksView focusedTaskId={focusedTask?.id ?? null} snapshot={snapshot} />
+            <MyTasksView
+              focusedTaskId={focusedTask?.id ?? null}
+              snapshot={snapshot}
+            />
           ) : null}
           {viewState.view === "team_tasks" ? (
-            <TeamTasksView focusedTaskId={focusedTask?.id ?? null} snapshot={snapshot} />
+            <TeamTasksView
+              focusedTaskId={focusedTask?.id ?? null}
+              snapshot={snapshot}
+            />
           ) : null}
           {viewState.view === "calendar" ? (
             <CalendarTasksView
@@ -178,7 +186,10 @@ export function PersonalTaskBoard({
             />
           ) : null}
           {viewState.view === "kanban" ? (
-            <KanbanTasksView focusedTaskId={focusedTask?.id ?? null} snapshot={snapshot} />
+            <KanbanTasksView
+              focusedTaskId={focusedTask?.id ?? null}
+              snapshot={snapshot}
+            />
           ) : null}
         </div>
 
@@ -222,7 +233,9 @@ export function PersonalTaskBoard({
                   },
                   {
                     label: "Reminder",
-                    value: deadlineReminderLabel(focusedTask.deadlineReminderState),
+                    value: deadlineReminderLabel(
+                      focusedTask.deadlineReminderState,
+                    ),
                   },
                   {
                     label: "Created by",
@@ -243,7 +256,11 @@ export function PersonalTaskBoard({
                   {humanizeEnum(focusedTask.status)}
                 </Badge>
                 {focusedTask.deadlineReminderState !== "NONE" ? (
-                  <Badge tone={deadlineReminderTone(focusedTask.deadlineReminderState)}>
+                  <Badge
+                    tone={deadlineReminderTone(
+                      focusedTask.deadlineReminderState,
+                    )}
+                  >
                     {deadlineReminderLabel(focusedTask.deadlineReminderState)}
                   </Badge>
                 ) : null}
@@ -254,7 +271,11 @@ export function PersonalTaskBoard({
                   <dt className="text-[0.68rem] font-semibold tracking-[0.18em] uppercase">
                     Started
                   </dt>
-                  <dd>{focusedTask.startedAt ? formatDate(focusedTask.startedAt) : "Not started yet"}</dd>
+                  <dd>
+                    {focusedTask.startedAt
+                      ? formatDate(focusedTask.startedAt)
+                      : "Not started yet"}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-[0.68rem] font-semibold tracking-[0.18em] uppercase">
@@ -298,21 +319,31 @@ function MyTasksView({
     );
   }
 
-  const sections = snapshot.myTasks.sections.filter((section) => section.taskCount > 0);
+  const sections = snapshot.myTasks.sections.filter(
+    (section) => section.taskCount > 0,
+  );
 
   return (
     <div className="space-y-4">
       {sections.map((section) => (
-        <Surface component="section" key={section.key} sx={{ px: 2.5, py: 2.5 }}>
+        <Surface
+          component="section"
+          key={section.key}
+          sx={{ px: 2.5, py: 2.5 }}
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex flex-wrap gap-2">
                 <Badge tone="muted">{section.label}</Badge>
-                <Badge tone={section.key === "needs_attention" ? "warning" : "info"}>
+                <Badge
+                  tone={section.key === "needs_attention" ? "warning" : "info"}
+                >
                   {section.taskCount} tasks
                 </Badge>
               </div>
-              <h2 className="text-lg font-semibold text-foreground">{section.label}</h2>
+              <h2 className="text-lg font-semibold text-foreground">
+                {section.label}
+              </h2>
               <p className="max-w-2xl text-sm leading-6 text-muted">
                 {section.description}
               </p>
@@ -356,8 +387,12 @@ function TeamTasksView({
         <Surface component="section" key={lane.key} sx={{ px: 2.5, py: 2.5 }}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold text-foreground">{lane.label}</h2>
-              <p className="text-sm leading-6 text-muted">{lane.supportingText}</p>
+              <h2 className="text-lg font-semibold text-foreground">
+                {lane.label}
+              </h2>
+              <p className="text-sm leading-6 text-muted">
+                {lane.supportingText}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Badge tone="info">{lane.taskCount} open</Badge>
@@ -407,11 +442,17 @@ function CalendarTasksView({
               <div className="flex flex-wrap gap-2">
                 <Badge tone="muted">{bucket.label}</Badge>
                 {bucket.overdueTaskCount > 0 ? (
-                  <Badge tone="warning">{bucket.overdueTaskCount} overdue</Badge>
+                  <Badge tone="warning">
+                    {bucket.overdueTaskCount} overdue
+                  </Badge>
                 ) : null}
               </div>
-              <h2 className="text-lg font-semibold text-foreground">{bucket.label}</h2>
-              <p className="text-sm leading-6 text-muted">{bucket.supportingText}</p>
+              <h2 className="text-lg font-semibold text-foreground">
+                {bucket.label}
+              </h2>
+              <p className="text-sm leading-6 text-muted">
+                {bucket.supportingText}
+              </p>
             </div>
             <Badge tone="info">{bucket.taskCount} tasks</Badge>
           </div>
@@ -457,11 +498,14 @@ function KanbanTasksView({
                 <Badge tone={statusTone(column.key)}>{column.label}</Badge>
                 <Badge tone="muted">{column.taskCount}</Badge>
                 {column.overdueTaskCount > 0 ? (
-                  <Badge tone="warning">{column.overdueTaskCount} overdue</Badge>
+                  <Badge tone="warning">
+                    {column.overdueTaskCount} overdue
+                  </Badge>
                 ) : null}
               </div>
               <p className="text-sm leading-6 text-muted">
-                Tasks currently sitting in the {column.label.toLowerCase()} lane.
+                Tasks currently sitting in the {column.label.toLowerCase()}{" "}
+                lane.
               </p>
             </div>
 
@@ -518,36 +562,42 @@ function TaskListItem({
           py: 2,
           transition: "background-color 180ms ease, border-color 180ms ease",
           "&:hover": {
-            bgcolor: active ? "rgba(30, 93, 102, 0.16)" : "rgba(18, 33, 40, 0.035)",
+            bgcolor: active
+              ? "rgba(30, 93, 102, 0.16)"
+              : "rgba(18, 33, 40, 0.035)",
             borderColor: active ? "primary.main" : "text.secondary",
           },
         }}
       >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            <Badge tone={priorityTone(task.priority)}>
-              {humanizeEnum(task.priority)}
-            </Badge>
-            <Badge tone={statusTone(task.status)}>{humanizeEnum(task.status)}</Badge>
-            {task.deadlineReminderState !== "NONE" ? (
-              <Badge tone={deadlineReminderTone(task.deadlineReminderState)}>
-                {deadlineReminderLabel(task.deadlineReminderState)}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <Badge tone={priorityTone(task.priority)}>
+                {humanizeEnum(task.priority)}
               </Badge>
-            ) : null}
+              <Badge tone={statusTone(task.status)}>
+                {humanizeEnum(task.status)}
+              </Badge>
+              {task.deadlineReminderState !== "NONE" ? (
+                <Badge tone={deadlineReminderTone(task.deadlineReminderState)}>
+                  {deadlineReminderLabel(task.deadlineReminderState)}
+                </Badge>
+              ) : null}
+            </div>
+            <h3 className="text-base font-semibold text-foreground">
+              {task.title}
+            </h3>
           </div>
-          <h3 className="text-base font-semibold text-foreground">{task.title}</h3>
+          <p className="text-sm text-muted">
+            {task.dueAt ? `Due ${formatDate(task.dueAt)}` : "No due date"}
+          </p>
         </div>
-        <p className="text-sm text-muted">
-          {task.dueAt ? `Due ${formatDate(task.dueAt)}` : "No due date"}
-        </p>
-      </div>
 
-      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted">
-        <span>{task.opportunityTitle}</span>
-        <span>{task.opportunityStageLabel}</span>
-        <span>{task.assigneeName ?? "Unassigned"}</span>
-      </div>
+        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted">
+          <span>{task.opportunityTitle}</span>
+          <span>{task.opportunityStageLabel}</span>
+          <span>{task.assigneeName ?? "Unassigned"}</span>
+        </div>
       </Surface>
     </Link>
   );

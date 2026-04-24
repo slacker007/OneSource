@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { onesourceTokens } from "@/theme/onesource-theme";
 
@@ -142,11 +143,7 @@ export function AdminUserDetail({
 
       <Surface
         component="header"
-        sx={{
-          overflow: "hidden",
-          px: { xs: 3, sm: 4 },
-          py: { xs: 3, sm: 3.5 },
-        }}
+        sx={[PAGE_HEADER_SURFACE_SX, { overflow: "hidden" }]}
       >
         <Box
           sx={{

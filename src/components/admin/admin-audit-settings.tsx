@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { onesourceTokens } from "@/theme/onesource-theme";
 
@@ -207,11 +208,10 @@ export function AdminAuditSettings({ snapshot }: AdminAuditSettingsProps) {
         sx={{
           borderRadius: `${onesourceTokens.radius.button}px`,
           boxShadow: onesourceTokens.elevation.hero,
-          px: { xs: 3, sm: 4 },
-          py: 4,
+          ...PAGE_HEADER_SURFACE_SX,
         }}
       >
-        <Stack spacing={2.5}>
+        <Stack spacing={2}>
           <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
             <Badge>Settings</Badge>
             <Badge tone="muted">{snapshot.organizationName}</Badge>

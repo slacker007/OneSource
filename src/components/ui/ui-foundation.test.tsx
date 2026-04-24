@@ -10,6 +10,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { PermissionDeniedState } from "@/components/ui/permission-denied-state";
+import { PAGE_HEADER_SURFACE_SX } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Surface } from "@/components/ui/surface";
@@ -128,6 +129,11 @@ describe("UI foundation primitives", () => {
       "aria-hidden",
       "true",
     );
+  });
+
+  it("keeps page header surfaces compact across route workspaces", () => {
+    expect(PAGE_HEADER_SURFACE_SX.px).toEqual({ xs: 2.5, sm: 3 });
+    expect(PAGE_HEADER_SURFACE_SX.py).toEqual({ xs: 2, sm: 2.25 });
   });
 
   it("translates legacy option children into a themed Material UI menu", () => {
