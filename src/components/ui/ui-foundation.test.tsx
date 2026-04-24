@@ -47,23 +47,28 @@ describe("UI foundation primitives", () => {
     );
 
     expect(screen.getByText(/no matching records/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /create record/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /create record/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/attention required/i)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
         name: /you do not have access to workspace settings/i,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /return to dashboard/i })).toHaveAttribute(
-      "href",
-      "/",
-    );
+    expect(
+      screen.getByRole("link", { name: /return to dashboard/i }),
+    ).toHaveAttribute("href", "/");
   });
 
   it("renders field wrappers, buttons, banners, surfaces, and skeletons", () => {
     render(
       <div>
-        <FormField error="Required field" hint="Compact input styling." label="Title">
+        <FormField
+          error="Required field"
+          hint="Compact input styling."
+          label="Title"
+        >
           <Input placeholder="Opportunity title" />
         </FormField>
         <Select aria-label="Status">
@@ -78,10 +83,18 @@ describe("UI foundation primitives", () => {
         />
         <Surface data-testid="surface">Preview shell</Surface>
         <Button type="button">Continue</Button>
-        <Button data-testid="primary-solid-button" tone="primary" type="button" variant="solid">
+        <Button
+          data-testid="primary-solid-button"
+          tone="primary"
+          type="button"
+          variant="solid"
+        >
           Review deadline queue
         </Button>
-        <Button data-testid="primary-solid-link-button" href="/opportunities?due=next_30_days">
+        <Button
+          data-testid="primary-solid-link-button"
+          href="/opportunities?due=next_30_days"
+        >
           Review deadline queue
         </Button>
         <Skeleton data-testid="skeleton" height={48} width={192} />
@@ -92,19 +105,29 @@ describe("UI foundation primitives", () => {
       "aria-describedby",
       expect.stringContaining("-hint"),
     );
-    expect(screen.getByRole("combobox", { name: /status/i })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /summary/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: /status/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: /summary/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/required field/i)).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(/saved/i);
     expect(screen.getByTestId("surface")).toHaveTextContent(/preview shell/i);
-    expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /continue/i }),
+    ).toBeInTheDocument();
     expect(
       window.getComputedStyle(screen.getByTestId("primary-solid-button")).color,
     ).toBe("rgb(255, 255, 255)");
     expect(
-      window.getComputedStyle(screen.getByTestId("primary-solid-link-button")).color,
+      window.getComputedStyle(screen.getByTestId("primary-solid-link-button"))
+        .color,
     ).toBe("rgb(255, 255, 255)");
-    expect(screen.getByTestId("skeleton")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByTestId("skeleton")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
   });
 
   it("translates legacy option children into a themed Material UI menu", () => {
@@ -132,16 +155,18 @@ describe("UI foundation primitives", () => {
       </Select>,
     );
 
-    expect(screen.getByRole("combobox", { name: /connector/i })).toHaveTextContent(
-      /sam\.gov/i,
-    );
+    expect(
+      screen.getByRole("combobox", { name: /connector/i }),
+    ).toHaveTextContent(/sam\.gov/i);
 
     fireEvent.mouseDown(screen.getByRole("combobox", { name: /connector/i }));
 
     expect(
       screen.getByRole("option", { name: /choose connector/i }),
     ).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("option", { name: /sam\.gov/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: /sam\.gov/i }),
+    ).toBeInTheDocument();
   });
 
   it("drops nullish legacy children before they reach the Material UI select internals", () => {
@@ -149,7 +174,9 @@ describe("UI foundation primitives", () => {
 
     render(
       <Select aria-label="Execution mode" defaultValue="live">
-        {showDeprecatedOption ? <option value="deprecated">Deprecated</option> : null}
+        {showDeprecatedOption ? (
+          <option value="deprecated">Deprecated</option>
+        ) : null}
         <option value="live">Live</option>
         {undefined}
         <option value="fixtures">Fixtures</option>
@@ -177,7 +204,11 @@ describe("UI foundation primitives", () => {
     expect(() =>
       renderToString(
         <div>
-          <FormField hint="Search the queue." htmlFor="server-render-search" label="Search">
+          <FormField
+            hint="Search the queue."
+            htmlFor="server-render-search"
+            label="Search"
+          >
             <Input id="server-render-search" name="q" type="search" />
           </FormField>
           <FormField htmlFor="server-render-status" label="Status">

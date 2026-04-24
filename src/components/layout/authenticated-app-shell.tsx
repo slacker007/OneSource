@@ -138,7 +138,27 @@ const SETTINGS_NAV_GROUP: NavGroup = {
     {
       href: "/settings",
       label: "Settings",
-      description: "Manage workspace operations, scoring, and audit views.",
+      description: "Open the workspace admin overview.",
+    },
+    {
+      href: "/settings/connectors",
+      label: "Connectors",
+      description: "Review connector health, sync runs, and retries.",
+    },
+    {
+      href: "/settings/saved-searches",
+      label: "Saved searches",
+      description: "Inspect reusable discovery definitions.",
+    },
+    {
+      href: "/settings/scoring",
+      label: "Scoring",
+      description: "Tune scoring profile and recalibration.",
+    },
+    {
+      href: "/settings/audit",
+      label: "Audit",
+      description: "Inspect recent workspace mutations.",
     },
     {
       href: "/settings/users",
@@ -149,6 +169,41 @@ const SETTINGS_NAV_GROUP: NavGroup = {
 };
 
 const SHELL_ROUTE_DEFINITIONS: ShellRouteDefinition[] = [
+  {
+    matcher: "/settings/connectors",
+    label: "Connector operations",
+    description: "Review connector health, sync runs, and retry posture.",
+    navHref: "/settings/connectors",
+    requires: "workspace_settings",
+  },
+  {
+    matcher: "/settings/saved-searches",
+    label: "Saved searches",
+    description: "Inspect reusable discovery definitions and sync recency.",
+    navHref: "/settings/saved-searches",
+    requires: "workspace_settings",
+  },
+  {
+    matcher: "/settings/scoring",
+    label: "Scoring profile",
+    description: "Tune scoring thresholds, criteria, and recalibration.",
+    navHref: "/settings/scoring",
+    requires: "workspace_settings",
+  },
+  {
+    matcher: "/settings/audit",
+    label: "Audit activity",
+    description: "Inspect recent organization-scoped mutations.",
+    navHref: "/settings/audit",
+    requires: "workspace_settings",
+  },
+  {
+    matcher: "/settings/users/",
+    label: "User profile",
+    description: "Manage the selected user's roles and access state.",
+    navHref: "/settings/users",
+    requires: "workspace_settings",
+  },
   {
     matcher: "/settings/users",
     label: "Users & roles",
@@ -1303,7 +1358,13 @@ export function AppShellFrame({
           component="main"
           sx={{ flex: 1, minWidth: 0, px: shellContentPaddingX, py: 3 }}
         >
-          <Box sx={{ marginX: "auto", maxWidth: shellContentMaxWidth, minWidth: 0 }}>
+          <Box
+            sx={{
+              marginX: "auto",
+              maxWidth: shellContentMaxWidth,
+              minWidth: 0,
+            }}
+          >
             {children}
           </Box>
         </Box>
@@ -1337,20 +1398,19 @@ function NavigationMenu({
       spacing={desktopVariant ? 1.25 : 2}
     >
       {groups.map((group) => {
-        const activeItem = group.items.reduce<typeof group.items[number] | null>(
-          (bestMatch, candidate) => {
-            if (!isRouteActive(candidate.href, currentPath)) {
-              return bestMatch;
-            }
-
-            if (!bestMatch || candidate.href.length > bestMatch.href.length) {
-              return candidate;
-            }
-
+        const activeItem = group.items.reduce<
+          (typeof group.items)[number] | null
+        >((bestMatch, candidate) => {
+          if (!isRouteActive(candidate.href, currentPath)) {
             return bestMatch;
-          },
-          null,
-        );
+          }
+
+          if (!bestMatch || candidate.href.length > bestMatch.href.length) {
+            return candidate;
+          }
+
+          return bestMatch;
+        }, null);
 
         return (
           <Box component="section" key={group.key}>

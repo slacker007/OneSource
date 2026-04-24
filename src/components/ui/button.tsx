@@ -1,6 +1,8 @@
 "use client";
 
-import MuiButton, { type ButtonProps as MuiButtonProps } from "@mui/material/Button";
+import MuiButton, {
+  type ButtonProps as MuiButtonProps,
+} from "@mui/material/Button";
 import type { SxProps, Theme } from "@mui/material/styles";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -40,7 +42,7 @@ export function Button({
         : "text";
   const resolvedSx: SxProps<Theme>[] = [
     {
-      borderRadius: onesourceTokens.radius.pill,
+      borderRadius: onesourceTokens.radius.button,
       boxShadow: "none",
       fontSize: onesourceTokens.typographyRole.button.fontSize,
       fontWeight: onesourceTokens.typographyRole.button.fontWeight,
@@ -191,11 +193,5 @@ export function Button({
     );
   }
 
-  return (
-    <MuiButton
-      {...sharedProps}
-    >
-      {children}
-    </MuiButton>
-  );
+  return <MuiButton {...sharedProps}>{children}</MuiButton>;
 }

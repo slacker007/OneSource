@@ -1,7 +1,13 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 
 import type {
+  AdminAuditSettingsSnapshot,
+  AdminConnectorSettingsSnapshot,
+  AdminSavedSearchSettingsSnapshot,
+  AdminScoringSettingsSnapshot,
   AdminSettingsSnapshot,
+  AdminSettingsOverviewSnapshot,
+  AdminUserDetailSnapshot,
   AdminUserManagementSnapshot,
 } from "./admin.types";
 import {
@@ -17,8 +23,7 @@ import {
   type AdminSourceConnectorHealthRecord,
 } from "./source-operations";
 
-const auditLogSummaryArgs =
-  Prisma.validator<Prisma.AuditLogDefaultArgs>()({
+const auditLogSummaryArgs = Prisma.validator<Prisma.AuditLogDefaultArgs>()({
   select: {
     id: true,
     occurredAt: true,
@@ -41,141 +46,181 @@ const auditLogSummaryArgs =
 
 const organizationSettingsSnapshotArgs =
   Prisma.validator<Prisma.OrganizationDefaultArgs>()({
-  select: {
-    id: true,
-    name: true,
-    agencies: {
-      orderBy: {
-        name: "asc",
+    select: {
+      id: true,
+      name: true,
+      agencies: {
+        orderBy: {
+          name: "asc",
+        },
+        select: {
+          id: true,
+          name: true,
+          organizationCode: true,
+        },
       },
-      select: {
-        id: true,
-        name: true,
-        organizationCode: true,
+      organizationProfile: {
+        select: {
+          overview: true,
+          strategicFocus: true,
+          targetNaicsCodes: true,
+          priorityAgencyIds: true,
+          relationshipAgencyIds: true,
+          activeScoringModelKey: true,
+          activeScoringModelVersion: true,
+          goRecommendationThreshold: true,
+          deferRecommendationThreshold: true,
+          minimumRiskScorePercent: true,
+          capabilities: {
+            where: {
+              isActive: true,
+            },
+            orderBy: [{ sortOrder: "asc" }, { capabilityLabel: "asc" }],
+            select: {
+              id: true,
+              capabilityKey: true,
+              capabilityLabel: true,
+              capabilityCategory: true,
+              capabilityKeywords: true,
+              description: true,
+            },
+          },
+          certifications: {
+            where: {
+              isActive: true,
+            },
+            orderBy: [{ sortOrder: "asc" }, { certificationLabel: "asc" }],
+            select: {
+              id: true,
+              certificationKey: true,
+              certificationLabel: true,
+              certificationCode: true,
+              issuingBody: true,
+              description: true,
+            },
+          },
+          selectedVehicles: {
+            orderBy: [{ sortOrder: "asc" }, { vehicle: { code: "asc" } }],
+            select: {
+              isPreferred: true,
+              usageNotes: true,
+              vehicle: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true,
+                  vehicleType: true,
+                  awardingAgency: true,
+                },
+              },
+            },
+          },
+          scoringCriteria: {
+            where: {
+              isActive: true,
+            },
+            orderBy: [{ sortOrder: "asc" }, { factorLabel: "asc" }],
+            select: {
+              id: true,
+              factorKey: true,
+              factorLabel: true,
+              description: true,
+              weight: true,
+              isActive: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          users: true,
+          auditLogs: true,
+        },
+      },
+      auditLogs: {
+        orderBy: {
+          occurredAt: "desc",
+        },
+        take: 12,
+        ...auditLogSummaryArgs,
       },
     },
-    organizationProfile: {
-      select: {
-        overview: true,
-        strategicFocus: true,
-        targetNaicsCodes: true,
-        priorityAgencyIds: true,
-        relationshipAgencyIds: true,
-        activeScoringModelKey: true,
-        activeScoringModelVersion: true,
-        goRecommendationThreshold: true,
-        deferRecommendationThreshold: true,
-        minimumRiskScorePercent: true,
-        capabilities: {
-          where: {
-            isActive: true,
-          },
-          orderBy: [{ sortOrder: "asc" }, { capabilityLabel: "asc" }],
-          select: {
-            id: true,
-            capabilityKey: true,
-            capabilityLabel: true,
-            capabilityCategory: true,
-            capabilityKeywords: true,
-            description: true,
-          },
+  });
+
+const organizationUserManagementSnapshotArgs =
+  Prisma.validator<Prisma.OrganizationDefaultArgs>()({
+    select: {
+      id: true,
+      name: true,
+      roles: {
+        orderBy: {
+          name: "asc",
         },
-        certifications: {
-          where: {
-            isActive: true,
-          },
-          orderBy: [{ sortOrder: "asc" }, { certificationLabel: "asc" }],
-          select: {
-            id: true,
-            certificationKey: true,
-            certificationLabel: true,
-            certificationCode: true,
-            issuingBody: true,
-            description: true,
-          },
+        select: {
+          key: true,
+          name: true,
+          description: true,
         },
-        selectedVehicles: {
-          orderBy: [{ sortOrder: "asc" }, { vehicle: { code: "asc" } }],
-          select: {
-            isPreferred: true,
-            usageNotes: true,
-            vehicle: {
-              select: {
-                id: true,
-                code: true,
-                name: true,
-                vehicleType: true,
-                awardingAgency: true,
+      },
+      users: {
+        orderBy: [{ status: "asc" }, { email: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          status: true,
+          roles: {
+            orderBy: [{ assignedAt: "desc" }, { role: { name: "asc" } }],
+            select: {
+              assignedAt: true,
+              role: {
+                select: {
+                  key: true,
+                  name: true,
+                },
               },
             },
           },
         },
-        scoringCriteria: {
-          where: {
-            isActive: true,
-          },
-          orderBy: [{ sortOrder: "asc" }, { factorLabel: "asc" }],
+      },
+    },
+  });
+
+const adminUserDetailArgs = Prisma.validator<Prisma.UserDefaultArgs>()({
+  select: {
+    id: true,
+    organizationId: true,
+    name: true,
+    email: true,
+    emailVerified: true,
+    image: true,
+    passwordHash: true,
+    status: true,
+    createdAt: true,
+    updatedAt: true,
+    roles: {
+      orderBy: [{ assignedAt: "desc" }, { role: { name: "asc" } }],
+      select: {
+        assignedAt: true,
+        role: {
           select: {
-            id: true,
-            factorKey: true,
-            factorLabel: true,
-            description: true,
-            weight: true,
-            isActive: true,
+            key: true,
+            name: true,
           },
         },
       },
     },
     _count: {
       select: {
-        users: true,
         auditLogs: true,
-      },
-    },
-    auditLogs: {
-      orderBy: {
-        occurredAt: "desc",
-      },
-      take: 12,
-      ...auditLogSummaryArgs,
-    },
-  },
-});
-
-const organizationUserManagementSnapshotArgs =
-  Prisma.validator<Prisma.OrganizationDefaultArgs>()({
-  select: {
-    id: true,
-    name: true,
-    roles: {
-      orderBy: {
-        name: "asc",
-      },
-      select: {
-        key: true,
-        name: true,
-        description: true,
-      },
-    },
-    users: {
-      orderBy: [{ status: "asc" }, { email: "asc" }],
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        status: true,
-        roles: {
-          orderBy: [{ assignedAt: "desc" }, { role: { name: "asc" } }],
-          select: {
-            assignedAt: true,
-            role: {
-              select: {
-                key: true,
-                name: true,
-              },
-            },
-          },
-        },
+        authoredOpportunityNotes: true,
+        createdOpportunityMilestones: true,
+        createdOpportunityProposals: true,
+        createdOpportunityTasks: true,
+        createdSourceSavedSearches: true,
+        ownedOpportunityProposals: true,
+        requestedSourceSyncRuns: true,
+        uploadedOpportunityDocuments: true,
       },
     },
   },
@@ -183,144 +228,144 @@ const organizationUserManagementSnapshotArgs =
 
 const sourceConnectorHealthArgs =
   Prisma.validator<Prisma.SourceConnectorConfigDefaultArgs>()({
-  select: {
-    id: true,
-    sourceSystemKey: true,
-    sourceDisplayName: true,
-    isEnabled: true,
-    validationStatus: true,
-    connectorVersion: true,
-    lastValidatedAt: true,
-    lastValidationMessage: true,
-    rateLimitProfile: true,
-    _count: {
-      select: {
-        savedSearches: true,
-      },
-    },
-    syncRuns: {
-      orderBy: {
-        requestedAt: "desc",
-      },
-      take: 10,
-      select: {
-        id: true,
-        status: true,
-        requestedAt: true,
-        completedAt: true,
-        errorCode: true,
-        errorMessage: true,
-        savedSearch: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        searchExecution: {
-          select: {
-            httpStatus: true,
-            errorCode: true,
-            errorMessage: true,
-          },
+    select: {
+      id: true,
+      sourceSystemKey: true,
+      sourceDisplayName: true,
+      isEnabled: true,
+      validationStatus: true,
+      connectorVersion: true,
+      lastValidatedAt: true,
+      lastValidationMessage: true,
+      rateLimitProfile: true,
+      _count: {
+        select: {
+          savedSearches: true,
         },
       },
+      syncRuns: {
+        orderBy: {
+          requestedAt: "desc",
+        },
+        take: 10,
+        select: {
+          id: true,
+          status: true,
+          requestedAt: true,
+          completedAt: true,
+          errorCode: true,
+          errorMessage: true,
+          savedSearch: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          searchExecution: {
+            select: {
+              httpStatus: true,
+              errorCode: true,
+              errorMessage: true,
+            },
+          },
+        },
+      },
     },
-  },
-});
+  });
 
 const recentSourceSyncRunArgs =
   Prisma.validator<Prisma.SourceSyncRunDefaultArgs>()({
-  select: {
-    id: true,
-    sourceSystem: true,
-    status: true,
-    triggerType: true,
-    recordsFetched: true,
-    recordsImported: true,
-    recordsFailed: true,
-    requestedAt: true,
-    completedAt: true,
-    errorCode: true,
-    errorMessage: true,
-    connectorConfig: {
-      select: {
-        sourceDisplayName: true,
-        sourceSystemKey: true,
+    select: {
+      id: true,
+      sourceSystem: true,
+      status: true,
+      triggerType: true,
+      recordsFetched: true,
+      recordsImported: true,
+      recordsFailed: true,
+      requestedAt: true,
+      completedAt: true,
+      errorCode: true,
+      errorMessage: true,
+      connectorConfig: {
+        select: {
+          sourceDisplayName: true,
+          sourceSystemKey: true,
+        },
+      },
+      savedSearch: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      searchExecution: {
+        select: {
+          httpStatus: true,
+          errorCode: true,
+          errorMessage: true,
+        },
       },
     },
-    savedSearch: {
-      select: {
-        id: true,
-        name: true,
-      },
-    },
-    searchExecution: {
-      select: {
-        httpStatus: true,
-        errorCode: true,
-        errorMessage: true,
-      },
-    },
-  },
-});
+  });
 
 const adminSavedSearchArgs =
   Prisma.validator<Prisma.SourceSavedSearchDefaultArgs>()({
-  select: {
-    id: true,
-    sourceSystem: true,
-    name: true,
-    description: true,
-    canonicalFilters: true,
-    createdAt: true,
-    updatedAt: true,
-    lastExecutedAt: true,
-    lastSyncedAt: true,
-    connectorConfig: {
-      select: {
-        sourceDisplayName: true,
-        connectorVersion: true,
+    select: {
+      id: true,
+      sourceSystem: true,
+      name: true,
+      description: true,
+      canonicalFilters: true,
+      createdAt: true,
+      updatedAt: true,
+      lastExecutedAt: true,
+      lastSyncedAt: true,
+      connectorConfig: {
+        select: {
+          sourceDisplayName: true,
+          connectorVersion: true,
+        },
+      },
+      createdByUser: {
+        select: {
+          name: true,
+          email: true,
+        },
       },
     },
-    createdByUser: {
-      select: {
-        name: true,
-        email: true,
-      },
-    },
-  },
-});
+  });
 
 const failedImportReviewArgs =
   Prisma.validator<Prisma.SourceImportDecisionDefaultArgs>()({
-  select: {
-    id: true,
-    mode: true,
-    status: true,
-    rationale: true,
-    requestedAt: true,
-    decidedAt: true,
-    connectorConfig: {
-      select: {
-        sourceDisplayName: true,
+    select: {
+      id: true,
+      mode: true,
+      status: true,
+      rationale: true,
+      requestedAt: true,
+      decidedAt: true,
+      connectorConfig: {
+        select: {
+          sourceDisplayName: true,
+        },
+      },
+      sourceRecord: {
+        select: {
+          sourceSystem: true,
+          sourceRecordId: true,
+          sourceImportPreviewPayload: true,
+          sourceNormalizedPayload: true,
+          sourceRawPayload: true,
+        },
+      },
+      targetOpportunity: {
+        select: {
+          title: true,
+        },
       },
     },
-    sourceRecord: {
-      select: {
-        sourceSystem: true,
-        sourceRecordId: true,
-        sourceImportPreviewPayload: true,
-        sourceNormalizedPayload: true,
-        sourceRawPayload: true,
-      },
-    },
-    targetOpportunity: {
-      select: {
-        title: true,
-      },
-    },
-  },
-});
+  });
 
 const recalibrationOpportunityArgs =
   Prisma.validator<Prisma.OpportunityDefaultArgs>()({
@@ -381,6 +426,7 @@ const recalibrationOpportunityArgs =
 
 export type AdminRepositoryClient = Pick<
   PrismaClient,
+  | "auditLog"
   | "organization"
   | "user"
   | "opportunity"
@@ -396,12 +442,14 @@ export type OrganizationSettingsRecord = Prisma.OrganizationGetPayload<
 export type OrganizationUserManagementRecord = Prisma.OrganizationGetPayload<
   typeof organizationUserManagementSnapshotArgs
 >;
+export type AdminUserDetailRecord = Prisma.UserGetPayload<
+  typeof adminUserDetailArgs
+>;
 export type AuditLogSummaryPayload = Prisma.AuditLogGetPayload<
   typeof auditLogSummaryArgs
 >;
-export type SourceConnectorHealthPayload = Prisma.SourceConnectorConfigGetPayload<
-  typeof sourceConnectorHealthArgs
->;
+export type SourceConnectorHealthPayload =
+  Prisma.SourceConnectorConfigGetPayload<typeof sourceConnectorHealthArgs>;
 export type RecentSourceSyncRunPayload = Prisma.SourceSyncRunGetPayload<
   typeof recentSourceSyncRunArgs
 >;
@@ -430,79 +478,78 @@ export async function getAdminSettingsSnapshot({
     savedSearchRecords,
     failedImportReviews,
     recalibrationOpportunities,
-  ] =
-    await Promise.all([
-      db.organization.findUnique({
-        where: {
-          id: organizationId,
-        },
-        ...organizationSettingsSnapshotArgs,
-      }),
-      db.user.count({
-        where: {
-          organizationId,
-          roles: {
-            some: {
-              role: {
-                key: "admin",
-              },
+  ] = await Promise.all([
+    db.organization.findUnique({
+      where: {
+        id: organizationId,
+      },
+      ...organizationSettingsSnapshotArgs,
+    }),
+    db.user.count({
+      where: {
+        organizationId,
+        roles: {
+          some: {
+            role: {
+              key: "admin",
             },
           },
         },
-      }),
-      db.sourceConnectorConfig.findMany({
-        where: {
-          organizationId,
+      },
+    }),
+    db.sourceConnectorConfig.findMany({
+      where: {
+        organizationId,
+      },
+      orderBy: {
+        sourceDisplayName: "asc",
+      },
+      ...sourceConnectorHealthArgs,
+    }),
+    db.sourceSyncRun.findMany({
+      where: {
+        organizationId,
+      },
+      orderBy: {
+        requestedAt: "desc",
+      },
+      take: 8,
+      ...recentSourceSyncRunArgs,
+    }),
+    db.sourceSavedSearch.findMany({
+      where: {
+        organizationId,
+      },
+      orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
+      take: 8,
+      ...adminSavedSearchArgs,
+    }),
+    db.sourceImportDecision.findMany({
+      where: {
+        organizationId,
+        status: {
+          not: "APPLIED",
         },
-        orderBy: {
-          sourceDisplayName: "asc",
+      },
+      orderBy: {
+        requestedAt: "desc",
+      },
+      take: 8,
+      ...failedImportReviewArgs,
+    }),
+    db.opportunity.findMany({
+      where: {
+        organizationId,
+        currentStageKey: {
+          in: ["awarded", "lost", "no_bid"],
         },
-        ...sourceConnectorHealthArgs,
-      }),
-      db.sourceSyncRun.findMany({
-        where: {
-          organizationId,
-        },
-        orderBy: {
-          requestedAt: "desc",
-        },
-        take: 8,
-        ...recentSourceSyncRunArgs,
-      }),
-      db.sourceSavedSearch.findMany({
-        where: {
-          organizationId,
-        },
-        orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
-        take: 8,
-        ...adminSavedSearchArgs,
-      }),
-      db.sourceImportDecision.findMany({
-        where: {
-          organizationId,
-          status: {
-            not: "APPLIED",
-          },
-        },
-        orderBy: {
-          requestedAt: "desc",
-        },
-        take: 8,
-        ...failedImportReviewArgs,
-      }),
-      db.opportunity.findMany({
-        where: {
-          organizationId,
-          currentStageKey: {
-            in: ["awarded", "lost", "no_bid"],
-          },
-        },
-        orderBy: {
-          updatedAt: "desc",
-        },
-        ...recalibrationOpportunityArgs,
-      }),
-    ]);
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      ...recalibrationOpportunityArgs,
+    }),
+  ]);
 
   if (!organization) {
     return null;
@@ -575,17 +622,18 @@ export async function getAdminSettingsSnapshot({
               description: certification.description,
             }),
           ),
-          selectedVehicles: organization.organizationProfile.selectedVehicles.map(
-            (selectedVehicle) => ({
-              id: selectedVehicle.vehicle.id,
-              code: selectedVehicle.vehicle.code,
-              name: selectedVehicle.vehicle.name,
-              vehicleType: selectedVehicle.vehicle.vehicleType,
-              awardingAgency: selectedVehicle.vehicle.awardingAgency,
-              isPreferred: selectedVehicle.isPreferred,
-              usageNotes: selectedVehicle.usageNotes,
-            }),
-          ),
+          selectedVehicles:
+            organization.organizationProfile.selectedVehicles.map(
+              (selectedVehicle) => ({
+                id: selectedVehicle.vehicle.id,
+                code: selectedVehicle.vehicle.code,
+                name: selectedVehicle.vehicle.name,
+                vehicleType: selectedVehicle.vehicle.vehicleType,
+                awardingAgency: selectedVehicle.vehicle.awardingAgency,
+                isPreferred: selectedVehicle.isPreferred,
+                usageNotes: selectedVehicle.usageNotes,
+              }),
+            ),
           scoringCriteria: organization.organizationProfile.scoringCriteria.map(
             (criterion) => ({
               id: criterion.id,
@@ -601,39 +649,363 @@ export async function getAdminSettingsSnapshot({
       })()
     : null;
 
+  const sourceOperations = buildAdminSourceOperationsSnapshot({
+    connectorHealthRecords:
+      connectorHealthRecords as AdminSourceConnectorHealthRecord[],
+    failedImportDecisionRecords:
+      failedImportReviews as AdminFailedImportDecisionRecord[],
+    recentSyncRunRecords:
+      recentSyncRunRecords as AdminRecentSourceSyncRunRecord[],
+  });
+  const savedSearches = savedSearchRecords.map(mapAdminSavedSearchSummary);
+
   return {
     organizationId: organization.id,
     organizationName: organization.name,
     totalUserCount: organization._count.users,
     adminUserCount,
     totalAuditLogCount: organization._count.auditLogs,
+    scoringProfileSummary: scoringProfile
+      ? {
+          activeScoringModelKey: scoringProfile.activeScoringModelKey,
+          activeScoringModelVersion: scoringProfile.activeScoringModelVersion,
+          capabilityCount: scoringProfile.capabilities.length,
+          scoringCriteriaCount: scoringProfile.scoringCriteria.length,
+        }
+      : null,
+    sourceOperationsSummary: {
+      totalConnectorCount: sourceOperations.totalConnectorCount,
+      activeConnectorCount: sourceOperations.activeConnectorCount,
+      healthyConnectorCount: sourceOperations.healthyConnectorCount,
+      rateLimitedConnectorCount: sourceOperations.rateLimitedConnectorCount,
+      failedImportReviewCount: sourceOperations.failedImportReviewCount,
+      lastSuccessfulSyncAt: sourceOperations.lastSuccessfulSyncAt,
+      lastSuccessfulSyncSourceDisplayName:
+        sourceOperations.lastSuccessfulSyncSourceDisplayName,
+    },
+    savedSearchCount: savedSearches.length,
     scoringProfile,
+    sourceOperations,
+    savedSearches,
+    recentAuditEvents: organization.auditLogs.map(mapAuditEventSummary),
+  };
+}
+
+export async function getAdminSettingsOverviewSnapshot({
+  db,
+  organizationId,
+}: {
+  db: AdminRepositoryClient;
+  organizationId: string;
+}): Promise<AdminSettingsOverviewSnapshot | null> {
+  const [
+    organization,
+    adminUserCount,
+    connectorHealthRecords,
+    recentSyncRunRecords,
+    failedImportReviews,
+    savedSearchCount,
+  ] = await Promise.all([
+    db.organization.findUnique({
+      where: {
+        id: organizationId,
+      },
+      select: {
+        id: true,
+        name: true,
+        organizationProfile: {
+          select: {
+            activeScoringModelKey: true,
+            activeScoringModelVersion: true,
+            capabilities: {
+              where: {
+                isActive: true,
+              },
+              select: {
+                id: true,
+              },
+            },
+            scoringCriteria: {
+              where: {
+                isActive: true,
+              },
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            users: true,
+            auditLogs: true,
+          },
+        },
+      },
+    }),
+    db.user.count({
+      where: {
+        organizationId,
+        roles: {
+          some: {
+            role: {
+              key: "admin",
+            },
+          },
+        },
+      },
+    }),
+    db.sourceConnectorConfig.findMany({
+      where: {
+        organizationId,
+      },
+      orderBy: {
+        sourceDisplayName: "asc",
+      },
+      ...sourceConnectorHealthArgs,
+    }),
+    db.sourceSyncRun.findMany({
+      where: {
+        organizationId,
+      },
+      orderBy: {
+        requestedAt: "desc",
+      },
+      take: 8,
+      ...recentSourceSyncRunArgs,
+    }),
+    db.sourceImportDecision.findMany({
+      where: {
+        organizationId,
+        status: {
+          not: "APPLIED",
+        },
+      },
+      orderBy: {
+        requestedAt: "desc",
+      },
+      take: 8,
+      ...failedImportReviewArgs,
+    }),
+    db.sourceSavedSearch.count({
+      where: {
+        organizationId,
+      },
+    }),
+  ]);
+
+  if (!organization) {
+    return null;
+  }
+
+  const sourceOperations = buildAdminSourceOperationsSnapshot({
+    connectorHealthRecords:
+      connectorHealthRecords as AdminSourceConnectorHealthRecord[],
+    failedImportDecisionRecords:
+      failedImportReviews as AdminFailedImportDecisionRecord[],
+    recentSyncRunRecords:
+      recentSyncRunRecords as AdminRecentSourceSyncRunRecord[],
+  });
+
+  return {
+    organizationId: organization.id,
+    organizationName: organization.name,
+    totalUserCount: organization._count.users,
+    adminUserCount,
+    totalAuditLogCount: organization._count.auditLogs,
+    scoringProfileSummary: organization.organizationProfile
+      ? {
+          activeScoringModelKey:
+            organization.organizationProfile.activeScoringModelKey,
+          activeScoringModelVersion:
+            organization.organizationProfile.activeScoringModelVersion,
+          capabilityCount: organization.organizationProfile.capabilities.length,
+          scoringCriteriaCount:
+            organization.organizationProfile.scoringCriteria.length,
+        }
+      : null,
+    sourceOperationsSummary: {
+      totalConnectorCount: sourceOperations.totalConnectorCount,
+      activeConnectorCount: sourceOperations.activeConnectorCount,
+      healthyConnectorCount: sourceOperations.healthyConnectorCount,
+      rateLimitedConnectorCount: sourceOperations.rateLimitedConnectorCount,
+      failedImportReviewCount: sourceOperations.failedImportReviewCount,
+      lastSuccessfulSyncAt: sourceOperations.lastSuccessfulSyncAt,
+      lastSuccessfulSyncSourceDisplayName:
+        sourceOperations.lastSuccessfulSyncSourceDisplayName,
+    },
+    savedSearchCount,
+  };
+}
+
+export async function getAdminConnectorSettingsSnapshot({
+  db,
+  organizationId,
+}: {
+  db: AdminRepositoryClient;
+  organizationId: string;
+}): Promise<AdminConnectorSettingsSnapshot | null> {
+  const [
+    organization,
+    connectorHealthRecords,
+    recentSyncRunRecords,
+    failedImportReviews,
+  ] = await Promise.all([
+    db.organization.findUnique({
+      where: {
+        id: organizationId,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    }),
+    db.sourceConnectorConfig.findMany({
+      where: {
+        organizationId,
+      },
+      orderBy: {
+        sourceDisplayName: "asc",
+      },
+      ...sourceConnectorHealthArgs,
+    }),
+    db.sourceSyncRun.findMany({
+      where: {
+        organizationId,
+      },
+      orderBy: {
+        requestedAt: "desc",
+      },
+      take: 8,
+      ...recentSourceSyncRunArgs,
+    }),
+    db.sourceImportDecision.findMany({
+      where: {
+        organizationId,
+        status: {
+          not: "APPLIED",
+        },
+      },
+      orderBy: {
+        requestedAt: "desc",
+      },
+      take: 8,
+      ...failedImportReviewArgs,
+    }),
+  ]);
+
+  if (!organization) {
+    return null;
+  }
+
+  return {
+    organizationId: organization.id,
+    organizationName: organization.name,
     sourceOperations: buildAdminSourceOperationsSnapshot({
       connectorHealthRecords:
         connectorHealthRecords as AdminSourceConnectorHealthRecord[],
       failedImportDecisionRecords:
         failedImportReviews as AdminFailedImportDecisionRecord[],
-      recentSyncRunRecords: recentSyncRunRecords as AdminRecentSourceSyncRunRecord[],
+      recentSyncRunRecords:
+        recentSyncRunRecords as AdminRecentSourceSyncRunRecord[],
     }),
-    savedSearches: savedSearchRecords.map((savedSearch) => ({
-      id: savedSearch.id,
-      name: savedSearch.name,
-      description: savedSearch.description,
-      sourceSystem: savedSearch.sourceSystem,
-      sourceDisplayName:
-        savedSearch.connectorConfig?.sourceDisplayName ??
-        humanizeSourceSystem(savedSearch.sourceSystem),
-      connectorVersion: savedSearch.connectorConfig?.connectorVersion ?? null,
-      createdByLabel:
-        savedSearch.createdByUser?.name ??
-        savedSearch.createdByUser?.email ??
-        "Unknown owner",
-      createdAt: savedSearch.createdAt.toISOString(),
-      updatedAt: savedSearch.updatedAt.toISOString(),
-      lastExecutedAt: savedSearch.lastExecutedAt?.toISOString() ?? null,
-      lastSyncedAt: savedSearch.lastSyncedAt?.toISOString() ?? null,
-      filterSummary: buildSavedSearchFilterSummary(savedSearch),
-    })),
+  };
+}
+
+export async function getAdminSavedSearchSettingsSnapshot({
+  db,
+  organizationId,
+}: {
+  db: AdminRepositoryClient;
+  organizationId: string;
+}): Promise<AdminSavedSearchSettingsSnapshot | null> {
+  const [organization, savedSearchRecords] = await Promise.all([
+    db.organization.findUnique({
+      where: {
+        id: organizationId,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    }),
+    db.sourceSavedSearch.findMany({
+      where: {
+        organizationId,
+      },
+      orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
+      ...adminSavedSearchArgs,
+    }),
+  ]);
+
+  if (!organization) {
+    return null;
+  }
+
+  return {
+    organizationId: organization.id,
+    organizationName: organization.name,
+    savedSearches: savedSearchRecords.map(mapAdminSavedSearchSummary),
+  };
+}
+
+export async function getAdminScoringSettingsSnapshot({
+  db,
+  organizationId,
+}: {
+  db: AdminRepositoryClient;
+  organizationId: string;
+}): Promise<AdminScoringSettingsSnapshot | null> {
+  const snapshot = await getAdminSettingsSnapshot({ db, organizationId });
+
+  if (!snapshot) {
+    return null;
+  }
+
+  return {
+    organizationId: snapshot.organizationId,
+    organizationName: snapshot.organizationName,
+    scoringProfile: snapshot.scoringProfile,
+  };
+}
+
+export async function getAdminAuditSettingsSnapshot({
+  db,
+  organizationId,
+}: {
+  db: AdminRepositoryClient;
+  organizationId: string;
+}): Promise<AdminAuditSettingsSnapshot | null> {
+  const organization = await db.organization.findUnique({
+    where: {
+      id: organizationId,
+    },
+    select: {
+      id: true,
+      name: true,
+      _count: {
+        select: {
+          auditLogs: true,
+        },
+      },
+      auditLogs: {
+        orderBy: {
+          occurredAt: "desc",
+        },
+        take: 24,
+        ...auditLogSummaryArgs,
+      },
+    },
+  });
+
+  if (!organization) {
+    return null;
+  }
+
+  return {
+    organizationId: organization.id,
+    organizationName: organization.name,
+    totalAuditLogCount: organization._count.auditLogs,
     recentAuditEvents: organization.auditLogs.map(mapAuditEventSummary),
   };
 }
@@ -664,14 +1036,112 @@ export async function getAdminUserManagementSnapshot({
     totalUserCount: users.length,
     activeUserCount: users.filter((user) => user.status === "ACTIVE").length,
     invitedUserCount: users.filter((user) => user.status === "INVITED").length,
-    disabledUserCount: users.filter((user) => user.status === "DISABLED").length,
-    adminUserCount: users.filter((user) => user.roleKeys.includes("admin")).length,
+    disabledUserCount: users.filter((user) => user.status === "DISABLED")
+      .length,
+    adminUserCount: users.filter((user) => user.roleKeys.includes("admin"))
+      .length,
     roleOptions: organization.roles.map((role) => ({
       key: role.key,
       label: role.name,
       description: role.description,
     })),
     users,
+  };
+}
+
+export async function getAdminUserDetailSnapshot({
+  db,
+  organizationId,
+  userId,
+}: {
+  db: AdminRepositoryClient;
+  organizationId: string;
+  userId: string;
+}): Promise<AdminUserDetailSnapshot | null> {
+  const [organization, user, recentAuditEvents] = await Promise.all([
+    db.organization.findUnique({
+      where: {
+        id: organizationId,
+      },
+      select: {
+        id: true,
+        name: true,
+        roles: {
+          orderBy: {
+            name: "asc",
+          },
+          select: {
+            key: true,
+            name: true,
+            description: true,
+          },
+        },
+      },
+    }),
+    db.user.findFirst({
+      where: {
+        id: userId,
+        organizationId,
+      },
+      ...adminUserDetailArgs,
+    }),
+    db.auditLog.findMany({
+      where: {
+        organizationId,
+        OR: [
+          {
+            actorUserId: userId,
+          },
+          {
+            targetId: userId,
+            targetType: "user",
+          },
+        ],
+      },
+      orderBy: {
+        occurredAt: "desc",
+      },
+      take: 12,
+      ...auditLogSummaryArgs,
+    }),
+  ]);
+
+  if (!organization || !user) {
+    return null;
+  }
+
+  return {
+    organizationId: organization.id,
+    organizationName: organization.name,
+    roleOptions: organization.roles.map((role) => ({
+      key: role.key,
+      label: role.name,
+      description: role.description,
+    })),
+    recentAuditEvents: recentAuditEvents.map(mapAuditEventSummary),
+    user: mapAdminUserDetailSummary(user),
+  };
+}
+
+function mapAdminSavedSearchSummary(savedSearch: AdminSavedSearchPayload) {
+  return {
+    id: savedSearch.id,
+    name: savedSearch.name,
+    description: savedSearch.description,
+    sourceSystem: savedSearch.sourceSystem,
+    sourceDisplayName:
+      savedSearch.connectorConfig?.sourceDisplayName ??
+      humanizeSourceSystem(savedSearch.sourceSystem),
+    connectorVersion: savedSearch.connectorConfig?.connectorVersion ?? null,
+    createdByLabel:
+      savedSearch.createdByUser?.name ??
+      savedSearch.createdByUser?.email ??
+      "Unknown owner",
+    createdAt: savedSearch.createdAt.toISOString(),
+    updatedAt: savedSearch.updatedAt.toISOString(),
+    lastExecutedAt: savedSearch.lastExecutedAt?.toISOString() ?? null,
+    lastSyncedAt: savedSearch.lastSyncedAt?.toISOString() ?? null,
+    filterSummary: buildSavedSearchFilterSummary(savedSearch),
   };
 }
 
@@ -700,6 +1170,30 @@ function mapAdminUserSummary(
     roleKeys: roles.map((role) => role.key),
     roleLabels: roles.map((role) => role.label),
     roles,
+  };
+}
+
+function mapAdminUserDetailSummary(user: AdminUserDetailRecord) {
+  const summary = mapAdminUserSummary(user);
+
+  return {
+    ...summary,
+    activityCounts: {
+      authoredNotes: user._count.authoredOpportunityNotes,
+      createdMilestones: user._count.createdOpportunityMilestones,
+      createdProposals: user._count.createdOpportunityProposals,
+      createdSourceSearches: user._count.createdSourceSavedSearches,
+      createdTasks: user._count.createdOpportunityTasks,
+      ownedProposals: user._count.ownedOpportunityProposals,
+      recentAuditEvents: user._count.auditLogs,
+      requestedSourceSyncRuns: user._count.requestedSourceSyncRuns,
+      uploadedDocuments: user._count.uploadedOpportunityDocuments,
+    },
+    createdAt: user.createdAt.toISOString(),
+    emailVerifiedAt: user.emailVerified?.toISOString() ?? null,
+    hasPassword: Boolean(user.passwordHash),
+    image: user.image,
+    updatedAt: user.updatedAt.toISOString(),
   };
 }
 
@@ -754,7 +1248,8 @@ function mapRecalibrationObservation(
     factorPercents: Object.fromEntries(
       scorecard.factorScores.map((factor) => [
         factor.factorKey,
-        factor.maximumScore && Number.parseFloat(factor.maximumScore.toString()) > 0
+        factor.maximumScore &&
+        Number.parseFloat(factor.maximumScore.toString()) > 0
           ? Number.parseFloat(
               (
                 (Number.parseFloat(factor.score?.toString() ?? "0") /
@@ -841,7 +1336,8 @@ function humanizeSourceSystem(value: string) {
 function resolveRecalibrationOutcomeKey(
   opportunity: RecalibrationOpportunityPayload,
 ): ScoringRecalibrationOutcomeKey | null {
-  const closeoutOutcomeStageKey = opportunity.closeouts[0]?.outcomeStageKey ?? null;
+  const closeoutOutcomeStageKey =
+    opportunity.closeouts[0]?.outcomeStageKey ?? null;
   const stageKey = closeoutOutcomeStageKey ?? opportunity.currentStageKey;
 
   switch (stageKey) {
@@ -868,7 +1364,10 @@ function formatEnumLabel(value: string) {
   return value
     .split(/[_\s-]+/g)
     .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .map(
+      (segment) =>
+        segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase(),
+    )
     .join(" ");
 }
 
@@ -883,7 +1382,9 @@ function formatAuditMetadataPreview(metadata: Prisma.JsonValue | null) {
     return null;
   }
 
-  return serialized.length > 280 ? `${serialized.slice(0, 277)}...` : serialized;
+  return serialized.length > 280
+    ? `${serialized.slice(0, 277)}...`
+    : serialized;
 }
 
 function isDefined<T>(value: T | undefined): value is T {

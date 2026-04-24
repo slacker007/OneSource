@@ -44,63 +44,29 @@ type AdminUserManagementProps = {
     state: AdminUserManagementActionState,
     formData: FormData,
   ) => Promise<AdminUserManagementActionState>;
-  disableUserAction: (
-    state: AdminUserManagementActionState,
-    formData: FormData,
-  ) => Promise<AdminUserManagementActionState>;
-  reactivateUserAction: (
-    state: AdminUserManagementActionState,
-    formData: FormData,
-  ) => Promise<AdminUserManagementActionState>;
   sessionUser: {
     email?: string | null;
     id: string;
     name?: string | null;
   };
   snapshot: AdminUserManagementSnapshot | null;
-  updateUserRolesAction: (
-    state: AdminUserManagementActionState,
-    formData: FormData,
-  ) => Promise<AdminUserManagementActionState>;
 };
 
 export function AdminUserManagement({
   createUserAction,
-  disableUserAction,
-  reactivateUserAction,
   sessionUser,
   snapshot,
-  updateUserRolesAction,
 }: AdminUserManagementProps) {
   const router = useRouter();
   const [inviteState, inviteFormAction, invitePending] = useActionState(
     createUserAction,
     INITIAL_ADMIN_USER_MANAGEMENT_ACTION_STATE,
   );
-  const [roleState, updateRolesFormAction, updateRolesPending] = useActionState(
-    updateUserRolesAction,
-    INITIAL_ADMIN_USER_MANAGEMENT_ACTION_STATE,
-  );
-  const [disableState, disableFormAction, disablePending] = useActionState(
-    disableUserAction,
-    INITIAL_ADMIN_USER_MANAGEMENT_ACTION_STATE,
-  );
-  const [reactivateState, reactivateFormAction, reactivatePending] =
-    useActionState(
-      reactivateUserAction,
-      INITIAL_ADMIN_USER_MANAGEMENT_ACTION_STATE,
-    );
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const deferredSearchQuery = useDeferredValue(searchQuery);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(
-    snapshot?.users[0]?.id ?? null,
-  );
-  const [selectedRoleKeys, setSelectedRoleKeys] = useState<string[]>(
-    snapshot?.users[0]?.roleKeys ?? [],
-  );
   const [inviteRoleKeys, setInviteRoleKeys] = useState<string[]>([]);
 
   const visibleUsers =
@@ -120,10 +86,6 @@ export function AdminUserManagement({
 
       return matchesSearch && matchesStatus && matchesRole;
     }) ?? [];
-  const selectedUser =
-    snapshot?.users.find((user) => user.id === selectedUserId) ??
-    snapshot?.users[0] ??
-    null;
 
   useEffect(() => {
     if (inviteState.successMessage) {
@@ -132,27 +94,6 @@ export function AdminUserManagement({
       });
     }
   }, [inviteState.successMessage, router]);
-
-  useEffect(() => {
-    if (roleState.successMessage || disableState.successMessage || reactivateState.successMessage) {
-      startTransition(() => {
-        router.refresh();
-      });
-    }
-  }, [
-    disableState.successMessage,
-    reactivateState.successMessage,
-    roleState.successMessage,
-    router,
-  ]);
-
-  function handleSelectUser(userId: string) {
-    const nextSelectedUser =
-      snapshot?.users.find((user) => user.id === userId) ?? null;
-
-    setSelectedUserId(userId);
-    setSelectedRoleKeys(nextSelectedUser?.roleKeys ?? []);
-  }
 
   if (!snapshot) {
     return (
@@ -169,7 +110,10 @@ export function AdminUserManagement({
           Users & roles
         </Typography>
         <Surface sx={{ p: { xs: 3, sm: 4 } }}>
-          <Typography variant="h1" sx={{ fontSize: { xs: "2rem", sm: "2.35rem" } }}>
+          <Typography
+            variant="h1"
+            sx={{ fontSize: { xs: "2rem", sm: "2.35rem" } }}
+          >
             User administration
           </Typography>
           <ErrorState
@@ -242,17 +186,25 @@ export function AdminUserManagement({
       ),
       sortable: false,
     },
+    {
+      field: "actions",
+      headerName: "Manage",
+      minWidth: 132,
+      renderCell: ({ row }) => (
+        <Button
+          density="compact"
+          href={`/settings/users/${row.id}`}
+          onClick={(event) => event.stopPropagation()}
+          variant="outlined"
+        >
+          Manage
+        </Button>
+      ),
+      sortable: false,
+    },
   ];
-  const latestActionFeedback =
-    inviteState.successMessage ??
-    roleState.successMessage ??
-    disableState.successMessage ??
-    reactivateState.successMessage;
-  const latestActionError =
-    inviteState.formError ??
-    roleState.formError ??
-    disableState.formError ??
-    reactivateState.formError;
+  const latestActionFeedback = inviteState.successMessage;
+  const latestActionError = inviteState.formError;
 
   return (
     <section className="space-y-6">
@@ -271,13 +223,16 @@ export function AdminUserManagement({
               <Badge tone="muted">{snapshot.organizationName}</Badge>
               <Badge tone="accent">Admin workspace</Badge>
             </Stack>
-            <Typography variant="h1" sx={{ fontSize: { xs: "2rem", sm: "2.35rem" } }}>
+            <Typography
+              variant="h1"
+              sx={{ fontSize: { xs: "2rem", sm: "2.35rem" } }}
+            >
               User administration
             </Typography>
             <Typography color="text.secondary" sx={{ maxWidth: "54rem" }}>
-              Manage invited, active, and disabled users from one compact
-              workspace with explicit role assignment, status control, and a
-              dense grid that stays readable as the team grows.
+              Scan invited, active, and disabled users from one compact
+              registry. Open a user workspace for full details, role assignment,
+              and access-state management.
             </Typography>
           </Stack>
 
@@ -344,315 +299,143 @@ export function AdminUserManagement({
         />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_22rem]">
-        <Surface component="section" sx={{ p: { xs: 2.5, sm: 3 } }}>
-          <Stack spacing={2.5}>
-            <Stack
-              direction={{ xs: "column", lg: "row" }}
-              spacing={2}
-              sx={{ alignItems: { lg: "flex-end" }, justifyContent: "space-between" }}
-            >
-              <div>
-                <Typography
-                  sx={{
-                    color: onesourceTokens.color.text.muted,
-                    fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
-                    fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
-                    letterSpacing: "0.24em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  User registry
-                </Typography>
-                <Typography sx={{ mt: 1.5 }} variant="h3">
-                  Workspace users
-                </Typography>
-                <Typography color="text.secondary" sx={{ mt: 1 }} variant="body2">
-                  Filter by status and role coverage, then use the detail panel
-                  to update assignments or access state.
-                </Typography>
-              </div>
+      <Surface component="section" sx={{ p: { xs: 2.5, sm: 3 } }}>
+        <Stack spacing={2.5}>
+          <Stack
+            direction={{ xs: "column", lg: "row" }}
+            spacing={2}
+            sx={{
+              alignItems: { lg: "flex-end" },
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <Typography
+                sx={{
+                  color: onesourceTokens.color.text.muted,
+                  fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+                  fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+                  letterSpacing: "0.24em",
+                  textTransform: "uppercase",
+                }}
+              >
+                User registry
+              </Typography>
+              <Typography sx={{ mt: 1.5 }} variant="h3">
+                Workspace users
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 1 }} variant="body2">
+                Filter by status and role coverage, then open a user workspace
+                to inspect details or manage assignments.
+              </Typography>
+            </div>
 
-              <Button onClick={() => setIsInviteDialogOpen(true)}>
-                Invite user
-              </Button>
-            </Stack>
+            <Button onClick={() => setIsInviteDialogOpen(true)}>
+              Invite user
+            </Button>
+          </Stack>
 
-            <Box
-              sx={{
-                display: "grid",
-                gap: 2,
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  md: "minmax(0,1.3fr) repeat(2, minmax(0, 0.7fr))",
+          <Box
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: {
+                xs: "1fr",
+                md: "minmax(0,1.3fr) repeat(2, minmax(0, 0.7fr))",
+              },
+            }}
+          >
+            <FormField htmlFor="users-filter-search" label="Search users">
+              <Input
+                id="users-filter-search"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search by name, email, or role"
+                startAdornment={
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon fontSize="small" />
+                  </InputAdornment>
+                }
+                value={searchQuery}
+              />
+            </FormField>
+
+            <FormField htmlFor="users-filter-status" label="Status filter">
+              <Select
+                id="users-filter-status"
+                onChange={(event) => setStatusFilter(event.target.value)}
+                value={statusFilter}
+              >
+                <option value="ALL">All statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INVITED">Invited</option>
+                <option value="DISABLED">Disabled</option>
+              </Select>
+            </FormField>
+
+            <FormField htmlFor="users-filter-role" label="Role filter">
+              <Select
+                id="users-filter-role"
+                onChange={(event) => setRoleFilter(event.target.value)}
+                value={roleFilter}
+              >
+                <option value="ALL">All roles</option>
+                {snapshot.roleOptions.map((role) => (
+                  <option key={role.key} value={role.key}>
+                    {role.label}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          </Box>
+
+          {snapshot.users.length === 0 ? (
+            <EmptyState
+              message="Invite users from this page to start assigning roles and access."
+              title="No workspace users are available yet"
+            />
+          ) : (
+            <DataGrid
+              aria-label="Workspace users"
+              autoHeight
+              columns={gridColumns}
+              density="compact"
+              disableColumnFilter
+              disableColumnMenu
+              disableDensitySelector
+              disableRowSelectionOnClick
+              hideFooterSelectedRowCount
+              initialState={{
+                pagination: {
+                  paginationModel: {
+                    pageSize: 10,
+                    page: 0,
+                  },
                 },
               }}
-            >
-              <FormField
-                htmlFor="users-filter-search"
-                label="Search users"
-              >
-                <Input
-                  id="users-filter-search"
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search by name, email, or role"
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <SearchRoundedIcon fontSize="small" />
-                    </InputAdornment>
-                  }
-                  value={searchQuery}
-                />
-              </FormField>
-
-              <FormField htmlFor="users-filter-status" label="Status filter">
-                <Select
-                  id="users-filter-status"
-                  onChange={(event) => setStatusFilter(event.target.value)}
-                  value={statusFilter}
-                >
-                  <option value="ALL">All statuses</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="INVITED">Invited</option>
-                  <option value="DISABLED">Disabled</option>
-                </Select>
-              </FormField>
-
-              <FormField htmlFor="users-filter-role" label="Role filter">
-                <Select
-                  id="users-filter-role"
-                  onChange={(event) => setRoleFilter(event.target.value)}
-                  value={roleFilter}
-                >
-                  <option value="ALL">All roles</option>
-                  {snapshot.roleOptions.map((role) => (
-                    <option key={role.key} value={role.key}>
-                      {role.label}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-            </Box>
-
-            {snapshot.users.length === 0 ? (
-              <EmptyState
-                message="Invite users from this page to start assigning roles and access."
-                title="No workspace users are available yet"
-              />
-            ) : (
-              <DataGrid
-                aria-label="Workspace users"
-                autoHeight
-                columns={gridColumns}
-                density="compact"
-                disableColumnFilter
-                disableColumnMenu
-                disableDensitySelector
-                disableRowSelectionOnClick
-                hideFooterSelectedRowCount
-                initialState={{
-                  pagination: {
-                    paginationModel: {
-                      pageSize: 10,
-                      page: 0,
-                    },
-                  },
-                }}
-                pageSizeOptions={[10, 25, 50]}
-                pagination
-                rowHeight={72}
-                rows={visibleUsers}
-                sx={{
-                  border: `1px solid ${onesourceTokens.color.border.subtle}`,
-                  borderRadius: `${onesourceTokens.radius.control}px`,
-                  minHeight: 480,
-                  "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
+              pageSizeOptions={[10, 25, 50]}
+              pagination
+              rowHeight={72}
+              rows={visibleUsers}
+              sx={{
+                border: `1px solid ${onesourceTokens.color.border.subtle}`,
+                borderRadius: `${onesourceTokens.radius.control}px`,
+                minHeight: 480,
+                "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus":
+                  {
                     outline: "none",
                   },
-                  "& .MuiDataGrid-row": {
-                    cursor: "pointer",
-                  },
-                }}
-                getRowId={(row) => row.id}
-                onRowClick={(params) => handleSelectUser(String(params.id))}
-              />
-            )}
-          </Stack>
-        </Surface>
-
-        <Surface component="aside" sx={{ p: { xs: 2.5, sm: 3 } }}>
-          {selectedUser ? (
-            <Stack spacing={3}>
-              <div>
-                <Typography
-                  sx={{
-                    color: onesourceTokens.color.text.muted,
-                    fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
-                    fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
-                    letterSpacing: "0.24em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Selected user
-                </Typography>
-                <Typography sx={{ mt: 1.5 }} variant="h4">
-                  {selectedUser.name ?? selectedUser.email}
-                </Typography>
-                <Typography color="text.secondary" sx={{ mt: 0.75 }} variant="body2">
-                  {selectedUser.email}
-                </Typography>
-              </div>
-
-              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                <Badge tone={getUserStatusTone(selectedUser.status)}>
-                  {selectedUser.status}
-                </Badge>
-                {selectedUser.roleLabels.length > 0 ? (
-                  selectedUser.roleLabels.map((roleLabel) => (
-                    <Badge key={`${selectedUser.id}-${roleLabel}`} tone="muted">
-                      {roleLabel}
-                    </Badge>
-                  ))
-                ) : (
-                  <Badge tone="warning">No roles assigned</Badge>
-                )}
-              </Stack>
-
-              {roleState.affectedUserId === selectedUser.id && roleState.formError ? (
-                <FeedbackBanner
-                  message={roleState.formError}
-                  role="alert"
-                  title="Role update needs attention"
-                  tone="danger"
-                />
-              ) : null}
-
-              <form action={updateRolesFormAction}>
-                <input name="userId" type="hidden" value={selectedUser.id} />
-                <Stack spacing={2}>
-                  <div>
-                    <Typography variant="h6">Role assignments</Typography>
-                    <Typography color="text.secondary" sx={{ mt: 0.75 }} variant="body2">
-                      Replace the assigned system-role set for this user.
-                    </Typography>
-                  </div>
-
-                  {roleState.affectedUserId === selectedUser.id &&
-                  roleState.fieldErrors.roleKeys ? (
-                    <Typography color="error.main" variant="body2">
-                      {roleState.fieldErrors.roleKeys}
-                    </Typography>
-                  ) : null}
-
-                  <Stack spacing={1}>
-                    {snapshot.roleOptions.map((role) => {
-                      const checked = selectedRoleKeys.includes(role.key);
-
-                      return (
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={checked}
-                              name="roleKeys"
-                              onChange={(event) => {
-                                setSelectedRoleKeys((currentRoleKeys) =>
-                                  event.target.checked
-                                    ? [...currentRoleKeys, role.key]
-                                    : currentRoleKeys.filter(
-                                        (roleKey) => roleKey !== role.key,
-                                      ),
-                                );
-                              }}
-                              value={role.key}
-                            />
-                          }
-                          key={role.key}
-                          label={
-                            <div>
-                              <Typography sx={{ fontSize: "0.94rem", fontWeight: 600 }}>
-                                {role.label}
-                              </Typography>
-                              <Typography color="text.secondary" variant="caption">
-                                {role.description ?? role.key}
-                              </Typography>
-                            </div>
-                          }
-                          sx={{
-                            alignItems: "flex-start",
-                            border: `1px solid ${onesourceTokens.color.border.subtle}`,
-                            borderRadius: 3,
-                            m: 0,
-                            px: 1.25,
-                            py: 0.75,
-                          }}
-                        />
-                      );
-                    })}
-                  </Stack>
-
-                  <Button disabled={updateRolesPending} type="submit">
-                    {updateRolesPending ? "Saving roles..." : "Save roles"}
-                  </Button>
-                </Stack>
-              </form>
-
-              <Stack spacing={1.5}>
-                <div>
-                  <Typography variant="h6">Access status</Typography>
-                  <Typography color="text.secondary" sx={{ mt: 0.75 }} variant="body2">
-                    Disable or re-enable sign-in access without deleting the
-                    user record or role history.
-                  </Typography>
-                </div>
-
-                {disableState.affectedUserId === selectedUser.id &&
-                disableState.formError ? (
-                  <FeedbackBanner
-                    message={disableState.formError}
-                    role="alert"
-                    title="Disable action needs attention"
-                    tone="danger"
-                  />
-                ) : null}
-                {reactivateState.affectedUserId === selectedUser.id &&
-                reactivateState.formError ? (
-                  <FeedbackBanner
-                    message={reactivateState.formError}
-                    role="alert"
-                    title="Re-enable action needs attention"
-                    tone="danger"
-                  />
-                ) : null}
-
-                {selectedUser.status !== "DISABLED" ? (
-                  <form action={disableFormAction}>
-                    <input name="userId" type="hidden" value={selectedUser.id} />
-                    <Button
-                      disabled={disablePending || selectedUser.id === sessionUser.id}
-                      tone="danger"
-                      type="submit"
-                    >
-                      {disablePending ? "Disabling..." : "Disable user"}
-                    </Button>
-                  </form>
-                ) : (
-                  <form action={reactivateFormAction}>
-                    <input name="userId" type="hidden" value={selectedUser.id} />
-                    <Button disabled={reactivatePending} type="submit">
-                      {reactivatePending ? "Re-enabling..." : "Re-enable user"}
-                    </Button>
-                  </form>
-                )}
-              </Stack>
-            </Stack>
-          ) : (
-            <EmptyState
-              message="Select a user from the grid to inspect assigned roles or change access state."
-              title="No user is selected"
+                "& .MuiDataGrid-row": {
+                  cursor: "pointer",
+                },
+              }}
+              getRowId={(row) => row.id}
+              onRowClick={(params) =>
+                router.push(`/settings/users/${String(params.id)}`)
+              }
             />
           )}
-        </Surface>
-      </div>
+        </Stack>
+      </Surface>
 
       <Dialog
         description="Create an invited user record, assign the initial role set, and keep the rest of the workspace untouched."
@@ -660,7 +443,11 @@ export function AdminUserManagement({
         open={isInviteDialogOpen && !inviteState.successMessage}
         title="Invite workspace user"
         footer={
-          <Stack direction="row" spacing={1.5} sx={{ justifyContent: "flex-end" }}>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{ justifyContent: "flex-end" }}
+          >
             <Button
               onClick={() => setIsInviteDialogOpen(false)}
               tone="neutral"
@@ -668,7 +455,11 @@ export function AdminUserManagement({
             >
               Cancel
             </Button>
-            <Button disabled={invitePending} form="invite-workspace-user-form" type="submit">
+            <Button
+              disabled={invitePending}
+              form="invite-workspace-user-form"
+              type="submit"
+            >
               {invitePending ? "Inviting..." : "Invite user"}
             </Button>
           </Stack>
@@ -703,19 +494,31 @@ export function AdminUserManagement({
               htmlFor="invite-user-name"
               label="Display name"
             >
-              <Input id="invite-user-name" name="name" placeholder="Alex Morgan" />
+              <Input
+                id="invite-user-name"
+                name="name"
+                placeholder="Alex Morgan"
+              />
             </FormField>
 
             <div>
               <Typography sx={{ fontSize: "0.92rem", fontWeight: 600 }}>
                 Initial roles
               </Typography>
-              <Typography color="text.secondary" sx={{ mt: 0.75 }} variant="body2">
-                Assign at least one role so the invited user lands in the correct
-                workspace posture.
+              <Typography
+                color="text.secondary"
+                sx={{ mt: 0.75 }}
+                variant="body2"
+              >
+                Assign at least one role so the invited user lands in the
+                correct workspace posture.
               </Typography>
               {inviteState.fieldErrors.roleKeys ? (
-                <Typography color="error.main" sx={{ mt: 1.25 }} variant="body2">
+                <Typography
+                  color="error.main"
+                  sx={{ mt: 1.25 }}
+                  variant="body2"
+                >
                   {inviteState.fieldErrors.roleKeys}
                 </Typography>
               ) : null}
@@ -745,7 +548,9 @@ export function AdminUserManagement({
                       key={role.key}
                       label={
                         <div>
-                          <Typography sx={{ fontSize: "0.94rem", fontWeight: 600 }}>
+                          <Typography
+                            sx={{ fontSize: "0.94rem", fontWeight: 600 }}
+                          >
                             {role.label}
                           </Typography>
                           <Typography color="text.secondary" variant="caption">

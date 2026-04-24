@@ -1,9 +1,4 @@
-import {
-  createWorkspaceUserAction,
-  disableWorkspaceUserAction,
-  reactivateWorkspaceUserAction,
-  updateWorkspaceUserRolesAction,
-} from "./actions";
+import { createWorkspaceUserAction } from "./actions";
 
 import { AdminUserManagement } from "@/components/admin/admin-user-management";
 import { requireAppPermission } from "@/lib/auth/authorization";
@@ -22,16 +17,13 @@ export default async function SettingsUsersPage() {
   return (
     <AdminUserManagement
       createUserAction={createWorkspaceUserAction}
-      disableUserAction={disableWorkspaceUserAction}
       key={buildUserManagementSnapshotKey(snapshot)}
-      reactivateUserAction={reactivateWorkspaceUserAction}
       sessionUser={{
         email: session.user.email,
         id: session.user.id,
         name: session.user.name,
       }}
       snapshot={snapshot}
-      updateUserRolesAction={updateWorkspaceUserRolesAction}
     />
   );
 }

@@ -19,6 +19,7 @@ describe("onesourceTheme", () => {
       "var(--font-heading)",
     );
     expect(onesourceTheme.shape.borderRadius).toBe(12);
+    expect(onesourceTheme.onesource.radius.button).toBe(6);
     expect(onesourceTheme.onesource.radius.panel).toBe(18);
     expect(onesourceTheme.onesource.sizing.controlHeightComfortable).toBe(44);
     expect(onesourceTheme.onesource.sizing.railCollapsed).toBe(84);
@@ -36,8 +37,18 @@ describe("onesourceTheme", () => {
       onesourceTheme.components?.MuiButton?.defaultProps?.disableElevation,
     ).toBe(true);
     expect(
-      (onesourceTheme.components?.MuiDataGrid?.styleOverrides?.root as { borderRadius: number })
-        .borderRadius,
+      (
+        onesourceTheme.components?.MuiButton?.styleOverrides?.root as {
+          borderRadius: number;
+        }
+      ).borderRadius,
+    ).toBe(6);
+    expect(
+      (
+        onesourceTheme.components?.MuiDataGrid?.styleOverrides?.root as {
+          borderRadius: number;
+        }
+      ).borderRadius,
     ).toBe(12);
   });
 });

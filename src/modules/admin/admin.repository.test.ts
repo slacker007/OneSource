@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  getAdminAuditSettingsSnapshot,
+  getAdminConnectorSettingsSnapshot,
+  getAdminSavedSearchSettingsSnapshot,
+  getAdminScoringSettingsSnapshot,
   getAdminSettingsSnapshot,
+  getAdminSettingsOverviewSnapshot,
+  getAdminUserDetailSnapshot,
   getAdminUserManagementSnapshot,
+  type AdminUserDetailRecord,
   type AdminRepositoryClient,
   type OrganizationSettingsRecord,
   type OrganizationUserManagementRecord,
@@ -192,6 +199,48 @@ function buildOrganizationAdminRecord():
   };
 }
 
+function buildAdminUserDetailRecord(): AdminUserDetailRecord {
+  return {
+    id: "user_admin",
+    organizationId: "org_123",
+    name: "Alex Morgan",
+    email: "admin@onesource.local",
+    emailVerified: new Date("2026-04-17T11:59:00.000Z"),
+    image: null,
+    passwordHash: "hashed-password",
+    status: "ACTIVE",
+    createdAt: new Date("2026-04-17T11:58:00.000Z"),
+    updatedAt: new Date("2026-04-18T00:30:00.000Z"),
+    roles: [
+      {
+        assignedAt: new Date("2026-04-17T12:00:00.000Z"),
+        role: {
+          key: "admin",
+          name: "Admin",
+        },
+      },
+      {
+        assignedAt: new Date("2026-04-17T12:01:00.000Z"),
+        role: {
+          key: "executive",
+          name: "Executive",
+        },
+      },
+    ],
+    _count: {
+      auditLogs: 5,
+      authoredOpportunityNotes: 3,
+      createdOpportunityMilestones: 2,
+      createdOpportunityProposals: 1,
+      createdOpportunityTasks: 4,
+      createdSourceSavedSearches: 2,
+      ownedOpportunityProposals: 1,
+      requestedSourceSyncRuns: 6,
+      uploadedOpportunityDocuments: 2,
+    },
+  };
+}
+
 function buildConnectorHealthRecords() {
   return [
     {
@@ -259,7 +308,8 @@ function buildConnectorHealthRecords() {
         "Public award-search endpoint validated without stored credentials.",
       rateLimitProfile: {
         strategy: "public_post_api",
-        notes: "Award intelligence requests are body-based rather than query-only.",
+        notes:
+          "Award intelligence requests are body-based rather than query-only.",
       },
       _count: {
         savedSearches: 1,
@@ -495,11 +545,17 @@ function createRepositoryClient(
   record: OrganizationSettingsRecord | OrganizationUserManagementRecord | null,
 ) {
   return {
+    auditLog: {
+      findMany: vi.fn().mockResolvedValue(record?.auditLogs?.slice(0, 1) ?? []),
+    },
     organization: {
       findUnique: vi.fn().mockResolvedValue(record),
     },
     user: {
       count: vi.fn().mockResolvedValue(1),
+      findFirst: vi
+        .fn()
+        .mockResolvedValue(record ? buildAdminUserDetailRecord() : null),
     },
     opportunity: {
       findMany: vi.fn().mockResolvedValue(buildRecalibrationOpportunities()),
@@ -511,6 +567,7 @@ function createRepositoryClient(
       findMany: vi.fn().mockResolvedValue(buildRecentSyncRuns()),
     },
     sourceSavedSearch: {
+      count: vi.fn().mockResolvedValue(2),
       findMany: vi.fn().mockResolvedValue(buildSavedSearches()),
     },
     sourceImportDecision: {
@@ -574,7 +631,9 @@ describe("admin.repository", () => {
       sampledOpportunityCount: 2,
       recommendationAlignmentPercent: "50.00",
     });
-    expect(snapshot?.scoringProfile?.recalibration.factorInsights[0]).toMatchObject({
+    expect(
+      snapshot?.scoringProfile?.recalibration.factorInsights[0],
+    ).toMatchObject({
       key: "capability_fit",
       currentWeight: "30.00",
       suggestedWeight: "30.00",
@@ -589,7 +648,7 @@ describe("admin.repository", () => {
       targetLabel: "Default Organization",
     });
     expect(snapshot?.recentAuditEvents[0].metadataPreview).toContain(
-      "\"seededOpportunityCount\":5",
+      '"seededOpportunityCount":5',
     );
     expect(snapshot?.recentAuditEvents[1]).toMatchObject({
       actionLabel: "Opportunity / Stage Transition",
@@ -644,6 +703,62 @@ describe("admin.repository", () => {
     });
   });
 
+  it("maps focused settings route snapshots without requiring one oversized page payload", async () => {
+    const db = createRepositoryClient(buildOrganizationAdminRecord());
+
+    const overview = await getAdminSettingsOverviewSnapshot({
+      db,
+      organizationId: "org_123",
+    });
+    const connectors = await getAdminConnectorSettingsSnapshot({
+      db,
+      organizationId: "org_123",
+    });
+    const savedSearches = await getAdminSavedSearchSettingsSnapshot({
+      db,
+      organizationId: "org_123",
+    });
+    const scoring = await getAdminScoringSettingsSnapshot({
+      db,
+      organizationId: "org_123",
+    });
+    const audit = await getAdminAuditSettingsSnapshot({
+      db,
+      organizationId: "org_123",
+    });
+
+    expect(overview).toMatchObject({
+      organizationName: "Default Organization",
+      savedSearchCount: 2,
+      scoringProfileSummary: {
+        activeScoringModelKey: "default_capture_v1",
+        activeScoringModelVersion: "2026-04-18",
+        capabilityCount: 1,
+        scoringCriteriaCount: 1,
+      },
+      sourceOperationsSummary: {
+        totalConnectorCount: 2,
+        activeConnectorCount: 2,
+        failedImportReviewCount: 1,
+      },
+    });
+    expect(connectors?.sourceOperations.connectorHealth[0]).toMatchObject({
+      sourceDisplayName: "SAM.gov",
+      healthStatus: "rate_limited",
+    });
+    expect(savedSearches?.savedSearches[0]).toMatchObject({
+      name: "Active Air Force Knowledge Management",
+      sourceDisplayName: "SAM.gov",
+    });
+    expect(scoring?.scoringProfile).toMatchObject({
+      activeScoringModelKey: "default_capture_v1",
+    });
+    expect(audit?.recentAuditEvents[0]).toMatchObject({
+      action: "seed.bootstrap",
+      actorLabel: "Alex Morgan",
+    });
+  });
+
   it("maps workspace users and role options into the user-management snapshot", async () => {
     const db = createRepositoryClient(buildOrganizationAdminRecord());
 
@@ -693,6 +808,38 @@ describe("admin.repository", () => {
     });
   });
 
+  it("maps selected user details into a dedicated user-detail snapshot", async () => {
+    const db = createRepositoryClient(buildOrganizationAdminRecord());
+
+    const snapshot = await getAdminUserDetailSnapshot({
+      db,
+      organizationId: "org_123",
+      userId: "user_admin",
+    });
+
+    expect(snapshot).not.toBeNull();
+    expect(snapshot).toMatchObject({
+      organizationName: "Default Organization",
+      user: {
+        id: "user_admin",
+        email: "admin@onesource.local",
+        createdAt: "2026-04-17T11:58:00.000Z",
+        emailVerifiedAt: "2026-04-17T11:59:00.000Z",
+        hasPassword: true,
+        updatedAt: "2026-04-18T00:30:00.000Z",
+        activityCounts: {
+          createdTasks: 4,
+          requestedSourceSyncRuns: 6,
+          uploadedDocuments: 2,
+        },
+      },
+    });
+    expect(snapshot?.recentAuditEvents[0]).toMatchObject({
+      action: "seed.bootstrap",
+      actorLabel: "Alex Morgan",
+    });
+  });
+
   it("returns null when the organization is missing", async () => {
     const db = createRepositoryClient(null);
 
@@ -706,6 +853,13 @@ describe("admin.repository", () => {
       getAdminUserManagementSnapshot({
         db,
         organizationId: "missing_org",
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      getAdminUserDetailSnapshot({
+        db,
+        organizationId: "missing_org",
+        userId: "missing_user",
       }),
     ).resolves.toBeNull();
   });
