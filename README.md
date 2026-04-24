@@ -101,6 +101,14 @@ make compose-up-detached
 
 The app serves at `http://127.0.0.1:3000`. PostgreSQL is exposed at `127.0.0.1:5432`.
 
+For a live-reload containerized web workflow, run:
+
+```bash
+make compose-dev
+```
+
+`make compose-dev` keeps PostgreSQL and the worker on the default compose stack, but it overrides the `web` service to run `npm run dev:compose` with the repo bind-mounted into the container and a dedicated `web_node_modules` volume for dependencies.
+
 ## Seeded Local Credentials
 
 Use these for local development only:
@@ -155,6 +163,13 @@ npm run db:seed
 
 ### Verification
 
+GitHub Actions runs the release gate through `.github/workflows/ci.yml` on
+pull requests, pushes to `main`, and manual dispatch. The CI test job uses a
+fast Node 20 runner with a PostgreSQL service container rather than Docker
+Compose, then runs Prisma validation, migrations, seed, lint, Vitest coverage,
+production build, and Playwright Chromium against the built app. Successful
+`main` or manual runs also publish the `runner` Docker image to GHCR.
+
 Host-side commands:
 
 ```bash
@@ -181,6 +196,7 @@ Other useful commands:
 ```bash
 make docker-build
 make docker-artifacts
+make compose-dev
 make compose-down
 make clean-dev-artifacts
 ```
@@ -257,6 +273,7 @@ The committed `.env.example` is the canonical development baseline.
 ## Operational Notes
 
 - `make compose-up` and `make compose-up-detached` do not run migrations or seed data for you.
+- `make compose-dev` is the compose-backed live-reload path for the `web` service; it uses `docker-compose.dev.yml` to run `npm run dev:compose` with the repo bind-mounted into the container.
 - `make compose-test-e2e` stops the default compose stack before booting the isolated browser-test stack.
 - `/api/health` checks database reachability and document-storage readiness, but it does not prove the Prisma schema has been applied.
 - `make clean-dev-artifacts` is the repo-standard cleanup command for removing repo-local build outputs, reports, caches, dependency installs, local uploads, and compose artifacts after a finished loop.

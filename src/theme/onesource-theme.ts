@@ -242,7 +242,7 @@ export const onesourceTokens: OneSourceThemeTokens = {
     controlHeightCompact: 36,
     controlHeightComfortable: 44,
     railCollapsed: 84,
-    railExpanded: 288,
+    railExpanded: 256,
   },
   spacing: {
     cardPaddingCompact: 1.75,

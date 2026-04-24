@@ -86,6 +86,14 @@ make compose-up-detached
 
 `make compose-up` and `make compose-up-detached` do not run Prisma migrations or seed data for the default stack. On a fresh database, skipping bootstrap commonly surfaces `public.users` or `public.opportunity_tasks` missing-table errors from the auth path and the worker.
 
+For a live-reload containerized web workflow, run:
+
+```bash
+make compose-dev
+```
+
+`make compose-dev` uses `docker-compose.dev.yml` to override the `web` service onto the `deps` image stage, bind-mount the repo into `/app`, keep dependencies in a dedicated `web_node_modules` volume, and run `npm run dev:compose`. This is the preferred compose path when editing UI or route code and expecting Next.js hot reload inside the container.
+
 ## Compose Test Stack
 
 The canonical containerized verification workflow now runs through the isolated `onesource-test` compose project:
@@ -418,7 +426,7 @@ Recovery:
 1. Check `.env` against `.env.example`.
 2. Ensure `DATABASE_URL` uses `postgres://` or `postgresql://`.
 3. Ensure `AUTH_SECRET` is at least 32 characters, `NEXTAUTH_URL` is an absolute URL, `DEADLINE_REMINDER_LOOKAHEAD_DAYS`, `SOURCE_SYNC_INTERVAL_MINUTES`, `SOURCE_SYNC_BATCH_SIZE`, `DOCUMENT_PARSER_BATCH_SIZE`, and `OPPORTUNITY_SCORECARD_BATCH_SIZE` are positive integers, and `DOCUMENT_PARSER_MAX_ATTEMPTS` is at least `1`.
-4. Restart the stack with `make compose-up`.
+4. Restart the stack with `make compose-up` or `make compose-dev`, depending on whether the web service should come back in production-like mode or live-reload dev mode.
 
 ### Database Unhealthy
 

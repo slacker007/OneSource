@@ -205,7 +205,7 @@ Primary files:
 
 Implemented baseline for `UI-03`:
 - `src/components/layout/authenticated-app-shell.tsx` now groups primary navigation by operator intent, keeps analytics and settings visibility permission-aware, and exposes clearer active-section orientation in both the rail and the sticky header.
-- The desktop shell now supports a persisted collapsed-rail preference, while the mobile shell reuses the grouped navigation, quick links, and recent-work sections inside the shared drawer.
+- The desktop shell now uses an always-open persistent drawer on large screens, while the mobile shell reuses the grouped navigation, quick links, and recent-work sections inside the shared drawer.
 - Shell-level quick links now replace ad hoc page shortcuts for high-frequency routes such as creating a pursuit, returning to the pipeline, opening the task queue, opening source discovery, the decision console, and workspace settings when the current role permits those routes.
 - Recent-work persistence now uses localStorage snapshots plus a `useSyncExternalStore` subscription so the server-rendered shell stays hydration-safe while recent destinations still update immediately after shell navigation.
 
