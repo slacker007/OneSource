@@ -399,6 +399,27 @@ Key outcomes:
 - Existing `manage_workspace_settings` permission enforcement is preserved.
 - Connector retry, scoring recalibration, and user-management mutations still redirect back to their owning workspaces.
 
+### MUI-22 Selected-User Admin Route
+
+Primary files:
+
+- `src/components/admin/admin-user-management.tsx`
+- `src/components/admin/admin-user-detail.tsx`
+- `src/modules/admin/admin.repository.ts`
+- `src/app/(app)/settings/users/[userId]/page.tsx`
+
+Implemented baseline:
+
+- `/settings/users` is now the users-and-roles registry for scanning, filtering, and inviting workspace users.
+- Selecting a user opens `/settings/users/[userId]`, a focused admin workspace with identity posture, role assignments, activity footprint, recent user audit context, and disable or re-enable controls.
+- The admin rail keeps `Users & Roles` active for selected-user routes while the shell destination label switches to the selected-user workspace.
+
+Key outcomes:
+
+- User management no longer squeezes list scanning and selected-account administration into the same scroll context.
+- Existing audited invite, role-update, disable, and re-enable actions are preserved and revalidate both the registry and selected-user route.
+- The same `manage_workspace_settings` server permission guard protects the registry, selected-user route, and all related actions.
+
 ### UI-13 Final Hardening
 
 Primary files:

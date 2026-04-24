@@ -662,50 +662,32 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
       .getByText(managedUserEmail),
   ).toBeVisible();
   await page
-    .getByRole("grid", { name: /workspace users/i })
-    .getByText(managedUserEmail)
+    .getByRole("row")
+    .filter({ hasText: managedUserEmail })
+    .getByRole("link", { name: /^Manage$/i })
     .click();
-  const selectedUserPanel = page.getByRole("complementary");
-  await selectedUserPanel.getByRole("checkbox", { name: /admin/i }).check();
+  await expect(page).toHaveURL(/\/settings\/users\/[^/]+$/);
+  await expect(page.getByRole("heading", { name: /ops admin/i })).toBeVisible();
+  await expect(page.getByText(managedUserEmail).first()).toBeVisible();
+  await page.getByRole("checkbox", { name: /admin/i }).check();
   const roleMutation = waitForUsersMutation();
-  await selectedUserPanel.getByRole("button", { name: /save roles/i }).click();
+  await page.getByRole("button", { name: /save roles/i }).click();
   await roleMutation;
   await page.reload();
-  await page.getByLabel(/search users/i).fill(managedUserEmail);
-  await page
-    .getByRole("grid", { name: /workspace users/i })
-    .getByText(managedUserEmail)
-    .click();
-  await expect(
-    selectedUserPanel.getByRole("checkbox", { name: /admin/i }),
-  ).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: /admin/i })).toBeChecked();
   const disableMutation = waitForUsersMutation();
-  await selectedUserPanel
-    .getByRole("button", { name: /disable user/i })
-    .click();
+  await page.getByRole("button", { name: /disable user/i }).click();
   await disableMutation;
   await page.reload();
-  await page.getByLabel(/search users/i).fill(managedUserEmail);
-  await page
-    .getByRole("grid", { name: /workspace users/i })
-    .getByText(managedUserEmail)
-    .click();
   await expect(
-    selectedUserPanel.getByRole("button", { name: /re-enable user/i }),
+    page.getByRole("button", { name: /re-enable user/i }),
   ).toBeVisible();
   const reactivateMutation = waitForUsersMutation();
-  await selectedUserPanel
-    .getByRole("button", { name: /re-enable user/i })
-    .click();
+  await page.getByRole("button", { name: /re-enable user/i }).click();
   await reactivateMutation;
   await page.reload();
-  await page.getByLabel(/search users/i).fill(managedUserEmail);
-  await page
-    .getByRole("grid", { name: /workspace users/i })
-    .getByText(managedUserEmail)
-    .click();
   await expect(
-    selectedUserPanel.getByRole("button", { name: /disable user/i }),
+    page.getByRole("button", { name: /disable user/i }),
   ).toBeVisible();
 });
 
@@ -1301,6 +1283,14 @@ test.describe("tablet route sweep", () => {
   }) => {
     await signIn(page, LOCAL_DEMO_SIGN_IN_EMAIL);
 
+    await page.goto("/settings/users");
+    const firstUserDetailRoute =
+      (await page
+        .getByRole("grid", { name: /workspace users/i })
+        .getByRole("link", { name: /^Manage$/i })
+        .first()
+        .getAttribute("href")) ?? "/settings/users";
+
     const routeChecks = [
       { heading: /execution overview/i, route: "/" },
       { heading: /opportunity pipeline/i, route: "/opportunities" },
@@ -1314,6 +1304,7 @@ test.describe("tablet route sweep", () => {
       { heading: /scoring profile/i, route: "/settings/scoring" },
       { heading: /audit activity/i, route: "/settings/audit" },
       { heading: /user administration/i, route: "/settings/users" },
+      { heading: /user profile/i, route: firstUserDetailRoute },
     ];
 
     for (const routeCheck of routeChecks) {
@@ -1372,6 +1363,10 @@ test("viewer users are blocked from the restricted settings route", async ({
     }),
   ).toBeVisible();
   await page.goto("/settings/users");
+  await expect(page).toHaveURL(
+    /\/forbidden\?permission=manage_workspace_settings$/,
+  );
+  await page.goto("/settings/users/user_admin");
   await expect(page).toHaveURL(
     /\/forbidden\?permission=manage_workspace_settings$/,
   );

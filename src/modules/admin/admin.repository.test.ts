@@ -7,7 +7,9 @@ import {
   getAdminScoringSettingsSnapshot,
   getAdminSettingsSnapshot,
   getAdminSettingsOverviewSnapshot,
+  getAdminUserDetailSnapshot,
   getAdminUserManagementSnapshot,
+  type AdminUserDetailRecord,
   type AdminRepositoryClient,
   type OrganizationSettingsRecord,
   type OrganizationUserManagementRecord,
@@ -194,6 +196,48 @@ function buildOrganizationAdminRecord():
         actorUser: null,
       },
     ],
+  };
+}
+
+function buildAdminUserDetailRecord(): AdminUserDetailRecord {
+  return {
+    id: "user_admin",
+    organizationId: "org_123",
+    name: "Alex Morgan",
+    email: "admin@onesource.local",
+    emailVerified: new Date("2026-04-17T11:59:00.000Z"),
+    image: null,
+    passwordHash: "hashed-password",
+    status: "ACTIVE",
+    createdAt: new Date("2026-04-17T11:58:00.000Z"),
+    updatedAt: new Date("2026-04-18T00:30:00.000Z"),
+    roles: [
+      {
+        assignedAt: new Date("2026-04-17T12:00:00.000Z"),
+        role: {
+          key: "admin",
+          name: "Admin",
+        },
+      },
+      {
+        assignedAt: new Date("2026-04-17T12:01:00.000Z"),
+        role: {
+          key: "executive",
+          name: "Executive",
+        },
+      },
+    ],
+    _count: {
+      auditLogs: 5,
+      authoredOpportunityNotes: 3,
+      createdOpportunityMilestones: 2,
+      createdOpportunityProposals: 1,
+      createdOpportunityTasks: 4,
+      createdSourceSavedSearches: 2,
+      ownedOpportunityProposals: 1,
+      requestedSourceSyncRuns: 6,
+      uploadedOpportunityDocuments: 2,
+    },
   };
 }
 
@@ -501,11 +545,17 @@ function createRepositoryClient(
   record: OrganizationSettingsRecord | OrganizationUserManagementRecord | null,
 ) {
   return {
+    auditLog: {
+      findMany: vi.fn().mockResolvedValue(record?.auditLogs?.slice(0, 1) ?? []),
+    },
     organization: {
       findUnique: vi.fn().mockResolvedValue(record),
     },
     user: {
       count: vi.fn().mockResolvedValue(1),
+      findFirst: vi
+        .fn()
+        .mockResolvedValue(record ? buildAdminUserDetailRecord() : null),
     },
     opportunity: {
       findMany: vi.fn().mockResolvedValue(buildRecalibrationOpportunities()),
@@ -758,6 +808,38 @@ describe("admin.repository", () => {
     });
   });
 
+  it("maps selected user details into a dedicated user-detail snapshot", async () => {
+    const db = createRepositoryClient(buildOrganizationAdminRecord());
+
+    const snapshot = await getAdminUserDetailSnapshot({
+      db,
+      organizationId: "org_123",
+      userId: "user_admin",
+    });
+
+    expect(snapshot).not.toBeNull();
+    expect(snapshot).toMatchObject({
+      organizationName: "Default Organization",
+      user: {
+        id: "user_admin",
+        email: "admin@onesource.local",
+        createdAt: "2026-04-17T11:58:00.000Z",
+        emailVerifiedAt: "2026-04-17T11:59:00.000Z",
+        hasPassword: true,
+        updatedAt: "2026-04-18T00:30:00.000Z",
+        activityCounts: {
+          createdTasks: 4,
+          requestedSourceSyncRuns: 6,
+          uploadedDocuments: 2,
+        },
+      },
+    });
+    expect(snapshot?.recentAuditEvents[0]).toMatchObject({
+      action: "seed.bootstrap",
+      actorLabel: "Alex Morgan",
+    });
+  });
+
   it("returns null when the organization is missing", async () => {
     const db = createRepositoryClient(null);
 
@@ -771,6 +853,13 @@ describe("admin.repository", () => {
       getAdminUserManagementSnapshot({
         db,
         organizationId: "missing_org",
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      getAdminUserDetailSnapshot({
+        db,
+        organizationId: "missing_org",
+        userId: "missing_user",
       }),
     ).resolves.toBeNull();
   });

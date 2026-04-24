@@ -6,7 +6,7 @@ Current repo status:
 
 - Product checklist phases `P0-01` through `P10-04` are complete.
 - Deferred follow-up `FP-01` is complete.
-- The post-project UI programs are complete through `UI-13` and `MUI-20`.
+- The post-project UI programs are complete through `UI-13` and `MUI-22`.
 - The active UI runtime is Material UI-first, with `src/app/tailwind-freeze.css` retained only as a compatibility stylesheet for remaining legacy selectors.
 
 ## Stack
@@ -39,6 +39,7 @@ The repo includes these main product surfaces:
 - `/settings/scoring` scoring profile and recalibration workspace
 - `/settings/audit` audit activity workspace
 - `/settings/users` users-and-roles workspace
+- `/settings/users/[userId]` selected-user admin workspace
 - `/api/health` runtime health endpoint
 
 Runtime services:

@@ -198,6 +198,13 @@ const SHELL_ROUTE_DEFINITIONS: ShellRouteDefinition[] = [
     requires: "workspace_settings",
   },
   {
+    matcher: "/settings/users/",
+    label: "User profile",
+    description: "Manage the selected user's roles and access state.",
+    navHref: "/settings/users",
+    requires: "workspace_settings",
+  },
+  {
     matcher: "/settings/users",
     label: "Users & roles",
     description:

@@ -41,6 +41,7 @@ export async function createWorkspaceUserAction(
       },
     });
     revalidatePath("/settings/users");
+    revalidatePath(`/settings/users/${result.userId}`);
 
     return {
       affectedUserId: result.userId,
@@ -81,6 +82,7 @@ export async function updateWorkspaceUserRolesAction(
       },
     });
     revalidatePath("/settings/users");
+    revalidatePath(`/settings/users/${result.userId}`);
 
     return {
       affectedUserId: result.userId,
@@ -122,6 +124,7 @@ export async function disableWorkspaceUserAction(
       },
     });
     revalidatePath("/settings/users");
+    revalidatePath(`/settings/users/${result.userId}`);
 
     return {
       affectedUserId: result.userId,
@@ -165,6 +168,7 @@ export async function reactivateWorkspaceUserAction(
       },
     });
     revalidatePath("/settings/users");
+    revalidatePath(`/settings/users/${result.userId}`);
 
     return {
       affectedUserId: result.userId,

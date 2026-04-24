@@ -25,6 +25,27 @@ export type AdminUserSummary = {
   roles: AdminUserRoleSummary[];
 };
 
+export type AdminUserActivityCounts = {
+  authoredNotes: number;
+  createdMilestones: number;
+  createdProposals: number;
+  createdSourceSearches: number;
+  createdTasks: number;
+  ownedProposals: number;
+  recentAuditEvents: number;
+  requestedSourceSyncRuns: number;
+  uploadedDocuments: number;
+};
+
+export type AdminUserDetailSummary = AdminUserSummary & {
+  createdAt: string;
+  emailVerifiedAt: string | null;
+  hasPassword: boolean;
+  image: string | null;
+  updatedAt: string;
+  activityCounts: AdminUserActivityCounts;
+};
+
 export type AdminRoleOption = {
   key: string;
   label: string;
@@ -291,4 +312,12 @@ export type AdminUserManagementSnapshot = {
   adminUserCount: number;
   roleOptions: AdminRoleOption[];
   users: AdminUserSummary[];
+};
+
+export type AdminUserDetailSnapshot = {
+  organizationId: string;
+  organizationName: string;
+  roleOptions: AdminRoleOption[];
+  recentAuditEvents: AdminAuditEventSummary[];
+  user: AdminUserDetailSummary;
 };

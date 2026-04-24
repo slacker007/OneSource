@@ -94,7 +94,7 @@ The current launch-hardening review revalidated these server-enforced permission
 - `manage_pipeline`
   - required for tracked-opportunity create or edit routes, opportunity workspace mutations, and knowledge create or edit actions
 - `manage_workspace_settings`
-  - required for `/settings`, `/settings/connectors`, `/settings/saved-searches`, `/settings/scoring`, `/settings/audit`, `/settings/users`, and the settings recalibration, retry, invite, role-update, disable, and re-enable actions
+  - required for `/settings`, `/settings/connectors`, `/settings/saved-searches`, `/settings/scoring`, `/settings/audit`, `/settings/users`, `/settings/users/[userId]`, and the settings recalibration, retry, invite, role-update, disable, and re-enable actions
 
 Current review result: the repo’s major restricted routes still gate server-side on shared permission helpers rather than client-only affordances, and viewer denial on the settings route family remains covered by browser verification.
 

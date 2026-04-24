@@ -370,7 +370,7 @@ describe("AppShellFrame", () => {
       <AppShellFrame
         allowDecisionSupport
         allowWorkspaceSettings
-        currentPath="/settings/users"
+        currentPath="/settings/users/user_admin"
         sessionUser={{
           email: "admin@onesource.local",
           name: "Admin User",
@@ -380,7 +380,7 @@ describe("AppShellFrame", () => {
         }}
         shellSnapshot={buildShellSnapshot()}
       >
-        <div>Users page</div>
+        <div>User profile page</div>
       </AppShellFrame>,
     );
 
@@ -396,6 +396,7 @@ describe("AppShellFrame", () => {
 
     expect(usersLink).toHaveAttribute("aria-current", "page");
     expect(settingsLink).not.toHaveAttribute("aria-current");
+    expect(screen.getAllByText(/user profile/i).length).toBeGreaterThan(0);
   });
 
   it("highlights the focused settings child route instead of the overview", () => {

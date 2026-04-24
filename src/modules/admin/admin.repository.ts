@@ -7,6 +7,7 @@ import type {
   AdminScoringSettingsSnapshot,
   AdminSettingsSnapshot,
   AdminSettingsOverviewSnapshot,
+  AdminUserDetailSnapshot,
   AdminUserManagementSnapshot,
 } from "./admin.types";
 import {
@@ -184,6 +185,46 @@ const organizationUserManagementSnapshotArgs =
       },
     },
   });
+
+const adminUserDetailArgs = Prisma.validator<Prisma.UserDefaultArgs>()({
+  select: {
+    id: true,
+    organizationId: true,
+    name: true,
+    email: true,
+    emailVerified: true,
+    image: true,
+    passwordHash: true,
+    status: true,
+    createdAt: true,
+    updatedAt: true,
+    roles: {
+      orderBy: [{ assignedAt: "desc" }, { role: { name: "asc" } }],
+      select: {
+        assignedAt: true,
+        role: {
+          select: {
+            key: true,
+            name: true,
+          },
+        },
+      },
+    },
+    _count: {
+      select: {
+        auditLogs: true,
+        authoredOpportunityNotes: true,
+        createdOpportunityMilestones: true,
+        createdOpportunityProposals: true,
+        createdOpportunityTasks: true,
+        createdSourceSavedSearches: true,
+        ownedOpportunityProposals: true,
+        requestedSourceSyncRuns: true,
+        uploadedOpportunityDocuments: true,
+      },
+    },
+  },
+});
 
 const sourceConnectorHealthArgs =
   Prisma.validator<Prisma.SourceConnectorConfigDefaultArgs>()({
@@ -385,6 +426,7 @@ const recalibrationOpportunityArgs =
 
 export type AdminRepositoryClient = Pick<
   PrismaClient,
+  | "auditLog"
   | "organization"
   | "user"
   | "opportunity"
@@ -399,6 +441,9 @@ export type OrganizationSettingsRecord = Prisma.OrganizationGetPayload<
 >;
 export type OrganizationUserManagementRecord = Prisma.OrganizationGetPayload<
   typeof organizationUserManagementSnapshotArgs
+>;
+export type AdminUserDetailRecord = Prisma.UserGetPayload<
+  typeof adminUserDetailArgs
 >;
 export type AuditLogSummaryPayload = Prisma.AuditLogGetPayload<
   typeof auditLogSummaryArgs
@@ -1004,6 +1049,80 @@ export async function getAdminUserManagementSnapshot({
   };
 }
 
+export async function getAdminUserDetailSnapshot({
+  db,
+  organizationId,
+  userId,
+}: {
+  db: AdminRepositoryClient;
+  organizationId: string;
+  userId: string;
+}): Promise<AdminUserDetailSnapshot | null> {
+  const [organization, user, recentAuditEvents] = await Promise.all([
+    db.organization.findUnique({
+      where: {
+        id: organizationId,
+      },
+      select: {
+        id: true,
+        name: true,
+        roles: {
+          orderBy: {
+            name: "asc",
+          },
+          select: {
+            key: true,
+            name: true,
+            description: true,
+          },
+        },
+      },
+    }),
+    db.user.findFirst({
+      where: {
+        id: userId,
+        organizationId,
+      },
+      ...adminUserDetailArgs,
+    }),
+    db.auditLog.findMany({
+      where: {
+        organizationId,
+        OR: [
+          {
+            actorUserId: userId,
+          },
+          {
+            targetId: userId,
+            targetType: "user",
+          },
+        ],
+      },
+      orderBy: {
+        occurredAt: "desc",
+      },
+      take: 12,
+      ...auditLogSummaryArgs,
+    }),
+  ]);
+
+  if (!organization || !user) {
+    return null;
+  }
+
+  return {
+    organizationId: organization.id,
+    organizationName: organization.name,
+    roleOptions: organization.roles.map((role) => ({
+      key: role.key,
+      label: role.name,
+      description: role.description,
+    })),
+    recentAuditEvents: recentAuditEvents.map(mapAuditEventSummary),
+    user: mapAdminUserDetailSummary(user),
+  };
+}
+
 function mapAdminSavedSearchSummary(savedSearch: AdminSavedSearchPayload) {
   return {
     id: savedSearch.id,
@@ -1051,6 +1170,30 @@ function mapAdminUserSummary(
     roleKeys: roles.map((role) => role.key),
     roleLabels: roles.map((role) => role.label),
     roles,
+  };
+}
+
+function mapAdminUserDetailSummary(user: AdminUserDetailRecord) {
+  const summary = mapAdminUserSummary(user);
+
+  return {
+    ...summary,
+    activityCounts: {
+      authoredNotes: user._count.authoredOpportunityNotes,
+      createdMilestones: user._count.createdOpportunityMilestones,
+      createdProposals: user._count.createdOpportunityProposals,
+      createdSourceSearches: user._count.createdSourceSavedSearches,
+      createdTasks: user._count.createdOpportunityTasks,
+      ownedProposals: user._count.ownedOpportunityProposals,
+      recentAuditEvents: user._count.auditLogs,
+      requestedSourceSyncRuns: user._count.requestedSourceSyncRuns,
+      uploadedDocuments: user._count.uploadedOpportunityDocuments,
+    },
+    createdAt: user.createdAt.toISOString(),
+    emailVerifiedAt: user.emailVerified?.toISOString() ?? null,
+    hasPassword: Boolean(user.passwordHash),
+    image: user.image,
+    updatedAt: user.updatedAt.toISOString(),
   };
 }
 
