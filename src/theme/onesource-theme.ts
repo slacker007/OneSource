@@ -81,6 +81,7 @@ export type OneSourceThemeTokens = {
     selectedOverlay: string;
   };
   radius: {
+    button: number;
     control: number;
     menu: number;
     panel: number;
@@ -218,6 +219,7 @@ export const onesourceTokens: OneSourceThemeTokens = {
     selectedOverlay: "rgba(37, 99, 235, 0.12)",
   },
   radius: {
+    button: 6,
     control: 12,
     menu: 16,
     panel: 18,
@@ -512,7 +514,7 @@ const onesourceTheme = createTheme({
       },
       styleOverrides: {
         root: {
-          borderRadius: onesourceTokens.radius.pill,
+          borderRadius: onesourceTokens.radius.button,
           minHeight: onesourceTokens.sizing.buttonHeightComfortable,
           paddingInline: 18,
         },

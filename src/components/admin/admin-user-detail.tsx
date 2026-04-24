@@ -1,6 +1,8 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Stack from "@mui/material/Stack";
@@ -13,11 +15,7 @@ import {
   INITIAL_ADMIN_USER_MANAGEMENT_ACTION_STATE,
   type AdminUserManagementActionState,
 } from "@/modules/admin/user-management-form.schema";
-import {
-  formatUtcTimestamp,
-  getUserStatusTone,
-  SummaryCard,
-} from "@/components/admin/admin-shared";
+import { getUserStatusTone } from "@/components/admin/admin-shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -114,6 +112,8 @@ export function AdminUserDetail({
   }
 
   const { user } = snapshot;
+  const displayName = user.name ?? user.email;
+  const profileInitial = displayName.trim().charAt(0).toUpperCase() || "U";
   const latestActionFeedback =
     roleState.successMessage ??
     disableState.successMessage ??
@@ -122,7 +122,7 @@ export function AdminUserDetail({
     roleState.formError ?? disableState.formError ?? reactivateState.formError;
 
   return (
-    <section className="space-y-6">
+    <Stack component="section" spacing={4}>
       <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap" }}>
         <Button href="/settings/users" tone="neutral" variant="outlined">
           <ArrowBackRoundedIcon fontSize="small" />
@@ -133,64 +133,121 @@ export function AdminUserDetail({
       <Surface
         component="header"
         sx={{
-          boxShadow: onesourceTokens.elevation.hero,
+          overflow: "hidden",
           px: { xs: 3, sm: 4 },
-          py: 4,
+          py: { xs: 3, sm: 3.5 },
         }}
       >
-        <Stack spacing={3}>
-          <Stack spacing={1.5}>
+        <Box
+          sx={{
+            display: "grid",
+            gap: 3,
+            gridTemplateColumns: {
+              xs: "1fr",
+              lg: "minmax(0, 1fr) minmax(16rem, 20rem)",
+            },
+          }}
+        >
+          <Stack spacing={2.5} sx={{ minWidth: 0 }}>
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
               <Badge>Selected user</Badge>
               <Badge tone="muted">{snapshot.organizationName}</Badge>
               <Badge tone={getUserStatusTone(user.status)}>{user.status}</Badge>
             </Stack>
-            <Typography
-              variant="h1"
-              sx={{ fontSize: { xs: "2rem", sm: "2.35rem" } }}
+
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              sx={{ alignItems: { sm: "center" }, minWidth: 0 }}
             >
-              {user.name ?? user.email}
+              <Avatar
+                aria-hidden="true"
+                sx={{
+                  bgcolor: onesourceTokens.color.accent.main,
+                  color: onesourceTokens.color.text.inverse,
+                  fontSize: "1.35rem",
+                  fontWeight: 750,
+                  height: 58,
+                  width: 58,
+                }}
+              >
+                {profileInitial}
+              </Avatar>
+              <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+                <Typography
+                  variant="h1"
+                  sx={{
+                    fontSize: { xs: "1.75rem", sm: "2.1rem" },
+                    lineHeight: 1.1,
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {displayName}
+                </Typography>
+                <Typography
+                  color="text.secondary"
+                  sx={{ fontSize: "0.95rem", wordBreak: "break-word" }}
+                >
+                  {user.email}
+                </Typography>
+              </Stack>
+            </Stack>
+
+            <Typography color="text.secondary" sx={{ maxWidth: "46rem" }}>
+              Review account posture and make audited role or access changes
+              without leaving the workspace admin context.
             </Typography>
-            <Typography color="text.secondary" sx={{ maxWidth: "54rem" }}>
-              Manage identity posture, role assignments, access state, and
-              recent audit context for this workspace user.
-            </Typography>
+
+            <MetricLedger
+              metrics={[
+                {
+                  label: "Roles",
+                  supportingText: "Assigned now",
+                  value: String(user.roleKeys.length),
+                },
+                {
+                  label: "Created",
+                  supportingText: "User record",
+                  value: formatProfileDate(user.createdAt),
+                },
+                {
+                  label: "Updated",
+                  supportingText: "Latest mutation",
+                  value: formatProfileDate(user.updatedAt),
+                },
+                {
+                  label: "Audit events",
+                  supportingText: "As actor",
+                  value: String(user.activityCounts.recentAuditEvents),
+                },
+              ]}
+            />
           </Stack>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <SummaryCard
-              label="Email"
-              supportingText={
-                user.emailVerifiedAt ? "Verified" : "Not verified"
-              }
-              value={user.email}
-            />
-            <SummaryCard
-              label="Assigned roles"
-              supportingText="Current system-role coverage"
-              value={String(user.roleKeys.length)}
-            />
-            <SummaryCard
-              label="Created"
-              supportingText="User record"
-              value={formatUtcTimestamp(user.createdAt)}
-            />
-            <SummaryCard
-              label="Last updated"
-              supportingText="Profile or access mutation"
-              value={formatUtcTimestamp(user.updatedAt)}
-            />
-            <SummaryCard
-              label="Auth"
-              supportingText={
-                user.hasPassword
-                  ? "Password credential exists"
-                  : "No password credential"
-              }
-              value={user.emailVerifiedAt ? "Verified" : "Pending"}
-            />
-          </div>
-        </Stack>
+          <Surface
+            density="compact"
+            tone="muted"
+            sx={{
+              alignSelf: "start",
+              boxShadow: "none",
+              minWidth: 0,
+              p: 2,
+            }}
+          >
+            <Stack spacing={1.75}>
+              <SectionKicker>Account posture</SectionKicker>
+              <DetailRow label="Access status" value={user.status} />
+              <DetailRow
+                label="Email verification"
+                value={user.emailVerifiedAt ? "Verified" : "Not verified"}
+              />
+              <DetailRow
+                label="Password credential"
+                value={user.hasPassword ? "Configured" : "Not configured"}
+              />
+            </Stack>
+          </Surface>
+        </Box>
       </Surface>
 
       {latestActionFeedback ? (
@@ -212,8 +269,17 @@ export function AdminUserDetail({
         />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_22rem]">
-        <Stack spacing={6}>
+      <Box
+        sx={{
+          display: "grid",
+          gap: 3,
+          gridTemplateColumns: {
+            xs: "1fr",
+            xl: "minmax(0, 1fr) minmax(18rem, 22rem)",
+          },
+        }}
+      >
+        <Stack spacing={3}>
           <Surface component="section" sx={{ p: { xs: 2.5, sm: 3 } }}>
             <Stack spacing={2.5}>
               <SectionHeading
@@ -232,7 +298,7 @@ export function AdminUserDetail({
                   label="Email verified"
                   value={
                     user.emailVerifiedAt
-                      ? formatUtcTimestamp(user.emailVerifiedAt)
+                      ? formatProfileDateTime(user.emailVerifiedAt)
                       : "Not verified"
                   }
                 />
@@ -244,7 +310,7 @@ export function AdminUserDetail({
                   label="Latest role change"
                   value={
                     user.latestRoleAssignedAt
-                      ? formatUtcTimestamp(user.latestRoleAssignedAt)
+                      ? formatProfileDateTime(user.latestRoleAssignedAt)
                       : "No role history"
                   }
                 />
@@ -310,7 +376,7 @@ export function AdminUserDetail({
                         sx={{
                           alignItems: "flex-start",
                           border: `1px solid ${onesourceTokens.color.border.subtle}`,
-                          borderRadius: 3,
+                          borderRadius: 1,
                           m: 0,
                           px: 1.25,
                           py: 0.75,
@@ -320,15 +386,29 @@ export function AdminUserDetail({
                   })}
                 </Stack>
 
-                <Button disabled={updateRolesPending} type="submit">
-                  {updateRolesPending ? "Saving roles..." : "Save roles"}
-                </Button>
+                <Box
+                  sx={{
+                    borderTop: `1px solid ${onesourceTokens.color.border.subtle}`,
+                    display: "flex",
+                    justifyContent: "flex-start",
+                    pt: 2,
+                  }}
+                >
+                  <Button
+                    data-testid="save-roles-button"
+                    density="compact"
+                    disabled={updateRolesPending}
+                    type="submit"
+                  >
+                    {updateRolesPending ? "Saving roles..." : "Save roles"}
+                  </Button>
+                </Box>
               </Stack>
             </form>
           </Surface>
         </Stack>
 
-        <Stack spacing={6}>
+        <Stack spacing={3}>
           <Surface component="aside" sx={{ p: { xs: 2.5, sm: 3 } }}>
             <Stack spacing={2.5}>
               <SectionHeading
@@ -416,7 +496,7 @@ export function AdminUserDetail({
             </Stack>
           </Surface>
         </Stack>
-      </div>
+      </Box>
 
       <Surface component="section" sx={{ p: { xs: 2.5, sm: 3 } }}>
         <Stack spacing={2.5}>
@@ -446,7 +526,7 @@ export function AdminUserDetail({
                       {event.actionLabel}
                     </Typography>
                     <Typography color="text.secondary" variant="caption">
-                      {formatUtcTimestamp(event.occurredAt)}
+                      {formatProfileDateTime(event.occurredAt)}
                     </Typography>
                   </Stack>
                   <Typography color="text.secondary" variant="body2">
@@ -459,7 +539,7 @@ export function AdminUserDetail({
                       sx={{ wordBreak: "break-word" }}
                       variant="caption"
                     >
-                      {event.metadataPreview}
+                      Metadata captured for audit review.
                     </Typography>
                   ) : null}
                 </Stack>
@@ -473,7 +553,7 @@ export function AdminUserDetail({
           )}
         </Stack>
       </Surface>
-    </section>
+    </Stack>
   );
 }
 
@@ -499,13 +579,32 @@ function SectionHeading({
       >
         {eyebrow}
       </Typography>
-      <Typography sx={{ mt: 1.25 }} variant="h3">
+      <Typography
+        sx={{ fontSize: "1.1rem", mt: 1, fontWeight: 750 }}
+        variant="h3"
+      >
         {title}
       </Typography>
       <Typography color="text.secondary" sx={{ mt: 0.75 }} variant="body2">
         {description}
       </Typography>
     </div>
+  );
+}
+
+function SectionKicker({ children }: { children: string }) {
+  return (
+    <Typography
+      sx={{
+        color: onesourceTokens.color.text.muted,
+        fontSize: onesourceTokens.typographyRole.eyebrow.fontSize,
+        fontWeight: onesourceTokens.typographyRole.eyebrow.fontWeight,
+        letterSpacing: "0.2em",
+        textTransform: "uppercase",
+      }}
+    >
+      {children}
+    </Typography>
   );
 }
 
@@ -516,16 +615,96 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       sx={{
         border: `1px solid ${onesourceTokens.color.border.subtle}`,
         borderRadius: 2,
+        minWidth: 0,
         p: 1.5,
       }}
     >
       <Typography color="text.secondary" variant="caption">
         {label}
       </Typography>
-      <Typography sx={{ fontSize: "0.95rem", fontWeight: 650, minWidth: 0 }}>
+      <Typography
+        sx={{
+          fontSize: "0.95rem",
+          fontWeight: 650,
+          minWidth: 0,
+          overflowWrap: "anywhere",
+        }}
+      >
         {value}
       </Typography>
     </Stack>
+  );
+}
+
+type ProfileMetric = {
+  label: string;
+  supportingText: string;
+  value: string;
+};
+
+function MetricLedger({ metrics }: { metrics: ProfileMetric[] }) {
+  return (
+    <Box
+      sx={{
+        bgcolor: onesourceTokens.color.surface.raised,
+        border: `1px solid ${onesourceTokens.color.border.subtle}`,
+        borderRadius: 1,
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "1fr",
+          sm: "repeat(2, minmax(0, 1fr))",
+          lg: "repeat(4, minmax(0, 1fr))",
+        },
+        minWidth: 0,
+        overflow: "hidden",
+        "& > *": {
+          borderColor: onesourceTokens.color.border.subtle,
+          borderStyle: "solid",
+          borderWidth: 0,
+        },
+        "& > * + *": {
+          borderTopWidth: { xs: 1, sm: 0 },
+        },
+        "& > *:nth-of-type(even)": {
+          borderLeftWidth: { sm: 1, lg: 0 },
+        },
+        "& > *:not(:nth-of-type(4n + 1))": {
+          borderLeftWidth: { lg: 1 },
+        },
+        "& > *:nth-of-type(n + 3)": {
+          borderTopWidth: { sm: 1, lg: 0 },
+        },
+      }}
+    >
+      {metrics.map((metric) => (
+        <Stack key={metric.label} spacing={0.4} sx={{ minWidth: 0, p: 1.5 }}>
+          <Typography
+            color="text.secondary"
+            sx={{
+              fontSize: "0.72rem",
+              fontWeight: 750,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+            }}
+          >
+            {metric.label}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: "1rem",
+              fontWeight: 750,
+              lineHeight: 1.25,
+              overflowWrap: "anywhere",
+            }}
+          >
+            {metric.value}
+          </Typography>
+          <Typography color="text.secondary" variant="caption">
+            {metric.supportingText}
+          </Typography>
+        </Stack>
+      ))}
+    </Box>
   );
 }
 
@@ -547,4 +726,22 @@ function CompactMetric({ label, value }: { label: string; value: number }) {
       </Typography>
     </Stack>
   );
+}
+
+function formatProfileDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatProfileDateTime(value: string) {
+  return `${formatProfileDate(value)} ${new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  }).format(new Date(value))}`;
 }

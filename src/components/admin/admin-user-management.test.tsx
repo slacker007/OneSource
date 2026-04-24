@@ -206,15 +206,26 @@ describe("AdminUserManagement", () => {
       screen.getByRole("heading", { name: /alex morgan/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/user profile/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/apr 17, 2026/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/apr 22, 2026/i).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByText(/2026-04-17T11:58:00.000Z/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/2026-04-22T12:30:00.000Z/i),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /save roles/i }),
     ).toBeInTheDocument();
+    expect(screen.getByTestId("save-roles-button").tagName).toBe("BUTTON");
     expect(
       screen.getByRole("button", { name: /disable user/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/workspace user roles update/i),
     ).toBeInTheDocument();
+    expect(screen.getByText(/metadata captured/i)).toBeInTheDocument();
+    expect(screen.queryByText(/nextRoleKeys/i)).not.toBeInTheDocument();
     expect(screen.getByText(/syncs requested/i)).toBeInTheDocument();
   });
 });
