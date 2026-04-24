@@ -1,10 +1,12 @@
 "use client";
 
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { useMemo, useState } from "react";
@@ -18,7 +20,6 @@ import {
   formatUtcTimestamp,
 } from "@/components/admin/admin-shared";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Surface } from "@/components/ui/surface";
@@ -144,18 +145,29 @@ export function AdminAuditSettings({ snapshot }: AdminAuditSettingsProps) {
         minWidth: 130,
         renderCell: ({ row }) =>
           (row.metadataJson ?? row.metadataPreview) ? (
-            <Button
-              aria-label={`View metadata for ${row.actionLabel}`}
-              density="compact"
-              onClick={(event) => {
-                event.stopPropagation();
-                setSelectedEventId(row.id);
-              }}
-              tone="neutral"
-              variant="outlined"
-            >
-              View
-            </Button>
+            <Tooltip title="View metadata">
+              <IconButton
+                aria-label={`View metadata for ${row.actionLabel}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSelectedEventId(row.id);
+                }}
+                size="small"
+                sx={{
+                  border: `1px solid ${onesourceTokens.color.border.subtle}`,
+                  borderRadius: `${onesourceTokens.radius.button}px`,
+                  color: onesourceTokens.color.text.primary,
+                  height: 38,
+                  width: 38,
+                  "&:hover": {
+                    bgcolor: onesourceTokens.color.surface.muted,
+                    borderColor: onesourceTokens.color.border.strong,
+                  },
+                }}
+              >
+                <VisibilityRoundedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
           ) : (
             <Typography color="text.secondary" variant="caption">
               None
@@ -218,6 +230,7 @@ export function AdminAuditSettings({ snapshot }: AdminAuditSettingsProps) {
         aria-labelledby="audit-activity-grid-heading"
         component="section"
         sx={{
+          borderRadius: `${onesourceTokens.radius.button}px`,
           overflow: "hidden",
           p: 0,
         }}
@@ -251,22 +264,29 @@ export function AdminAuditSettings({ snapshot }: AdminAuditSettingsProps) {
               {snapshot.totalAuditLogCount} total organization-scoped events
             </Typography>
           </Stack>
-          <Typography
+          <Stack
+            direction="row"
+            spacing={1}
             sx={{
-              fontSize: "1.5rem",
-              fontWeight: 750,
-              lineHeight: 1,
+              alignItems: "baseline",
             }}
           >
-            {snapshot.recentAuditEvents.length}
+            <Typography
+              sx={{
+                fontSize: "1.5rem",
+                fontWeight: 750,
+                lineHeight: 1,
+              }}
+            >
+              {snapshot.recentAuditEvents.length}
+            </Typography>
             <Typography
               color="text.secondary"
-              component="span"
-              sx={{ fontSize: "0.85rem", fontWeight: 600, ml: 1 }}
+              sx={{ fontSize: "0.85rem", fontWeight: 600 }}
             >
               shown
             </Typography>
-          </Typography>
+          </Stack>
         </Box>
 
         {snapshot.recentAuditEvents.length > 0 ? (
