@@ -38,21 +38,43 @@ export function AdminAuditSettings({ snapshot }: AdminAuditSettingsProps) {
     () => [
       {
         field: "actionLabel",
-        flex: 1.25,
+        flex: 1.55,
         headerName: "Action",
-        minWidth: 260,
+        minWidth: 340,
         renderCell: ({ row }) => (
-          <Stack spacing={0.7} sx={{ minWidth: 0 }}>
-            <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap" }}>
-              <Badge>{row.actionLabel}</Badge>
-              <Badge tone="muted">{row.action}</Badge>
-            </Stack>
+          <Stack spacing={0.65} sx={{ minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontSize: "0.9rem",
+                fontWeight: 750,
+                lineHeight: 1.25,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {row.actionLabel}
+            </Typography>
+            <Typography
+              color="text.secondary"
+              sx={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "0.76rem",
+                fontWeight: 700,
+                lineHeight: 1.3,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {row.action}
+            </Typography>
             <Typography
               color="text.secondary"
               sx={{
                 display: "-webkit-box",
                 fontSize: "0.84rem",
-                lineHeight: 1.45,
+                lineHeight: 1.5,
                 overflow: "hidden",
                 WebkitBoxOrient: "vertical",
                 WebkitLineClamp: 2,
@@ -68,7 +90,7 @@ export function AdminAuditSettings({ snapshot }: AdminAuditSettingsProps) {
         field: "actorLabel",
         flex: 0.65,
         headerName: "Actor",
-        minWidth: 150,
+        minWidth: 190,
         renderCell: ({ row }) => (
           <Stack spacing={0.25} sx={{ minWidth: 0 }}>
             <Typography sx={{ fontSize: "0.87rem", fontWeight: 650 }}>
@@ -85,7 +107,7 @@ export function AdminAuditSettings({ snapshot }: AdminAuditSettingsProps) {
         field: "targetLabel",
         flex: 0.85,
         headerName: "Target",
-        minWidth: 210,
+        minWidth: 260,
         renderCell: ({ row }) => (
           <Stack spacing={0.25} sx={{ minWidth: 0 }}>
             <Typography
@@ -108,7 +130,7 @@ export function AdminAuditSettings({ snapshot }: AdminAuditSettingsProps) {
         field: "occurredAt",
         flex: 0.7,
         headerName: "Occurred",
-        minWidth: 185,
+        minWidth: 215,
         renderCell: ({ row }) => (
           <Typography sx={{ fontSize: "0.86rem", fontWeight: 650 }}>
             {formatUtcTimestamp(row.occurredAt)}
@@ -269,7 +291,7 @@ export function AdminAuditSettings({ snapshot }: AdminAuditSettingsProps) {
             }}
             pageSizeOptions={[10, 25, 50]}
             pagination
-            rowHeight={82}
+            rowHeight={106}
             rows={snapshot.recentAuditEvents}
             sx={{
               border: 0,
