@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
+import { onesourceTokens } from "@/theme/onesource-theme";
 
 describe("UI foundation primitives", () => {
   it("renders semantic badge tones", () => {
@@ -134,6 +135,10 @@ describe("UI foundation primitives", () => {
   it("keeps page header surfaces compact across route workspaces", () => {
     expect(PAGE_HEADER_SURFACE_SX.px).toEqual({ xs: 2.5, sm: 3 });
     expect(PAGE_HEADER_SURFACE_SX.py).toEqual({ xs: 2, sm: 2.25 });
+  });
+
+  it("keeps shared button corners aligned with panel corners", () => {
+    expect(onesourceTokens.radius.button).toBe(onesourceTokens.radius.panel);
   });
 
   it("translates legacy option children into a themed Material UI menu", () => {

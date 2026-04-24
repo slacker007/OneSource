@@ -1266,7 +1266,7 @@ export function AppShellFrame({
                     sx={{
                       bgcolor: "background.paper",
                       borderColor: "divider",
-                      borderRadius: 999,
+                      borderRadius: `${onesourceTokens.radius.button}px`,
                       boxShadow: onesourceTokens.elevation.surface,
                       justifyContent: "space-between",
                       px: 2,

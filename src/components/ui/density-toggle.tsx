@@ -5,6 +5,7 @@ import Typography from "@mui/material/Typography";
 import { alpha } from "@mui/material/styles";
 
 import { cn } from "@/lib/cn";
+import { onesourceTokens } from "@/theme/onesource-theme";
 
 export type DensityToggleOption = {
   active?: boolean;
@@ -40,7 +41,7 @@ export function DensityToggle({
           backgroundColor: alpha("#122128", 0.04),
           border: "1px solid",
           borderColor: "divider",
-          borderRadius: 999,
+          borderRadius: `${onesourceTokens.radius.button}px`,
           display: "inline-flex",
           gap: 0.5,
           p: 0.5,
@@ -57,8 +58,10 @@ export function DensityToggle({
               component="span"
               sx={{
                 alignItems: "center",
-                borderRadius: 999,
-                boxShadow: option.active ? "0 8px 18px rgba(18, 33, 40, 0.08)" : "none",
+                borderRadius: `${onesourceTokens.radius.button}px`,
+                boxShadow: option.active
+                  ? "0 8px 18px rgba(18, 33, 40, 0.08)"
+                  : "none",
                 color: option.active ? "text.primary" : "text.secondary",
                 display: "inline-flex",
                 fontSize: "0.92rem",
