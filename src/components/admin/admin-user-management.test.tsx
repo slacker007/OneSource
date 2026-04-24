@@ -120,7 +120,9 @@ describe("AdminUserManagement", () => {
     expect(screen.getByLabelText(/display name/i)).toBeInTheDocument();
   });
 
-  it("renders a selected-user workspace with profile details and management actions", () => {
+  it("renders a selected-user workspace with profile details and management actions", async () => {
+    const user = userEvent.setup();
+
     render(
       <AdminUserDetail
         disableUserAction={async () =>
@@ -224,8 +226,92 @@ describe("AdminUserManagement", () => {
     expect(
       screen.getByText(/workspace user roles update/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/metadata captured/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("grid", { name: /user audit activity/i }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/nextRoleKeys/i)).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /view metadata for workspace user roles update/i,
+      }),
+    );
+
+    expect(screen.getByTestId("audit-metadata-panel")).toHaveTextContent(
+      /nextRoleKeys/i,
+    );
     expect(screen.getByText(/syncs requested/i)).toBeInTheDocument();
+  });
+
+  it("renders the selected-user audit empty state when no audit rows exist", () => {
+    render(
+      <AdminUserDetail
+        disableUserAction={async () =>
+          INITIAL_ADMIN_USER_MANAGEMENT_ACTION_STATE
+        }
+        reactivateUserAction={async () =>
+          INITIAL_ADMIN_USER_MANAGEMENT_ACTION_STATE
+        }
+        sessionUser={{
+          email: "operator@onesource.local",
+          id: "user_operator",
+          name: "Operator",
+        }}
+        snapshot={{
+          organizationId: "org_123",
+          organizationName: "Default Organization",
+          roleOptions: [
+            {
+              key: "admin",
+              label: "Admin",
+              description: "Workspace administrators.",
+            },
+          ],
+          recentAuditEvents: [],
+          user: {
+            id: "user_admin",
+            name: "Alex Morgan",
+            email: "admin@onesource.local",
+            status: "ACTIVE",
+            latestRoleAssignedAt: "2026-04-22T12:00:00.000Z",
+            roleKeys: ["admin"],
+            roleLabels: ["Admin"],
+            roles: [
+              {
+                key: "admin",
+                label: "Admin",
+                assignedAt: "2026-04-22T12:00:00.000Z",
+              },
+            ],
+            activityCounts: {
+              authoredNotes: 0,
+              createdMilestones: 0,
+              createdProposals: 0,
+              createdSourceSearches: 0,
+              createdTasks: 0,
+              ownedProposals: 0,
+              recentAuditEvents: 0,
+              requestedSourceSyncRuns: 0,
+              uploadedDocuments: 0,
+            },
+            createdAt: "2026-04-17T11:58:00.000Z",
+            emailVerifiedAt: null,
+            hasPassword: false,
+            image: null,
+            updatedAt: "2026-04-18T00:30:00.000Z",
+          },
+        }}
+        updateUserRolesAction={async () =>
+          INITIAL_ADMIN_USER_MANAGEMENT_ACTION_STATE
+        }
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /no recent audit events/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("grid", { name: /user audit activity/i }),
+    ).not.toBeInTheDocument();
   });
 });

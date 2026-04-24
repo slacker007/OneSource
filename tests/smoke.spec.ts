@@ -669,12 +669,30 @@ Army Cloud Operations Recompete,PEO Enterprise Information Systems,,2026-05-20,5
   await expect(page).toHaveURL(/\/settings\/users\/[^/]+$/);
   await expect(page.getByRole("heading", { name: /ops admin/i })).toBeVisible();
   await expect(page.getByText(managedUserEmail).first()).toBeVisible();
+  await expect(
+    page.getByRole("grid", { name: /user audit activity/i }),
+  ).toBeVisible();
   await page.getByRole("checkbox", { name: /admin/i }).check();
   const roleMutation = waitForUsersMutation();
   await page.getByRole("button", { name: /save roles/i }).click();
   await roleMutation;
   await page.reload();
   await expect(page.getByRole("checkbox", { name: /admin/i })).toBeChecked();
+  const userAuditGrid = page.getByRole("grid", {
+    name: /user audit activity/i,
+  });
+  await expect(userAuditGrid).toBeVisible();
+  await expect(
+    userAuditGrid.getByText(/workspace user.*roles.*update/i),
+  ).toBeVisible();
+  await userAuditGrid
+    .getByRole("button", {
+      name: /view metadata for workspace user.*roles.*update/i,
+    })
+    .click();
+  await expect(page.getByTestId("audit-metadata-panel")).toContainText(
+    /nextRoleKeys/i,
+  );
   const disableMutation = waitForUsersMutation();
   await page.getByRole("button", { name: /disable user/i }).click();
   await disableMutation;

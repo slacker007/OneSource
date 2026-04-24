@@ -7,10 +7,20 @@ import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { DataGrid, type GridColDef } from "@mui/x-data-grid";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 
-import type { AdminUserDetailSnapshot } from "@/modules/admin/admin.types";
+import type {
+  AdminAuditEventSummary,
+  AdminUserDetailSnapshot,
+} from "@/modules/admin/admin.types";
 import {
   INITIAL_ADMIN_USER_MANAGEMENT_ACTION_STATE,
   type AdminUserManagementActionState,
@@ -498,62 +508,243 @@ export function AdminUserDetail({
         </Stack>
       </Box>
 
-      <Surface component="section" sx={{ p: { xs: 2.5, sm: 3 } }}>
+      <Surface
+        component="section"
+        sx={{ overflow: "hidden", p: { xs: 2.5, sm: 3 } }}
+      >
         <Stack spacing={2.5}>
           <SectionHeading
             eyebrow="Audit"
             title="Recent user activity"
             description="Recent audit events where this user was the actor or the target of an admin mutation."
           />
-          {snapshot.recentAuditEvents.length > 0 ? (
-            <Stack spacing={1.25}>
-              {snapshot.recentAuditEvents.map((event) => (
-                <Stack
-                  key={event.id}
-                  spacing={0.75}
-                  sx={{
-                    border: `1px solid ${onesourceTokens.color.border.subtle}`,
-                    borderRadius: 2,
-                    p: 1.5,
-                  }}
-                >
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1}
-                    sx={{ justifyContent: "space-between" }}
-                  >
-                    <Typography sx={{ fontSize: "0.94rem", fontWeight: 700 }}>
-                      {event.actionLabel}
-                    </Typography>
-                    <Typography color="text.secondary" variant="caption">
-                      {formatProfileDateTime(event.occurredAt)}
-                    </Typography>
-                  </Stack>
-                  <Typography color="text.secondary" variant="body2">
-                    {event.summary ??
-                      `${event.actorLabel} affected ${event.targetLabel}.`}
-                  </Typography>
-                  {event.metadataPreview ? (
-                    <Typography
-                      color="text.secondary"
-                      sx={{ wordBreak: "break-word" }}
-                      variant="caption"
-                    >
-                      Metadata captured for audit review.
-                    </Typography>
-                  ) : null}
-                </Stack>
-              ))}
-            </Stack>
-          ) : (
-            <EmptyState
-              message="No user-specific audit activity has been recorded yet."
-              title="No recent audit events"
-            />
-          )}
+          <UserAuditActivityGrid events={snapshot.recentAuditEvents} />
         </Stack>
       </Surface>
     </Stack>
+  );
+}
+
+function UserAuditActivityGrid({
+  events,
+}: {
+  events: AdminAuditEventSummary[];
+}) {
+  const [expandedAuditEventId, setExpandedAuditEventId] = useState<
+    string | null
+  >(null);
+  const expandedAuditEvent =
+    events.find((event) => event.id === expandedAuditEventId) ?? null;
+  const auditGridColumns = useMemo<GridColDef<AdminAuditEventSummary>[]>(
+    () => [
+      {
+        field: "occurredAt",
+        flex: 0.8,
+        headerName: "Time",
+        minWidth: 180,
+        renderCell: ({ row }) => (
+          <Typography sx={{ fontSize: "0.85rem", fontWeight: 650 }}>
+            {formatProfileDateTime(row.occurredAt)}
+          </Typography>
+        ),
+        sortable: false,
+      },
+      {
+        field: "actionLabel",
+        flex: 1,
+        headerName: "Action",
+        minWidth: 220,
+        renderCell: ({ row }) => (
+          <Stack spacing={0.2} sx={{ minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontSize: "0.88rem",
+                fontWeight: 700,
+                overflowWrap: "anywhere",
+              }}
+            >
+              {row.actionLabel}
+            </Typography>
+            <Typography color="text.secondary" variant="caption">
+              {row.action}
+            </Typography>
+          </Stack>
+        ),
+        sortable: false,
+      },
+      {
+        field: "actorLabel",
+        flex: 0.75,
+        headerName: "Actor",
+        minWidth: 150,
+        renderCell: ({ row }) => (
+          <Typography sx={{ fontSize: "0.86rem", overflowWrap: "anywhere" }}>
+            {row.actorLabel}
+          </Typography>
+        ),
+        sortable: false,
+      },
+      {
+        field: "targetLabel",
+        flex: 0.9,
+        headerName: "Target",
+        minWidth: 180,
+        renderCell: ({ row }) => (
+          <Stack spacing={0.2} sx={{ minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontSize: "0.86rem",
+                fontWeight: 650,
+                overflowWrap: "anywhere",
+              }}
+            >
+              {row.targetLabel}
+            </Typography>
+            <Typography color="text.secondary" variant="caption">
+              {row.targetType}
+            </Typography>
+          </Stack>
+        ),
+        sortable: false,
+      },
+      {
+        field: "summary",
+        flex: 1.35,
+        headerName: "Summary",
+        minWidth: 260,
+        renderCell: ({ row }) => (
+          <Typography sx={{ fontSize: "0.86rem", overflowWrap: "anywhere" }}>
+            {row.summary ?? `${row.actorLabel} affected ${row.targetLabel}.`}
+          </Typography>
+        ),
+        sortable: false,
+      },
+      {
+        field: "metadataPreview",
+        headerName: "Metadata",
+        minWidth: 130,
+        renderCell: ({ row }) =>
+          row.metadataPreview ? (
+            <Button
+              aria-controls={`audit-metadata-${row.id}`}
+              aria-expanded={expandedAuditEventId === row.id}
+              aria-label={`${
+                expandedAuditEventId === row.id ? "Hide" : "View"
+              } metadata for ${row.actionLabel}`}
+              density="compact"
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpandedAuditEventId((currentEventId) =>
+                  currentEventId === row.id ? null : row.id,
+                );
+              }}
+              tone="neutral"
+              variant="outlined"
+            >
+              {expandedAuditEventId === row.id ? "Hide" : "View"}
+            </Button>
+          ) : (
+            <Typography color="text.secondary" variant="caption">
+              None
+            </Typography>
+          ),
+        sortable: false,
+        width: 130,
+      },
+    ],
+    [expandedAuditEventId],
+  );
+
+  if (events.length === 0) {
+    return (
+      <EmptyState
+        message="No user-specific audit activity has been recorded yet."
+        title="No recent audit events"
+      />
+    );
+  }
+
+  return (
+    <>
+      <DataGrid
+        aria-label="User audit activity"
+        autoHeight
+        columns={auditGridColumns}
+        density="compact"
+        disableColumnFilter
+        disableColumnMenu
+        disableDensitySelector
+        disableRowSelectionOnClick
+        getRowId={(row) => row.id}
+        hideFooterSelectedRowCount
+        initialState={{
+          pagination: {
+            paginationModel: {
+              pageSize: 10,
+              page: 0,
+            },
+          },
+        }}
+        pageSizeOptions={[10, 25, 50]}
+        pagination
+        rowHeight={68}
+        rows={events}
+        sx={{
+          border: `1px solid ${onesourceTokens.color.border.subtle}`,
+          borderRadius: `${onesourceTokens.radius.button}px`,
+          minHeight: 320,
+          "& .MuiDataGrid-cell": {
+            alignItems: "center",
+            display: "flex",
+            py: 1,
+          },
+          "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
+            outline: "none",
+          },
+          "& .MuiDataGrid-columnHeader": {
+            backgroundColor: onesourceTokens.color.surface.muted,
+          },
+          "& .MuiDataGrid-row": {
+            cursor: "default",
+          },
+        }}
+      />
+
+      {expandedAuditEvent ? (
+        <Box
+          id={`audit-metadata-${expandedAuditEvent.id}`}
+          data-testid="audit-metadata-panel"
+          sx={{
+            bgcolor: onesourceTokens.color.surface.muted,
+            border: `1px solid ${onesourceTokens.color.border.subtle}`,
+            borderRadius: 1,
+            mt: 2,
+            p: 2,
+          }}
+        >
+          <Stack spacing={1}>
+            <SectionKicker>Audit metadata</SectionKicker>
+            <Typography sx={{ fontSize: "0.95rem", fontWeight: 700 }}>
+              {expandedAuditEvent.actionLabel}
+            </Typography>
+            <Typography
+              component="pre"
+              sx={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "0.78rem",
+                lineHeight: 1.6,
+                m: 0,
+                overflowX: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {expandedAuditEvent.metadataPreview}
+            </Typography>
+          </Stack>
+        </Box>
+      ) : null}
+    </>
   );
 }
 
